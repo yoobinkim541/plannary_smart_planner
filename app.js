@@ -104,9 +104,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Sync Navigation Active States (Rail & Sidebar)
         document.querySelectorAll('[data-target]').forEach(el => {
-            if (el.getAttribute('data-target') === targetId) {
-                // If it's a sub-filter link for tasks, only highlight if it matches current filter (simplified here)
-                el.classList.add('active');
+            const elTarget = el.getAttribute('data-target');
+            const elFilter = el.getAttribute('data-filter');
+
+            if (elTarget === targetId) {
+                if (targetId === 'page-tasks') {
+                    // Specific logic for Tasks sub-filters
+                    if (elFilter) {
+                        el.classList.toggle('active', elFilter === currentFilter);
+                    } else {
+                        // Rail icons or buttons without filters
+                        el.classList.add('active');
+                    }
+                } else {
+                    // Other pages: simple match
+                    el.classList.add('active');
+                }
             } else {
                 el.classList.remove('active');
             }
