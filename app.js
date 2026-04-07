@@ -97,10 +97,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // SPA Router
     const switchPage = (targetId) => {
+        // 1. Switch Page Content
         document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
         const targetPage = getEl(targetId);
         if (targetPage) targetPage.classList.add('active');
+
+        // 2. Sync Navigation Active States (Rail & Sidebar)
+        document.querySelectorAll('[data-target]').forEach(el => {
+            if (el.getAttribute('data-target') === targetId) {
+                // If it's a sub-filter link for tasks, only highlight if it matches current filter (simplified here)
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+        });
+
+        // 3. Update Sidebar Header (Icon + Text)
+        updateSidebarHeader(targetId);
+
         if (targetId === 'page-tasks') applyFilters();
+    };
+
+    const updateSidebarHeader = (pageId) => {
+        const iconBox = getEl('sidebar-header-icon');
+        const titleEl = getEl('sidebar-header-title');
+        const subtitleEl = getEl('sidebar-header-subtitle');
+        if (!iconBox || !titleEl) return;
+
+        const mapper = {
+            'page-home': {
+                title: 'Overview',
+                subtitle: 'Dashboard Summary',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
+            },
+            'page-tasks': {
+                title: 'My Tasks',
+                subtitle: 'Todo Manager ↗',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`
+            },
+            'page-projects': {
+                title: 'Project Groups',
+                subtitle: 'Category Manager',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`
+            },
+            'page-notes': {
+                title: 'Sticky Board',
+                subtitle: 'Idea Notes',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`
+            },
+            'page-bookmarks': {
+                title: 'Web Saved',
+                subtitle: 'Reference Links',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`
+            },
+            'page-profile': {
+                title: 'Profile Settings',
+                subtitle: 'User Account',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+            }
+        };
+
+        const config = mapper[pageId] || mapper['page-tasks'];
+        iconBox.innerHTML = config.icon;
+        titleEl.textContent = config.title;
+        subtitleEl.textContent = config.subtitle;
     };
 
     document.querySelectorAll('[data-target]').forEach(link => {
@@ -447,10 +507,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const input = getEl('note-input');
             const text = input.value.trim();
             if (!text || !currentUser) return;
+            const nList = getEl('notes-list');
             db.collection('notes').add({
                 uid: currentUser.uid, text, 
                 color: selectedNoteColor,
-                x: Math.random() * (notesList.offsetWidth - 250) + 20, 
+                x: Math.random() * ((nList ? nList.offsetWidth : 500) - 250) + 20, 
                 y: Math.random() * 200 + 20,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => input.value = '');

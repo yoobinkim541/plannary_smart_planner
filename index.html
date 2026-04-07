@@ -44,12 +44,15 @@
         <!-- Sidebar -->
         <aside id="sidebar">
             <div class="sidebar-top">
-                <div class="sidebar-project">
-                    <div>
-                        <h2 class="project-name">Todo Project</h2>
-                        <span class="project-id">Project #1 ↗</span>
+                <div class="sidebar-project" id="sidebar-context-header">
+                    <div id="sidebar-header-icon" class="sidebar-header-icon-box">
+                        <!-- Icon will be injected by JS -->
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                     </div>
-                    <span class="status-dot blue"></span>
+                    <div>
+                        <h2 class="project-name" id="sidebar-header-title">My Tasks</h2>
+                        <span class="project-id" id="sidebar-header-subtitle">Todo Manager ↗</span>
+                    </div>
                 </div>
 
                 <nav class="sidebar-nav">
