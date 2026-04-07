@@ -103,25 +103,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetPage) targetPage.classList.add('active');
 
         // 2. Sync Navigation Active States (Rail & Sidebar)
+        // First, clear ALL active classes from any navigation elements
+        document.querySelectorAll('[data-target]').forEach(el => el.classList.remove('active'));
+        
+        // Then, add active only to the elements that match the current view EXACTLY
         document.querySelectorAll('[data-target]').forEach(el => {
             const elTarget = el.getAttribute('data-target');
             const elFilter = el.getAttribute('data-filter');
 
             if (elTarget === targetId) {
                 if (targetId === 'page-tasks') {
-                    // Specific logic for Tasks sub-filters
-                    if (elFilter) {
-                        el.classList.toggle('active', elFilter === currentFilter);
-                    } else {
-                        // Rail icons or buttons without filters
+                    // Only activate task links that match OR have NO filter (like the rail icon)
+                    if (!elFilter || elFilter === currentFilter) {
                         el.classList.add('active');
                     }
                 } else {
-                    // Other pages: simple match
+                    // For other pages, just match the targetId
                     el.classList.add('active');
                 }
-            } else {
-                el.classList.remove('active');
             }
         });
 
@@ -180,13 +179,16 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetId = link.getAttribute('data-target');
-            switchPage(targetId);
+            
+            // If it's a task filter, update the global filter state first
             if (targetId === 'page-tasks' && link.hasAttribute('data-filter')) {
                 currentFilter = link.getAttribute('data-filter');
-                currentProjectId = null; // Clear project filter when using sidebar filters
+                currentProjectId = null;
+                // Sync filter chips if exists
                 filterChips.forEach(btn => btn.classList.toggle('active', btn.dataset.filter === currentFilter));
-                applyFilters();
             }
+
+            switchPage(targetId);
         });
     });
 
