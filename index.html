@@ -100,9 +100,66 @@
             <section id="page-home" class="page-content">
                 <header class="main-header">
                     <h1>Dashboard Overview</h1>
+                    <p id="dashboard-welcome-text" style="color: var(--text-2); font-size: 0.9rem; margin-top: 4px;">Welcome back! Here's what's happening today.</p>
                 </header>
-                <div class="empty-state">
-                    <p>Welcome to your Dashboard. Here you will see summary statistics.</p>
+
+                <div class="dashboard-container">
+                    <!-- Stats Section -->
+                    <div class="dashboard-stats-row">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--blue);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Total Tasks</span>
+                                <h2 class="stat-value" id="stat-total-tasks">0</h2>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--green);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Completed</span>
+                                <h2 class="stat-value" id="stat-completed-tasks">0</h2>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-info" style="width: 100%;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span class="stat-label">Productivity</span>
+                                    <span id="stat-progress-percent" style="font-weight: 600; font-size: 0.85rem;">0%</span>
+                                </div>
+                                <div class="progress-bar-bg">
+                                    <div id="stat-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Recent Notes Widget -->
+                        <div class="dashboard-widget">
+                            <div class="widget-header">
+                                <h3>Recent Notes</h3>
+                                <button class="text-link-btn" data-target="page-notes">View All</button>
+                            </div>
+                            <div id="dash-recent-notes" class="widget-content dash-notes-list">
+                                <!-- Dynamic items -->
+                            </div>
+                        </div>
+
+                        <!-- Important/Overdue Widget -->
+                        <div class="dashboard-widget">
+                            <div class="widget-header">
+                                <h3>Urgent Tasks</h3>
+                                <button class="text-link-btn" data-target="page-tasks" data-filter="important">View Detailed</button>
+                            </div>
+                            <div id="dash-urgent-tasks" class="widget-content dash-task-list">
+                                <!-- Dynamic items -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -145,6 +202,10 @@
                             <option value="medium" selected>Medium</option>
                             <option value="high">High</option>
                         </select>
+                        <select id="todo-project-select">
+                            <option value="">No Project</option>
+                            <!-- Options injected by JS -->
+                        </select>
                     </div>
                 </div>
 
@@ -164,9 +225,18 @@
             <section id="page-projects" class="page-content">
                 <header class="main-header">
                     <h1>Projects</h1>
+                    <p style="color: var(--text-2); font-size: 0.9rem;">Organize your tasks into groups.</p>
                 </header>
-                <div class="empty-state">
-                    <p>Manage your projects and groups here.</p>
+
+                <div class="composer">
+                    <div class="composer-top">
+                        <input type="text" id="project-input" placeholder="Project name (e.g. Work, Study)">
+                        <button id="add-project-btn">Create Project</button>
+                    </div>
+                </div>
+
+                <div class="projects-grid" id="projects-list">
+                    <!-- Projects injected by JS -->
                 </div>
             </section>
 
@@ -181,6 +251,14 @@
                         <input type="text" id="note-input" placeholder="Jot down a note...">
                         <button id="add-note-btn">Add Note</button>
                     </div>
+                    <div class="color-selector" id="note-color-picker">
+                        <div class="color-option opt-yellow selected" data-color="yellow" title="Yellow"></div>
+                        <div class="color-option opt-blue" data-color="blue" title="Blue"></div>
+                        <div class="color-option opt-green" data-color="green" title="Green"></div>
+                        <div class="color-option opt-pink" data-color="pink" title="Pink"></div>
+                        <div class="color-option opt-purple" data-color="purple" title="Purple"></div>
+                        <div class="color-option opt-orange" data-color="orange" title="Orange"></div>
+                    </div>
                 </div>
 
                 <div class="notes-grid" id="notes-list">
@@ -192,9 +270,22 @@
             <section id="page-bookmarks" class="page-content">
                 <header class="main-header">
                     <h1>Bookmarks</h1>
+                    <p style="color: var(--text-2); font-size: 0.9rem;">Save important links with tags.</p>
                 </header>
-                <div class="empty-state">
-                    <p>Your saved bookmarks will appear here.</p>
+
+                <div class="composer">
+                    <div class="composer-top">
+                        <input type="text" id="bm-url-input" placeholder="URL (https://...)">
+                        <input type="text" id="bm-title-input" placeholder="Title">
+                        <button id="add-bm-btn">Save</button>
+                    </div>
+                    <div class="composer-details">
+                        <input type="text" id="bm-tags-input" placeholder="Tags (comma separated: dev, news, design)">
+                    </div>
+                </div>
+
+                <div class="bookmarks-grid" id="bookmarks-list">
+                    <!-- Bookmarks injected by JS -->
                 </div>
             </section>
 

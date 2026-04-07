@@ -26,13 +26,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let allTodos = [];
     let allNotes = [];
+    let allProjects = [];
+    let allBookmarks = [];
     let currentFilter = 'all';
+    let currentProjectId = null;
+    let selectedNoteColor = 'yellow';
 
-    // Search functionality - Real-time binding
+    // Search functionality
     if (searchInput) {
-        searchInput.oninput = () => {
-            applyFilters();
-        };
+        searchInput.oninput = () => applyFilters();
+    }
+
+    // Color Selector logic
+    const colorPicker = getEl('note-color-picker');
+    if (colorPicker) {
+        colorPicker.querySelectorAll('.color-option').forEach(opt => {
+            opt.onclick = () => {
+                colorPicker.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selectedNoteColor = opt.dataset.color;
+            };
+        });
     }
 
     // Font selection logic
@@ -61,7 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUser = user;
                 updateProfileUI(user);
                 if (isAuthPage) window.location.href = 'index.html';
-                else { loadTodos(); loadNotes(); }
+                else { 
+                    loadTodos(); 
+                    loadNotes(); 
+                    loadProjects(); 
+                    loadBookmarks(); 
+                }
             }
         });
     }
@@ -91,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             switchPage(targetId);
             if (targetId === 'page-tasks' && link.hasAttribute('data-filter')) {
                 currentFilter = link.getAttribute('data-filter');
+                currentProjectId = null; // Clear project filter when using sidebar filters
                 filterChips.forEach(btn => btn.classList.toggle('active', btn.dataset.filter === currentFilter));
                 applyFilters();
             }
@@ -101,19 +121,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadTodos = () => {
         if (!currentUser || !db) return;
         db.collection('todos').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
-            allTodos = snapshot.docs.map(doc => ({ 
-                id: doc.id, 
-                ...doc.data(),
-                createdAt: doc.data().createdAt || { toMillis: () => Date.now() }
-            }));
-            allTodos.sort((a, b) => (b.createdAt.toMillis ? b.createdAt.toMillis() : 0) - (a.createdAt.toMillis ? a.createdAt.toMillis() : 0));
+            allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             applyFilters();
+            updateDashboardUI();
         });
     };
 
     const applyFilters = () => {
         const term = searchInput ? searchInput.value.toLowerCase() : "";
         let filtered = allTodos.filter(t => (t.text && t.text.toLowerCase().includes(term)) || (t.memo && t.memo.toLowerCase().includes(term)));
+        
+        if (currentProjectId) {
+            filtered = filtered.filter(t => t.projectId === currentProjectId);
+        }
+
         if (currentFilter === 'active') filtered = filtered.filter(t => !t.completed && !t.archived);
         else if (currentFilter === 'completed') filtered = filtered.filter(t => t.completed && !t.archived);
         else if (currentFilter === 'important') filtered = filtered.filter(t => t.priority === 'high' && !t.archived);
@@ -129,6 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = `task-card${todo.completed ? ' completed' : ''}`;
             const p = todo.priority || 'medium';
+            const project = allProjects.find(px => px.id === todo.projectId);
+            const projectTag = project ? `<span class="project-tag" style="background:${project.color}33; color:${project.color}; border: 1px solid ${project.color}66;">${project.name}</span>` : '';
+
             card.innerHTML = `
                 <button class="tc-delete" data-id="${todo.id}">×</button>
                 <div class="tc-top">
@@ -137,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="tc-subtitle">${p.toUpperCase()} PRIORITY ${todo.dueDate ? '• 📅 ' + todo.dueDate : ''}</div>
                 <p class="tc-desc">${todo.memo || 'No notes.'}</p>
+                <div style="margin-top: 8px;">${projectTag}</div>
                 <div class="tc-actions">
                     <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? 'Undo' : 'Complete'}</button>
                     <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">Edit</button>
@@ -193,12 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 memo: getEl('memo-input') ? getEl('memo-input').value.trim() : "",
                 dueDate: getEl('due-date') ? getEl('due-date').value : "",
                 priority: getEl('priority-select') ? getEl('priority-select').value : "medium",
+                projectId: getEl('todo-project-select') ? getEl('todo-project-select').value : "",
                 completed: false,
                 archived: false,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
                 if (inputEl) inputEl.value = '';
                 if (getEl('memo-input')) getEl('memo-input').value = '';
+                if (getEl('todo-project-select')) getEl('todo-project-select').value = '';
                 showToast("Task added!", "success");
             }).catch(err => {
                 console.error("Add error:", err);
@@ -213,22 +240,164 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // CRUD - Projects
+    const loadProjects = () => {
+        if (!currentUser || !db) return;
+        db.collection('projects').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
+            allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderProjects(allProjects);
+        });
+    };
+
+    const renderProjects = (projects) => {
+        const list = getEl('projects-list');
+        const select = getEl('todo-project-select');
+        
+        if (list) {
+            list.innerHTML = projects.length ? '' : '<div class="empty-state">No projects yet. Create one!</div>';
+            projects.forEach(project => {
+                const count = allTodos.filter(t => t.projectId === project.id && !t.archived).length;
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.innerHTML = `
+                    <button class="delete-project" data-id="${project.id}">×</button>
+                    <div class="project-badge" style="background:${project.color || 'var(--blue)'}"></div>
+                    <h3>${project.name}</h3>
+                    <span class="task-count">${count} tasks</span>
+                `;
+                card.onclick = (e) => {
+                    if (e.target.classList.contains('delete-project')) return;
+                    currentProjectId = project.id;
+                    currentFilter = 'all'; // Reset state filter
+                    switchPage('page-tasks');
+                    applyFilters();
+                    showToast(`Viewing project: ${project.name}`);
+                };
+                list.appendChild(card);
+            });
+
+            list.querySelectorAll('.delete-project').forEach(b => b.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm('Delete project? Tasks will remain but unorganized.')) {
+                    db.collection('projects').doc(b.dataset.id).delete();
+                }
+            });
+        }
+
+        // Update Project Select Dropdown in Tasks Page
+        if (select) {
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">No Project</option>';
+            projects.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                select.appendChild(opt);
+            });
+            select.value = currentVal;
+        }
+    };
+
+    if (getEl('add-project-btn')) {
+        const colors = ['#2563eb', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4'];
+        getEl('add-project-btn').onclick = () => {
+            const input = getEl('project-input');
+            const name = input.value.trim();
+            if (!name || !currentUser) return;
+            db.collection('projects').add({
+                uid: currentUser.uid,
+                name: name,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => input.value = '');
+        };
+    }
+
+    // CRUD - Bookmarks
+    const loadBookmarks = () => {
+        if (!currentUser || !db) return;
+        db.collection('bookmarks').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
+            allBookmarks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderBookmarks(allBookmarks);
+        });
+    };
+
+    const renderBookmarks = (bookmarks) => {
+        const list = getEl('bookmarks-list');
+        if (!list) return;
+        list.innerHTML = bookmarks.length ? '' : '<div class="empty-state">No bookmarks saved.</div>';
+
+        bookmarks.forEach(bm => {
+            const card = document.createElement('div');
+            card.className = 'bookmark-card';
+            const domain = bm.url.split('/')[2];
+            const tags = bm.tags ? bm.tags.map(t => `<span class="tag-chip">${t.trim()}</span>`).join('') : '';
+
+            card.innerHTML = `
+                <div class="bm-header">
+                    <img src="https://www.google.com/s2/favicons?sz=64&domain=${domain}" class="bm-favicon" alt="favicon">
+                    <div style="flex:1; overflow:hidden;">
+                        <div class="bm-title">${bm.title || domain}</div>
+                        <span class="bm-url">${bm.url}</span>
+                    </div>
+                </div>
+                <div class="bm-tags">${tags}</div>
+                <div class="bm-actions">
+                    <a href="${bm.url}" target="_blank" class="bm-link">Open Link ↗</a>
+                    <button class="bm-delete" data-id="${bm.id}">Delete</button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+
+        list.querySelectorAll('.bm-delete').forEach(b => b.onclick = () => confirm('Delete bookmark?') && db.collection('bookmarks').doc(b.dataset.id).delete());
+    };
+
+    if (getEl('add-bm-btn')) {
+        getEl('add-bm-btn').onclick = () => {
+            const urlInput = getEl('bm-url-input');
+            const titleInput = getEl('bm-title-input');
+            const tagsInput = getEl('bm-tags-input');
+            
+            let url = urlInput.value.trim();
+            if (!url || !currentUser) return;
+            if (!url.startsWith('http')) url = 'https://' + url;
+
+            const tags = tagsInput.value ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t !== "") : [];
+
+            db.collection('bookmarks').add({
+                uid: currentUser.uid,
+                url: url,
+                title: titleInput.value.trim(),
+                tags: tags,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                urlInput.value = '';
+                titleInput.value = '';
+                tagsInput.value = '';
+                showToast("Bookmark saved!");
+            });
+        };
+    }
+
     // CRUD - Notes
     const loadNotes = () => {
         if (!currentUser || !db) return;
         db.collection('notes').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
             allNotes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderNotes(allNotes);
+            updateDashboardUI();
         });
     };
 
     const renderNotes = (notes) => {
         const list = getEl('notes-list');
         if (!list) return;
-        list.innerHTML = notes.length ? '' : '<div class="empty-state">No notes. Drag to move!</div>';
+        list.innerHTML = notes.length ? '' : '<div class="empty-state">No notes. Click and drag to move them!</div>';
         notes.forEach(note => {
             const card = document.createElement('div');
-            card.className = 'note-card';
+            const colorClass = `color-${note.color || 'yellow'}`;
+            card.className = `note-card ${colorClass}`;
             card.dataset.id = note.id;
             card.style.left = (note.x || 20) + 'px';
             card.style.top = (note.y || 20) + 'px';
@@ -264,7 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
             el.style.top = (initT + t.clientY - startY) + 'px';
         };
         const up = () => {
-            if (!isDragging) return;
             isDragging = false; el.style.zIndex = 1;
             document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
             document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
@@ -281,7 +449,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!text || !currentUser) return;
             db.collection('notes').add({
                 uid: currentUser.uid, text, 
-                x: Math.random() * 200 + 20, y: Math.random() * 200 + 20,
+                color: selectedNoteColor,
+                x: Math.random() * (notesList.offsetWidth - 250) + 20, 
+                y: Math.random() * 200 + 20,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => input.value = '');
         };
@@ -302,6 +472,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const triggerLogout = () => confirm('Logout?') && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = triggerLogout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = triggerLogout;
+
+    // === DASHBOARD LOGIC ===
+    function updateDashboardUI() {
+        if (!getEl('page-home')) return;
+
+        // 1. Stats Calculation
+        const total = allTodos.filter(t => !t.archived).length;
+        const completed = allTodos.filter(t => t.completed && !t.archived).length;
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        if (getEl('stat-total-tasks')) getEl('stat-total-tasks').textContent = total;
+        if (getEl('stat-completed-tasks')) getEl('stat-completed-tasks').textContent = completed;
+        if (getEl('stat-progress-percent')) getEl('stat-progress-percent').textContent = `${percent}%`;
+        if (getEl('stat-progress-bar')) getEl('stat-progress-bar').style.width = `${percent}%`;
+
+        // 2. Recent Notes (Top 3)
+        const recentNotesList = getEl('dash-recent-notes');
+        if (recentNotesList) {
+            recentNotesList.innerHTML = '';
+            const recentNotes = [...allNotes].reverse().slice(0, 3);
+            if (recentNotes.length === 0) {
+                recentNotesList.innerHTML = '<p style="font-size:0.85rem; color:var(--text-3);">No recent notes.</p>';
+            }
+            recentNotes.forEach(note => {
+                const div = document.createElement('div');
+                div.className = 'dash-recent-note-card';
+                div.textContent = note.text.length > 50 ? note.text.substring(0, 50) + '...' : note.text;
+                recentNotesList.appendChild(div);
+            });
+        }
+
+        // 3. Urgent Tasks (High Priority or Today)
+        const urgentTasksList = getEl('dash-urgent-tasks');
+        if (urgentTasksList) {
+            urgentTasksList.innerHTML = '';
+            const urgent = allTodos.filter(t => !t.completed && !t.archived && t.priority === 'high').slice(0, 3);
+            if (urgent.length === 0) {
+                urgentTasksList.innerHTML = '<p style="font-size:0.85rem; color:var(--text-3);">All clear! No urgent tasks.</p>';
+            }
+            urgent.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'dash-item';
+                item.innerHTML = `
+                    <div class="dash-item-info">
+                        <h4>${task.text}</h4>
+                        <p>${task.dueDate || 'No due date'}</p>
+                    </div>
+                    <span class="tc-status red" style="position:static; width:10px; height:10px;"></span>
+                `;
+                urgentTasksList.appendChild(item);
+            });
+        }
+    }
 });
 
 window.showToast = (message, type = 'info') => {
