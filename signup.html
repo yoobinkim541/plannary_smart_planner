@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Todo - Sign up</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="auth-layout">
+    <div class="auth-card">
+        <h2>Create account</h2>
+        <p class="auth-subtitle">Get started with your free account today.</p>
+
+        <div class="auth-form-group">
+            <label for="reg-email">Email Address</label>
+            <input type="email" id="reg-email" class="auth-input" placeholder="Enter your email">
+        </div>
+        <div class="auth-form-group">
+            <label for="reg-pw">Password</label>
+            <input type="password" id="reg-pw" class="auth-input" placeholder="Create a password">
+        </div>
+        <div class="auth-form-group">
+            <label for="reg-pw-confirm">Confirm Password</label>
+            <input type="password" id="reg-pw-confirm" class="auth-input" placeholder="Confirm your password">
+        </div>
+
+        <button class="confirm-btn" id="signup-btn">Create account</button>
+
+        <div class="divider">OR</div>
+
+        <button class="google-btn" id="google-signup-btn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon">
+            Sign up with Google
+        </button>
+
+        <div class="auth-links">
+            <p>Already have an account? <a href="login.html">Sign in</a></p>
+        </div>
+    </div>
+
+    <!-- Firebase Auto-Init -->
+    <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+
+    <script>
+        const auth = firebase.auth();
+        const emailInput = document.getElementById('reg-email');
+        const pwInput = document.getElementById('reg-pw');
+        const pwConfirmInput = document.getElementById('reg-pw-confirm');
+        const signupBtn = document.getElementById('signup-btn');
+        const googleSignupBtn = document.getElementById('google-signup-btn');
+
+        // Email Signup
+        signupBtn.addEventListener('click', () => {
+            const email = emailInput.value.trim();
+            const password = pwInput.value;
+            const confirmPw = pwConfirmInput.value;
+
+            if (!email || !password) return alert('Please enter both email and password.');
+            if (password !== confirmPw) return alert('Passwords do not match.');
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(() => window.location.href = 'index.html')
+                .catch((error) => alert('Signup failed: ' + error.message));
+        });
+
+        // Google Signup
+        googleSignupBtn.addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then(() => window.location.href = 'index.html')
+                .catch((error) => alert('Google login failed: ' + error.message));
+        });
+
+        auth.onAuthStateChanged((user) => {
+            if (user) window.location.href = 'index.html';
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- App Shell -->
+    <div id="app-shell">
+        <!-- Icon Rail -->
+        <div id="icon-rail">
+            <button class="rail-icon" data-target="page-tasks" title="Add">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="rail-icon-group">
+                <button class="rail-icon" data-target="page-home" title="Home">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </button>
+                <button class="rail-icon active" data-target="page-tasks" title="Tasks">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </button>
+                <button class="rail-icon" data-target="page-projects" title="Layers">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </button>
+                <button class="rail-icon" data-target="page-bookmarks" title="Bookmarks">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                </button>
+                <button class="rail-icon" data-target="page-profile" title="Profile">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </button>
+            </div>
+            <button class="rail-icon rail-icon-fab" data-target="page-tasks" title="Quick Add">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div class="sidebar-top">
+                <div class="sidebar-project">
+                    <div>
+                        <h2 class="project-name">Todo Project</h2>
+                        <span class="project-id">Project #1 ↗</span>
+                    </div>
+                    <span class="status-dot blue"></span>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-link active" data-target="page-tasks" data-filter="all">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                        <span>All tasks</span>
+                    </a>
+                    <a href="#" class="nav-link" data-target="page-tasks" data-filter="active">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        <span>Progress</span>
+                    </a>
+                    <a href="#" class="nav-link" data-target="page-notes">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>Notes</span>
+                    </a>
+                    <a href="#" class="nav-link" data-target="page-tasks" data-filter="important">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span>Important</span>
+                    </a>
+                    <a href="#" class="nav-link" data-target="page-tasks" data-filter="archive">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                        <span>Archive</span>
+                    </a>
+                    <a href="#" class="nav-link" data-target="page-tasks" data-filter="reminders">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        <span>Reminders</span>
+                    </a>
+                </nav>
+            </div>
+
+            <div class="sidebar-bottom">
+                <div class="profile-row" id="user-profile">
+                    <img id="user-photo" src="https://ui-avatars.com/api/?name=U&background=0D8ABC&color=fff&size=40" alt="avatar">
+                    <div class="profile-info">
+                        <span id="user-name-sidebar" class="profile-name">User</span>
+                        <span id="user-email-sidebar" class="profile-email">user@email.com</span>
+                    </div>
+                    <button id="logout-btn" class="profile-menu-btn" title="Menu">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-area">
+            <!-- PAGE: HOME -->
+            <section id="page-home" class="page-content">
+                <header class="main-header">
+                    <h1>Dashboard Overview</h1>
+                </header>
+                <div class="empty-state">
+                    <p>Welcome to your Dashboard. Here you will see summary statistics.</p>
+                </div>
+            </section>
+
+            <!-- PAGE: TASKS -->
+            <section id="page-tasks" class="page-content active">
+                <header class="main-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 id="welcome-message">Tasks</h1>
+                    <div class="font-selector">
+                        <select id="app-font-select" class="font-dropdown">
+                            <option value="var(--font)">Default Sans</option>
+                            <option value="'Pretendard', sans-serif">Pretendard</option>
+                            <option value="'Courier New', Courier, monospace">Monospace</option>
+                            <option value="'Georgia', serif">Serif</option>
+                            <option value="'Comic Sans MS', cursive">Handwritten</option>
+                        </select>
+                    </div>
+                </header>
+
+                <div class="filter-bar">
+                    <button class="filter-chip active" data-filter="all">All Tasks</button>
+                    <button class="filter-chip" data-filter="completed">Completed</button>
+                    <button class="filter-chip" data-filter="active">In-Progress</button>
+                    <!-- Added new filters based on sidebar items -->
+                    <button class="filter-chip" data-filter="important" style="display:none;">Important</button>
+                    <button class="filter-chip" data-filter="archive" style="display:none;">Archive</button>
+                    <button class="filter-chip" data-filter="reminders" style="display:none;">Reminders</button>
+                </div>
+
+                <!-- Composer -->
+                <div class="composer">
+                    <div class="composer-top">
+                        <input type="text" id="todo-input" placeholder="What needs to be done?">
+                        <button id="add-btn">Add Task</button>
+                    </div>
+                    <div class="composer-details">
+                        <input type="text" id="memo-input" placeholder="Notes (optional)">
+                        <input type="date" id="due-date">
+                        <select id="priority-select">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Search -->
+                <div class="search-wrapper">
+                    <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="search-input" placeholder="Search tasks...">
+                </div>
+
+                <!-- Task List -->
+                <div class="task-list" id="todo-list">
+                    <!-- Cards injected by JS -->
+                </div>
+            </section>
+
+            <!-- PAGE: PROJECTS -->
+            <section id="page-projects" class="page-content">
+                <header class="main-header">
+                    <h1>Projects</h1>
+                </header>
+                <div class="empty-state">
+                    <p>Manage your projects and groups here.</p>
+                </div>
+            </section>
+
+            <!-- PAGE: NOTES -->
+            <section id="page-notes" class="page-content">
+                <header class="main-header">
+                    <h1>Sticky Notes</h1>
+                </header>
+                
+                <div class="composer">
+                    <div class="composer-top">
+                        <input type="text" id="note-input" placeholder="Jot down a note...">
+                        <button id="add-note-btn">Add Note</button>
+                    </div>
+                </div>
+
+                <div class="notes-grid" id="notes-list">
+                    <!-- Notes injected by JS -->
+                </div>
+            </section>
+
+            <!-- PAGE: BOOKMARKS -->
+            <section id="page-bookmarks" class="page-content">
+                <header class="main-header">
+                    <h1>Bookmarks</h1>
+                </header>
+                <div class="empty-state">
+                    <p>Your saved bookmarks will appear here.</p>
+                </div>
+            </section>
+
+            <!-- PAGE: PROFILE -->
+            <section id="page-profile" class="page-content">
+                <header class="main-header">
+                    <h1>Profile Settings</h1>
+                </header>
+                <div class="profile-card">
+                    <p><strong>Name:</strong> <span id="profile-view-name"></span></p>
+                    <p><strong>Email:</strong> <span id="profile-view-email"></span></p>
+                    <button class="confirm-btn" id="profile-logout-btn" style="width: auto; padding: 10px 24px; margin-top: 20px;">Logout</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-auth-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
