@@ -318,7 +318,7 @@ html, body {
     margin-bottom: 12px;
 }
 
-#todo-input {
+#todo-input, .composer-input {
     flex: 1;
     border: none;
     font-size: 15px;
@@ -326,11 +326,12 @@ html, body {
     color: var(--text-1);
     outline: none;
     background: transparent;
+    min-width: 0; /* Prevents flex items from growing too large */
 }
 
-#todo-input::placeholder { color: var(--text-3); }
+#todo-input::placeholder, .composer-input::placeholder { color: var(--text-3); }
 
-#add-btn {
+#add-btn, .composer-submit-btn {
     padding: 8px 20px;
     background: var(--black);
     color: #fff;
@@ -340,9 +341,10 @@ html, body {
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
+    transition: background 0.2s;
 }
 
-#add-btn:hover {
+#add-btn:hover, .composer-submit-btn:hover {
     background: #1e293b;
 }
 
@@ -703,6 +705,26 @@ html, body {
     color: var(--text-1);
     cursor: pointer;
     transition: all .15s;
+}
+
+.composer-details input[type="date"],
+.composer-details select,
+.composer-details input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-2);
+    outline: none;
+    cursor: pointer;
+    transition: border-color .15s ease;
+}
+
+.composer-details input:focus,
+.composer-details select:focus {
+    border-color: var(--blue);
 }
 
 .google-btn:hover {
