@@ -108,10 +108,80 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = user.displayName || user.email.split('@')[0];
         if (getEl('user-name-sidebar')) getEl('user-name-sidebar').textContent = name;
         if (getEl('user-email-sidebar')) getEl('user-email-sidebar').textContent = user.email;
-        if (getEl('user-photo') && user.photoURL) getEl('user-photo').src = user.photoURL;
+        if (getEl('user-photo')) {
+            if (user.photoURL) getEl('user-photo').src = user.photoURL;
+            
+            // Sync to mobile header avatar if it exists
+            const mobileAvatar = getEl('mobile-user-avatar');
+            if (mobileAvatar) {
+                mobileAvatar.innerHTML = `<img src="${user.photoURL || getEl('user-photo').src}" alt="avatar">`;
+            }
+        }
         if (getEl('profile-view-name')) getEl('profile-view-name').textContent = name;
         if (getEl('profile-view-email')) getEl('profile-view-email').textContent = user.email;
     };
+
+    // Mobile Navigation Toggle Logic
+    const initMobileNav = () => {
+        const menuToggle = getEl('menu-toggle');
+        const overlay = getEl('sidebar-overlay');
+        const fabTrigger = getEl('fab-trigger');
+        const fabContainer = getEl('mobile-nav-container');
+        
+
+        if (fabTrigger && fabContainer) {
+            fabTrigger.onclick = (e) => {
+                e.stopPropagation();
+                fabContainer.classList.toggle('active');
+            };
+
+            // Close FAB on click outside
+            document.addEventListener('click', (e) => {
+                if (!fabContainer.contains(e.target)) {
+                    fabContainer.classList.remove('active');
+                }
+            });
+        }
+        const railIcons = document.querySelectorAll('.rail-icon');
+
+        const toggleNav = () => {
+            document.body.classList.toggle('nav-open');
+        };
+
+        if (railIcons.length > 0) {
+            // First rail icon (Top) toggles on Tablet
+            railIcons[0].addEventListener('click', (e) => {
+                if (window.innerWidth >= 768 && window.innerWidth <= 1024) {
+                    e.stopPropagation();
+                    toggleNav();
+                }
+            });
+        }
+
+        if (menuToggle) {
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleNav();
+            });
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                document.body.classList.remove('nav-open');
+            });
+        }
+
+        // Close sidebar on navigation (Mobile & Tablet)
+        const navLinks = document.querySelectorAll('.nav-link, .rail-icon:not(:first-of-type)');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 1024) {
+                    document.body.classList.remove('nav-open');
+                }
+            });
+        });
+    };
+    initMobileNav();
 
     // SPA Router
     const switchPage = (targetId) => {
@@ -144,6 +214,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Update Sidebar Header (Icon + Text)
         updateSidebarHeader(targetId);
+
+        // 4. Auto-close mobile nav & FAB if open
+        document.body.classList.remove('nav-open');
+        const fabContainer = getEl('mobile-nav-container');
+        if (fabContainer) fabContainer.classList.remove('active');
 
         if (targetId === 'page-tasks') applyFilters();
     };
