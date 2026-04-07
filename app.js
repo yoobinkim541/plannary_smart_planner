@@ -37,6 +37,24 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.oninput = () => applyFilters();
     }
 
+    // Filter Chips (Top of Tasks page)
+    if (filterChips.length > 0) {
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const filter = chip.getAttribute('data-filter');
+                if (filter) {
+                    currentFilter = filter;
+                    currentProjectId = null;
+                    // Sync active state UI
+                    filterChips.forEach(c => c.classList.toggle('active', c.dataset.filter === currentFilter));
+                    // Re-apply navigation logic (sync sidebar)
+                    switchPage('page-tasks');
+                    applyFilters();
+                }
+            });
+        });
+    }
+
     // Color Selector logic
     const colorPicker = getEl('note-color-picker');
     if (colorPicker) {
