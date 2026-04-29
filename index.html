@@ -17,6 +17,9 @@
     <meta name="apple-mobile-web-app-title" content="Todo">
     <link rel="apple-touch-icon" href="icon.svg">
     
+    <!-- KaTeX for Math Support in Editor -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -95,6 +98,10 @@
                     <a href="#" class="nav-link" data-target="page-notes">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         <span>Notes</span>
+                    </a>
+                    <a href="#" class="nav-link" data-target="page-wiki">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        <span>Wiki</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-tasks" data-filter="important">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -325,6 +332,42 @@
                 </div>
             </section>
 
+            <!-- PAGE: WIKI DOCS -->
+            <section id="page-wiki" class="page-content">
+                <header class="main-header" style="flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h1>Docs & Wiki</h1>
+                        <p style="color: var(--text-2); font-size: 0.9rem;">Notion-like document editor</p>
+                    </div>
+                    <button class="confirm-btn block-btn" id="new-wiki-btn" style="width: auto;">+ New Page</button>
+                </header>
+                
+                <div class="wiki-layout">
+                    <!-- Wiki Page List -->
+                    <div class="wiki-sidebar">
+                        <div class="search-box">
+                            <input type="text" id="wiki-search-input" placeholder="Search pages...">
+                        </div>
+                        <div id="wiki-page-list" class="wiki-list">
+                            <!-- Page items injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Editor UI -->
+                    <div class="wiki-editor-container" id="wiki-editor-view" style="display: none;">
+                        <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="Untitled Document">
+                        <div id="editorjs"></div>
+                        <div class="wiki-actions">
+                            <button id="wiki-save-btn" class="confirm-btn">Save Changes</button>
+                            <button id="wiki-delete-btn" class="cancel-btn">Delete Page</button>
+                        </div>
+                    </div>
+                    <div class="empty-state" id="wiki-empty-view">
+                        Select a document to edit or create a new one.
+                    </div>
+                </div>
+            </section>
+
             <!-- PAGE: PROFILE -->
             <section id="page-profile" class="page-content">
                 <header class="main-header">
@@ -353,6 +396,9 @@
                 <button class="fab-item" data-target="page-notes" title="Notes">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </button>
+                <button class="fab-item" data-target="page-wiki" title="Wiki">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                </button>
                 <button class="fab-item" data-target="page-bookmarks" title="Bookmarks">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 </button>
@@ -363,11 +409,26 @@
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
     <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
     <script src="/__/firebase/10.7.1/firebase-auth-compat.js"></script>
     <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-storage-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
+
+    <!-- Editor.js Core & Plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/image@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/code@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@latest"></script>
+    
+    <!-- KaTeX JS Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
     <script src="app.js"></script>
+    <script src="wiki.js"></script> <!-- To isolate editor logic -->
 </body>
 
 </html>
