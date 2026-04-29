@@ -72,7 +72,14 @@
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider)
                 .then(() => window.location.href = 'index.html')
-                .catch((error) => alert('Google login failed: ' + error.message));
+                .catch((error) => {
+                    // Suppress alerts for passkey native UI interruptions
+                    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                        console.warn('Google Auth Popup interrupted (often by Passkey UI). Waiting for potential background completion.');
+                        return;
+                    }
+                    alert('Google login failed: ' + error.message);
+                });
         });
 
         auth.onAuthStateChanged((user) => {

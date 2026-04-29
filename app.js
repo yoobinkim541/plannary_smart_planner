@@ -4,6 +4,19 @@ window.addEventListener('error', (event) => {
     if (window.showToast) window.showToast("런타임 에러: " + event.message, "error");
 });
 
+// Register PWA Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+                console.log('SW registration failed: ', registrationError);
+            });
+    });
+}
+
 // Firebase Initialization
 let db = null;
 let auth = null;
