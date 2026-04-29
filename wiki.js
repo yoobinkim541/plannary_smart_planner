@@ -88,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof List !== 'undefined') tools.list = List;
         if (typeof InlineCode !== 'undefined') tools.inlineCode = InlineCode;
         if (typeof CodeTool !== 'undefined') tools.code = CodeTool;
+        if (typeof Table !== 'undefined') tools.table = Table;
+        if (typeof Checklist !== 'undefined') tools.checklist = { class: Checklist, inlineToolbar: true };
         tools.math = MathBlock;
 
         if (typeof ImageTool !== 'undefined') {
