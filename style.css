@@ -31,6 +31,18 @@
     --radius-sm: 8px;
 }
 
+[data-theme="dark"] {
+    --bg:       #121212;
+    --surface:  #1e1e1e;
+    --border:   #333333;
+
+    --text-1:   #f9fafb;
+    --text-2:   #9ca3af;
+    --text-3:   #6b7280;
+
+    --black:    #ffffff;
+}
+
 /* === RESPONSIVE UTILITIES === */
 .desktop-only { display: flex !important; }
 .mobile-only  { display: none !important; }

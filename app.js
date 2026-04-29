@@ -25,6 +25,16 @@ try {
     if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
         db = firebase.firestore();
         auth = firebase.auth();
+        
+        // Enable Offline Persistence
+        db.enablePersistence()
+            .catch((err) => {
+                if (err.code == 'failed-precondition') {
+                    console.warn('Persistence failed: Multiple tabs open.');
+                } else if (err.code == 'unimplemented') {
+                    console.warn('Persistence not supported by this browser.');
+                }
+            });
     }
 } catch (e) {
     console.error("Firebase services initialization failed:", e);
@@ -36,6 +46,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = getEl('search-input');
     const filterChips = document.querySelectorAll('.filter-chip');
     
+    // Theme Management
+    const themeToggleBtn = getEl('theme-toggle-btn');
+    const initTheme = () => {
+        const savedTheme = localStorage.getItem('app-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (themeToggleBtn) {
+            themeToggleBtn.innerHTML = savedTheme === 'dark' 
+                ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>' // Sun
+                : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>'; // Moon
+        }
+    };
+    initTheme();
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const newTheme = isDark ? 'light' : 'dark';
+            localStorage.setItem('app-theme', newTheme);
+            initTheme();
+        });
+    }
+
     let currentUser = null;
     let allTodos = [];
     let allNotes = [];
@@ -321,7 +353,26 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (currentFilter === 'important') filtered = filtered.filter(t => t.priority === 'high' && !t.archived);
         else if (currentFilter === 'archive') filtered = filtered.filter(t => t.archived);
         else filtered = filtered.filter(t => !t.archived);
+        
+        // Client-side sort by custom orderIndex (Ascending)
+        filtered.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
         renderTodos(filtered);
+    };
+
+    let draggedItem = null;
+    
+    // Helper function for determining drag insertion point
+    const getDragAfterElement = (container, y) => {
+        const draggableElements = [...container.querySelectorAll('.task-card:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     };
 
     const renderTodos = (todos) => {
@@ -330,6 +381,43 @@ document.addEventListener('DOMContentLoaded', () => {
         todos.forEach(todo => {
             const card = document.createElement('div');
             card.className = `task-card${todo.completed ? ' completed' : ''}`;
+            
+            // D&D Setup
+            card.draggable = true;
+            card.dataset.id = todo.id;
+            
+            card.ondragstart = (e) => {
+                draggedItem = card;
+                card.classList.add('dragging');
+                setTimeout(() => card.style.opacity = '0.5', 0);
+            };
+            card.ondragend = () => {
+                card.classList.remove('dragging');
+                card.style.opacity = '1';
+                draggedItem = null;
+            };
+            card.ondragover = (e) => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(todoList, e.clientY);
+                if (afterElement == null) {
+                    todoList.appendChild(draggedItem);
+                } else {
+                    todoList.insertBefore(draggedItem, afterElement);
+                }
+            };
+            card.ondrop = (e) => {
+                e.preventDefault();
+                // Update new order sequentially based on current DOM position
+                const cards = [...todoList.querySelectorAll('.task-card')];
+                cards.forEach((c, index) => {
+                    const tId = c.dataset.id;
+                    const existingTodo = allTodos.find(x => x.id === tId);
+                    if (existingTodo && existingTodo.orderIndex !== index) {
+                        db.collection('todos').doc(tId).update({ orderIndex: index });
+                    }
+                });
+            };
+
             const p = todo.priority || 'medium';
             const project = allProjects.find(px => px.id === todo.projectId);
             const projectTag = project ? `<span class="project-tag" style="background:${project.color}33; color:${project.color}; border: 1px solid ${project.color}66;">${project.name}</span>` : '';
@@ -402,6 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectId: getEl('todo-project-select') ? getEl('todo-project-select').value : "",
                 completed: false,
                 archived: false,
+                orderIndex: Date.now(),
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }).then(() => {
                 if (inputEl) inputEl.value = '';
@@ -706,7 +795,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 urgentTasksList.appendChild(item);
             });
         }
+        
+        // 4. Check for Notifications
+        checkDueNotifications();
     }
+    
+    // Notification Logic (Phase 3)
+    const checkDueNotifications = () => {
+        if (!('Notification' in window)) return;
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        const dueToday = allTodos.filter(t => !t.completed && !t.archived && t.dueDate === todayStr);
+
+        if (dueToday.length > 0) {
+            const lastNotified = localStorage.getItem('last-notified-date');
+            if (lastNotified !== todayStr) {
+                if (Notification.permission === 'granted') {
+                    showDueNotification(dueToday.length);
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission().then(perm => {
+                        if (perm === 'granted') showDueNotification(dueToday.length);
+                    });
+                }
+            }
+        }
+    };
+
+    const showDueNotification = (count) => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            // Use SW if active to show native PWA notification
+            navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification("Todo Planner", {
+                    body: `You have ${count} task(s) due today! Stay productive.`,
+                    icon: '/icon.svg',
+                    vibrate: [200, 100, 200]
+                });
+            });
+        } else {
+             new Notification("Todo Planner", {
+                body: `You have ${count} task(s) due today! Stay productive.`,
+                icon: '/icon.svg'
+            });
+        }
+        localStorage.setItem('last-notified-date', todayStr);
+    };
 });
 
 window.showToast = (message, type = 'info') => {
