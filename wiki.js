@@ -148,15 +148,38 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (!storage || !currentUser) {
                                 return Promise.reject("Storage or Auth not initialized");
                             }
+                            const progressContainer = document.getElementById('wiki-upload-progress');
+                            const progressBar = document.getElementById('wiki-upload-bar');
+                            const progressText = document.getElementById('wiki-upload-text');
+
+                            if (progressContainer) progressContainer.style.display = 'flex';
+
                             return new Promise((resolve, reject) => {
                                 const ref = storage.ref(`wiki_images/${currentUser.uid}/${Date.now()}_${file.name}`);
-                                ref.put(file).then(snapshot => {
-                                    return snapshot.ref.getDownloadURL();
-                                }).then(url => {
-                                    resolve({ success: 1, file: { url } });
-                                }).catch(err => {
-                                    reject(err);
-                                });
+                                const uploadTask = ref.put(file);
+
+                                uploadTask.on('state_changed', 
+                                    (snapshot) => {
+                                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                        if (progressBar) progressBar.style.width = progress + '%';
+                                        if (progressText) progressText.innerText = `Uploading... ${Math.round(progress)}%`;
+                                    }, 
+                                    (error) => {
+                                        if (progressContainer) progressContainer.style.display = 'none';
+                                        reject(error);
+                                    }, 
+                                    () => {
+                                        uploadTask.snapshot.ref.getDownloadURL().then(url => {
+                                            if (progressContainer) {
+                                                setTimeout(() => {
+                                                    progressContainer.style.display = 'none';
+                                                    if (progressBar) progressBar.style.width = '0%';
+                                                }, 1000);
+                                            }
+                                            resolve({ success: 1, file: { url } });
+                                        });
+                                    }
+                                );
                             });
                         }
                     }
