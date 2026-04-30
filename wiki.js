@@ -165,10 +165,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                         if (progressText) progressText.innerText = `Uploading... ${Math.round(progress)}%`;
                                     }, 
                                     (error) => {
+                                        console.error("Upload error:", error);
+                                        window.showToast("Upload failed: " + error.message, "error");
                                         if (progressContainer) progressContainer.style.display = 'none';
                                         reject(error);
                                     }, 
                                     () => {
+                                        // Finalize progress UI
+                                        if (progressBar) progressBar.style.width = '100%';
+                                        if (progressText) progressText.innerText = `Upload Complete!`;
+
                                         uploadTask.snapshot.ref.getDownloadURL().then(url => {
                                             if (progressContainer) {
                                                 setTimeout(() => {
@@ -177,6 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                                 }, 1000);
                                             }
                                             resolve({ success: 1, file: { url } });
+                                        }).catch(err => {
+                                            console.error("URL error:", err);
+                                            reject(err);
                                         });
                                     }
                                 );
