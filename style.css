@@ -1809,6 +1809,38 @@ input::placeholder, textarea::placeholder {
     padding: 30px;
     overflow-y: auto;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    position: relative;
+}
+
+#editorjs {
+    flex: 1;
+    min-height: 300px;
+}
+
+.wiki-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+#wiki-save-btn {
+    flex: 2;
+}
+
+#wiki-delete-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    transition: all 0.2s;
+}
+
+#wiki-delete-btn:hover {
+    background: var(--red);
+    color: #fff;
 }
 
 .wiki-editor-header {

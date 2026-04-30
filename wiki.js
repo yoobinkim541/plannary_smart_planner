@@ -41,17 +41,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             this.input = document.createElement('textarea');
             this.input.className = 'cdx-input';
-            this.input.style.border = 'none';
+            this.input.style.width = '100%';
+            this.input.style.border = '1px solid var(--border)';
+            this.input.style.borderRadius = '8px';
+            this.input.style.padding = '12px';
             this.input.style.fontFamily = 'monospace';
-            this.input.style.minHeight = '60px';
-            this.input.style.background = 'transparent';
-            this.input.placeholder = 'Enter KaTeX formula here (e.g. E = mc^2)...';
+            this.input.style.minHeight = '80px';
+            this.input.style.background = 'var(--bg)';
+            this.input.style.color = 'var(--text-1)';
+            this.input.placeholder = 'Enter KaTeX formula (e.g. \\sum_{i=1}^n i = \\frac{n(n+1)}{2})';
             this.input.value = this.data.text || '';
             
             this.output = document.createElement('div');
+            this.output.className = 'math-output';
             this.output.style.textAlign = 'center';
-            this.output.style.marginTop = '10px';
-            this.output.style.fontSize = '1.2em';
+            this.output.style.marginTop = '15px';
+            this.output.style.padding = '15px';
+            this.output.style.fontSize = '1.4em';
+            this.output.style.color = 'var(--text-1)';
             
             this.input.addEventListener('input', () => this._renderMath());
             
@@ -97,7 +104,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (typeof List !== 'undefined') tools.list = List;
         if (typeof InlineCode !== 'undefined') tools.inlineCode = InlineCode;
-        if (typeof CodeTool !== 'undefined') tools.code = CodeTool;
+        if (typeof CodeWithLanguageList !== 'undefined') {
+            tools.code = {
+                class: CodeWithLanguageList,
+                config: {
+                    preserveBlank: true
+                }
+            };
+        } else if (typeof CodeTool !== 'undefined') {
+            tools.code = CodeTool;
+        }
         if (typeof Table !== 'undefined') tools.table = Table;
         if (typeof Checklist !== 'undefined') tools.checklist = { class: Checklist, inlineToolbar: true };
         if (typeof Underline !== 'undefined') tools.underline = Underline;
