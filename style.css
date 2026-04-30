@@ -1701,3 +1701,142 @@ input::placeholder, textarea::placeholder {
     border: 1px solid var(--border);
     color: var(--text-1);
 }
+
+.wiki-layout {
+    display: flex;
+    height: calc(100vh - 180px);
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+
+.wiki-sidebar {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    padding-right: 20px;
+    transition: all 0.3s ease;
+}
+
+.wiki-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wiki-page-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-2);
+}
+
+.wiki-page-item:hover {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+.wiki-page-item.active {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--blue);
+    font-weight: 600;
+}
+
+.wiki-editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 30px;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.wiki-editor-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.wiki-icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.wiki-icon-btn:hover {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+.wiki-title-input {
+    flex: 1;
+    font-size: 32px;
+    font-weight: 800;
+    border: none;
+    background: transparent;
+    color: var(--text-1);
+    outline: none;
+    font-family: inherit;
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .wiki-layout {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .wiki-sidebar {
+        width: 100%;
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .wiki-editor-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        padding: 20px;
+    }
+
+    .editor-active .wiki-editor-container {
+        transform: translateX(0);
+        display: flex !important;
+    }
+
+    .editor-active .wiki-sidebar {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+

@@ -304,6 +304,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Profile Settings',
                 subtitle: 'User Account',
                 icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+            },
+            'page-wiki': {
+                title: 'Wiki & Docs',
+                subtitle: 'Knowledge Base',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`
             }
         };
 
@@ -318,17 +323,33 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const targetId = link.getAttribute('data-target');
             
-            // If it's a task filter, update the global filter state first
             if (targetId === 'page-tasks' && link.hasAttribute('data-filter')) {
                 currentFilter = link.getAttribute('data-filter');
                 currentProjectId = null;
-                // Sync filter chips if exists
                 filterChips.forEach(btn => btn.classList.toggle('active', btn.dataset.filter === currentFilter));
             }
 
-            switchPage(targetId);
+            window.location.hash = targetId;
         });
     });
+
+    // Hash-based Router
+    const handleHash = () => {
+        const hash = window.location.hash || '#page-home';
+        let pageId = hash.replace('#', '');
+        
+        // Wiki sub-routing support
+        if (pageId.startsWith('wiki/')) {
+            pageId = 'page-wiki';
+        }
+
+        if (getEl(pageId)) {
+            switchPage(pageId);
+        }
+    };
+
+    window.addEventListener('hashchange', handleHash);
+    handleHash(); // Initial route check
 
     // CRUD - Todos
     const loadTodos = () => {

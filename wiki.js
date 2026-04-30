@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveWikiBtn = document.getElementById('wiki-save-btn');
     const deleteWikiBtn = document.getElementById('wiki-delete-btn');
     const searchInput = document.getElementById('wiki-search-input');
+    const backBtn = document.getElementById('wiki-back-btn');
 
     if (!pageWiki) return;
 
@@ -144,14 +145,15 @@ document.addEventListener('DOMContentLoaded', () => {
           .onSnapshot(snap => {
               allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
               renderPageList();
+              checkHash(); // Check if we should open a page based on URL
           }, error => {
-             // Fallback to client sorting if index is missing
              console.log("Index issue, falling back to client sort", error);
              db.collection('wiki_pages').where('uid', '==', currentUser.uid)
                .onSnapshot(snap => {
                    allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                    allPages.sort((a,b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
                    renderPageList();
+                   checkHash();
                });
           });
     };
@@ -170,8 +172,14 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredPages.forEach(page => {
             const el = document.createElement('div');
             el.className = `wiki-page-item ${currentPageId === page.id ? 'active' : ''}`;
-            el.textContent = page.title || 'Untitled Document';
-            el.onclick = () => openPage(page);
+            el.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; opacity:0.6;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>${page.title || 'Untitled Document'}</span>
+            `;
+            el.onclick = () => navigateToPage(page.id);
             wikiPageList.appendChild(el);
         });
     };
@@ -180,20 +188,55 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.oninput = () => renderPageList();
     }
 
+    const navigateToPage = (pageId) => {
+        window.location.hash = `wiki/${pageId}`;
+    };
+
+    const goBackToList = () => {
+        window.location.hash = `page-wiki`;
+    };
+
+    const checkHash = () => {
+        const hash = window.location.hash;
+        if (hash.startsWith('#wiki/')) {
+            const id = hash.split('/')[1];
+            const page = allPages.find(p => p.id === id);
+            if (page) {
+                openPage(page);
+            }
+        } else if (hash === '#page-wiki' || !hash) {
+            closeEditor();
+        }
+    };
+
+    window.addEventListener('hashchange', checkHash);
+
     const openPage = (page) => {
+        if (currentPageId === page.id) return;
         currentPageId = page.id;
+        
+        // Notion-like: Hide list on small screens, show editor as full page
+        pageWiki.classList.add('editor-active');
+        
         wikiEmptyView.style.display = 'none';
         wikiEditorView.style.display = 'flex';
+        wikiEditorView.classList.add('fade-in');
+        
         wikiTitleInput.value = page.title || '';
         
-        // Disable save button temporarily to prevent accidental save of old data
         if(saveWikiBtn) saveWikiBtn.disabled = true;
-        
         initEditor(page.content);
-        
-        // Re-enable save button after a slight delay
         setTimeout(() => { if(saveWikiBtn) saveWikiBtn.disabled = false; }, 500);
-        renderPageList(); // update active class
+        
+        renderPageList(); 
+    };
+
+    const closeEditor = () => {
+        currentPageId = null;
+        pageWiki.classList.remove('editor-active');
+        wikiEditorView.style.display = 'none';
+        wikiEmptyView.style.display = 'flex';
+        renderPageList();
     };
 
     if (newWikiBtn) {
@@ -209,10 +252,16 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             db.collection('wiki_pages').add(newDoc).then(docRef => {
-                const createdDoc = { id: docRef.id, ...newDoc };
-                openPage(createdDoc);
+                navigateToPage(docRef.id);
+            }).catch(err => {
+                console.error("Creation error:", err);
+                window.showToast("Failed to create page: " + err.message, "error");
             });
         };
+    }
+
+    if (backBtn) {
+        backBtn.onclick = goBackToList;
     }
 
     if (saveWikiBtn) {
@@ -245,9 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteWikiBtn.onclick = () => {
             if (!currentPageId || !confirm("Delete this page?")) return;
             db.collection('wiki_pages').doc(currentPageId).delete().then(() => {
-                currentPageId = null;
-                wikiEditorView.style.display = 'none';
-                wikiEmptyView.style.display = 'flex';
+                goBackToList();
                 window.showToast("Page deleted");
             });
         };
