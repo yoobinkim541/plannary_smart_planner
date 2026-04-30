@@ -145,8 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 config: {
                     uploader: {
                         uploadByFile(file) {
-                            if (!storage || !currentUser) {
-                                return Promise.reject("Storage or Auth not initialized");
+                            if (!currentUser) {
+                                return Promise.reject("Please login first");
                             }
                             const progressContainer = document.getElementById('wiki-upload-progress');
                             const progressBar = document.getElementById('wiki-upload-bar');
@@ -155,40 +155,49 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (progressContainer) progressContainer.style.display = 'flex';
 
                             return new Promise((resolve, reject) => {
-                                const ref = storage.ref(`wiki_images/${currentUser.uid}/${Date.now()}_${file.name}`);
-                                const uploadTask = ref.put(file);
+                                const xhr = new XMLHttpRequest();
+                                const formData = new FormData();
+                                formData.append('image', file);
 
-                                uploadTask.on('state_changed', 
-                                    (snapshot) => {
-                                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                // Progress tracking
+                                xhr.upload.onprogress = (e) => {
+                                    if (e.lengthComputable) {
+                                        const progress = (e.loaded / e.total) * 100;
                                         if (progressBar) progressBar.style.width = progress + '%';
-                                        if (progressText) progressText.innerText = `Uploading... ${Math.round(progress)}%`;
-                                    }, 
-                                    (error) => {
-                                        console.error("Upload error:", error);
-                                        window.showToast("Upload failed: " + error.message, "error");
-                                        if (progressContainer) progressContainer.style.display = 'none';
-                                        reject(error);
-                                    }, 
-                                    () => {
-                                        // Finalize progress UI
-                                        if (progressBar) progressBar.style.width = '100%';
-                                        if (progressText) progressText.innerText = `Upload Complete!`;
-
-                                        uploadTask.snapshot.ref.getDownloadURL().then(url => {
-                                            if (progressContainer) {
-                                                setTimeout(() => {
-                                                    progressContainer.style.display = 'none';
-                                                    if (progressBar) progressBar.style.width = '0%';
-                                                }, 1000);
-                                            }
-                                            resolve({ success: 1, file: { url } });
-                                        }).catch(err => {
-                                            console.error("URL error:", err);
-                                            reject(err);
-                                        });
+                                        if (progressText) progressText.innerText = `Local Uploading... ${Math.round(progress)}%`;
                                     }
-                                );
+                                };
+
+                                xhr.onload = () => {
+                                    if (xhr.status >= 200 && xhr.status < 300) {
+                                        try {
+                                            const response = JSON.parse(xhr.responseText);
+                                            if (progressBar) progressBar.style.width = '100%';
+                                            if (progressText) progressText.innerText = `Upload Complete!`;
+                                            
+                                            setTimeout(() => {
+                                                if (progressContainer) progressContainer.style.display = 'none';
+                                                if (progressBar) progressBar.style.width = '0%';
+                                            }, 1000);
+
+                                            resolve({ success: 1, file: { url: response.url } });
+                                        } catch (e) {
+                                            reject(new Error("Invalid server response"));
+                                        }
+                                    } else {
+                                        if (progressContainer) progressContainer.style.display = 'none';
+                                        reject(new Error('Upload failed with status ' + xhr.status));
+                                    }
+                                };
+
+                                xhr.onerror = () => {
+                                    if (progressContainer) progressContainer.style.display = 'none';
+                                    window.showToast("Local server connection failed", "error");
+                                    reject(new Error('Network error'));
+                                };
+
+                                xhr.open('POST', 'http://117.17.198.45:3000/upload');
+                                xhr.send(formData);
                             });
                         }
                     }
