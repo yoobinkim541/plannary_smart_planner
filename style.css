@@ -1673,36 +1673,33 @@ input::placeholder, textarea::placeholder {
     color: #fff !important;
 }
 
-/* Fix for Popover (Slash Command Menu) in Dark Mode */
-[data-theme="dark"] .ce-popover {
+/* Fix for Popover (Slash Command Menu) in Dark Mode - Broad Fix */
+[data-theme="dark"] .ce-popover,
+[data-theme="dark"] .ce-popover * {
     background-color: var(--surface) !important;
+    color: var(--text-1) !important;
+}
+
+[data-theme="dark"] .ce-popover {
     border: 1px solid var(--border) !important;
-    color: var(--text-1) !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
 }
 
-[data-theme="dark"] .ce-popover-item__title {
-    color: var(--text-1) !important;
+[data-theme="dark"] .ce-popover-item:hover,
+[data-theme="dark"] .ce-popover-item--active,
+[data-theme="dark"] .ce-popover-item:hover * {
+    background-color: var(--blue) !important;
+    color: #ffffff !important;
 }
 
-[data-theme="dark"] .ce-popover-item__icon {
+[data-theme="dark"] .ce-popover__search-field,
+[data-theme="dark"] .ce-popover__search-field * {
     background-color: var(--bg) !important;
-    color: var(--text-1) !important;
-    box-shadow: none !important;
-}
-
-[data-theme="dark"] .ce-popover-item:hover {
-    background-color: var(--bg) !important;
-}
-
-[data-theme="dark"] .ce-popover__search-field {
-    background-color: var(--bg) !important;
-    color: var(--text-1) !important;
     border-bottom: 1px solid var(--border) !important;
 }
 
-[data-theme="dark"] .ce-popover__no-found {
-    color: var(--text-3) !important;
+[data-theme="dark"] .ce-popover-item__icon {
+    background-color: transparent !important;
 }
 
 /* Code & Toggle Block Styles */
@@ -1806,41 +1803,51 @@ input::placeholder, textarea::placeholder {
     flex-direction: column;
     background: var(--surface);
     border-radius: var(--radius);
-    padding: 30px;
+    padding: 40px;
     overflow-y: auto;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    position: relative;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
 }
 
+/* Ensure editor grows and doesn't overlap actions */
 #editorjs {
-    flex: 1;
-    min-height: 300px;
+    width: 100%;
+    min-height: 400px;
+    margin-bottom: 40px;
 }
 
 .wiki-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-top: 40px;
-    padding-top: 20px;
+    gap: 16px;
+    padding-top: 30px;
     border-top: 1px solid var(--border);
+    margin-top: auto; /* Push to bottom of content if possible */
 }
 
 #wiki-save-btn {
-    flex: 2;
+    flex: 1.5;
+    height: 48px;
+    font-size: 15px;
+    font-weight: 600;
 }
 
 #wiki-delete-btn {
     flex: 1;
-    background: transparent;
-    border: 1px solid var(--red);
+    height: 48px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1.5px solid var(--red);
     color: var(--red);
-    transition: all 0.2s;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #wiki-delete-btn:hover {
     background: var(--red);
     color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .wiki-editor-header {
