@@ -1673,6 +1673,57 @@ input::placeholder, textarea::placeholder {
     color: #fff !important;
 }
 
+/* Fix for Popover (Slash Command Menu) in Dark Mode */
+[data-theme="dark"] .ce-popover {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-1) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+}
+
+[data-theme="dark"] .ce-popover-item__title {
+    color: var(--text-1) !important;
+}
+
+[data-theme="dark"] .ce-popover-item__icon {
+    background-color: var(--bg) !important;
+    color: var(--text-1) !important;
+    box-shadow: none !important;
+}
+
+[data-theme="dark"] .ce-popover-item:hover {
+    background-color: var(--bg) !important;
+}
+
+[data-theme="dark"] .ce-popover__search-field {
+    background-color: var(--bg) !important;
+    color: var(--text-1) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+[data-theme="dark"] .ce-popover__no-found {
+    color: var(--text-3) !important;
+}
+
+/* Code & Toggle Block Styles */
+[data-theme="dark"] .ce-code__textarea {
+    background-color: #1e1e1e !important;
+    color: #d4d4d4 !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .ce-toggle__title {
+    color: var(--text-1) !important;
+}
+
+[data-theme="dark"] .ce-toggle__content {
+    color: var(--text-2) !important;
+}
+
+[data-theme="dark"] .ce-toggle__button {
+    color: var(--text-1) !important;
+}
+
 @media (max-width: 768px) {
     .wiki-layout {
         flex-direction: column;

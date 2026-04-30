@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof Table !== 'undefined') tools.table = Table;
         if (typeof Checklist !== 'undefined') tools.checklist = { class: Checklist, inlineToolbar: true };
         if (typeof Underline !== 'undefined') tools.underline = Underline;
+        if (typeof ToggleBlock !== 'undefined') tools.toggle = { class: ToggleBlock, inlineToolbar: true };
         if (typeof ColorPlugin !== 'undefined') {
             tools.Color = {
                 class: ColorPlugin,
