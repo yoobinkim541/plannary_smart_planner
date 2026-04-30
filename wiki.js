@@ -85,12 +85,41 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const tools = {};
         
-        if (typeof Header !== 'undefined') tools.header = Header;
+        if (typeof Header !== 'undefined') {
+            tools.header = {
+                class: Header,
+                config: {
+                    placeholder: 'Enter a heading',
+                    levels: [1, 2, 3, 4],
+                    defaultLevel: 2
+                }
+            };
+        }
         if (typeof List !== 'undefined') tools.list = List;
         if (typeof InlineCode !== 'undefined') tools.inlineCode = InlineCode;
         if (typeof CodeTool !== 'undefined') tools.code = CodeTool;
         if (typeof Table !== 'undefined') tools.table = Table;
         if (typeof Checklist !== 'undefined') tools.checklist = { class: Checklist, inlineToolbar: true };
+        if (typeof Underline !== 'undefined') tools.underline = Underline;
+        if (typeof ColorPlugin !== 'undefined') {
+            tools.Color = {
+                class: ColorPlugin,
+                config: {
+                    colorCollections: ['#FF1300', '#EC7800', '#40A615', '#0663C7', '#297312', '#722ED1', '#2F54EB'],
+                    defaultColor: '#FF1300',
+                    type: 'text',
+                    customPicker: true
+                }
+            };
+            tools.Marker = {
+                class: ColorPlugin,
+                config: {
+                    defaultColor: '#FFBF00',
+                    type: 'background',
+                    customPicker: true
+                }
+            };
+        }
         tools.math = MathBlock;
 
         if (typeof ImageTool !== 'undefined') {
@@ -122,7 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
             holder: 'editorjs',
             data: data || {},
             placeholder: 'Type "/" for commands...',
-            tools: tools
+            tools: tools,
+            inlineToolbar: true
         });
     }
 
