@@ -192,7 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                                 xhr.onerror = () => {
                                     if (progressContainer) progressContainer.style.display = 'none';
-                                    window.showToast("Local server connection failed", "error");
+                                    const errorMsg = "Upload failed. If you are on HTTPS (Firebase), browsers block HTTP (Local Server) uploads. Check console for 'Mixed Content'.";
+                                    window.showToast(errorMsg, "error");
+                                    console.error("XHR Error:", errorMsg);
                                     reject(new Error('Network error'));
                                 };
 
