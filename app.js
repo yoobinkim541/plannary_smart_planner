@@ -442,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const p = todo.priority || 'medium';
             const project = allProjects.find(px => px.id === todo.projectId);
             const projectTag = project ? `<span class="project-tag" style="background:${project.color}33; color:${project.color}; border: 1px solid ${project.color}66;">${project.name}</span>` : '';
+            const taskImg = todo.imageUrl ? `<img src="${todo.imageUrl}" class="tc-img" alt="task image" onclick="window.open('${todo.imageUrl}', '_blank')">` : '';
 
             card.innerHTML = `
                 <button class="tc-delete" data-id="${todo.id}">×</button>
@@ -450,6 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
                 </div>
                 <div class="tc-subtitle">${p.toUpperCase()} PRIORITY ${todo.dueDate ? '• 📅 ' + todo.dueDate : ''}</div>
+                ${taskImg}
                 <p class="tc-desc">${todo.memo || 'No notes.'}</p>
                 <div style="margin-top: 8px;">${projectTag}</div>
                 <div class="tc-actions">
@@ -472,6 +474,56 @@ document.addEventListener('DOMContentLoaded', () => {
         todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => confirm('Delete?') && db.collection('todos').doc(b.dataset.id).delete());
         todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => openEditModal('todo', b.dataset.id));
     };
+
+    // --- Task Image Logic (Local Server Integration) ---
+    const uploadTaskImage = async (file) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        try {
+            const response = await fetch('http://117.17.198.45:3000/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            if (!response.ok) throw new Error('Upload failed');
+            const data = await response.json();
+            return data.url;
+        } catch (err) {
+            console.error("Local server upload error:", err);
+            return null;
+        }
+    };
+
+    const taskImgBtn = getEl('task-img-upload-btn');
+    const taskImgInput = getEl('task-img-input');
+    const taskImgPreviewContainer = getEl('task-img-preview-container');
+    const taskImgPreview = getEl('task-img-preview');
+    const removeTaskImgBtn = getEl('remove-task-img');
+    let selectedTaskFile = null;
+
+    if (taskImgBtn && taskImgInput) {
+        taskImgBtn.onclick = () => taskImgInput.click();
+        taskImgInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                selectedTaskFile = file;
+                const reader = new FileReader();
+                reader.onload = (re) => {
+                    if (taskImgPreview) taskImgPreview.src = re.target.result;
+                    if (taskImgPreviewContainer) taskImgPreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+    }
+
+    if (removeTaskImgBtn) {
+        removeTaskImgBtn.onclick = () => {
+            selectedTaskFile = null;
+            if (taskImgInput) taskImgInput.value = '';
+            if (taskImgPreviewContainer) taskImgPreviewContainer.style.display = 'none';
+        };
+    }
+
 
     // Task Add (Restored Robust Logic)
     const addBtn = getEl('add-btn');
@@ -502,26 +554,47 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!text) return showToast("할 일을 입력해주세요.", "info");
             if (!currentUser) return showToast("로그인이 필요합니다.", "error");
 
-            db.collection('todos').add({
-                uid: currentUser.uid,
-                text: text,
-                memo: getEl('memo-input') ? getEl('memo-input').value.trim() : "",
-                dueDate: getEl('due-date') ? getEl('due-date').value : "",
-                priority: getEl('priority-select') ? getEl('priority-select').value : "medium",
-                projectId: getEl('todo-project-select') ? getEl('todo-project-select').value : "",
-                completed: false,
-                archived: false,
-                orderIndex: Date.now(),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                if (inputEl) inputEl.value = '';
-                if (getEl('memo-input')) getEl('memo-input').value = '';
-                if (getEl('todo-project-select')) getEl('todo-project-select').value = '';
-                showToast("Task added!", "success");
-            }).catch(err => {
-                console.error("Add error:", err);
-                showToast("추가 실패: " + err.message, "error");
-            });
+            const saveTodo = (imageUrl = null) => {
+                db.collection('todos').add({
+                    uid: currentUser.uid,
+                    text: text,
+                    memo: getEl('memo-input') ? getEl('memo-input').value.trim() : "",
+                    dueDate: getEl('due-date') ? getEl('due-date').value : "",
+                    priority: getEl('priority-select') ? getEl('priority-select').value : "medium",
+                    projectId: getEl('todo-project-select') ? getEl('todo-project-select').value : "",
+                    imageUrl: imageUrl,
+                    completed: false,
+                    archived: false,
+                    orderIndex: Date.now(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    if (inputEl) inputEl.value = '';
+                    if (getEl('memo-input')) getEl('memo-input').value = '';
+                    if (getEl('todo-project-select')) getEl('todo-project-select').value = '';
+                    
+                    // Reset Image Selection
+                    selectedTaskFile = null;
+                    if (taskImgInput) taskImgInput.value = '';
+                    if (taskImgPreviewContainer) taskImgPreviewContainer.style.display = 'none';
+                    
+                    showToast("Task added!", "success");
+                }).catch(err => {
+                    console.error("Add error:", err);
+                    showToast("추가 실패: " + err.message, "error");
+                });
+            };
+
+            if (selectedTaskFile) {
+                showToast("Uploading image...", "info");
+                uploadTaskImage(selectedTaskFile).then(url => {
+                    if (url) saveTodo(url);
+                    else {
+                        if (confirm("Image upload failed. Save without image?")) saveTodo();
+                    }
+                });
+            } else {
+                saveTodo();
+            }
         };
 
         document.addEventListener('keypress', (e) => {
