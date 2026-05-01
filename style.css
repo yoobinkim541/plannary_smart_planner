@@ -1840,6 +1840,38 @@ textarea.composer-input {
     color: var(--text-1) !important;
 }
 
+/* EditorJS Table Support */
+.tc-table {
+    width: 100%;
+    overflow-x: auto;
+    display: block;
+}
+
+.tc-table td {
+    color: var(--text-1);
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .tc-table td {
+    color: var(--text-1) !important;
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+/* Fix table tool icons and selectors in dark mode */
+[data-theme="dark"] .tc-toolbox,
+[data-theme="dark"] .tc-toolbox__toggler,
+[data-theme="dark"] .tc-toolbox__toggler--active {
+    color: var(--text-1) !important;
+    background: var(--surface) !important;
+}
+
+[data-theme="dark"] .tc-toolbox__settings {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
 @media (max-width: 768px) {
     .wiki-layout {
         flex-direction: column;

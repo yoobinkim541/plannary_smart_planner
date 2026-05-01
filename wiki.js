@@ -100,12 +100,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 class: Header,
                 config: {
                     placeholder: 'Enter a heading',
-                    levels: [1, 2, 3, 4],
+                    levels: [1, 2, 3, 4, 5, 6],
                     defaultLevel: 2
                 }
             };
         }
         if (typeof List !== 'undefined') tools.list = List;
+        
+        // Add Markdown Shortcuts Support
+        if (typeof MarkdownShortcuts !== 'undefined') {
+            tools.markdownShortcuts = MarkdownShortcuts;
+        }
+
         if (typeof InlineCode !== 'undefined') tools.inlineCode = InlineCode;
         if (typeof CodeWithLanguageList !== 'undefined') {
             tools.code = {
