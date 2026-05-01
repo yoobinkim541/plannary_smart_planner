@@ -302,16 +302,18 @@
                 
                 <div class="composer">
                     <div class="composer-top">
-                        <input type="text" id="note-input" placeholder="Jot down a note...">
-                        <button id="add-note-btn">Add Note</button>
+                        <textarea id="note-input" class="composer-input" placeholder="Jot down a quick thought or idea..." rows="3" style="resize: none;"></textarea>
                     </div>
-                    <div class="color-selector" id="note-color-picker">
-                        <div class="color-option opt-yellow selected" data-color="yellow" title="Yellow"></div>
-                        <div class="color-option opt-blue" data-color="blue" title="Blue"></div>
-                        <div class="color-option opt-green" data-color="green" title="Green"></div>
-                        <div class="color-option opt-pink" data-color="pink" title="Pink"></div>
-                        <div class="color-option opt-purple" data-color="purple" title="Purple"></div>
-                        <div class="color-option opt-orange" data-color="orange" title="Orange"></div>
+                    <div class="composer-details" style="justify-content: space-between; align-items: center; margin-top: 12px;">
+                        <div class="color-selector" id="note-color-picker">
+                            <div class="color-option opt-yellow selected" data-color="yellow" title="Yellow"></div>
+                            <div class="color-option opt-blue" data-color="blue" title="Blue"></div>
+                            <div class="color-option opt-green" data-color="green" title="Green"></div>
+                            <div class="color-option opt-pink" data-color="pink" title="Pink"></div>
+                            <div class="color-option opt-purple" data-color="purple" title="Purple"></div>
+                            <div class="color-option opt-orange" data-color="orange" title="Orange"></div>
+                        </div>
+                        <button id="add-note-btn" class="composer-submit-btn" style="padding: 10px 24px; font-size: 14px;">+ Add Note</button>
                     </div>
                 </div>
 

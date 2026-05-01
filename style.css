@@ -367,8 +367,15 @@ input::placeholder, textarea::placeholder {
     color: var(--text-1);
     outline: none;
     background: transparent;
-    min-width: 0; /* Prevents flex items from growing too large */
+    min-width: 0;
+    padding: 8px 0;
 }
+
+textarea.composer-input {
+    line-height: 1.5;
+    font-family: inherit;
+}
+
 
 #todo-input::placeholder, .composer-input::placeholder { color: var(--text-3); }
 
@@ -967,16 +974,17 @@ input::placeholder, textarea::placeholder {
 }
 
 .color-option {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     cursor: pointer;
-    border: 2px solid transparent;
-    transition: transform 0.2s;
+    border: 2px solid var(--border);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.color-option:hover { transform: scale(1.2); }
-.color-option.selected { border-color: var(--black); transform: scale(1.1); }
+.color-option:hover { transform: scale(1.15); border-color: var(--text-2); }
+.color-option.selected { border-color: var(--blue); transform: scale(1.1); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--blue); }
+
 
 .opt-yellow { background-color: #fffbc8; }
 .opt-blue   { background-color: #e1f5fe; }
