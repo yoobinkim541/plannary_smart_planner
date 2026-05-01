@@ -266,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fabContainer) fabContainer.classList.remove('active');
 
         if (targetId === 'page-tasks') applyFilters();
+        if (targetId === 'page-archive') renderArchive();
     };
 
     const updateSidebarHeader = (pageId) => {
@@ -299,6 +300,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Web Saved',
                 subtitle: 'Reference Links',
                 icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`
+            },
+            'page-archive': {
+                title: 'Vault',
+                subtitle: 'Historical Records',
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`
             },
             'page-profile': {
                 title: 'Profile Settings',
@@ -891,6 +897,83 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
+        // Archive Logic
+        const renderArchive = () => {
+            const completedCountEl = getEl('archive-total-completed');
+            const archivedCountEl = getEl('archive-total-items');
+            const archiveListEl = getEl('archive-tasks-list');
+            
+            if (!completedCountEl || !archivedCountEl || !archiveListEl) return;
+
+            // 1. Update Stats
+            const totalCompleted = allTodos.filter(t => t.completed).length;
+            const totalArchived = allTodos.filter(t => t.archived).length;
+            completedCountEl.textContent = totalCompleted;
+            archivedCountEl.textContent = totalArchived;
+
+            // 2. Render Random Inspiration (Note)
+            refreshInspiration();
+
+            // 3. Render Archived Tasks List
+            const archivedTasks = allTodos.filter(t => t.archived);
+            archiveListEl.innerHTML = archivedTasks.length ? '' : '<div class="empty-state">No archived items.</div>';
+            
+            archivedTasks.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'archive-item';
+                item.innerHTML = `
+                    <div class="archive-item-info">
+                        <h4>${task.text}</h4>
+                        <p>Archived on: ${task.createdAt ? new Date(task.createdAt).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                    <div class="archive-item-actions">
+                        <button class="archive-btn restore-btn" data-id="${task.id}">Restore</button>
+                        <button class="archive-btn del-perm-btn" data-id="${task.id}">Delete</button>
+                    </div>
+                `;
+                archiveListEl.appendChild(item);
+            });
+
+            archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => {
+                db.collection('todos').doc(b.dataset.id).update({ archived: false });
+            });
+            archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => {
+                if (confirm('Permanently delete this item?')) {
+                    db.collection('todos').doc(b.dataset.id).delete();
+                }
+            });
+        };
+
+        window.refreshInspiration = () => {
+            const textEl = getEl('inspiration-text');
+            const dateEl = getEl('inspiration-date');
+            
+            // Get archived notes or just any notes if no archived ones
+            let source = allNotes.filter(n => n.archived);
+            if (source.length === 0) source = allNotes;
+            if (source.length === 0) source = allTodos.filter(t => t.memo);
+
+            if (source.length > 0) {
+                const random = source[Math.floor(Math.random() * source.length)];
+                textEl.textContent = `"${random.text || random.memo}"`;
+                dateEl.textContent = random.createdAt ? new Date(random.createdAt).toLocaleDateString() : 'Unknown date';
+            } else {
+                textEl.textContent = '"기록은 기억을 지배합니다."';
+                dateEl.textContent = 'Stay inspired.';
+            }
+        };
+
+        const emptyArchiveBtn = getEl('empty-archive-btn');
+        if (emptyArchiveBtn) {
+            emptyArchiveBtn.onclick = () => {
+                const archived = allTodos.filter(t => t.archived);
+                if (archived.length === 0) return;
+                if (confirm(`Permanently delete all ${archived.length} items in archive?`)) {
+                    archived.forEach(t => db.collection('todos').doc(t.id).delete());
+                }
+            };
+        }
+
         // 4. Check for Notifications
         checkDueNotifications();
     }
