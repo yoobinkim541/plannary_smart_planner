@@ -1545,7 +1545,7 @@ textarea.composer-input {
         width: 56px;
         height: 56px;
         border-radius: 50%;
-        background: var(--black);
+        background: var(--blue); /* Changed from var(--black) to avoid white-on-white in dark mode */
         color: #fff;
         border: none;
         display: flex;
@@ -1598,6 +1598,26 @@ textarea.composer-input {
         backdrop-filter: blur(8px);
     }
 
+    .fab-label {
+        position: absolute;
+        right: 56px;
+        background: var(--black);
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .fab-container.active .fab-label {
+        opacity: 1;
+    }
+
     /* Radial Arc Positioning */
     .fab-container.active .fab-item {
         opacity: 1;
@@ -1605,16 +1625,25 @@ textarea.composer-input {
     }
 
     /* Quarter Circle Arc (Bottom Right Corner) */
-    .fab-item:nth-child(1) { --x: -0px;   --y: -130px; } /* Up */
-    .fab-item:nth-child(2) { --x: -50px;  --y: -115px; transition-delay: 0.05s; }
-    .fab-item:nth-child(3) { --x: -95px;  --y: -95px;  transition-delay: 0.1s; }
-    .fab-item:nth-child(4) { --x: -115px; --y: -50px;  transition-delay: 0.15s; }
-    .fab-item:nth-child(5) { --x: -130px; --y: -0px;   transition-delay: 0.2s; } /* Left */
+    .fab-item:nth-child(1) { --x: -0px;   --y: -300px; } /* Up more to fit all */
+    .fab-item:nth-child(2) { --x: -0px;  --y: -250px; transition-delay: 0.05s; }
+    .fab-item:nth-child(3) { --x: -0px;  --y: -200px; transition-delay: 0.1s; }
+    .fab-item:nth-child(4) { --x: -0px;  --y: -150px; transition-delay: 0.15s; }
+    .fab-item:nth-child(5) { --x: -0px;  --y: -100px; transition-delay: 0.2s; }
+    .fab-item:nth-child(6) { --x: -0px;  --y: -50px;  transition-delay: 0.25s; }
+
+    /* For labels to appear next to icons, I'll switch from radial to vertical list for better text support */
+    .fab-item:nth-child(1) { --x: 0; --y: -310px; }
+    .fab-item:nth-child(2) { --x: 0; --y: -260px; }
+    .fab-item:nth-child(3) { --x: 0; --y: -210px; }
+    .fab-item:nth-child(4) { --x: 0; --y: -160px; }
+    .fab-item:nth-child(5) { --x: 0; --y: -110px; }
+    .fab-item:nth-child(6) { --x: 0; --y: -60px; }
 
     .fab-item:hover {
-        background: var(--black);
+        background: var(--blue);
         color: #fff;
-        transform: translate(var(--x), var(--y)) scale(1.1) !important;
+        transform: translate(var(--x), var(--y)) scale(1.05) !important;
     }
 
     .fab-item.active {
