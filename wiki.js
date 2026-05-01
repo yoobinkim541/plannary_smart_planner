@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
     const storage = typeof firebase !== 'undefined' ? firebase.storage() : null;
 
+    // --- STORAGE CONFIGURATION ---
+    // Using Firebase Storage to avoid Mixed Content (HTTPS -> HTTP) issues.
+
     const pageWiki = document.getElementById('page-wiki');
     const wikiPageList = document.getElementById('wiki-page-list');
     const wikiTitleInput = document.getElementById('wiki-title-input');
@@ -38,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.container.style.border = '1px dashed var(--border)';
             this.container.style.borderRadius = 'var(--radius-sm)';
             this.container.style.margin = '10px 0';
-            
+
             this.input = document.createElement('textarea');
             this.input.className = 'cdx-input';
             this.input.style.width = '100%';
@@ -51,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.input.style.color = 'var(--text-1)';
             this.input.placeholder = 'Enter KaTeX formula (e.g. \\sum_{i=1}^n i = \\frac{n(n+1)}{2})';
             this.input.value = this.data.text || '';
-            
+
             this.output = document.createElement('div');
             this.output.className = 'math-output';
             this.output.style.textAlign = 'center';
@@ -59,13 +62,13 @@ document.addEventListener('DOMContentLoaded', () => {
             this.output.style.padding = '15px';
             this.output.style.fontSize = '1.4em';
             this.output.style.color = 'var(--text-1)';
-            
+
             this.input.addEventListener('input', () => this._renderMath());
-            
+
             this.container.appendChild(this.input);
             this.container.appendChild(this.output);
-            
-            if(this.data.text) this._renderMath();
+
+            if (this.data.text) this._renderMath();
             return this.container;
         }
         _renderMath() {
@@ -75,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     this.output.innerText = "KaTeX not loaded.";
                 }
-            } catch(e) {
+            } catch (e) {
                 this.output.innerText = "Syntax Error";
             }
         }
@@ -89,9 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editor) {
             editor.destroy();
         }
-        
+
         const tools = {};
-        
+
         if (typeof Header !== 'undefined') {
             tools.header = {
                 class: Header,
@@ -142,7 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const createUploader = (label = "File") => {
             return {
                 uploadByFile(file) {
-                    if (!currentUser) return Promise.reject("Please login first");
+                    if (!currentUser || !storage) return Promise.reject("Please login first or Firebase not initialized");
+                    
                     const progressContainer = document.getElementById('wiki-upload-progress');
                     const progressBar = document.getElementById('wiki-upload-bar');
                     const progressText = document.getElementById('wiki-upload-text');
@@ -151,57 +155,46 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (progressText) progressText.innerText = `${label} Uploading... 0%`;
 
                     return new Promise((resolve, reject) => {
-                        const xhr = new XMLHttpRequest();
-                        const formData = new FormData();
-                        formData.append('image', file);
+                        // Path: /wiki/{userId}/{timestamp}_{fileName}
+                        const filePath = `wiki/${currentUser.uid}/${Date.now()}_${file.name}`;
+                        const storageRef = storage.ref().child(filePath);
+                        const uploadTask = storageRef.put(file);
 
-                        xhr.upload.onprogress = (e) => {
-                            if (e.lengthComputable) {
-                                const percent = Math.round((e.loaded / e.total) * 100);
+                        uploadTask.on('state_changed', 
+                            (snapshot) => {
+                                const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
                                 if (progressBar) progressBar.style.width = percent + '%';
                                 if (progressText) progressText.innerText = `${label} Uploading... ${percent}%`;
-                            }
-                        };
-
-                        xhr.onload = () => {
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                try {
-                                    const response = JSON.parse(xhr.responseText);
+                            }, 
+                            (error) => {
+                                console.error("Upload error:", error);
+                                if (progressContainer) progressContainer.style.display = 'none';
+                                window.showToast("Upload failed: " + error.message, "error");
+                                reject(error);
+                            }, 
+                            () => {
+                                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
                                     if (progressBar) progressBar.style.width = '100%';
                                     if (progressText) progressText.innerText = `${label} Upload Complete!`;
-                                    
+
                                     setTimeout(() => {
                                         if (progressContainer) progressContainer.style.display = 'none';
                                         if (progressBar) progressBar.style.width = '0%';
                                     }, 1000);
 
-                                    resolve({ 
-                                        success: 1, 
-                                        file: { 
-                                            url: response.url,
+                                    // EditorJS expects success: 1 and file object with url
+                                    resolve({
+                                        success: 1,
+                                        file: {
+                                            url: downloadURL,
                                             name: file.name,
                                             size: file.size,
                                             extension: file.name.split('.').pop()
-                                        } 
+                                        }
                                     });
-                                } catch (e) {
-                                    reject(new Error("Invalid server response"));
-                                }
-                            } else {
-                                if (progressContainer) progressContainer.style.display = 'none';
-                                reject(new Error('Upload failed with status ' + xhr.status));
+                                });
                             }
-                        };
-
-                        xhr.onerror = () => {
-                            if (progressContainer) progressContainer.style.display = 'none';
-                            const errorMsg = "Upload failed. Mixed Content (HTTPS -> HTTP) or Server Down.";
-                            window.showToast(errorMsg, "error");
-                            reject(new Error('Network error'));
-                        };
-
-                        xhr.open('POST', 'http://117.17.198.45:3000/upload');
-                        xhr.send(formData);
+                        );
                     });
                 }
             };
@@ -249,34 +242,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadPages = () => {
         if (!db || !currentUser) return;
         db.collection('wiki_pages').where('uid', '==', currentUser.uid)
-          .orderBy('updatedAt', 'desc')
-          .onSnapshot(snap => {
-              allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              renderPageList();
-              checkHash(); // Check if we should open a page based on URL
-          }, error => {
-             console.log("Index issue, falling back to client sort", error);
-             db.collection('wiki_pages').where('uid', '==', currentUser.uid)
-               .onSnapshot(snap => {
-                   allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                   allPages.sort((a,b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
-                   renderPageList();
-                   checkHash();
-               });
-          });
+            .orderBy('updatedAt', 'desc')
+            .onSnapshot(snap => {
+                allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderPageList();
+                checkHash(); // Check if we should open a page based on URL
+            }, error => {
+                console.log("Index issue, falling back to client sort", error);
+                db.collection('wiki_pages').where('uid', '==', currentUser.uid)
+                    .onSnapshot(snap => {
+                        allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        allPages.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
+                        renderPageList();
+                        checkHash();
+                    });
+            });
     };
 
     const renderPageList = () => {
         if (!wikiPageList) return;
         let filteredPages = allPages;
         const term = searchInput ? searchInput.value.toLowerCase() : "";
-        
+
         if (term) {
             filteredPages = allPages.filter(p => (p.title && p.title.toLowerCase().includes(term)));
         }
 
         wikiPageList.innerHTML = filteredPages.length ? '' : '<div class="empty-state" style="padding:20px;">No pages found</div>';
-        
+
         filteredPages.forEach(page => {
             const el = document.createElement('div');
             el.className = `wiki-page-item ${currentPageId === page.id ? 'active' : ''}`;
@@ -322,21 +315,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const openPage = (page) => {
         if (currentPageId === page.id) return;
         currentPageId = page.id;
-        
+
         // Notion-like: Hide list on small screens, show editor as full page
         pageWiki.classList.add('editor-active');
-        
+
         wikiEmptyView.style.display = 'none';
         wikiEditorView.style.display = 'flex';
         wikiEditorView.classList.add('fade-in');
-        
+
         wikiTitleInput.value = page.title || '';
-        
-        if(saveWikiBtn) saveWikiBtn.disabled = true;
+
+        if (saveWikiBtn) saveWikiBtn.disabled = true;
         initEditor(page.content);
-        setTimeout(() => { if(saveWikiBtn) saveWikiBtn.disabled = false; }, 500);
-        
-        renderPageList(); 
+        setTimeout(() => { if (saveWikiBtn) saveWikiBtn.disabled = false; }, 500);
+
+        renderPageList();
     };
 
     const closeEditor = () => {
@@ -350,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newWikiBtn) {
         newWikiBtn.onclick = () => {
             if (!currentUser) return window.showToast('Please login first', 'error');
-            
+
             const newDoc = {
                 uid: currentUser.uid,
                 title: 'Untitled Document',
@@ -358,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            
+
             db.collection('wiki_pages').add(newDoc).then(docRef => {
                 navigateToPage(docRef.id);
             }).catch(err => {
@@ -372,31 +365,44 @@ document.addEventListener('DOMContentLoaded', () => {
         backBtn.onclick = goBackToList;
     }
 
-    if (saveWikiBtn) {
-        saveWikiBtn.onclick = async () => {
-            if (!editor || !currentPageId) return;
-            const title = wikiTitleInput.value.trim() || 'Untitled Document';
-            
-            saveWikiBtn.textContent = 'Saving...';
-            saveWikiBtn.disabled = true;
-            
-            try {
-                const contentData = await editor.save();
-                await db.collection('wiki_pages').doc(currentPageId).update({
-                    title: title,
-                    content: contentData,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                window.showToast("Page saved!", "success");
-            } catch (err) {
-                console.error("Save error: ", err);
-                window.showToast("Failed to save", "error");
-            } finally {
-                saveWikiBtn.textContent = 'Save Changes';
-                saveWikiBtn.disabled = false;
-            }
-        };
-    }
+    // --- SAVE FUNCTION ---
+    const savePage = async () => {
+        if (!editor || !currentPageId || !currentUser) {
+            console.warn('[Wiki] Save aborted: editor or pageId missing', { editor: !!editor, currentPageId, currentUser: !!currentUser });
+            window.showToast('Cannot save: not ready', 'error');
+            return;
+        }
+        const title = wikiTitleInput ? wikiTitleInput.value.trim() || 'Untitled Document' : 'Untitled Document';
+
+        if (saveWikiBtn) { saveWikiBtn.textContent = 'Saving...'; saveWikiBtn.disabled = true; }
+
+        try {
+            const contentData = await editor.save();
+            console.log('[Wiki] Editor data:', contentData);
+            await db.collection('wiki_pages').doc(currentPageId).update({
+                title: title,
+                content: contentData,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            window.showToast('✅ Page saved!', 'success');
+        } catch (err) {
+            console.error('[Wiki] Save error:', err);
+            // Show actual error message for diagnosis
+            window.showToast('Save failed: ' + (err.message || err), 'error');
+        } finally {
+            if (saveWikiBtn) { saveWikiBtn.textContent = 'Save Changes'; saveWikiBtn.disabled = false; }
+        }
+    };
+
+    if (saveWikiBtn) saveWikiBtn.onclick = savePage;
+
+    // Ctrl+S keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            if (currentPageId) savePage();
+        }
+    });
 
     if (deleteWikiBtn) {
         deleteWikiBtn.onclick = () => {

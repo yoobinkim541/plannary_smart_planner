@@ -12,9 +12,9 @@
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4b6bfb">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Todo">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon.svg">
     
     <!-- KaTeX for Math Support in Editor -->
@@ -198,14 +198,15 @@
                             </div>
                         </div>
 
-                        <!-- Important/Overdue Widget -->
+                        <!-- Upcoming Reminders Widget -->
                         <div class="dashboard-widget">
                             <div class="widget-header">
-                                <h3>Urgent Tasks</h3>
-                                <button class="text-link-btn" data-target="page-tasks" data-filter="important">View Detailed</button>
+                                <h3>Upcoming Reminders</h3>
+                                <button class="text-link-btn" data-target="page-tasks" data-filter="reminders">View All</button>
                             </div>
-                            <div id="dash-urgent-tasks" class="widget-content dash-task-list">
+                            <div id="dash-reminders-list" class="widget-content">
                                 <!-- Dynamic items -->
+                                <p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">No upcoming reminders.</p>
                             </div>
                         </div>
                     </div>
@@ -333,12 +334,15 @@
 
                 <div class="composer">
                     <div class="composer-top">
-                        <input type="text" id="bm-url-input" class="composer-input" placeholder="URL (https://...)">
-                        <input type="text" id="bm-title-input" class="composer-input" placeholder="Title">
-                        <button id="add-bm-btn" class="composer-submit-btn">Save</button>
+                        <div style="display:flex; align-items:center; flex:1; gap:10px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                            <input type="text" id="bm-url-input" class="composer-input" placeholder="Paste URL here (https://...)">
+                        </div>
+                        <button id="add-bm-btn" class="composer-submit-btn">Save Bookmark</button>
                     </div>
                     <div class="composer-details">
-                        <input type="text" id="bm-tags-input" class="composer-input" placeholder="Tags (comma separated: dev, news, design)">
+                        <input type="text" id="bm-title-input" class="composer-input" placeholder="Custom Title (Optional)">
+                        <input type="text" id="bm-tags-input" class="composer-input" placeholder="Tags (e.g. dev, inspiration, news)">
                     </div>
                 </div>
 
@@ -529,8 +533,8 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js"></script>
-    <script src="wiki.js"></script> <!-- To isolate editor logic -->
+    <script src="app.js?v=v3"></script>
+    <script src="wiki.js?v=v3"></script> <!-- To isolate editor logic -->
 </body>
 
 </html>

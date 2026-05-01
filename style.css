@@ -1601,17 +1601,19 @@ textarea.composer-input {
     .fab-label {
         position: absolute;
         right: 56px;
-        background: var(--black);
-        color: #fff;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 12px;
+        background: rgba(0, 0, 0, 0.85);
+        color: #ffffff;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 13px;
         font-weight: 600;
         white-space: nowrap;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 5005;
+        backdrop-filter: blur(4px);
     }
 
     .fab-container.active .fab-label {
@@ -2271,4 +2273,231 @@ textarea.composer-input {
     .archive-dashboard {
         grid-template-columns: 1fr;
     }
+}
+
+/* === REMINDER STYLES === */
+.due-today-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    font-size: 0.65rem;
+    font-weight: 700;
+    border-radius: 4px;
+    margin-left: 10px;
+    text-transform: uppercase;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    vertical-align: middle;
+    animation: pulse-red 2.5s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+#dash-reminders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dash-reminder-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.dash-reminder-item:hover {
+    border-color: var(--border);
+    transform: translateX(4px);
+    background: var(--surface);
+}
+
+.reminder-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.reminder-date {
+    font-size: 0.75rem;
+    color: var(--red);
+    font-weight: 600;
+}
+
+/* === ARCHIVE VAULT STYLES === */
+.archive-task-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.archive-task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    border-color: var(--blue);
+}
+
+.archive-item-left {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.archive-item-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-1);
+}
+
+.archive-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--text-2);
+}
+
+.archive-status-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+}
+
+.status-completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--green);
+}
+
+.status-pending {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-2);
+}
+
+.archive-item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.archive-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.archive-btn:hover {
+    background: var(--bg);
+    color: var(--text-1);
+    border-color: var(--text-1);
+}
+
+.restore-btn:hover {
+    color: var(--blue);
+    border-color: var(--blue);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.del-perm-btn:hover {
+    color: var(--red);
+    border-color: var(--red);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+/* === BOOKMARK STYLES === */
+.bookmark-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bookmark-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    border-color: var(--blue);
+}
+
+.bm-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 4px;
+}
+
+.bm-favicon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--bg);
+    padding: 8px;
+    border: 1px solid var(--border);
+    object-fit: contain;
+}
+
+.bm-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.bm-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bm-url {
+    font-size: 0.85rem;
+    color: var(--text-2);
+    text-decoration: none;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+}
+
+.bm-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--blue);
+    border-radius: 6px;
+    margin-right: 6px;
+    font-weight: 600;
+    border: 1px solid rgba(37, 99, 235, 0.15);
 }
