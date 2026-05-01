@@ -96,12 +96,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const tools = {};
 
         // Debug: Log available plugin variables
-        console.log('[Wiki] Debug - Header:', typeof Header !== 'undefined' ? 'Found' : 'Missing');
-        console.log('[Wiki] Debug - List:', typeof List !== 'undefined' ? 'Found' : 'Missing');
-        console.log('[Wiki] Debug - MarkdownShortcuts:', typeof MarkdownShortcuts !== 'undefined' ? 'Found' : 'Missing');
-        console.log('[Wiki] Debug - MarkdownShortcut:', typeof MarkdownShortcut !== 'undefined' ? 'Found' : 'Missing');
+        const isHeaderFound = typeof Header !== 'undefined';
+        const isListFound = typeof List !== 'undefined';
+        const markdownClassName = (typeof MarkdownShortcuts !== 'undefined') ? 'MarkdownShortcuts' : 
+                                   (typeof MarkdownShortcut !== 'undefined' ? 'MarkdownShortcut' : null);
 
-        if (typeof Header !== 'undefined') {
+        console.log('[Wiki] Debug - Header:', isHeaderFound ? 'OK' : 'Missing');
+        console.log('[Wiki] Debug - List:', isListFound ? 'OK' : 'Missing');
+        console.log('[Wiki] Debug - Markdown Tool Name detected:', markdownClassName || 'NONE');
+
+        if (isHeaderFound) {
             tools.header = {
                 class: Header,
                 config: {
@@ -111,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         }
-        if (typeof List !== 'undefined') {
+        if (isListFound) {
             tools.list = {
                 class: List,
                 inlineToolbar: true
@@ -119,15 +123,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Register Markdown Shortcuts
-        const MarkdownClass = (typeof MarkdownShortcuts !== 'undefined') ? MarkdownShortcuts : (typeof MarkdownShortcut !== 'undefined' ? MarkdownShortcut : null);
-        if (MarkdownClass) {
+        if (markdownClassName) {
+            const MarkdownClass = (markdownClassName === 'MarkdownShortcuts') ? MarkdownShortcuts : MarkdownShortcut;
+            // Use 'markdown' as a shorter key, some versions might prefer this
             tools.markdownShortcut = {
                 class: MarkdownClass,
                 config: {
-                    // Force triggers if needed
+                    // Optional: force trigger conversion
                 }
             };
-            console.log('[Wiki] Markdown Shortcuts initialized');
+            console.log(`[Wiki] ${markdownClassName} registered successfully`);
+        } else {
+            console.error('[Wiki] Markdown Shortcuts library is NOT loaded in window object');
         }
 
         if (typeof InlineCode !== 'undefined') tools.inlineCode = { class: InlineCode };
