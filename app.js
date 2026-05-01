@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const updateProfileUI = (user) => {
+    function updateProfileUI(user) {
         if (!user) return;
         const name = user.displayName || user.email.split('@')[0];
         if (getEl('user-name-sidebar')) getEl('user-name-sidebar').textContent = name;
@@ -164,10 +164,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (getEl('profile-view-name')) getEl('profile-view-name').textContent = name;
         if (getEl('profile-view-email')) getEl('profile-view-email').textContent = user.email;
-    };
+    }
 
     // Mobile Navigation Toggle Logic
-    const initMobileNav = () => {
+    function initMobileNav() {
         const menuToggle = getEl('menu-toggle');
         const overlay = getEl('sidebar-overlay');
         const fabTrigger = getEl('fab-trigger');
@@ -225,11 +225,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-    };
+    }
     initMobileNav();
 
     // SPA Router
-    const switchPage = (targetId) => {
+    function switchPage(targetId) {
         // 1. Switch Page Content
         document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
         const targetPage = getEl(targetId);
@@ -267,9 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (targetId === 'page-tasks') applyFilters();
         if (targetId === 'page-archive') renderArchive();
-    };
+    }
 
-    const updateSidebarHeader = (pageId) => {
+    function updateSidebarHeader(pageId) {
         const iconBox = getEl('sidebar-header-icon');
         const titleEl = getEl('sidebar-header-title');
         const subtitleEl = getEl('sidebar-header-subtitle');
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         iconBox.innerHTML = config.icon;
         titleEl.textContent = config.title;
         subtitleEl.textContent = config.subtitle;
-    };
+    }
 
     document.querySelectorAll('[data-target]').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Hash-based Router
-    const handleHash = () => {
+    function handleHash() {
         const hash = window.location.hash || '#page-home';
         let pageId = hash.replace('#', '');
         
@@ -352,22 +352,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (getEl(pageId)) {
             switchPage(pageId);
         }
-    };
+    }
 
     window.addEventListener('hashchange', handleHash);
     handleHash(); // Initial route check
 
     // CRUD - Todos
-    const loadTodos = () => {
+    function loadTodos() {
         if (!currentUser || !db) return;
         db.collection('todos').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
             allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             applyFilters();
             updateDashboardUI();
         });
-    };
+    }
 
-    const applyFilters = () => {
+    function applyFilters() {
         const term = searchInput ? searchInput.value.toLowerCase() : "";
         let filtered = allTodos.filter(t => (t.text && t.text.toLowerCase().includes(term)) || (t.memo && t.memo.toLowerCase().includes(term)));
         
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Client-side sort by custom orderIndex (Ascending)
         filtered.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
         renderTodos(filtered);
-    };
+    }
 
     let draggedItem = null;
     
@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     };
 
-    const renderTodos = (todos) => {
+    function renderTodos(todos) {
         if (!todoList) return;
         todoList.innerHTML = todos.length ? '' : '<div class="empty-state">No tasks found.</div>';
         todos.forEach(todo => {
@@ -479,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => confirm('Delete?') && db.collection('todos').doc(b.dataset.id).delete());
         todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => openEditModal('todo', b.dataset.id));
-    };
+    }
 
     // --- Task Image Logic (Local Server Integration) ---
     const uploadTaskImage = async (file) => {
@@ -751,16 +751,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // CRUD - Notes
-    const loadNotes = () => {
+    function loadNotes() {
         if (!currentUser || !db) return;
         db.collection('notes').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
             allNotes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderNotes(allNotes);
             updateDashboardUI();
         });
-    };
+    }
 
-    const renderNotes = (notes) => {
+    function renderNotes(notes) {
         const list = getEl('notes-list');
         if (!list) return;
         list.innerHTML = notes.length ? '' : '<div class="empty-state">No notes. Click and drag to move them!</div>';
@@ -783,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => db.collection('notes').doc(b.dataset.id).delete());
         list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => openEditModal('note', b.dataset.id));
-    };
+    }
 
     const setupDragging = (el) => {
         let isDragging = false, startX, startY, initL, initT;
@@ -898,7 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Archive Logic
-        const renderArchive = () => {
+        function renderArchive() {
             const completedCountEl = getEl('archive-total-completed');
             const archivedCountEl = getEl('archive-total-items');
             const archiveListEl = getEl('archive-tasks-list');
@@ -942,7 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     db.collection('todos').doc(b.dataset.id).delete();
                 }
             });
-        };
+        }
 
         window.refreshInspiration = () => {
             const textEl = getEl('inspiration-text');
