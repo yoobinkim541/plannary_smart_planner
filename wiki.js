@@ -139,70 +139,88 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         tools.math = MathBlock;
 
+        const createUploader = (label = "File") => {
+            return {
+                uploadByFile(file) {
+                    if (!currentUser) return Promise.reject("Please login first");
+                    const progressContainer = document.getElementById('wiki-upload-progress');
+                    const progressBar = document.getElementById('wiki-upload-bar');
+                    const progressText = document.getElementById('wiki-upload-text');
+
+                    if (progressContainer) progressContainer.style.display = 'flex';
+                    if (progressText) progressText.innerText = `${label} Uploading... 0%`;
+
+                    return new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        const formData = new FormData();
+                        formData.append('image', file);
+
+                        xhr.upload.onprogress = (e) => {
+                            if (e.lengthComputable) {
+                                const percent = Math.round((e.loaded / e.total) * 100);
+                                if (progressBar) progressBar.style.width = percent + '%';
+                                if (progressText) progressText.innerText = `${label} Uploading... ${percent}%`;
+                            }
+                        };
+
+                        xhr.onload = () => {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                try {
+                                    const response = JSON.parse(xhr.responseText);
+                                    if (progressBar) progressBar.style.width = '100%';
+                                    if (progressText) progressText.innerText = `${label} Upload Complete!`;
+                                    
+                                    setTimeout(() => {
+                                        if (progressContainer) progressContainer.style.display = 'none';
+                                        if (progressBar) progressBar.style.width = '0%';
+                                    }, 1000);
+
+                                    resolve({ 
+                                        success: 1, 
+                                        file: { 
+                                            url: response.url,
+                                            name: file.name,
+                                            size: file.size,
+                                            extension: file.name.split('.').pop()
+                                        } 
+                                    });
+                                } catch (e) {
+                                    reject(new Error("Invalid server response"));
+                                }
+                            } else {
+                                if (progressContainer) progressContainer.style.display = 'none';
+                                reject(new Error('Upload failed with status ' + xhr.status));
+                            }
+                        };
+
+                        xhr.onerror = () => {
+                            if (progressContainer) progressContainer.style.display = 'none';
+                            const errorMsg = "Upload failed. Mixed Content (HTTPS -> HTTP) or Server Down.";
+                            window.showToast(errorMsg, "error");
+                            reject(new Error('Network error'));
+                        };
+
+                        xhr.open('POST', 'http://117.17.198.45:3000/upload');
+                        xhr.send(formData);
+                    });
+                }
+            };
+        };
+
         if (typeof ImageTool !== 'undefined') {
             tools.image = {
                 class: ImageTool,
                 config: {
-                    uploader: {
-                        uploadByFile(file) {
-                            if (!currentUser) {
-                                return Promise.reject("Please login first");
-                            }
-                            const progressContainer = document.getElementById('wiki-upload-progress');
-                            const progressBar = document.getElementById('wiki-upload-bar');
-                            const progressText = document.getElementById('wiki-upload-text');
+                    uploader: createUploader("Image")
+                }
+            };
+        }
 
-                            if (progressContainer) progressContainer.style.display = 'flex';
-
-                            return new Promise((resolve, reject) => {
-                                const xhr = new XMLHttpRequest();
-                                const formData = new FormData();
-                                formData.append('image', file);
-
-                                // Progress tracking
-                                xhr.upload.onprogress = (e) => {
-                                    if (e.lengthComputable) {
-                                        const progress = (e.loaded / e.total) * 100;
-                                        if (progressBar) progressBar.style.width = progress + '%';
-                                        if (progressText) progressText.innerText = `Local Uploading... ${Math.round(progress)}%`;
-                                    }
-                                };
-
-                                xhr.onload = () => {
-                                    if (xhr.status >= 200 && xhr.status < 300) {
-                                        try {
-                                            const response = JSON.parse(xhr.responseText);
-                                            if (progressBar) progressBar.style.width = '100%';
-                                            if (progressText) progressText.innerText = `Upload Complete!`;
-                                            
-                                            setTimeout(() => {
-                                                if (progressContainer) progressContainer.style.display = 'none';
-                                                if (progressBar) progressBar.style.width = '0%';
-                                            }, 1000);
-
-                                            resolve({ success: 1, file: { url: response.url } });
-                                        } catch (e) {
-                                            reject(new Error("Invalid server response"));
-                                        }
-                                    } else {
-                                        if (progressContainer) progressContainer.style.display = 'none';
-                                        reject(new Error('Upload failed with status ' + xhr.status));
-                                    }
-                                };
-
-                                xhr.onerror = () => {
-                                    if (progressContainer) progressContainer.style.display = 'none';
-                                    const errorMsg = "Upload failed. If you are on HTTPS (Firebase), browsers block HTTP (Local Server) uploads. Check console for 'Mixed Content'.";
-                                    window.showToast(errorMsg, "error");
-                                    console.error("XHR Error:", errorMsg);
-                                    reject(new Error('Network error'));
-                                };
-
-                                xhr.open('POST', 'http://117.17.198.45:3000/upload');
-                                xhr.send(formData);
-                            });
-                        }
-                    }
+        if (typeof AttachesTool !== 'undefined') {
+            tools.attaches = {
+                class: AttachesTool,
+                config: {
+                    uploader: createUploader("Attachment")
                 }
             };
         }
