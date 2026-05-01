@@ -335,7 +335,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 filterChips.forEach(btn => btn.classList.toggle('active', btn.dataset.filter === currentFilter));
             }
 
-            window.location.hash = targetId;
+            if (window.location.hash === '#' + targetId) {
+                handleHash();
+            } else {
+                window.location.hash = targetId;
+            }
         });
     });
 
@@ -378,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentFilter === 'active') filtered = filtered.filter(t => !t.completed && !t.archived);
         else if (currentFilter === 'completed') filtered = filtered.filter(t => t.completed && !t.archived);
         else if (currentFilter === 'important') filtered = filtered.filter(t => t.priority === 'high' && !t.archived);
+        else if (currentFilter === 'reminders') filtered = filtered.filter(t => t.dueDate && !t.completed && !t.archived);
         else if (currentFilter === 'archive') filtered = filtered.filter(t => t.archived);
         else filtered = filtered.filter(t => !t.archived);
         
