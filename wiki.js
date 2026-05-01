@@ -95,6 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tools = {};
 
+        // Debug: Log available plugin variables
+        console.log('[Wiki] Debug - Header:', typeof Header !== 'undefined' ? 'Found' : 'Missing');
+        console.log('[Wiki] Debug - List:', typeof List !== 'undefined' ? 'Found' : 'Missing');
+        console.log('[Wiki] Debug - MarkdownShortcuts:', typeof MarkdownShortcuts !== 'undefined' ? 'Found' : 'Missing');
+        console.log('[Wiki] Debug - MarkdownShortcut:', typeof MarkdownShortcut !== 'undefined' ? 'Found' : 'Missing');
+
         if (typeof Header !== 'undefined') {
             tools.header = {
                 class: Header,
@@ -105,14 +111,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         }
-        if (typeof List !== 'undefined') tools.list = List;
+        if (typeof List !== 'undefined') {
+            tools.list = {
+                class: List,
+                inlineToolbar: true
+            };
+        }
         
-        // Add Markdown Shortcuts Support
-        if (typeof MarkdownShortcuts !== 'undefined') {
-            tools.markdownShortcuts = MarkdownShortcuts;
+        // Register Markdown Shortcuts
+        const MarkdownClass = (typeof MarkdownShortcuts !== 'undefined') ? MarkdownShortcuts : (typeof MarkdownShortcut !== 'undefined' ? MarkdownShortcut : null);
+        if (MarkdownClass) {
+            tools.markdownShortcut = {
+                class: MarkdownClass,
+                config: {
+                    // Force triggers if needed
+                }
+            };
+            console.log('[Wiki] Markdown Shortcuts initialized');
         }
 
-        if (typeof InlineCode !== 'undefined') tools.inlineCode = InlineCode;
+        if (typeof InlineCode !== 'undefined') tools.inlineCode = { class: InlineCode };
         if (typeof CodeWithLanguageList !== 'undefined') {
             tools.code = {
                 class: CodeWithLanguageList,
@@ -121,12 +139,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         } else if (typeof CodeTool !== 'undefined') {
-            tools.code = CodeTool;
+            tools.code = { class: CodeTool };
         }
-        if (typeof Table !== 'undefined') tools.table = Table;
+        
+        if (typeof Table !== 'undefined') tools.table = { class: Table };
         if (typeof Checklist !== 'undefined') tools.checklist = { class: Checklist, inlineToolbar: true };
-        if (typeof Underline !== 'undefined') tools.underline = Underline;
+        if (typeof Underline !== 'undefined') tools.underline = { class: Underline };
         if (typeof ToggleBlock !== 'undefined') tools.toggle = { class: ToggleBlock, inlineToolbar: true };
+        
         if (typeof ColorPlugin !== 'undefined') {
             tools.Color = {
                 class: ColorPlugin,
@@ -146,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         }
-        tools.math = MathBlock;
+        tools.math = { class: MathBlock };
 
         const createUploader = (label = "File") => {
             return {
