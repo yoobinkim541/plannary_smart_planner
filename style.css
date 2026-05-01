@@ -1180,13 +1180,26 @@ input::placeholder, textarea::placeholder {
 }
 
 .dash-recent-note-card {
-    background: #fffbc8; /* Sticky note yellow */
+    background: #fffbc8;
     padding: 12px;
     border-radius: 8px;
     font-size: 0.9rem;
+    color: #333; /* Ensure text is dark on light yellow background */
     box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-    border: 1px solid rgba(0,0,0,0.05);
+    border: 1px solid rgba(0,0,0,0.1);
+    transition: transform 0.2s;
 }
+
+.dash-recent-note-card:hover {
+    transform: translateY(-2px);
+}
+
+.dash-recent-note-card.blue   { background-color: #e1f5fe; border-color: #b3e5fc; }
+.dash-recent-note-card.green  { background-color: #e8f5e9; border-color: #c8e6c9; }
+.dash-recent-note-card.pink   { background-color: #fce4ec; border-color: #f8bbd0; }
+.dash-recent-note-card.purple { background-color: #f3e5f5; border-color: #e1bee7; }
+.dash-recent-note-card.orange { background-color: #fff3e0; border-color: #ffe0b2; }
+
 
 /* === PROJECTS PAGE === */
 .projects-grid {

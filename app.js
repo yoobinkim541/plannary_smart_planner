@@ -862,8 +862,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             recentNotes.forEach(note => {
                 const div = document.createElement('div');
-                div.className = 'dash-recent-note-card';
+                div.className = `dash-recent-note-card ${note.color || 'yellow'}`;
                 div.textContent = note.text.length > 50 ? note.text.substring(0, 50) + '...' : note.text;
+                div.onclick = () => switchPage('page-notes');
                 recentNotesList.appendChild(div);
             });
         }
