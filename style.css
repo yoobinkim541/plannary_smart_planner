@@ -1925,13 +1925,74 @@ textarea.composer-input {
     padding: 40px;
     overflow-y: auto;
     box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    min-height: 0; /* Important for flex children scrolling */
+}
+
+/* Wiki Empty State Modern Styles */
+.wiki-empty-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    text-align: center;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.wiki-empty-content {
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.wiki-empty-illustration {
+    width: 140px;
+    height: 140px;
+    background: var(--surface);
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--blue);
+    margin-bottom: 12px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+    transition: transform 0.3s ease;
+}
+
+.wiki-empty-container:hover .wiki-empty-illustration {
+    transform: translateY(-8px) rotate(3deg);
+}
+
+.wiki-empty-content h2 {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-1);
+    letter-spacing: -0.5px;
+}
+
+.wiki-empty-content p {
+    font-size: 15px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+[data-theme="dark"] .wiki-empty-illustration {
+    background: var(--surface);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.2);
 }
 
 /* Ensure editor grows and doesn't overlap actions */
 #editorjs {
     width: 100%;
-    min-height: 400px;
-    margin-bottom: 40px;
+    min-height: 300px;
+    margin-bottom: 20px;
+    flex: 0 0 auto; /* Don't force flex grow, let content define height */
 }
 
 .wiki-actions {
@@ -1940,7 +2001,9 @@ textarea.composer-input {
     gap: 16px;
     padding-top: 30px;
     border-top: 1px solid var(--border);
-    margin-top: auto; /* Push to bottom of content if possible */
+    margin-top: 40px;
+    margin-bottom: 20px; /* Add bottom margin to ensure space at end */
+    flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
 #wiki-save-btn {

@@ -182,14 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                         if (progressBar) progressBar.style.width = '0%';
                                     }, 1000);
 
-                                    // EditorJS expects success: 1 and file object with url
+                                    // EditorJS Image Tool expects a specific response structure
                                     resolve({
                                         success: 1,
                                         file: {
-                                            url: downloadURL,
-                                            name: file.name,
-                                            size: file.size,
-                                            extension: file.name.split('.').pop()
+                                            url: downloadURL
                                         }
                                     });
                                 });
@@ -223,7 +220,11 @@ document.addEventListener('DOMContentLoaded', () => {
             data: data || {},
             placeholder: 'Type "/" for commands...',
             tools: tools,
-            inlineToolbar: true
+            inlineToolbar: true,
+            onChange: () => {
+                // Proactively enable save button if disabled
+                if (saveWikiBtn) saveWikiBtn.disabled = false;
+            }
         });
     }
 
@@ -340,25 +341,32 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPageList();
     };
 
-    if (newWikiBtn) {
-        newWikiBtn.onclick = () => {
-            if (!currentUser) return window.showToast('Please login first', 'error');
+    const createNewPage = () => {
+        if (!currentUser) return window.showToast('Please login first', 'error');
 
-            const newDoc = {
-                uid: currentUser.uid,
-                title: 'Untitled Document',
-                content: {},
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-
-            db.collection('wiki_pages').add(newDoc).then(docRef => {
-                navigateToPage(docRef.id);
-            }).catch(err => {
-                console.error("Creation error:", err);
-                window.showToast("Failed to create page: " + err.message, "error");
-            });
+        const newDoc = {
+            uid: currentUser.uid,
+            title: 'Untitled Document',
+            content: {},
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
+
+        db.collection('wiki_pages').add(newDoc).then(docRef => {
+            navigateToPage(docRef.id);
+        }).catch(err => {
+            console.error("Creation error:", err);
+            window.showToast("Failed to create page: " + err.message, "error");
+        });
+    };
+
+    if (newWikiBtn) {
+        newWikiBtn.onclick = createNewPage;
+    }
+
+    const emptyCreateBtn = document.getElementById('wiki-empty-create-btn');
+    if (emptyCreateBtn) {
+        emptyCreateBtn.onclick = createNewPage;
     }
 
     if (backBtn) {

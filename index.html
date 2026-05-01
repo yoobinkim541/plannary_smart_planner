@@ -392,8 +392,26 @@
                             <button id="wiki-delete-btn" class="cancel-btn">Delete Page</button>
                         </div>
                     </div>
-                    <div class="empty-state" id="wiki-empty-view">
-                        Select a document to edit or create a new one.
+
+                    <!-- Modern Empty View -->
+                    <div class="wiki-empty-container" id="wiki-empty-view">
+                        <div class="wiki-empty-content">
+                            <div class="wiki-empty-illustration">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                            </div>
+                            <h2>지식 창고를 채워보세요</h2>
+                            <p>생각을 정리하고 아이디어를 기록하는 당신만의 위키 공간입니다.<br>왼쪽 목록에서 문서를 선택하거나 새로 만들어 시작하세요.</p>
+                            <button class="confirm-btn" id="wiki-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                <span style="vertical-align: middle;">새 페이지 만들기</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -533,8 +551,8 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v3"></script>
-    <script src="wiki.js?v=v3"></script> <!-- To isolate editor logic -->
+    <script src="app.js?v=v7"></script>
+    <script src="wiki.js?v=v7"></script> <!-- To isolate editor logic -->
 </body>
 
 </html>
