@@ -39,6 +39,9 @@
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon">
             Sign up with Google
         </button>
+        <p class="auth-warning" id="secure-browser-warning" hidden>
+            Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser.
+        </p>
 
         <div class="auth-links">
             <p>Already have an account? <a href="login.html">Sign in</a></p>
@@ -48,7 +51,7 @@
     <!-- Firebase Auto-Init -->
     <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
     <script src="/__/firebase/10.7.1/firebase-auth-compat.js"></script>
-    <script src="/__/firebase/init.js"></script>
+    <script src="firebase-init.js?v=v1"></script>
 
     <script>
         const auth = firebase.auth();
@@ -57,7 +60,34 @@
         const pwConfirmInput = document.getElementById('reg-pw-confirm');
         const signupBtn = document.getElementById('signup-btn');
         const googleSignupBtn = document.getElementById('google-signup-btn');
+        const secureBrowserWarning = document.getElementById('secure-browser-warning');
         const googleSignupDefaultText = googleSignupBtn.textContent.trim();
+        const secureSignupUrl = 'https://practice-todo-list-32af6.web.app/signup.html';
+
+        const isEmbeddedBrowser = () => {
+            const ua = navigator.userAgent || '';
+            const isIOS = /iPhone|iPad|iPod/i.test(ua);
+            const isIOSWebView = isIOS && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua);
+            const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+            return isStandalone || isIOSWebView || /FBAN|FBAV|FB_IAB|Instagram|Line\/|KAKAOTALK|NAVER|DaumApps|Twitter|TikTok|Snapchat|Pinterest|; wv\)|\bwv\b|WebView/i.test(ua);
+        };
+
+        const openInSecureBrowser = () => {
+            if (/Android/i.test(navigator.userAgent || '')) {
+                const url = new URL(secureSignupUrl);
+                window.location.href = `intent://${url.host}${url.pathname}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(secureSignupUrl)};end`;
+                return;
+            }
+
+            window.open(secureSignupUrl, '_blank', 'noopener');
+            alert('Google sign-in cannot run inside this in-app browser. Please open this page in Chrome, Safari, or your default browser:\n' + secureSignupUrl);
+        };
+
+        const embeddedBrowserBlocked = isEmbeddedBrowser();
+        if (embeddedBrowserBlocked) {
+            secureBrowserWarning.hidden = false;
+            googleSignupBtn.lastChild.textContent = ' Open in secure browser';
+        }
 
         const getAuthErrorMessage = (error) => {
             if (error.code === 'auth/unauthorized-domain') {
@@ -102,6 +132,11 @@
 
         // Google Signup
         googleSignupBtn.addEventListener('click', () => {
+            if (embeddedBrowserBlocked) {
+                openInSecureBrowser();
+                return;
+            }
+
             const provider = new firebase.auth.GoogleAuthProvider();
             setGoogleSignupLoading(true);
             auth.signInWithRedirect(provider)

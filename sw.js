@@ -1,10 +1,11 @@
-const CACHE_NAME = 'todo-pwa-cache-v23';
+const CACHE_NAME = 'todo-pwa-cache-v24';
 const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
   '/app.js',
   '/wiki.js',
+  '/firebase-init.js',
   '/icon.svg'
 ];
 

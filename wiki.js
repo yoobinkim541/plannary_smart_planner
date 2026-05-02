@@ -2,6 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let editor = null;
     let headingShortcutHandler = null;
+    let undoStack = [];
+    let undoCaptureTimer = null;
+    let isRestoringUndo = false;
+    let lastUndoSnapshot = '';
     let allPages = [];
     let currentPageId = null;
 
@@ -19,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newWikiBtn = document.getElementById('new-wiki-btn');
     const saveWikiBtn = document.getElementById('wiki-save-btn');
     const deleteWikiBtn = document.getElementById('wiki-delete-btn');
+    const newChildWikiBtn = document.getElementById('wiki-new-child-btn');
     const searchInput = document.getElementById('wiki-search-input');
     const backBtn = document.getElementById('wiki-back-btn');
 
@@ -140,12 +145,77 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    const normalizeEditorData = (data) => {
+        if (!data || !Array.isArray(data.blocks)) return { blocks: [] };
+        return JSON.parse(JSON.stringify(data));
+    };
+
+    const escapeHtml = (value) => String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const serializeEditorData = (data) => JSON.stringify(normalizeEditorData(data));
+
+    const resetUndoHistory = (data) => {
+        const normalized = normalizeEditorData(data);
+        lastUndoSnapshot = serializeEditorData(normalized);
+        undoStack = [normalized];
+    };
+
+    const captureUndoSnapshot = async () => {
+        if (!editor || isRestoringUndo) return;
+        try {
+            const data = normalizeEditorData(await editor.save());
+            const serialized = serializeEditorData(data);
+            if (serialized === lastUndoSnapshot) return;
+
+            undoStack.push(data);
+            if (undoStack.length > 60) undoStack.shift();
+            lastUndoSnapshot = serialized;
+        } catch (error) {
+            console.warn('[Wiki] Undo snapshot skipped:', error);
+        }
+    };
+
+    const scheduleUndoSnapshot = () => {
+        if (isRestoringUndo) return;
+        clearTimeout(undoCaptureTimer);
+        undoCaptureTimer = setTimeout(captureUndoSnapshot, 250);
+    };
+
+    const undoEditorChange = async () => {
+        clearTimeout(undoCaptureTimer);
+        await captureUndoSnapshot();
+        if (!editor || undoStack.length < 2) return;
+
+        undoStack.pop();
+        const previous = normalizeEditorData(undoStack[undoStack.length - 1]);
+        isRestoringUndo = true;
+
+        try {
+            await editor.render(previous);
+            lastUndoSnapshot = serializeEditorData(previous);
+            if (saveWikiBtn) saveWikiBtn.disabled = false;
+        } catch (error) {
+            console.error('[Wiki] Undo failed:', error);
+            window.showToast('Undo failed: ' + (error.message || error), 'error');
+        } finally {
+            setTimeout(() => { isRestoringUndo = false; }, 0);
+        }
+    };
+
     // --- EDITOR INITIALIZATION ---
     const initEditor = (data) => {
         if (editor) {
             removeHeadingShortcutHandler();
             editor.destroy();
         }
+
+        clearTimeout(undoCaptureTimer);
+        resetUndoHistory(data);
 
         const tools = {};
 
@@ -304,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         editor = new EditorJS({
             holder: 'editorjs',
-            data: data || {},
+            data: normalizeEditorData(data),
             placeholder: 'Type "/" for commands...',
             tools: tools,
             inlineToolbar: true,
@@ -317,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onChange: () => {
                 // Proactively enable save button if disabled
                 if (saveWikiBtn) saveWikiBtn.disabled = false;
+                scheduleUndoSnapshot();
             }
         });
     }
@@ -364,19 +435,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
         wikiPageList.innerHTML = filteredPages.length ? '' : '<div class="empty-state" style="padding:20px;">No pages found</div>';
 
-        filteredPages.forEach(page => {
-            const el = document.createElement('div');
-            el.className = `wiki-page-item ${currentPageId === page.id ? 'active' : ''}`;
-            el.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; opacity:0.6;">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <span>${page.title || 'Untitled Document'}</span>
-            `;
-            el.onclick = () => navigateToPage(page.id);
-            wikiPageList.appendChild(el);
-        });
+        const childrenByParent = filteredPages.reduce((groups, page) => {
+            const parentId = page.parentId || '';
+            if (!groups[parentId]) groups[parentId] = [];
+            groups[parentId].push(page);
+            return groups;
+        }, {});
+
+        const renderedIds = new Set();
+        const renderPages = (parentId = '', depth = 0) => {
+            (childrenByParent[parentId] || []).forEach(page => {
+                if (renderedIds.has(page.id)) return;
+                renderedIds.add(page.id);
+
+                const el = document.createElement('div');
+                el.className = `wiki-page-item ${currentPageId === page.id ? 'active' : ''}`;
+                el.style.setProperty('--wiki-depth', depth);
+                el.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; opacity:0.6;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span>${escapeHtml(page.title || 'Untitled Document')}</span>
+                `;
+                el.onclick = () => navigateToPage(page.id);
+                wikiPageList.appendChild(el);
+                renderPages(page.id, depth + 1);
+            });
+        };
+
+        renderPages('');
+
+        if (term) {
+            filteredPages
+                .filter(page => !renderedIds.has(page.id))
+                .forEach(page => {
+                    if (renderedIds.has(page.parentId)) renderPages(page.parentId, 1);
+                    else renderPages(page.parentId || '', 0);
+                });
+        }
     };
 
     if (searchInput) {
@@ -434,12 +531,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPageList();
     };
 
-    const createNewPage = () => {
+    const createNewPage = (parentId = null) => {
         if (!currentUser) return window.showToast('Please login first', 'error');
 
         const newDoc = {
             uid: currentUser.uid,
             title: 'Untitled Document',
+            parentId: parentId || null,
             content: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -453,13 +551,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const getDescendantPageIds = (pageId) => {
+        const childIds = allPages
+            .filter(page => page.parentId === pageId)
+            .map(page => page.id);
+
+        return childIds.reduce((ids, childId) => {
+            ids.push(childId, ...getDescendantPageIds(childId));
+            return ids;
+        }, []);
+    };
+
     if (newWikiBtn) {
-        newWikiBtn.onclick = createNewPage;
+        newWikiBtn.onclick = () => createNewPage();
     }
 
     const emptyCreateBtn = document.getElementById('wiki-empty-create-btn');
     if (emptyCreateBtn) {
-        emptyCreateBtn.onclick = createNewPage;
+        emptyCreateBtn.onclick = () => createNewPage();
+    }
+
+    if (newChildWikiBtn) {
+        newChildWikiBtn.onclick = () => {
+            if (!currentPageId) return window.showToast('Open a page first', 'error');
+            createNewPage(currentPageId);
+        };
     }
 
     if (backBtn) {
@@ -503,14 +619,35 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             if (currentPageId) savePage();
         }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+            const holder = document.getElementById('editorjs');
+            if (holder && holder.contains(document.activeElement)) {
+                e.preventDefault();
+                undoEditorChange();
+            }
+        }
     });
 
     if (deleteWikiBtn) {
         deleteWikiBtn.onclick = () => {
-            if (!currentPageId || !confirm("Delete this page?")) return;
-            db.collection('wiki_pages').doc(currentPageId).delete().then(() => {
+            if (!currentPageId) return;
+            const descendantIds = getDescendantPageIds(currentPageId);
+            const confirmMessage = descendantIds.length
+                ? `Delete this page and ${descendantIds.length} subpage(s)?`
+                : 'Delete this page?';
+            if (!confirm(confirmMessage)) return;
+
+            const batch = db.batch();
+            [currentPageId, ...descendantIds].forEach(pageId => {
+                batch.delete(db.collection('wiki_pages').doc(pageId));
+            });
+
+            batch.commit().then(() => {
                 goBackToList();
                 window.showToast("Page deleted");
+            }).catch(err => {
+                console.error("Delete error:", err);
+                window.showToast("Failed to delete page: " + err.message, "error");
             });
         };
     }
