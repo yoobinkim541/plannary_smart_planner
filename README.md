@@ -1,7 +1,7 @@
 # 🚀 Modern Todo & Sticky Notes App (SPA)
 
 > **실시간 Firebase 연동을 통한 일정 및 메모 관리의 혁신적인 경험**  
-> **🌍 라이브 데모:** [https://practice-todo-list-32af6.web.app/](https://practice-todo-list-32af6.web.app/)
+> **🌍 라이브 데모:** (https://yourplanary.vercel.app/)
 
 ## 📝 프로젝트 소개
 
