@@ -36,7 +36,8 @@
             Sign in with Google
         </button>
         <p class="auth-warning" id="secure-browser-warning" hidden>
-            Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser.
+            Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser:
+            <a id="secure-browser-link" href="https://practice-todo-list-32af6.web.app/login.html" target="_blank" rel="noopener">Open login page</a>
         </p>
 
         <div class="auth-links">
@@ -56,6 +57,7 @@
         const loginBtn = document.getElementById('login-btn');
         const googleLoginBtn = document.getElementById('google-login-btn');
         const secureBrowserWarning = document.getElementById('secure-browser-warning');
+        const secureBrowserLink = document.getElementById('secure-browser-link');
         const googleLoginDefaultText = googleLoginBtn.textContent.trim();
         const secureLoginUrl = 'https://practice-todo-list-32af6.web.app/login.html';
 
@@ -68,14 +70,9 @@
         };
 
         const openInSecureBrowser = () => {
-            if (/Android/i.test(navigator.userAgent || '')) {
-                const url = new URL(secureLoginUrl);
-                window.location.href = `intent://${url.host}${url.pathname}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(secureLoginUrl)};end`;
-                return;
-            }
-
-            window.open(secureLoginUrl, '_blank', 'noopener');
-            alert('Google sign-in cannot run inside this in-app browser. Please open this page in Chrome, Safari, or your default browser:\n' + secureLoginUrl);
+            secureBrowserWarning.hidden = false;
+            if (secureBrowserLink) secureBrowserLink.focus();
+            alert('Google sign-in cannot run inside this in-app browser. Use the link below, or copy this address into Chrome/Safari:\n' + secureLoginUrl);
         };
 
         const embeddedBrowserBlocked = isEmbeddedBrowser();

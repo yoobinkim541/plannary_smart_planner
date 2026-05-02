@@ -40,7 +40,8 @@
             Sign up with Google
         </button>
         <p class="auth-warning" id="secure-browser-warning" hidden>
-            Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser.
+            Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser:
+            <a id="secure-browser-link" href="https://practice-todo-list-32af6.web.app/signup.html" target="_blank" rel="noopener">Open sign-up page</a>
         </p>
 
         <div class="auth-links">
@@ -61,6 +62,7 @@
         const signupBtn = document.getElementById('signup-btn');
         const googleSignupBtn = document.getElementById('google-signup-btn');
         const secureBrowserWarning = document.getElementById('secure-browser-warning');
+        const secureBrowserLink = document.getElementById('secure-browser-link');
         const googleSignupDefaultText = googleSignupBtn.textContent.trim();
         const secureSignupUrl = 'https://practice-todo-list-32af6.web.app/signup.html';
 
@@ -73,14 +75,9 @@
         };
 
         const openInSecureBrowser = () => {
-            if (/Android/i.test(navigator.userAgent || '')) {
-                const url = new URL(secureSignupUrl);
-                window.location.href = `intent://${url.host}${url.pathname}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(secureSignupUrl)};end`;
-                return;
-            }
-
-            window.open(secureSignupUrl, '_blank', 'noopener');
-            alert('Google sign-in cannot run inside this in-app browser. Please open this page in Chrome, Safari, or your default browser:\n' + secureSignupUrl);
+            secureBrowserWarning.hidden = false;
+            if (secureBrowserLink) secureBrowserLink.focus();
+            alert('Google sign-in cannot run inside this in-app browser. Use the link below, or copy this address into Chrome/Safari:\n' + secureSignupUrl);
         };
 
         const embeddedBrowserBlocked = isEmbeddedBrowser();

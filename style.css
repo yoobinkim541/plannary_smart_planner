@@ -870,6 +870,11 @@ textarea.composer-input {
     line-height: 1.45;
 }
 
+.auth-warning a {
+    color: var(--blue);
+    font-weight: 700;
+}
+
 .auth-links a {
     color: var(--black);
     font-weight: 600;
