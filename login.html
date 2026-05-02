@@ -50,11 +50,10 @@
     <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
     <script src="/__/firebase/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-init.js?v=v1"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <script>
         const auth = firebase.auth();
-        const GOOGLE_CLIENT_ID = '297469029810-32athgcp6i3lh36ma72famfb9dpk82ol.apps.googleusercontent.com';
+        auth.useDeviceLanguage();
         const emailInput = document.getElementById('user-email');
         const pwInput = document.getElementById('user-pw');
         const loginBtn = document.getElementById('login-btn');
@@ -64,6 +63,8 @@
         const secureBrowserCopyBtn = document.getElementById('secure-browser-copy-btn');
         const googleLoginDefaultText = googleLoginBtn.textContent.trim();
         const secureLoginUrl = 'https://practice-todo-list-32af6.web.app/login.html';
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
 
         const isEmbeddedBrowser = () => {
             const ua = navigator.userAgent || '';
@@ -106,6 +107,15 @@
             if (error.code === 'auth/popup-blocked') {
                 return 'The browser blocked Google login. Please allow popups for this site or open it in Chrome/Safari.';
             }
+            if (error.code === 'auth/popup-closed-by-user') {
+                return 'Google login was closed before it finished.';
+            }
+            if (error.code === 'auth/account-exists-with-different-credential') {
+                return 'This email already has another login method. Sign in with email/password first, then connect Google from Profile.';
+            }
+            if ((error.message || '').includes('redirect_uri_mismatch')) {
+                return 'Google OAuth redirect URI is not registered. In Google Cloud Console, add this authorized redirect URI: https://practice-todo-list-32af6.firebaseapp.com/__/auth/handler';
+            }
             return error.message;
         };
 
@@ -114,39 +124,14 @@
             googleLoginBtn.lastChild.textContent = isLoading ? ' Opening Google...' : ` ${googleLoginDefaultText}`;
         };
 
-        const signInWithGoogleToken = () => {
-            if (!window.google || !google.accounts || !google.accounts.oauth2) {
-                alert('Google sign-in is still loading. Please try again in a moment.');
-                return;
-            }
-
+        const signInWithGoogle = () => {
             setGoogleLoginLoading(true);
-            const tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: 'openid email profile',
-                prompt: 'select_account',
-                callback: (response) => {
-                    if (response.error || !response.access_token) {
-                        setGoogleLoginLoading(false);
-                        alert('Google login failed: ' + (response.error_description || response.error || 'No access token returned.'));
-                        return;
-                    }
-
-                    const credential = firebase.auth.GoogleAuthProvider.credential(null, response.access_token);
-                    auth.signInWithCredential(credential)
-                        .then(() => window.location.replace('index.html'))
-                        .catch((error) => {
-                            setGoogleLoginLoading(false);
-                            alert('Google login failed: ' + getAuthErrorMessage(error));
-                        });
-                },
-                error_callback: (error) => {
+            auth.signInWithPopup(googleProvider)
+                .then(() => window.location.replace('index.html'))
+                .catch((error) => {
                     setGoogleLoginLoading(false);
-                    alert('Google login failed: ' + (error.message || error.type || 'Google popup was closed.'));
-                }
-            });
-
-            tokenClient.requestAccessToken();
+                    alert('Google login failed: ' + getAuthErrorMessage(error));
+                });
         };
         // Email Login
         loginBtn.addEventListener('click', () => {
@@ -166,7 +151,7 @@
                 return;
             }
 
-            signInWithGoogleToken();
+            signInWithGoogle();
         });
 
         auth.onAuthStateChanged((user) => {
