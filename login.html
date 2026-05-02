@@ -47,6 +47,34 @@
         const pwInput = document.getElementById('user-pw');
         const loginBtn = document.getElementById('login-btn');
         const googleLoginBtn = document.getElementById('google-login-btn');
+        const googleLoginDefaultText = googleLoginBtn.textContent.trim();
+
+        const getAuthErrorMessage = (error) => {
+            if (error.code === 'auth/unauthorized-domain') {
+                return 'This domain is not authorized for Firebase Authentication. Add it in Firebase Console > Authentication > Settings > Authorized domains.';
+            }
+            if (error.code === 'auth/operation-not-supported-in-this-environment') {
+                return 'Google login is not supported in this browser environment. Please open the deployed Firebase Hosting URL or use a Firebase local server.';
+            }
+            if (error.code === 'auth/popup-blocked') {
+                return 'The browser blocked the login window. Please try again; Google login now uses redirect mode.';
+            }
+            return error.message;
+        };
+
+        const setGoogleLoginLoading = (isLoading) => {
+            googleLoginBtn.disabled = isLoading;
+            googleLoginBtn.lastChild.textContent = isLoading ? ' Redirecting to Google...' : ` ${googleLoginDefaultText}`;
+        };
+
+        auth.getRedirectResult()
+            .then((result) => {
+                if (result && result.user) window.location.href = 'index.html';
+            })
+            .catch((error) => {
+                setGoogleLoginLoading(false);
+                alert('Google login failed: ' + getAuthErrorMessage(error));
+            });
 
         // Email Login
         loginBtn.addEventListener('click', () => {
@@ -62,15 +90,11 @@
         // Google Login
         googleLoginBtn.addEventListener('click', () => {
             const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
-                .then(() => window.location.href = 'index.html')
+            setGoogleLoginLoading(true);
+            auth.signInWithRedirect(provider)
                 .catch((error) => {
-                    // Suppress alerts for passkey native UI interruptions
-                    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-                        console.warn('Google Auth Popup interrupted (often by Passkey UI). Waiting for potential background completion.');
-                        return;
-                    }
-                    alert('Google login failed: ' + error.message);
+                    setGoogleLoginLoading(false);
+                    alert('Google login failed: ' + getAuthErrorMessage(error));
                 });
         });
 

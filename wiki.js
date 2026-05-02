@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let editor = null;
+    let headingShortcutHandler = null;
     let allPages = [];
     let currentPageId = null;
 
@@ -87,9 +88,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const removeHeadingShortcutHandler = () => {
+        const holder = document.getElementById('editorjs');
+        if (holder && headingShortcutHandler) {
+            holder.removeEventListener('keydown', headingShortcutHandler);
+        }
+        headingShortcutHandler = null;
+    };
+
+    const getHeadingLevelFromSelection = (event) => {
+        const editable = event.target.closest ? event.target.closest('[contenteditable="true"]') : null;
+        if (!editable || !editable.closest('.ce-block')) return null;
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return null;
+
+        const range = selection.getRangeAt(0);
+        if (!range.collapsed || !editable.contains(range.startContainer)) return null;
+
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(editable);
+        preCaretRange.setEnd(range.startContainer, range.startOffset);
+
+        const textBeforeCaret = preCaretRange.toString().replace(/\uFEFF/g, '');
+        const match = textBeforeCaret.match(/^(#{1,6})$/);
+        return match ? match[1].length : null;
+    };
+
+    const createHeadingShortcutHandler = () => {
+        return (event) => {
+            if (event.key !== ' ' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+            if (!editor || typeof Header === 'undefined') return;
+
+            const level = getHeadingLevelFromSelection(event);
+            if (!level) return;
+
+            const currentIndex = editor.blocks.getCurrentBlockIndex();
+            const currentBlock = editor.blocks.getBlockByIndex(currentIndex);
+            if (currentBlock && currentBlock.name && currentBlock.name !== 'paragraph') return;
+
+            event.preventDefault();
+
+            try {
+                editor.blocks.delete(currentIndex);
+                editor.blocks.insert('header', { text: '', level }, {}, currentIndex, true);
+                if (saveWikiBtn) saveWikiBtn.disabled = false;
+            } catch (error) {
+                console.error('[Wiki] Heading shortcut failed:', error);
+                window.showToast('Heading shortcut failed: ' + (error.message || error), 'error');
+            }
+        };
+    };
+
     // --- EDITOR INITIALIZATION ---
     const initEditor = (data) => {
         if (editor) {
+            removeHeadingShortcutHandler();
             editor.destroy();
         }
 
@@ -254,6 +308,12 @@ document.addEventListener('DOMContentLoaded', () => {
             placeholder: 'Type "/" for commands...',
             tools: tools,
             inlineToolbar: true,
+            onReady: () => {
+                const holder = document.getElementById('editorjs');
+                removeHeadingShortcutHandler();
+                headingShortcutHandler = createHeadingShortcutHandler();
+                if (holder) holder.addEventListener('keydown', headingShortcutHandler);
+            },
             onChange: () => {
                 // Proactively enable save button if disabled
                 if (saveWikiBtn) saveWikiBtn.disabled = false;

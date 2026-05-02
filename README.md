@@ -60,8 +60,12 @@ memo/
    ```bash
    git clone https://github.com/사용자아이디/todo.git
    ```
-2. **라이브 서버 실행**:
-   - `index.html`을 라이브 서버 플러그인 등으로 실행하거나, 배포된 [라이브 링크](https://practice-todo-list-32af6.web.app/)에 접속하세요.
+2. **Firebase Hosting 로컬 서버 실행**:
+   - 이 앱은 `/__/firebase/init.js` 예약 URL을 통해 Firebase 설정을 자동 로드합니다. 일반 Live Server나 `file://` 실행 대신 Firebase Hosting 서버를 사용하세요.
+   ```bash
+   npx firebase-tools serve --only hosting
+   ```
+   - 또는 배포된 [라이브 링크](https://practice-todo-list-32af6.web.app/)에 접속하세요.
 3. **Firebase 연동**:
    - 직접 Firebase 프로젝트를 구축하려면 `firebase init`을 통해 연동 설정을 새롭게 구성하시기 바랍니다.
 
