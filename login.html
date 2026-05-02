@@ -49,9 +49,11 @@
     <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
     <script src="/__/firebase/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-init.js?v=v1"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <script>
         const auth = firebase.auth();
+        const GOOGLE_CLIENT_ID = '297469029810-32athgcp6i3lh36ma72famfb9dpk82ol.apps.googleusercontent.com';
         const emailInput = document.getElementById('user-email');
         const pwInput = document.getElementById('user-pw');
         const loginBtn = document.getElementById('login-btn');
@@ -96,14 +98,45 @@
 
         const setGoogleLoginLoading = (isLoading) => {
             googleLoginBtn.disabled = isLoading;
-            googleLoginBtn.lastChild.textContent = isLoading ? ' Redirecting to Google...' : ` ${googleLoginDefaultText}`;
+            googleLoginBtn.lastChild.textContent = isLoading ? ' Opening Google...' : ` ${googleLoginDefaultText}`;
         };
 
-        auth.getRedirectResult()
-            .then((result) => {
-                if (result && result.user) window.location.href = 'index.html';
-            })
-            .catch((error) => {
+        const signInWithGoogleToken = () => {
+            if (!window.google || !google.accounts || !google.accounts.oauth2) {
+                alert('Google sign-in is still loading. Please try again in a moment.');
+                return;
+            }
+
+            setGoogleLoginLoading(true);
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: 'openid email profile',
+                prompt: 'select_account',
+                callback: (response) => {
+                    if (response.error || !response.access_token) {
+                        setGoogleLoginLoading(false);
+                        alert('Google login failed: ' + (response.error_description || response.error || 'No access token returned.'));
+                        return;
+                    }
+
+                    const credential = firebase.auth.GoogleAuthProvider.credential(null, response.access_token);
+                    auth.signInWithCredential(credential)
+                        .then(() => window.location.replace('index.html'))
+                        .catch((error) => {
+                            setGoogleLoginLoading(false);
+                            alert('Google login failed: ' + getAuthErrorMessage(error));
+                        });
+                },
+                error_callback: (error) => {
+                    setGoogleLoginLoading(false);
+                    alert('Google login failed: ' + (error.message || error.type || 'Google popup was closed.'));
+                }
+            });
+
+            tokenClient.requestAccessToken();
+        };
+
+        auth.getRedirectResult().catch((error) => {
                 setGoogleLoginLoading(false);
                 alert('Google login failed: ' + getAuthErrorMessage(error));
             });
@@ -126,14 +159,7 @@
                 return;
             }
 
-            const provider = new firebase.auth.GoogleAuthProvider();
-            setGoogleLoginLoading(true);
-            auth.signInWithPopup(provider)
-                .then(() => window.location.href = 'index.html')
-                .catch((error) => {
-                    setGoogleLoginLoading(false);
-                    alert('Google login failed: ' + getAuthErrorMessage(error));
-                });
+            signInWithGoogleToken();
         });
 
         auth.onAuthStateChanged((user) => {
