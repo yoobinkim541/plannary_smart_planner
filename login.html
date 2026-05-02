@@ -108,6 +108,9 @@
             if (error.code === 'auth/unauthorized-domain') {
                 return 'This domain is not authorized for Firebase Authentication. Add it in Firebase Console > Authentication > Settings > Authorized domains.';
             }
+            if (error.code === 'auth/operation-not-allowed') {
+                return 'Email/Password login is disabled in Firebase Console. Enable Authentication > Sign-in method > Email/Password, then try again.';
+            }
             if (error.code === 'auth/operation-not-supported-in-this-environment') {
                 return 'Google login is not supported in this browser environment. Please open the deployed Firebase Hosting URL or use a Firebase local server.';
             }
@@ -148,7 +151,7 @@
 
             auth.signInWithEmailAndPassword(email, password)
                 .then(goToApp)
-                .catch((error) => alert('Login failed: ' + error.message));
+                .catch((error) => alert('Login failed: ' + getAuthErrorMessage(error)));
         });
 
         // Google Login

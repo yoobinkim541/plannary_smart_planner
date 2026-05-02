@@ -189,6 +189,9 @@ function getAuthActionErrorMessage(error) {
     if (error.code === 'auth/provider-already-linked') {
         return 'Email password login is already enabled for this account.';
     }
+    if (error.code === 'auth/operation-not-allowed') {
+        return 'Email/Password login is disabled in this Firebase project. Enable Firebase Console > Authentication > Sign-in method > Email/Password, then try again.';
+    }
     return error.message || 'Authentication failed.';
 }
 
