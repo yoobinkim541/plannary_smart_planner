@@ -1,10 +1,10 @@
 {
-  "name": "modern-todo-auth",
+  "name": "planary",
   "version": "1.0.0",
   "description": "A premium todo list with Firebase Auth and Firestore",
   "main": "index.html",
   "scripts": {
-    "start": "firebase serve"
+    "start": "serve ."
   },
   "dependencies": {
     "puppeteer": "^24.40.0",

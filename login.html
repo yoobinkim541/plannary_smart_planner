@@ -37,7 +37,7 @@
         </button>
         <p class="auth-warning" id="secure-browser-warning" hidden>
             Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser:
-            <a id="secure-browser-link" href="https://practice-todo-list-32af6.web.app" target="_blank" rel="noopener">Open app</a>
+            <a id="secure-browser-link" href="/" target="_blank" rel="noopener">Open app</a>
             <button type="button" class="auth-copy-btn" id="secure-browser-copy-btn">Copy link</button>
         </p>
 
@@ -47,8 +47,8 @@
     </div>
 
     <!-- Firebase Auto-Init -->
-    <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
-    <script src="/__/firebase/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-init.js?v=v1"></script>
 
     <script>
@@ -62,10 +62,11 @@
         const secureBrowserLink = document.getElementById('secure-browser-link');
         const secureBrowserCopyBtn = document.getElementById('secure-browser-copy-btn');
         const googleLoginDefaultText = googleLoginBtn.textContent.trim();
-        const secureLoginUrl = 'https://practice-todo-list-32af6.web.app';
+        const secureLoginUrl = window.location.origin;
         const googleProvider = new firebase.auth.GoogleAuthProvider();
         googleProvider.setCustomParameters({ prompt: 'select_account' });
         let isNavigatingToApp = false;
+        if (secureBrowserLink) secureBrowserLink.href = secureLoginUrl;
 
         const goToApp = () => {
             if (isNavigatingToApp) return;

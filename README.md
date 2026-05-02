@@ -34,7 +34,7 @@
 ## 🛠 사용된 기술 (Tech Stack)
 
 - **언어**: Vanilla JavaScript (ES6+), HTML5, CSS3
-- **플랫폼**: Firebase (Auth, Firestore, Hosting)
+- **플랫폼**: Firebase (Auth, Firestore, Storage), Vercel/Firebase Hosting
 - **주요 기법**: 
   - Dynamic UI Rendering (Section Swapping 스타일의 SPA)
   - Interactive Drag & Drop System
@@ -48,7 +48,8 @@ memo/
 ├── style.css           # 앱 전체 UI 디자인 시스템 및 글래스모피즘 효과
 ├── app.js              # 핵심 비즈니스 로직 및 SPA 라우팅 엔진
 ├── login.html / signup.html # 인증 보안 페이지
-├── firebase.json       # Hosting 및 Firestore 호환 설정 파일
+├── firebase.json       # Firebase Hosting 및 Firestore 호환 설정 파일
+├── vercel.json         # Vercel 정적 프론트 배포 설정
 └── firestore.rules     # 강화된 데이터 보안 규칙
 ```
 
@@ -60,14 +61,18 @@ memo/
    ```bash
    git clone https://github.com/사용자아이디/todo.git
    ```
-2. **Firebase Hosting 로컬 서버 실행**:
-   - 이 앱은 `/__/firebase/init.js` 예약 URL을 통해 Firebase 설정을 자동 로드합니다. 일반 Live Server나 `file://` 실행 대신 Firebase Hosting 서버를 사용하세요.
+2. **로컬 정적 서버 실행**:
+   - Firebase 백엔드는 유지하되 Firebase SDK는 CDN에서 로드하므로, Vercel/일반 정적 서버/Firebase Hosting 모두에서 실행할 수 있습니다.
    ```bash
-   npx firebase-tools serve --only hosting
+   npx serve .
    ```
    - 또는 배포된 [라이브 링크](https://practice-todo-list-32af6.web.app/)에 접속하세요.
-3. **Firebase 연동**:
-   - 직접 Firebase 프로젝트를 구축하려면 `firebase init`을 통해 연동 설정을 새롭게 구성하시기 바랍니다.
+3. **Vercel 배포**:
+   - GitHub 저장소를 Vercel에 Import하고 프로젝트 이름을 `planary` 또는 `planary-app`으로 설정하세요.
+   - Framework Preset은 `Other`, Build Command는 비워두고 Output Directory는 `.`를 사용합니다.
+   - 배포 후 Firebase Console > Authentication > Settings > Authorized domains에 Vercel 도메인(예: `planary.vercel.app`)을 추가하세요.
+4. **Firebase 연동**:
+   - 직접 Firebase 프로젝트를 구축하려면 `firebase-init.js`의 설정과 Firestore/Storage/Auth 규칙을 새 프로젝트에 맞게 구성하세요.
 
 ---
 **Designed & Developed with ❤️ for productivity.**
