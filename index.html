@@ -508,6 +508,27 @@
                 <div class="profile-card">
                     <p><strong>Name:</strong> <span id="profile-view-name"></span></p>
                     <p><strong>Email:</strong> <span id="profile-view-email"></span></p>
+                    <p><strong>Login methods:</strong> <span id="profile-login-methods"></span></p>
+
+                    <div class="profile-password-panel">
+                        <h3>Email password login</h3>
+                        <p id="profile-password-help" class="profile-help-text">
+                            Set a password for this email so you can sign in with email and password too.
+                        </p>
+                        <div class="profile-password-grid">
+                            <label>
+                                New password
+                                <input type="password" id="profile-password" class="auth-input" autocomplete="new-password" placeholder="At least 6 characters">
+                            </label>
+                            <label>
+                                Confirm password
+                                <input type="password" id="profile-password-confirm" class="auth-input" autocomplete="new-password" placeholder="Confirm password">
+                            </label>
+                        </div>
+                        <button class="confirm-btn" id="profile-password-btn" style="width: auto; padding: 10px 24px; margin-top: 14px;">Set password login</button>
+                        <p id="profile-password-status" class="profile-status-text" role="status"></p>
+                    </div>
+
                     <button class="confirm-btn" id="profile-logout-btn" style="width: auto; padding: 10px 24px; margin-top: 20px;">Logout</button>
                 </div>
             </section>

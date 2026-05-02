@@ -42,6 +42,7 @@
         <p class="auth-warning" id="secure-browser-warning" hidden>
             Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser:
             <a id="secure-browser-link" href="https://practice-todo-list-32af6.web.app/signup.html" target="_blank" rel="noopener">Open sign-up page</a>
+            <button type="button" class="auth-copy-btn" id="secure-browser-copy-btn">Copy link</button>
         </p>
 
         <div class="auth-links">
@@ -65,6 +66,7 @@
         const googleSignupBtn = document.getElementById('google-signup-btn');
         const secureBrowserWarning = document.getElementById('secure-browser-warning');
         const secureBrowserLink = document.getElementById('secure-browser-link');
+        const secureBrowserCopyBtn = document.getElementById('secure-browser-copy-btn');
         const googleSignupDefaultText = googleSignupBtn.textContent.trim();
         const secureSignupUrl = 'https://practice-todo-list-32af6.web.app/signup.html';
 
@@ -78,15 +80,26 @@
 
         const openInSecureBrowser = () => {
             secureBrowserWarning.hidden = false;
-            if (secureBrowserLink) secureBrowserLink.focus();
-            alert('Google sign-in cannot run inside this in-app browser. Use the link below, or copy this address into Chrome/Safari:\n' + secureSignupUrl);
+            copySecureBrowserUrl();
         };
 
         const embeddedBrowserBlocked = isEmbeddedBrowser();
         if (embeddedBrowserBlocked) {
             secureBrowserWarning.hidden = false;
-            googleSignupBtn.lastChild.textContent = ' Open in secure browser';
+            googleSignupBtn.lastChild.textContent = ' Copy secure sign-up link';
         }
+
+        const copySecureBrowserUrl = async () => {
+            try {
+                await navigator.clipboard.writeText(secureSignupUrl);
+                alert('Sign-up link copied. Paste it into Chrome, Safari, or your default browser:\n' + secureSignupUrl);
+            } catch (error) {
+                if (secureBrowserLink) secureBrowserLink.focus();
+                alert('Copy this sign-up link into Chrome, Safari, or your default browser:\n' + secureSignupUrl);
+            }
+        };
+
+        if (secureBrowserCopyBtn) secureBrowserCopyBtn.addEventListener('click', copySecureBrowserUrl);
 
         const getAuthErrorMessage = (error) => {
             if (error.code === 'auth/unauthorized-domain') {
@@ -96,7 +109,7 @@
                 return 'Google login is not supported in this browser environment. Please open the deployed Firebase Hosting URL or use a Firebase local server.';
             }
             if (error.code === 'auth/popup-blocked') {
-                return 'The browser blocked the login window. Please try again; Google login now uses redirect mode.';
+                return 'The browser blocked Google login. Please allow popups for this site or open it in Chrome/Safari.';
             }
             return error.message;
         };
@@ -140,12 +153,6 @@
 
             tokenClient.requestAccessToken();
         };
-
-        auth.getRedirectResult().catch((error) => {
-                setGoogleSignupLoading(false);
-                alert('Google login failed: ' + getAuthErrorMessage(error));
-            });
-
         // Email Signup
         signupBtn.addEventListener('click', () => {
             const email = emailInput.value.trim();

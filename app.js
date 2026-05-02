@@ -147,6 +147,12 @@ function handleHash() {
 function updateProfileUI(user) {
     if (!user) return;
     const name = user.displayName || user.email.split('@')[0];
+    const providerLabels = {
+        'google.com': 'Google',
+        'password': 'Email password'
+    };
+    const providerIds = user.providerData.map(provider => provider.providerId);
+    const hasPasswordProvider = providerIds.includes('password');
     if (getEl('user-name-sidebar')) getEl('user-name-sidebar').textContent = name;
     if (getEl('user-email-sidebar')) getEl('user-email-sidebar').textContent = user.email;
     if (getEl('user-photo')) {
@@ -156,6 +162,90 @@ function updateProfileUI(user) {
     }
     if (getEl('profile-view-name')) getEl('profile-view-name').textContent = name;
     if (getEl('profile-view-email')) getEl('profile-view-email').textContent = user.email;
+    if (getEl('profile-login-methods')) {
+        getEl('profile-login-methods').textContent = providerIds.map(id => providerLabels[id] || id).join(', ') || 'Email password';
+    }
+    if (getEl('profile-password-help')) {
+        getEl('profile-password-help').textContent = hasPasswordProvider
+            ? 'Email password login is already enabled. Enter a new password to update it.'
+            : 'Set a password for this email so you can sign in with email and password too.';
+    }
+    if (getEl('profile-password-btn')) {
+        getEl('profile-password-btn').textContent = hasPasswordProvider ? 'Update password' : 'Set password login';
+    }
+}
+
+function getAuthActionErrorMessage(error) {
+    if (!error) return 'Unknown error.';
+    if (error.code === 'auth/requires-recent-login') {
+        return 'For security, please log out, sign in with Google again, then set the password.';
+    }
+    if (error.code === 'auth/weak-password') {
+        return 'Password should be at least 6 characters.';
+    }
+    if (error.code === 'auth/email-already-in-use' || error.code === 'auth/credential-already-in-use') {
+        return 'This email is already connected to another account. Sign in with that method first.';
+    }
+    if (error.code === 'auth/provider-already-linked') {
+        return 'Email password login is already enabled for this account.';
+    }
+    return error.message || 'Authentication failed.';
+}
+
+async function connectEmailPasswordLogin() {
+    if (!auth || !auth.currentUser) return;
+
+    const user = auth.currentUser;
+    const passwordInput = getEl('profile-password');
+    const confirmInput = getEl('profile-password-confirm');
+    const button = getEl('profile-password-btn');
+    const status = getEl('profile-password-status');
+    const password = passwordInput ? passwordInput.value : '';
+    const confirmPassword = confirmInput ? confirmInput.value : '';
+    const hasPasswordProvider = user.providerData.some(provider => provider.providerId === 'password');
+
+    const setStatus = (message, type = '') => {
+        if (!status) return;
+        status.textContent = message;
+        status.className = `profile-status-text ${type}`.trim();
+    };
+
+    if (!user.email) {
+        setStatus('This account has no email address to connect.', 'error');
+        return;
+    }
+    if (!password || password.length < 6) {
+        setStatus('Password should be at least 6 characters.', 'error');
+        return;
+    }
+    if (password !== confirmPassword) {
+        setStatus('Passwords do not match.', 'error');
+        return;
+    }
+
+    try {
+        if (button) button.disabled = true;
+        setStatus(hasPasswordProvider ? 'Updating password...' : 'Connecting email password login...');
+
+        if (hasPasswordProvider) {
+            await user.updatePassword(password);
+        } else {
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+            await user.linkWithCredential(credential);
+        }
+
+        if (passwordInput) passwordInput.value = '';
+        if (confirmInput) confirmInput.value = '';
+        await user.reload();
+        currentUser = auth.currentUser;
+        updateProfileUI(currentUser);
+        setStatus('Done. You can now sign in with this email and password.', 'success');
+        showToast('Email password login enabled.');
+    } catch (error) {
+        setStatus(getAuthActionErrorMessage(error), 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
 }
 
 // --- RENDER FUNCTIONS ---
@@ -610,6 +700,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Logout
+    if (getEl('profile-password-btn')) getEl('profile-password-btn').onclick = connectEmailPasswordLogin;
+
     const logout = () => confirm('Logout?') && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;

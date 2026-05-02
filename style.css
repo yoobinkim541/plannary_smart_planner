@@ -875,6 +875,25 @@ textarea.composer-input {
     font-weight: 700;
 }
 
+.auth-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    padding: 4px 8px;
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    border-radius: 6px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--blue);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.auth-copy-btn:hover {
+    background: rgba(37, 99, 235, 0.14);
+}
+
 .auth-links a {
     color: var(--black);
     font-weight: 600;
@@ -1064,6 +1083,62 @@ textarea.composer-input {
     margin-bottom: 12px;
     font-size: 1.05rem;
     color: var(--text-1);
+}
+
+.profile-password-panel {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.profile-password-panel h3 {
+    font-size: 1rem;
+    margin-bottom: 8px;
+    color: var(--text-1);
+}
+
+.profile-help-text,
+.profile-status-text {
+    font-size: 0.9rem;
+    color: var(--text-2);
+    line-height: 1.5;
+}
+
+.profile-status-text {
+    min-height: 1.4em;
+    margin-top: 10px;
+}
+
+.profile-status-text.success {
+    color: var(--green);
+}
+
+.profile-status-text.error {
+    color: var(--red);
+}
+
+.profile-password-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.profile-password-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-2);
+}
+
+@media (max-width: 768px) {
+    .profile-password-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* === DASHBOARD SPECIFIC STYLES === */
