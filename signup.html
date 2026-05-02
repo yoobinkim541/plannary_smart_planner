@@ -139,7 +139,8 @@
 
             const provider = new firebase.auth.GoogleAuthProvider();
             setGoogleSignupLoading(true);
-            auth.signInWithRedirect(provider)
+            auth.signInWithPopup(provider)
+                .then(() => window.location.href = 'index.html')
                 .catch((error) => {
                     setGoogleSignupLoading(false);
                     alert('Google login failed: ' + getAuthErrorMessage(error));
