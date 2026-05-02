@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 currentUser = user;
                 updateProfileUI(user);
-                if (isAuthPage) window.location.href = 'index.html';
+                if (isAuthPage) window.location.replace('/');
                 else { 
                     loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); 
                 }

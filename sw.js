@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-pwa-cache-v28';
+const CACHE_NAME = 'todo-pwa-cache-v29';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -36,9 +36,20 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin === self.location.origin && requestUrl.pathname.startsWith('/__/')) {
     event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html'))
+    );
     return;
   }
 

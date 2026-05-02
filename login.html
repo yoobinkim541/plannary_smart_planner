@@ -65,6 +65,13 @@
         const secureLoginUrl = 'https://practice-todo-list-32af6.web.app/login.html';
         const googleProvider = new firebase.auth.GoogleAuthProvider();
         googleProvider.setCustomParameters({ prompt: 'select_account' });
+        let isNavigatingToApp = false;
+
+        const goToApp = () => {
+            if (isNavigatingToApp) return;
+            isNavigatingToApp = true;
+            window.location.replace('/');
+        };
 
         const isEmbeddedBrowser = () => {
             const ua = navigator.userAgent || '';
@@ -127,7 +134,7 @@
         const signInWithGoogle = () => {
             setGoogleLoginLoading(true);
             auth.signInWithPopup(googleProvider)
-                .then(() => window.location.replace('index.html'))
+                .then(goToApp)
                 .catch((error) => {
                     setGoogleLoginLoading(false);
                     alert('Google login failed: ' + getAuthErrorMessage(error));
@@ -140,7 +147,7 @@
             if (!email || !password) return alert('Please enter both email and password.');
 
             auth.signInWithEmailAndPassword(email, password)
-                .then(() => window.location.href = 'index.html')
+                .then(goToApp)
                 .catch((error) => alert('Login failed: ' + error.message));
         });
 
@@ -155,7 +162,7 @@
         });
 
         auth.onAuthStateChanged((user) => {
-            if (user) window.location.href = 'index.html';
+            if (user) goToApp();
         });
     </script>
 </body>
