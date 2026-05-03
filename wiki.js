@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const wikiTitleInput = document.getElementById('wiki-title-input');
     const wikiEditorView = document.getElementById('wiki-editor-view');
     const wikiEmptyView = document.getElementById('wiki-empty-view');
+    const wikiSubpagesSection = document.getElementById('wiki-subpages-section');
+    const wikiSubpagesList = document.getElementById('wiki-subpages-list');
+    const wikiCreateSubpageBtn = document.getElementById('wiki-create-subpage-btn');
     const newWikiBtn = document.getElementById('new-wiki-btn');
     const saveWikiBtn = document.getElementById('wiki-save-btn');
     const deleteWikiBtn = document.getElementById('wiki-delete-btn');
@@ -416,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .onSnapshot(snap => {
                 allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderPageList();
+                if (currentPageId) renderSubpages(currentPageId);
                 checkHash(); // Check if we should open a page based on URL
             }, error => {
                 console.log("Index issue, falling back to client sort", error);
@@ -424,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                         allPages.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
                         renderPageList();
+                        if (currentPageId) renderSubpages(currentPageId);
                         checkHash();
                     });
             });
@@ -489,6 +494,58 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.hash = `wiki/${pageId}`;
     };
 
+    const getChildPages = (pageId) => allPages
+        .filter(page => page.parentId === pageId)
+        .sort((a, b) => (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0));
+
+    const renderSubpages = (pageId) => {
+        if (!wikiSubpagesSection || !wikiSubpagesList) return;
+        if (!pageId) {
+            wikiSubpagesSection.style.display = 'none';
+            wikiSubpagesList.innerHTML = '';
+            return;
+        }
+
+        const childPages = getChildPages(pageId);
+        wikiSubpagesSection.style.display = 'flex';
+
+        if (!childPages.length) {
+            wikiSubpagesList.innerHTML = `
+                <button class="wiki-subpage-card wiki-subpage-create-card" type="button" id="wiki-inline-create-subpage-btn">
+                    <span class="wiki-subpage-icon">+</span>
+                    <span class="wiki-subpage-text">
+                        <strong>Create first subpage</strong>
+                        <span>Keep related notes nested under this page.</span>
+                    </span>
+                </button>
+            `;
+            const inlineCreateBtn = document.getElementById('wiki-inline-create-subpage-btn');
+            if (inlineCreateBtn) inlineCreateBtn.onclick = () => createNewPage(pageId);
+            return;
+        }
+
+        wikiSubpagesList.innerHTML = '';
+        childPages.forEach((page) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'wiki-subpage-card';
+            item.innerHTML = `
+                <span class="wiki-subpage-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                </span>
+                <span class="wiki-subpage-text">
+                    <strong>${escapeHtml(page.title || 'Untitled Document')}</strong>
+                    <span>${page.updatedAt ? `Updated ${new Date(page.updatedAt.toMillis()).toLocaleDateString()}` : 'Open subpage'}</span>
+                </span>
+            `;
+            item.onclick = () => navigateToPage(page.id);
+            wikiSubpagesList.appendChild(item);
+        });
+    };
+
     const goBackToList = () => {
         window.location.hash = `page-wiki`;
     };
@@ -523,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (saveWikiBtn) saveWikiBtn.disabled = true;
         initEditor(page.content);
+        renderSubpages(page.id);
         setTimeout(() => { if (saveWikiBtn) saveWikiBtn.disabled = false; }, 500);
 
         renderPageList();
@@ -533,6 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pageWiki.classList.remove('editor-active');
         wikiEditorView.style.display = 'none';
         wikiEmptyView.style.display = 'flex';
+        renderSubpages(null);
         renderPageList();
     };
 
@@ -578,6 +637,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (backBtn) {
         backBtn.onclick = goBackToList;
+    }
+
+    if (wikiCreateSubpageBtn) {
+        wikiCreateSubpageBtn.onclick = () => {
+            if (!currentPageId) return;
+            createNewPage(currentPageId);
+        };
     }
 
     // --- SAVE FUNCTION ---

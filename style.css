@@ -1911,6 +1911,93 @@ textarea.composer-input {
     min-height: 300px;
 }
 
+.wiki-subpages-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+.wiki-subpages-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.wiki-subpages-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-1);
+}
+
+.wiki-subpages-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.wiki-subpage-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg);
+    color: var(--text-1);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.wiki-subpage-card:hover {
+    border-color: var(--blue);
+    transform: translateY(-1px);
+}
+
+.wiki-subpage-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--blue);
+    flex-shrink: 0;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.wiki-subpage-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.wiki-subpage-text strong,
+.wiki-subpage-text span {
+    display: block;
+}
+
+.wiki-subpage-text strong {
+    font-size: 0.95rem;
+}
+
+.wiki-subpage-text span {
+    font-size: 0.82rem;
+    color: var(--text-2);
+}
+
+.wiki-subpage-create-card {
+    border-style: dashed;
+}
+
 /* Editor.js Dark Mode Overrides */
 [data-theme="dark"] .codex-editor {
     --color-background-document: var(--bg) !important;
