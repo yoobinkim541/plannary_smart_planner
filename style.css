@@ -2107,6 +2107,57 @@ textarea.composer-input {
     margin-bottom: 8px;
 }
 
+.task-empty-container {
+    min-height: 420px;
+    margin-top: 8px;
+}
+
+.collection-empty-container {
+    min-height: 360px;
+    margin-top: 8px;
+}
+
+.task-empty-content {
+    max-width: 540px;
+}
+
+.collection-empty-content {
+    max-width: 540px;
+}
+
+.task-empty-illustration {
+    color: var(--green);
+}
+
+.collection-empty-illustration {
+    width: 136px;
+    height: 136px;
+}
+
+.project-empty-illustration {
+    color: var(--blue);
+}
+
+.bookmark-empty-illustration {
+    color: #d97706;
+}
+
+.archive-empty-illustration {
+    color: var(--purple);
+}
+
+.task-empty-container:hover .task-empty-illustration {
+    transform: translateY(-8px) rotate(-3deg);
+}
+
+.collection-empty-container:hover .collection-empty-illustration {
+    transform: translateY(-8px) rotate(3deg);
+}
+
+.archive-empty-container:hover .archive-empty-illustration {
+    transform: translateY(-8px) rotate(-3deg);
+}
+
 [data-theme="dark"] .wiki-empty-illustration {
     background: var(--surface);
     box-shadow: 0 12px 30px rgba(0,0,0,0.2);

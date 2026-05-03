@@ -255,7 +255,34 @@ async function connectEmailPasswordLogin() {
 function renderTodos(todos) {
     const todoList = getEl('todo-list');
     if (!todoList) return;
-    todoList.innerHTML = todos.length ? '' : '<div class="empty-state">No tasks found.</div>';
+    todoList.innerHTML = todos.length ? '' : `
+        <div class="wiki-empty-container task-empty-container">
+            <div class="wiki-empty-content task-empty-content">
+                <div class="wiki-empty-illustration task-empty-illustration">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                </div>
+                <h2>할 일을 채워보세요</h2>
+                <p>해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.</p>
+                <button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span style="vertical-align: middle;">첫 작업 추가하기</span>
+                </button>
+            </div>
+        </div>`;
+
+    if (!todos.length) {
+        const emptyCreateBtn = getEl('task-empty-create-btn');
+        if (emptyCreateBtn) {
+            emptyCreateBtn.onclick = () => {
+                const todoInput = getEl('todo-input');
+                if (todoInput) todoInput.focus();
+            };
+        }
+        return;
+    }
     
     const today = new Date().toISOString().split('T')[0];
 
@@ -451,7 +478,21 @@ function renderArchive() {
     const archived = allTodos.filter(t => t.archived);
     if (getEl('archive-total-items')) getEl('archive-total-items').textContent = archived.length;
     if (getEl('archive-total-completed')) getEl('archive-total-completed').textContent = allTodos.filter(t => t.completed).length;
-    archiveListEl.innerHTML = archived.length ? '' : '<div class="empty-state">No archived items.</div>';
+    archiveListEl.innerHTML = archived.length ? '' : `
+        <div class="wiki-empty-container collection-empty-container archive-empty-container">
+            <div class="wiki-empty-content collection-empty-content">
+                <div class="wiki-empty-illustration collection-empty-illustration archive-empty-illustration">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                        <rect x="1" y="3" width="22" height="5"></rect>
+                        <line x1="10" y1="12" x2="14" y2="12"></line>
+                    </svg>
+                </div>
+                <h2>보관함이 비어 있습니다</h2>
+                <p>완료했거나 잠시 치워둔 작업이 여기에 쌓입니다.<br>Tasks 화면에서 항목을 보관하면 이곳에서 다시 꺼낼 수 있습니다.</p>
+            </div>
+        </div>`;
+    if (!archived.length) return;
     archived.forEach(task => {
         const item = document.createElement('div'); 
         item.className = 'archive-task-item';
@@ -507,7 +548,32 @@ function renderProjectsDropdown() {
 function renderProjectManagementList() {
     const list = getEl('projects-list'); // Fixed ID
     if (!list) return;
-    list.innerHTML = allProjects.length ? '' : '<div class="empty-state">No projects yet.</div>';
+    list.innerHTML = allProjects.length ? '' : `
+        <div class="wiki-empty-container collection-empty-container project-empty-container">
+            <div class="wiki-empty-content collection-empty-content">
+                <div class="wiki-empty-illustration collection-empty-illustration project-empty-illustration">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <h2>프로젝트를 만들어보세요</h2>
+                <p>업무와 아이디어를 주제별로 나누면 정리 속도가 빨라집니다.<br>상단 입력창에서 첫 프로젝트를 추가해 작업을 묶어보세요.</p>
+                <button class="confirm-btn collection-empty-create-btn" id="project-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span style="vertical-align: middle;">첫 프로젝트 만들기</span>
+                </button>
+            </div>
+        </div>`;
+    if (!allProjects.length) {
+        const emptyCreateBtn = getEl('project-empty-create-btn');
+        if (emptyCreateBtn) {
+            emptyCreateBtn.onclick = () => {
+                const projectInput = getEl('project-input');
+                if (projectInput) projectInput.focus();
+            };
+        }
+        return;
+    }
     allProjects.forEach(p => {
         const div = document.createElement('div'); div.className = 'project-card';
         div.innerHTML = `
@@ -525,7 +591,32 @@ window.deleteProject = (id) => confirm('Delete project?') && db.collection('proj
 
 function renderBookmarks() {
     const list = getEl('bookmarks-list'); if (!list) return;
-    list.innerHTML = allBookmarks.length ? '' : '<div class="empty-state">No bookmarks.</div>';
+    list.innerHTML = allBookmarks.length ? '' : `
+        <div class="wiki-empty-container collection-empty-container bookmark-empty-container">
+            <div class="wiki-empty-content collection-empty-content">
+                <div class="wiki-empty-illustration collection-empty-illustration bookmark-empty-illustration">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <h2>북마크를 저장해보세요</h2>
+                <p>자주 참고하는 링크를 태그와 함께 모아두는 공간입니다.<br>상단 입력창에 URL을 붙여 첫 북마크를 저장하세요.</p>
+                <button class="confirm-btn collection-empty-create-btn" id="bookmark-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span style="vertical-align: middle;">첫 북마크 저장하기</span>
+                </button>
+            </div>
+        </div>`;
+    if (!allBookmarks.length) {
+        const emptyCreateBtn = getEl('bookmark-empty-create-btn');
+        if (emptyCreateBtn) {
+            emptyCreateBtn.onclick = () => {
+                const bookmarkInput = getEl('bm-url-input');
+                if (bookmarkInput) bookmarkInput.focus();
+            };
+        }
+        return;
+    }
     allBookmarks.forEach(bm => {
         let domain = "";
         try { domain = new URL(bm.url).hostname; } catch(e) { domain = bm.url; }
