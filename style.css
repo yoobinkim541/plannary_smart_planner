@@ -2174,6 +2174,12 @@ textarea.composer-input {
     margin-top: 8px;
 }
 
+.projects-grid > .collection-empty-container,
+.bookmarks-grid > .collection-empty-container {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
 .task-empty-content {
     max-width: 540px;
 }
