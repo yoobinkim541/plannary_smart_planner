@@ -1,32 +1,142 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function existingOwner() {
+      return isOwner(resource.data.uid);
+    }
+
+    function incomingOwner() {
+      return isOwner(request.resource.data.uid);
+    }
+
+    function keepsSameOwner() {
+      return resource.data.uid == request.resource.data.uid;
+    }
+
+    function hasOnlyKeys(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    function isTimestampOrNull(value) {
+      return value == null || value is timestamp;
+    }
+
+    function isStringOrNull(value) {
+      return value == null || value is string;
+    }
+
+    function isBoolOrNull(value) {
+      return value == null || value is bool;
+    }
+
+    function isNumberOrNull(value) {
+      return value == null || value is int || value is float;
+    }
+
+    function validTodo() {
+      return hasOnlyKeys([
+        'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
+        'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex'
+      ]) &&
+      request.resource.data.text is string &&
+      request.resource.data.text.size() > 0 &&
+      isStringOrNull(request.resource.data.memo) &&
+      isStringOrNull(request.resource.data.dueDate) &&
+      isStringOrNull(request.resource.data.projectId) &&
+      isStringOrNull(request.resource.data.imageUrl) &&
+      request.resource.data.priority is string &&
+      request.resource.data.priority in ['low', 'medium', 'high'] &&
+      request.resource.data.completed is bool &&
+      request.resource.data.archived is bool &&
+      isTimestampOrNull(request.resource.data.createdAt) &&
+      isNumberOrNull(request.resource.data.orderIndex);
+    }
+
+    function validNote() {
+      return hasOnlyKeys([
+        'uid', 'text', 'color', 'x', 'y', 'archived', 'createdAt'
+      ]) &&
+      request.resource.data.text is string &&
+      request.resource.data.text.size() > 0 &&
+      request.resource.data.color is string &&
+      request.resource.data.color in ['yellow', 'blue', 'green', 'pink', 'purple', 'orange'] &&
+      isNumberOrNull(request.resource.data.x) &&
+      isNumberOrNull(request.resource.data.y) &&
+      isBoolOrNull(request.resource.data.archived) &&
+      isTimestampOrNull(request.resource.data.createdAt);
+    }
+
+    function validProject() {
+      return hasOnlyKeys([
+        'uid', 'name', 'color', 'createdAt'
+      ]) &&
+      request.resource.data.name is string &&
+      request.resource.data.name.size() > 0 &&
+      request.resource.data.color is string &&
+      request.resource.data.color.size() > 0 &&
+      isTimestampOrNull(request.resource.data.createdAt);
+    }
+
+    function validBookmark() {
+      return hasOnlyKeys([
+        'uid', 'url', 'title', 'tags', 'createdAt'
+      ]) &&
+      request.resource.data.url is string &&
+      request.resource.data.url.size() > 0 &&
+      isStringOrNull(request.resource.data.title) &&
+      (request.resource.data.tags is list) &&
+      isTimestampOrNull(request.resource.data.createdAt);
+    }
+
+    function validWikiPage() {
+      return hasOnlyKeys([
+        'uid', 'title', 'parentId', 'projectId', 'content', 'createdAt', 'updatedAt'
+      ]) &&
+      request.resource.data.title is string &&
+      request.resource.data.title.size() > 0 &&
+      isStringOrNull(request.resource.data.parentId) &&
+      (!request.resource.data.keys().hasAny(['projectId']) || isStringOrNull(request.resource.data.projectId)) &&
+      request.resource.data.content is map &&
+      isTimestampOrNull(request.resource.data.createdAt) &&
+      isTimestampOrNull(request.resource.data.updatedAt);
+    }
+
     match /todos/{todoId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read, delete: if existingOwner();
+      allow create: if incomingOwner() && validTodo();
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validTodo();
     }
-    
-    // 메모 (Notes)
+
     match /notes/{noteId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read, delete: if existingOwner();
+      allow create: if incomingOwner() && validNote();
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validNote();
     }
 
-    // 프로젝트 (Projects)
     match /projects/{projectId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read, delete: if existingOwner();
+      allow create: if incomingOwner() && validProject();
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validProject();
     }
 
-    // 북마크 (Bookmarks)
     match /bookmarks/{bookmarkId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read, delete: if existingOwner();
+      allow create: if incomingOwner() && validBookmark();
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validBookmark();
     }
-    // 위키 페이지 (Wiki Pages)
+
     match /wiki_pages/{pageId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow read, delete: if existingOwner();
+      allow create: if incomingOwner() && validWikiPage();
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validWikiPage();
     }
   }
 }

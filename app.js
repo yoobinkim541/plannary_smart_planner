@@ -23,8 +23,10 @@ let allTodos = [];
 let allNotes = [];
 let allProjects = [];
 let allBookmarks = [];
+let allWikiPages = [];
 let currentFilter = 'all';
 let currentProjectId = null;
+let selectedProjectOverviewId = null;
 let selectedNoteColor = 'yellow';
 
 // --- CORE UTILITY FUNCTIONS ---
@@ -40,6 +42,13 @@ function showToast(message, type = 'info') {
 }
 window.showToast = showToast; // Export to global
 
+const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 // --- CORE BUSINESS LOGIC (HOISTED) ---
 function loadTodos() {
     if (!currentUser || !db) return;
@@ -47,6 +56,7 @@ function loadTodos() {
         allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         applyFilters();
         updateDashboardUI();
+        renderProjectManagementList();
         checkDueNotifications(); // Check for reminders when data updates
     });
 }
@@ -74,6 +84,15 @@ function loadBookmarks() {
     db.collection('bookmarks').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
         allBookmarks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderBookmarks();
+    });
+}
+
+function loadWikiPagesForProjects() {
+    if (!currentUser || !db) return;
+    db.collection('wiki_pages').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
+        allWikiPages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderProjectManagementList();
+        renderProjectOverview();
     });
 }
 
@@ -606,18 +625,115 @@ function renderProjectManagementList() {
     }
     allProjects.forEach(p => {
         const div = document.createElement('div'); div.className = 'project-card';
+        div.dataset.id = p.id;
+        const projectTasks = allTodos.filter(t => t.projectId === p.id && !t.archived);
+        const projectReminders = projectTasks.filter(t => t.dueDate && !t.completed);
+        const projectWikiPages = allWikiPages.filter(page => page.projectId === p.id);
         div.innerHTML = `
             <div class="stat-icon" style="background:${p.color}33; color:${p.color}; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             </div>
-            <h3 style="margin-bottom:4px;">${p.name}</h3>
-            <p style="font-size:0.8rem; color:var(--text-2); margin-bottom:16px;">${allTodos.filter(t => t.projectId === p.id).length} tasks</p>
-            <button class="text-link-btn" onclick="deleteProject('${p.id}')">Delete</button>
+            <h3 style="margin-bottom:4px;">${escapeHtml(p.name)}</h3>
+            <p style="font-size:0.8rem; color:var(--text-2); margin-bottom:10px;">${projectTasks.length} tasks · ${projectReminders.length} reminders · ${projectWikiPages.length} wiki</p>
+            <div class="project-card-actions">
+                <button class="text-link-btn project-open-btn" data-id="${p.id}" type="button">Open</button>
+                <button class="text-link-btn project-delete-btn" data-id="${p.id}" type="button">Delete</button>
+            </div>
         `;
+        div.onclick = () => openProjectOverview(p.id);
         list.appendChild(div);
     });
+    list.querySelectorAll('.project-open-btn').forEach(b => b.onclick = (event) => {
+        event.stopPropagation();
+        openProjectOverview(b.dataset.id);
+    });
+    list.querySelectorAll('.project-delete-btn').forEach(b => b.onclick = (event) => {
+        event.stopPropagation();
+        window.deleteProject(b.dataset.id);
+    });
+    renderProjectOverview();
 }
 window.deleteProject = (id) => confirm('Delete project?') && db.collection('projects').doc(id).delete();
+
+function openProjectOverview(projectId) {
+    selectedProjectOverviewId = projectId;
+    renderProjectOverview();
+    const panel = getEl('project-detail-panel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderProjectOverview() {
+    const panel = getEl('project-detail-panel');
+    if (!panel) return;
+
+    const project = allProjects.find(p => p.id === selectedProjectOverviewId);
+    if (!project) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    const projectTasks = allTodos.filter(t => t.projectId === project.id && !t.archived);
+    const projectReminders = projectTasks
+        .filter(t => t.dueDate && !t.completed)
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const projectWikiPages = allWikiPages
+        .filter(page => page.projectId === project.id)
+        .sort((a, b) => (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0));
+
+    panel.style.display = 'block';
+    if (getEl('project-detail-title')) getEl('project-detail-title').textContent = project.name;
+    if (getEl('project-detail-summary')) {
+        getEl('project-detail-summary').textContent = `${projectTasks.length} tasks, ${projectReminders.length} reminders, ${projectWikiPages.length} wiki pages`;
+    }
+
+    const renderTaskItem = (task) => `
+        <button class="project-detail-item project-task-link" data-id="${task.id}" type="button">
+            <span>
+                <strong>${escapeHtml(task.text)}</strong>
+                <small>${task.memo ? escapeHtml(task.memo) : 'No notes'}</small>
+            </span>
+            <em>${task.completed ? 'Done' : (task.dueDate || task.priority || 'Task')}</em>
+        </button>
+    `;
+
+    const tasksList = getEl('project-detail-tasks');
+    if (tasksList) {
+        tasksList.innerHTML = projectTasks.length
+            ? projectTasks.slice(0, 6).map(renderTaskItem).join('')
+            : '<p class="project-detail-empty">No tasks in this project.</p>';
+    }
+
+    const remindersList = getEl('project-detail-reminders');
+    if (remindersList) {
+        remindersList.innerHTML = projectReminders.length
+            ? projectReminders.slice(0, 6).map(renderTaskItem).join('')
+            : '<p class="project-detail-empty">No active reminders.</p>';
+    }
+
+    const wikiList = getEl('project-detail-wiki');
+    if (wikiList) {
+        wikiList.innerHTML = projectWikiPages.length
+            ? projectWikiPages.map(page => `
+                <button class="project-detail-item project-wiki-link" data-id="${page.id}" type="button">
+                    <span>
+                        <strong>${escapeHtml(page.title || 'Untitled Document')}</strong>
+                        <small>${page.parentId ? 'Subpage' : 'Root page'}</small>
+                    </span>
+                    <em>Open</em>
+                </button>
+            `).join('')
+            : '<p class="project-detail-empty">No wiki pages linked to this project.</p>';
+    }
+
+    document.querySelectorAll('.project-task-link').forEach(item => item.onclick = () => {
+        currentProjectId = project.id;
+        currentFilter = 'all';
+        switchPage('page-tasks');
+    });
+    document.querySelectorAll('.project-wiki-link').forEach(item => item.onclick = () => {
+        window.location.hash = `wiki/${item.dataset.id}`;
+    });
+}
 
 function renderBookmarks() {
     const list = getEl('bookmarks-list'); if (!list) return;
@@ -700,7 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateProfileUI(user);
                 if (isAuthPage) window.location.replace('/');
                 else { 
-                    loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); 
+                    loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects();
                 }
             }
         });
@@ -859,6 +975,54 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast("Project created!");
         });
     };
+
+    if (getEl('project-detail-close')) {
+        getEl('project-detail-close').onclick = () => {
+            selectedProjectOverviewId = null;
+            renderProjectOverview();
+        };
+    }
+
+    if (getEl('project-view-tasks-btn')) {
+        getEl('project-view-tasks-btn').onclick = () => {
+            if (!selectedProjectOverviewId) return;
+            currentProjectId = selectedProjectOverviewId;
+            currentFilter = 'all';
+            switchPage('page-tasks');
+        };
+    }
+
+    if (getEl('project-view-reminders-btn')) {
+        getEl('project-view-reminders-btn').onclick = () => {
+            if (!selectedProjectOverviewId) return;
+            currentProjectId = selectedProjectOverviewId;
+            currentFilter = 'reminders';
+            switchPage('page-tasks');
+        };
+    }
+
+    if (getEl('project-create-wiki-btn')) {
+        getEl('project-create-wiki-btn').onclick = async () => {
+            const project = allProjects.find(p => p.id === selectedProjectOverviewId);
+            if (!project || !currentUser || !db) return;
+
+            try {
+                const docRef = await db.collection('wiki_pages').add({
+                    uid: currentUser.uid,
+                    title: `${project.name} Notes`,
+                    parentId: null,
+                    projectId: project.id,
+                    content: { blocks: [] },
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                window.location.hash = `wiki/${docRef.id}`;
+            } catch (error) {
+                console.error("Project wiki creation failed:", error);
+                showToast(error && error.message ? error.message : "Failed to create wiki page.", "error");
+            }
+        };
+    }
 
     if (getEl('add-note-btn')) getEl('add-note-btn').onclick = async () => {
         const noteInput = getEl('note-input');

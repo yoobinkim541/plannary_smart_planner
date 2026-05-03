@@ -666,6 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uid: currentUser.uid,
             title: 'Untitled Document',
             parentId: parentId || null,
+            projectId: parentId ? (allPages.find(page => page.id === parentId)?.projectId || null) : null,
             content: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()

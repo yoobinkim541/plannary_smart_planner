@@ -322,6 +322,42 @@
                 <div class="projects-grid" id="projects-list">
                     <!-- Projects injected by JS -->
                 </div>
+
+                <div class="project-detail-panel" id="project-detail-panel" style="display: none;">
+                    <div class="project-detail-header">
+                        <div>
+                            <span class="project-detail-kicker">Project workspace</span>
+                            <h2 id="project-detail-title">Project</h2>
+                            <p id="project-detail-summary">Tasks, reminders, and wiki pages in one place.</p>
+                        </div>
+                        <button id="project-detail-close" class="wiki-icon-btn" title="Close project view" type="button">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    <div class="project-detail-grid">
+                        <section class="project-detail-section">
+                            <div class="project-detail-section-header">
+                                <h3>Tasks</h3>
+                                <button class="text-link-btn" id="project-view-tasks-btn" type="button">Open tasks</button>
+                            </div>
+                            <div id="project-detail-tasks" class="project-detail-list"></div>
+                        </section>
+                        <section class="project-detail-section">
+                            <div class="project-detail-section-header">
+                                <h3>Reminders</h3>
+                                <button class="text-link-btn" id="project-view-reminders-btn" type="button">Open reminders</button>
+                            </div>
+                            <div id="project-detail-reminders" class="project-detail-list"></div>
+                        </section>
+                        <section class="project-detail-section project-detail-section-wide">
+                            <div class="project-detail-section-header">
+                                <h3>Wiki</h3>
+                                <button class="text-link-btn" id="project-create-wiki-btn" type="button">New wiki page</button>
+                            </div>
+                            <div id="project-detail-wiki" class="project-detail-list project-detail-wiki-list"></div>
+                        </section>
+                    </div>
+                </div>
             </section>
 
             <!-- PAGE: NOTES -->

@@ -1412,6 +1412,146 @@ textarea.composer-input {
     cursor: pointer;
 }
 
+.project-card-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+}
+
+.project-detail-panel {
+    margin-top: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+}
+
+.project-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.project-detail-kicker {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--blue);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.project-detail-header h2 {
+    margin: 0 0 6px;
+    font-size: 1.45rem;
+}
+
+.project-detail-header p {
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.9rem;
+}
+
+.project-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.project-detail-section {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    background: var(--bg);
+}
+
+.project-detail-section-wide {
+    grid-column: 1 / -1;
+}
+
+.project-detail-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.project-detail-section-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.project-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.project-detail-wiki-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.project-detail-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 62px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 12px 14px;
+    color: var(--text-1);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.project-detail-item:hover {
+    border-color: var(--blue);
+    transform: translateY(-1px);
+}
+
+.project-detail-item span {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.project-detail-item strong {
+    font-size: 0.9rem;
+}
+
+.project-detail-item small {
+    color: var(--text-2);
+    font-size: 0.78rem;
+}
+
+.project-detail-item em {
+    color: var(--text-2);
+    font-size: 0.76rem;
+    font-style: normal;
+    flex-shrink: 0;
+}
+
+.project-detail-empty {
+    margin: 0;
+    padding: 16px;
+    color: var(--text-2);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    font-size: 0.85rem;
+}
+
 /* === BOOKMARKS PAGE === */
 .bookmarks-grid {
     display: grid;
