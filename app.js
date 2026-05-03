@@ -655,7 +655,7 @@ function renderBookmarks() {
         const div = document.createElement('div'); div.className = 'bookmark-card';
         const tags = bm.tags ? bm.tags.map(t => `<span class="bm-tag">#${t}</span>`).join(' ') : '';
         div.innerHTML = `
-            <button class="tc-delete" onclick="deleteBookmark('${bm.id}')">×</button>
+            <button class="bm-delete-btn" onclick="deleteBookmark('${bm.id}')" aria-label="Delete bookmark">×</button>
             <div class="bm-main">
                 <img src="${favicon}" class="bm-favicon" onerror="this.src='icon.svg'">
                 <div class="bm-info">
@@ -822,6 +822,54 @@ document.addEventListener('DOMContentLoaded', () => {
             uid: currentUser.uid, url, title: titleInput.value.trim(), tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => { urlInput.value = ''; titleInput.value = ''; tagsInput.value = ''; showToast("Bookmark saved!"); });
     };
+
+    if (getEl('add-project-btn')) getEl('add-project-btn').onclick = async () => {
+        const projectInput = getEl('project-input');
+        const name = projectInput ? projectInput.value.trim() : '';
+        if (!name || !currentUser) return;
+
+        const palette = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
+        const color = palette[allProjects.length % palette.length];
+
+        db.collection('projects').add({
+            uid: currentUser.uid,
+            name,
+            color,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            if (projectInput) projectInput.value = '';
+            showToast("Project created!");
+        });
+    };
+
+    if (getEl('add-note-btn')) getEl('add-note-btn').onclick = async () => {
+        const noteInput = getEl('note-input');
+        const text = noteInput ? noteInput.value.trim() : '';
+        if (!text || !currentUser) return;
+
+        db.collection('notes').add({
+            uid: currentUser.uid,
+            text,
+            color: selectedNoteColor || 'yellow',
+            x: 20 + (allNotes.length % 4) * 28,
+            y: 20 + (allNotes.length % 4) * 28,
+            archived: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            if (noteInput) noteInput.value = '';
+            showToast("Note added!");
+        });
+    };
+
+    if (getEl('note-color-picker')) {
+        getEl('note-color-picker').querySelectorAll('.color-option').forEach(option => {
+            option.onclick = () => {
+                selectedNoteColor = option.dataset.color || 'yellow';
+                getEl('note-color-picker').querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                option.classList.add('selected');
+            };
+        });
+    }
 
     // Logout
     if (getEl('profile-password-btn')) getEl('profile-password-btn').onclick = connectEmailPasswordLogin;

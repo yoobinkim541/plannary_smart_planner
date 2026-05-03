@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const newWikiBtn = document.getElementById('new-wiki-btn');
     const saveWikiBtn = document.getElementById('wiki-save-btn');
     const deleteWikiBtn = document.getElementById('wiki-delete-btn');
-    const newChildWikiBtn = document.getElementById('wiki-new-child-btn');
     const searchInput = document.getElementById('wiki-search-input');
     const backBtn = document.getElementById('wiki-back-btn');
 
@@ -90,6 +89,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         save(blockContent) {
             return { text: this.input.value };
+        }
+    }
+
+    class SubpageTool {
+        static get toolbox() {
+            return {
+                title: 'Subpage',
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/><path d="M4 4h6v6H4z" opacity="0.45"/></svg>'
+            };
+        }
+        render() {
+            const container = document.createElement('div');
+            container.style.display = 'none';
+            setTimeout(() => {
+                if (!currentPageId) {
+                    window.showToast('Open a page first', 'error');
+                    return;
+                }
+                createNewPage(currentPageId);
+            }, 0);
+            return container;
+        }
+        save() {
+            return {};
         }
     }
 
@@ -298,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         tools.math = { class: MathBlock };
+        tools.subpage = { class: SubpageTool };
 
         const createUploader = (label = "File") => {
             return {
@@ -569,13 +593,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyCreateBtn = document.getElementById('wiki-empty-create-btn');
     if (emptyCreateBtn) {
         emptyCreateBtn.onclick = () => createNewPage();
-    }
-
-    if (newChildWikiBtn) {
-        newChildWikiBtn.onclick = () => {
-            if (!currentPageId) return window.showToast('Open a page first', 'error');
-            createNewPage(currentPageId);
-        };
     }
 
     if (backBtn) {
