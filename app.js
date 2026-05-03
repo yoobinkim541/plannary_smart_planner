@@ -782,7 +782,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (getEl('add-btn')) getEl('add-btn').onclick = async () => {
         const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), priorityInput = getEl('priority-select'), projectInput = getEl('todo-project-select');
-        const text = input.value.trim(); if (!text || !currentUser) return;
+        const text = input.value.trim();
+        if (!text || !currentUser) return;
 
         let imageUrl = null;
         if (selectedTaskImgFile) {
@@ -798,15 +799,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        db.collection('todos').add({
-            uid: currentUser.uid, text, memo: memoInput.value.trim(), dueDate: dateInput.value, priority: priorityInput.value, projectId: projectInput.value || null,
-            imageUrl: imageUrl,
-            completed: false, archived: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(), orderIndex: Date.now()
-        }).then(() => { 
-            input.value = ''; memoInput.value = ''; dateInput.value = ''; 
+        const selectedPriority = priorityInput && ['low', 'medium', 'high'].includes(priorityInput.value)
+            ? priorityInput.value
+            : 'medium';
+        const payload = {
+            uid: currentUser.uid,
+            text,
+            memo: memoInput.value.trim() || null,
+            dueDate: dateInput.value || null,
+            priority: selectedPriority,
+            projectId: projectInput.value || null,
+            imageUrl,
+            completed: false,
+            archived: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            orderIndex: Date.now()
+        };
+
+        try {
+            await db.collection('todos').add(payload);
+            input.value = '';
+            memoInput.value = '';
+            dateInput.value = '';
+            if (priorityInput) priorityInput.value = 'medium';
+            if (projectInput) projectInput.value = '';
             if (getEl('remove-task-img')) getEl('remove-task-img').click();
-            showToast("Added!"); 
-        });
+            showToast("Added!");
+        } catch (error) {
+            console.error("Task creation failed:", error, payload);
+            showToast(error && error.message ? error.message : "Task creation failed.", "error");
+        }
     };
 
     // Bookmark Add
