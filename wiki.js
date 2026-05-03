@@ -244,13 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Debug: Log available plugin variables
         const isHeaderFound = typeof Header !== 'undefined';
-        const isListFound = typeof List !== 'undefined';
+        const EditorListClass = typeof EditorjsList !== 'undefined' ? EditorjsList : (typeof List !== 'undefined' ? List : null);
         const markdownClassName = (typeof MarkdownShortcuts !== 'undefined') ? 'MarkdownShortcuts' : 
                                    (typeof MarkdownShortcut !== 'undefined' ? 'MarkdownShortcut' : null);
-
-        console.log('[Wiki] Debug - Header:', isHeaderFound ? 'OK' : 'Missing');
-        console.log('[Wiki] Debug - List:', isListFound ? 'OK' : 'Missing');
-        console.log('[Wiki] Debug - Markdown Tool Name detected:', markdownClassName || 'NONE');
 
         if (isHeaderFound) {
             tools.header = {
@@ -262,26 +258,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         }
-        if (isListFound) {
+        if (EditorListClass) {
             tools.list = {
-                class: List,
-                inlineToolbar: true
+                class: EditorListClass,
+                inlineToolbar: true,
+                config: {
+                    defaultStyle: 'unordered'
+                }
             };
         }
         
         // Register Markdown Shortcuts
         if (markdownClassName) {
             const MarkdownClass = (markdownClassName === 'MarkdownShortcuts') ? MarkdownShortcuts : MarkdownShortcut;
-            // Use 'markdown' as a shorter key, some versions might prefer this
             tools.markdownShortcut = {
-                class: MarkdownClass,
-                config: {
-                    // Optional: force trigger conversion
-                }
+                class: MarkdownClass
             };
-            console.log(`[Wiki] ${markdownClassName} registered successfully`);
-        } else {
-            console.error('[Wiki] Markdown Shortcuts library is NOT loaded in window object');
         }
 
         if (typeof InlineCode !== 'undefined') tools.inlineCode = { class: InlineCode };

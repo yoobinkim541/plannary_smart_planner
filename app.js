@@ -684,10 +684,6 @@ try {
     if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
         db = firebase.firestore();
         auth = firebase.auth();
-        
-        // Multi-tab sync & Cache settings
-        db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
-        db.enablePersistence({synchronizeTabs: true}).catch(err => console.warn("Persistence error", err.code));
     }
 } catch (e) { console.error("Firebase Init Error", e); }
 
