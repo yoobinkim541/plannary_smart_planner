@@ -358,7 +358,37 @@ function getDragAfterElement(container, y) {
 
 function renderNotes(notes) {
     const list = getEl('notes-list'); if (!list) return;
-    list.innerHTML = notes.length ? '' : '<div class="empty-state">No notes. Drag to move!</div>';
+    list.innerHTML = notes.length ? '' : `
+        <div class="wiki-empty-container collection-empty-container note-empty-container">
+            <div class="wiki-empty-content collection-empty-content">
+                <div class="wiki-empty-illustration collection-empty-illustration note-empty-illustration">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 3h6"></path>
+                        <path d="M12 3v18"></path>
+                        <path d="M5 7h14"></path>
+                        <path d="M5 11h8"></path>
+                        <path d="M5 15h14"></path>
+                        <path d="M5 19h9"></path>
+                    </svg>
+                </div>
+                <h2>메모 보드를 채워보세요</h2>
+                <p>아이디어와 짧은 기록을 포스트잇처럼 쌓아두는 공간입니다.<br>상단 입력창에 첫 메모를 적고 보드 위에 배치해보세요.</p>
+                <button class="confirm-btn collection-empty-create-btn" id="note-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span style="vertical-align: middle;">첫 메모 작성하기</span>
+                </button>
+            </div>
+        </div>`;
+    if (!notes.length) {
+        const emptyCreateBtn = getEl('note-empty-create-btn');
+        if (emptyCreateBtn) {
+            emptyCreateBtn.onclick = () => {
+                const noteInput = getEl('note-input');
+                if (noteInput) noteInput.focus();
+            };
+        }
+        return;
+    }
     notes.forEach(note => {
         const card = document.createElement('div');
         card.className = `note-card color-${note.color || 'yellow'}`;
