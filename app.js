@@ -129,6 +129,9 @@ function switchPage(targetId) {
             if (targetId !== 'page-tasks' || !f || f === currentFilter) el.classList.add('active');
         }
     });
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.classList.toggle('active', targetId === 'page-tasks' && chip.dataset.filter === currentFilter);
+    });
     
     updateSidebarHeader(targetId);
     document.body.classList.remove('nav-open');
@@ -137,6 +140,20 @@ function switchPage(targetId) {
     
     if (targetId === 'page-tasks') applyFilters();
     if (targetId === 'page-archive') renderArchive();
+}
+
+function navigateAppPage(targetId, filter = null) {
+    if (targetId === 'page-tasks') {
+        currentFilter = filter || 'all';
+        currentProjectId = null;
+    }
+
+    const nextHash = `#${targetId}`;
+    if (window.location.hash === nextHash) {
+        switchPage(targetId);
+    } else {
+        window.location.hash = targetId;
+    }
 }
 
 function updateSidebarHeader(pageId) {
@@ -842,9 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.filter-chip').forEach(chip => {
         chip.onclick = () => {
-            currentFilter = chip.dataset.filter; currentProjectId = null;
-            document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === currentFilter));
-            switchPage('page-tasks');
+            navigateAppPage('page-tasks', chip.dataset.filter || 'all');
         };
     });
 
@@ -852,10 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.onclick = (e) => {
             e.preventDefault();
             const tid = link.dataset.target;
-            if (tid === 'page-tasks' && link.dataset.filter) {
-                currentFilter = link.dataset.filter; currentProjectId = null;
-            }
-            window.location.hash = tid;
+            navigateAppPage(tid, link.dataset.filter || null);
         };
     });
 
