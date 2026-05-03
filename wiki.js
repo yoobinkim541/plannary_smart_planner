@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         _renderMath() {
             try {
                 if (typeof katex !== 'undefined') {
-                    katex.render(this.input.value, this.output, { throwOnError: false, displayMode: true });
+                    katex.render(this.input.value, this.output, { throwOnError: false, displayMode: true, strict: false });
                 } else {
                     this.output.innerText = "KaTeX not loaded.";
                 }
@@ -171,9 +171,69 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    const toStringValue = (value) => value == null ? '' : String(value);
+
+    const normalizeEditorBlock = (block) => {
+        if (!block || typeof block !== 'object') return null;
+        const type = typeof block.type === 'string' ? block.type : 'paragraph';
+        const data = block.data && typeof block.data === 'object' ? block.data : {};
+
+        switch (type) {
+            case 'paragraph':
+                return { type, data: { text: toStringValue(data.text) } };
+            case 'header': {
+                const level = Number(data.level);
+                return {
+                    type,
+                    data: {
+                        text: toStringValue(data.text),
+                        level: Number.isInteger(level) && level >= 1 && level <= 6 ? level : 2
+                    }
+                };
+            }
+            case 'list':
+                return Array.isArray(data.items)
+                    ? { type, data: { ...data, items: data.items } }
+                    : { type: 'paragraph', data: { text: toStringValue(data.text) } };
+            case 'checklist':
+                return Array.isArray(data.items)
+                    ? {
+                        type,
+                        data: {
+                            items: data.items.map((item) => ({
+                                text: toStringValue(item && item.text),
+                                checked: !!(item && item.checked)
+                            }))
+                        }
+                    }
+                    : null;
+            case 'image':
+                return data.file && typeof data.file.url === 'string'
+                    ? { type, data: { ...data, caption: toStringValue(data.caption), withBorder: !!data.withBorder, withBackground: !!data.withBackground, stretched: !!data.stretched } }
+                    : null;
+            case 'code':
+                return { type, data: { code: toStringValue(data.code) } };
+            case 'table':
+                return Array.isArray(data.content) ? { type, data } : null;
+            case 'attaches':
+                return data.file && typeof data.file.url === 'string' ? { type, data } : null;
+            case 'math':
+                return { type, data: { text: toStringValue(data.text) } };
+            default:
+                return data.text != null ? { type: 'paragraph', data: { text: toStringValue(data.text) } } : null;
+        }
+    };
+
     const normalizeEditorData = (data) => {
         if (!data || !Array.isArray(data.blocks)) return { blocks: [] };
-        return JSON.parse(JSON.stringify(data));
+        const blocks = data.blocks
+            .map(normalizeEditorBlock)
+            .filter(Boolean);
+        return {
+            time: data.time || Date.now(),
+            blocks,
+            version: data.version || '2.31.0'
+        };
     };
 
     const escapeHtml = (value) => String(value || '')
@@ -283,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof Table !== 'undefined') tools.table = { class: Table };
         if (typeof Checklist !== 'undefined') tools.checklist = { class: Checklist, inlineToolbar: true };
         if (typeof Underline !== 'undefined') tools.underline = { class: Underline };
-        if (typeof ToggleBlock !== 'undefined') tools.toggle = { class: ToggleBlock, inlineToolbar: true };
         
         if (typeof ColorPlugin !== 'undefined') {
             tools.Color = {
@@ -658,8 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveWikiBtn) { saveWikiBtn.textContent = 'Saving...'; saveWikiBtn.disabled = true; }
 
         try {
-            const contentData = await editor.save();
-            console.log('[Wiki] Editor data:', contentData);
+            const contentData = normalizeEditorData(await editor.save());
             await db.collection('wiki_pages').doc(currentPageId).update({
                 title: title,
                 content: contentData,
