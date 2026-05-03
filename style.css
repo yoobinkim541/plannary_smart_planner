@@ -2153,6 +2153,26 @@ textarea.composer-input {
     min-height: 300px;
 }
 
+#editorjs .codex-editor {
+    position: relative;
+    z-index: 1;
+}
+
+#editorjs .ce-block__content,
+#editorjs .ce-toolbar__content {
+    max-width: 100%;
+}
+
+#editorjs .ce-popover,
+#editorjs .ce-inline-toolbar,
+#editorjs .ce-conversion-toolbar {
+    z-index: 9000;
+}
+
+#editorjs .ce-popover {
+    max-width: min(360px, calc(100vw - 32px));
+}
+
 .wiki-subpages-section {
     display: flex;
     flex-direction: column;
@@ -2708,7 +2728,7 @@ textarea.composer-input {
 @media (max-width: 768px) {
     .wiki-layout {
         position: relative;
-        overflow: hidden;
+        overflow: visible;
     }
     
     .wiki-sidebar {
@@ -2727,6 +2747,8 @@ textarea.composer-input {
         transform: translateX(100%);
         transition: transform 0.3s ease;
         padding: 20px;
+        overflow-y: auto;
+        overflow-x: visible;
     }
 
     .editor-active .wiki-editor-container {
@@ -2737,6 +2759,41 @@ textarea.composer-input {
     .editor-active .wiki-sidebar {
         opacity: 0;
         pointer-events: none;
+    }
+
+    #editorjs {
+        min-height: 360px;
+        padding-left: 0;
+        padding-right: 0;
+        overflow: visible;
+    }
+
+    #editorjs .codex-editor,
+    #editorjs .codex-editor__redactor {
+        overflow: visible;
+    }
+
+    #editorjs .ce-block__content,
+    #editorjs .ce-toolbar__content {
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    #editorjs .ce-toolbar__actions {
+        right: 0;
+    }
+
+    #editorjs .ce-popover {
+        position: fixed !important;
+        left: 12px !important;
+        right: 12px !important;
+        top: auto !important;
+        bottom: 88px !important;
+        width: auto !important;
+        max-width: none;
+        max-height: min(420px, calc(100vh - 140px));
+        overflow-y: auto;
     }
 }
 
