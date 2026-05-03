@@ -242,11 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tools = {};
 
-        // Debug: Log available plugin variables
         const isHeaderFound = typeof Header !== 'undefined';
         const EditorListClass = typeof EditorjsList !== 'undefined' ? EditorjsList : (typeof List !== 'undefined' ? List : null);
-        const markdownClassName = (typeof MarkdownShortcuts !== 'undefined') ? 'MarkdownShortcuts' : 
-                                   (typeof MarkdownShortcut !== 'undefined' ? 'MarkdownShortcut' : null);
 
         if (isHeaderFound) {
             tools.header = {
@@ -265,14 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 config: {
                     defaultStyle: 'unordered'
                 }
-            };
-        }
-        
-        // Register Markdown Shortcuts
-        if (markdownClassName) {
-            const MarkdownClass = (markdownClassName === 'MarkdownShortcuts') ? MarkdownShortcuts : MarkdownShortcut;
-            tools.markdownShortcut = {
-                class: MarkdownClass
             };
         }
 
