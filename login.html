@@ -125,7 +125,7 @@
                 return 'This email already has another login method. Sign in with email/password first, then connect Google from Profile.';
             }
             if ((error.message || '').includes('redirect_uri_mismatch')) {
-                return 'Google OAuth redirect URI is not registered. In Google Cloud Console, add this authorized redirect URI: https://practice-todo-list-32af6.firebaseapp.com/__/auth/handler';
+                return 'Google OAuth redirect URI is not registered. In Google Cloud Console, add this authorized redirect URI: https://planary-a2f6b.firebaseapp.com/__/auth/handler';
             }
             return error.message;
         };

@@ -1,7 +1,7 @@
 # 🚀 Modern Todo & Sticky Notes App (SPA)
 
 > **실시간 Firebase 연동을 통한 일정 및 메모 관리의 혁신적인 경험**  
-> **🌍 라이브 데모:** (https://yourplanary.vercel.app/)
+> **🌍 라이브 데모:** [https://planary-a2f6b.web.app/](https://planary-a2f6b.web.app/)
 
 ## 📝 프로젝트 소개
 
@@ -66,7 +66,7 @@ memo/
    ```bash
    npx serve .
    ```
-   - 또는 배포된 [라이브 링크](https://practice-todo-list-32af6.web.app/)에 접속하세요.
+   - 또는 배포된 [라이브 링크](https://planary-a2f6b.web.app/)에 접속하세요.
 3. **Vercel 배포**:
    - GitHub 저장소를 Vercel에 Import하고 프로젝트 이름을 `planary` 또는 `planary-app`으로 설정하세요.
    - Framework Preset은 `Other`, Build Command는 비워두고 Output Directory는 `.`를 사용합니다.

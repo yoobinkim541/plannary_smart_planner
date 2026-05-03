@@ -9,7 +9,7 @@ const puppeteer = require('puppeteer');
     page.on('pageerror', err => console.log('BROWSER ERROR:', err.toString()));
     
     console.log("Navigating...");
-    await page.goto('https://practice-todo-list-32af6.web.app/index.html', { waitUntil: 'networkidle0' });
+    await page.goto('https://planary-a2f6b.web.app/index.html', { waitUntil: 'networkidle0' });
     
     if (page.url().includes('login.html')) {
         console.log("Redirected to login. Attempting to login...");
@@ -23,7 +23,7 @@ const puppeteer = require('puppeteer');
             ]);
         } catch(e) {
             console.log("Login failed or no redirect. Navigating to signup...");
-            await page.goto('https://practice-todo-list-32af6.web.app/signup.html', { waitUntil: 'networkidle0' });
+            await page.goto('https://planary-a2f6b.web.app/signup.html', { waitUntil: 'networkidle0' });
             await page.type('#email', 'tester' + Date.now() + '@example.com');
             await page.type('#password', 'password123');
             await Promise.all([

@@ -6,16 +6,16 @@
 
     if (firebase.apps && firebase.apps.length > 0) return;
 
-    const defaultAuthDomain = 'practice-todo-list-32af6.firebaseapp.com';
+    const defaultAuthDomain = 'planary-a2f6b.firebaseapp.com';
 
     firebase.initializeApp({
-        apiKey: 'AIzaSyD7rnA85vWTcyL-XF0OxacY83u9iQL7PTE',
-        appId: '1:297469029810:web:1d8d1fbd5d20b2346248ab',
+        apiKey: 'AIzaSyB1cHLdbvkLUDUKJSipDg3NQOsL38CUlBA',
+        appId: '1:909174132550:web:03fd3a4ec514d6ad8a5f47',
         authDomain: defaultAuthDomain,
         databaseURL: '',
-        measurementId: 'G-8WP9B9H3FX',
-        messagingSenderId: '297469029810',
-        projectId: 'practice-todo-list-32af6',
-        storageBucket: 'practice-todo-list-32af6.firebasestorage.app'
+        measurementId: 'G-TEPGF6Z7C9',
+        messagingSenderId: '909174132550',
+        projectId: 'planary-a2f6b',
+        storageBucket: 'planary-a2f6b.firebasestorage.app'
     });
 })();
