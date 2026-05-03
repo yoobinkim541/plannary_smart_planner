@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isRestoringUndo = false;
     let lastUndoSnapshot = '';
     let allPages = [];
+    let allProjects = [];
     let currentPageId = null;
 
     const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageWiki = document.getElementById('page-wiki');
     const wikiPageList = document.getElementById('wiki-page-list');
     const wikiTitleInput = document.getElementById('wiki-title-input');
+    const wikiProjectSelect = document.getElementById('wiki-project-select');
     const wikiEditorView = document.getElementById('wiki-editor-view');
     const wikiEmptyView = document.getElementById('wiki-empty-view');
     const wikiSubpagesSection = document.getElementById('wiki-subpages-section');
@@ -464,10 +466,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             currentUser = user;
             loadPages();
+            loadProjects();
         } else {
             currentUser = null;
             allPages = [];
+            allProjects = [];
             renderPageList();
+            renderProjectSelect();
         }
     });
 
@@ -491,6 +496,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         checkHash();
                     });
             });
+    };
+
+    const loadProjects = () => {
+        if (!db || !currentUser) return;
+        db.collection('projects').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
+            allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderProjectSelect();
+        });
+    };
+
+    const renderProjectSelect = () => {
+        if (!wikiProjectSelect) return;
+        const previousValue = wikiProjectSelect.value;
+        wikiProjectSelect.innerHTML = '<option value="">No Project</option>';
+        allProjects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = project.name || 'Untitled Project';
+            wikiProjectSelect.appendChild(option);
+        });
+
+        const currentPage = allPages.find(page => page.id === currentPageId);
+        wikiProjectSelect.value = currentPage ? getInheritedProjectId(currentPage) : previousValue;
     };
 
     const renderPageList = () => {
@@ -556,6 +584,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const navigateToPage = (pageId) => {
         window.location.hash = `wiki/${pageId}`;
+    };
+
+    const getPageById = (pageId) => allPages.find(page => page.id === pageId);
+
+    const getRootPage = (pageId) => {
+        let page = getPageById(pageId);
+        const visited = new Set();
+        while (page && page.parentId && !visited.has(page.id)) {
+            visited.add(page.id);
+            const parentPage = getPageById(page.parentId);
+            if (!parentPage) break;
+            page = parentPage;
+        }
+        return page || null;
+    };
+
+    const getInheritedProjectId = (page) => {
+        if (!page) return '';
+        if (page.projectId) return page.projectId;
+        const rootPage = getRootPage(page.id);
+        return rootPage && rootPage.projectId ? rootPage.projectId : '';
     };
 
     const getChildPages = (pageId) => allPages
@@ -641,6 +690,9 @@ document.addEventListener('DOMContentLoaded', () => {
         wikiEditorView.classList.add('fade-in');
 
         wikiTitleInput.value = page.title || '';
+        if (wikiProjectSelect) {
+            wikiProjectSelect.value = getInheritedProjectId(page);
+        }
 
         if (saveWikiBtn) saveWikiBtn.disabled = true;
         initEditor(page.content);
@@ -655,18 +707,24 @@ document.addEventListener('DOMContentLoaded', () => {
         pageWiki.classList.remove('editor-active');
         wikiEditorView.style.display = 'none';
         wikiEmptyView.style.display = 'flex';
+        if (wikiProjectSelect) wikiProjectSelect.value = '';
         renderSubpages(null);
         renderPageList();
     };
 
     const createNewPage = (parentId = null) => {
         if (!currentUser) return window.showToast('Please login first', 'error');
+        const parentPage = parentId ? getPageById(parentId) : null;
+        const rootPage = parentId ? getRootPage(parentId) : null;
+        const inheritedProjectId = parentPage
+            ? (rootPage?.projectId || parentPage.projectId || null)
+            : (wikiProjectSelect?.value || null);
 
         const newDoc = {
             uid: currentUser.uid,
             title: 'Untitled Document',
             parentId: parentId || null,
-            projectId: parentId ? (allPages.find(page => page.id === parentId)?.projectId || null) : null,
+            projectId: inheritedProjectId,
             content: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -719,6 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const title = wikiTitleInput ? wikiTitleInput.value.trim() || 'Untitled Document' : 'Untitled Document';
+        const projectId = wikiProjectSelect && wikiProjectSelect.value ? wikiProjectSelect.value : null;
 
         if (saveWikiBtn) { saveWikiBtn.textContent = 'Saving...'; saveWikiBtn.disabled = true; }
 
@@ -726,6 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const contentData = normalizeEditorData(await editor.save());
             await db.collection('wiki_pages').doc(currentPageId).update({
                 title: title,
+                projectId,
                 content: contentData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -740,6 +800,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if (saveWikiBtn) saveWikiBtn.onclick = savePage;
+
+    if (wikiProjectSelect) {
+        wikiProjectSelect.onchange = () => {
+            if (saveWikiBtn) saveWikiBtn.disabled = false;
+        };
+    }
 
     // Ctrl+S keyboard shortcut
     document.addEventListener('keydown', (e) => {

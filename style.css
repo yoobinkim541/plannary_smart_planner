@@ -2139,6 +2139,37 @@ textarea.composer-input {
     width: 100%;
 }
 
+.wiki-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    width: 100%;
+}
+
+.wiki-title-row .wiki-title-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.wiki-project-select {
+    min-width: 190px;
+    height: 42px;
+    margin-top: 2px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    outline: none;
+}
+
+.wiki-project-select:focus {
+    border-color: var(--blue);
+}
+
 .wiki-actions {
     display: flex;
     justify-content: flex-end;
@@ -2794,6 +2825,16 @@ textarea.composer-input {
         max-width: none;
         max-height: min(420px, calc(100vh - 140px));
         overflow-y: auto;
+    }
+
+    .wiki-title-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .wiki-project-select {
+        width: 100%;
+        min-width: 0;
     }
 }
 
