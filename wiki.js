@@ -512,7 +512,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }, {});
 
         const renderedIds = new Set();
-        const renderPages = (parentId = '', depth = 0) => {
+        const currentPage = allPages.find(page => page.id === currentPageId);
+        const expandedRootId = currentPage && !currentPage.parentId ? currentPage.id : null;
+        const renderPages = (parentId = '', depth = 0, forceExpanded = false) => {
             (childrenByParent[parentId] || []).forEach(page => {
                 if (renderedIds.has(page.id)) return;
                 renderedIds.add(page.id);
@@ -529,7 +531,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 el.onclick = () => navigateToPage(page.id);
                 wikiPageList.appendChild(el);
-                renderPages(page.id, depth + 1);
+                const shouldExpand = term || forceExpanded || page.id === expandedRootId;
+                if (shouldExpand) {
+                    renderPages(page.id, depth + 1, forceExpanded || page.id === expandedRootId);
+                }
             });
         };
 
