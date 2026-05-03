@@ -1196,6 +1196,60 @@ textarea.composer-input {
     .profile-password-grid {
         grid-template-columns: 1fr;
     }
+
+    #main-area {
+        padding: 18px 14px;
+    }
+
+    .main-header {
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .main-header h1 {
+        font-size: 1.45rem;
+        overflow-wrap: anywhere;
+    }
+
+    .filter-bar {
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .filter-chip {
+        flex: 0 0 auto;
+    }
+
+    .project-card {
+        padding: 16px;
+    }
+
+    .project-detail-header {
+        align-items: flex-start;
+    }
+
+    .project-detail-header .wiki-icon-btn {
+        flex: 0 0 auto;
+    }
+}
+
+@media (max-width: 420px) {
+    .composer-details input,
+    .composer-details select {
+        min-width: 100%;
+    }
+
+    .project-detail-section-header .text-link-btn,
+    .project-card-actions .text-link-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .project-detail-item strong,
+    .project-detail-item small {
+        overflow-wrap: anywhere;
+    }
 }
 
 /* === DASHBOARD SPECIFIC STYLES === */
@@ -1831,10 +1885,58 @@ textarea.composer-input {
 
     /* Dashboard & Cards */
     .dashboard-stats-row, .dashboard-grid { grid-template-columns: 1fr !important; }
+    .projects-grid, .bookmarks-grid { grid-template-columns: 1fr !important; }
     .stat-card, .task-card { padding: 16px; }
     .tc-title { font-size: 15px; }
     .tc-desc { font-size: 13px; margin-bottom: 16px; }
     .tc-action-btn { font-size: 12px; padding: 8px; }
+
+    .project-detail-panel {
+        padding: 16px;
+        margin-top: 20px;
+        border-radius: 16px;
+    }
+
+    .project-detail-header {
+        gap: 12px;
+    }
+
+    .project-detail-header h2 {
+        font-size: 1.2rem;
+        overflow-wrap: anywhere;
+    }
+
+    .project-detail-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .project-detail-section-wide {
+        grid-column: auto;
+    }
+
+    .project-detail-section {
+        padding: 14px;
+    }
+
+    .project-detail-section-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .project-detail-wiki-list {
+        grid-template-columns: 1fr;
+    }
+
+    .project-detail-item {
+        align-items: flex-start;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .project-card-actions {
+        flex-wrap: wrap;
+    }
 
     /* Note Grid */
     .notes-grid { display: flex; flex-wrap: wrap; gap: 16px; padding: 0; background: none; min-height: 400px; }
