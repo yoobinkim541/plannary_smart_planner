@@ -138,5 +138,21 @@ service cloud.firestore {
       allow create: if incomingOwner() && validWikiPage();
       allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validWikiPage();
     }
+
+    match /users/{userId} {
+      allow read, create, update: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
+        hasOnlyKeys([
+          'uid', 'email', 'displayName', 'onboardingCompleted',
+          'onboardingCompletedAt', 'createdAt', 'updatedAt'
+        ]) &&
+        isStringOrNull(request.resource.data.email) &&
+        isStringOrNull(request.resource.data.displayName) &&
+        request.resource.data.onboardingCompleted is bool &&
+        isTimestampOrNull(request.resource.data.onboardingCompletedAt) &&
+        isTimestampOrNull(request.resource.data.createdAt) &&
+        isTimestampOrNull(request.resource.data.updatedAt);
+      allow delete: if false;
+    }
   }
 }

@@ -310,6 +310,55 @@ async function connectEmailPasswordLogin() {
     }
 }
 
+async function completeOnboarding() {
+    const modal = getEl('onboarding-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    if (!currentUser || !db) return;
+    try {
+        await db.collection('users').doc(currentUser.uid).set({
+            uid: currentUser.uid,
+            onboardingCompleted: true,
+            onboardingCompletedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (error) {
+        console.warn('Onboarding completion was not saved:', error);
+    }
+}
+
+function openOnboarding() {
+    const modal = getEl('onboarding-modal');
+    if (!modal) return;
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+async function showOnboardingIfNeeded(user) {
+    if (!user || !db) return;
+    try {
+        const ref = db.collection('users').doc(user.uid);
+        const snapshot = await ref.get();
+        if (!snapshot.exists) {
+            await ref.set({
+                uid: user.uid,
+                email: user.email || null,
+                displayName: user.displayName || null,
+                onboardingCompleted: false,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            openOnboarding();
+            return;
+        }
+        if (!snapshot.data().onboardingCompleted) openOnboarding();
+    } catch (error) {
+        console.warn('Onboarding state unavailable:', error);
+    }
+}
+
 // --- RENDER FUNCTIONS ---
 function renderTodos(todos) {
     const todoList = getEl('todo-list');
@@ -855,6 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isAuthPage) window.location.replace('/');
                 else { 
                     loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects();
+                    showOnboardingIfNeeded(user);
                 }
             }
         });
@@ -1100,6 +1150,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Logout
     if (getEl('profile-password-btn')) getEl('profile-password-btn').onclick = connectEmailPasswordLogin;
+    if (getEl('onboarding-skip-btn')) getEl('onboarding-skip-btn').onclick = completeOnboarding;
+    if (getEl('onboarding-start-btn')) {
+        getEl('onboarding-start-btn').onclick = async () => {
+            await completeOnboarding();
+            navigateAppPage('page-tasks', 'all');
+            setTimeout(() => {
+                const input = getEl('todo-input');
+                if (input) input.focus();
+            }, 50);
+        };
+    }
 
     const logout = () => confirm('Logout?') && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
