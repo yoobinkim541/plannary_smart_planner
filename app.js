@@ -28,6 +28,7 @@ let currentFilter = 'all';
 let currentProjectId = null;
 let selectedProjectOverviewId = null;
 let selectedNoteColor = 'yellow';
+let currentLanguage = localStorage.getItem('planary-language') || 'ko';
 
 // --- CORE UTILITY FUNCTIONS ---
 const getEl = (id) => document.getElementById(id);
@@ -65,6 +66,152 @@ const APP_ICON_PATHS = {
 function appIconSvg(name, size = 20, extraAttrs = '') {
     const paths = APP_ICON_PATHS[name] || APP_ICON_PATHS.tasks;
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extraAttrs}>${paths}</svg>`;
+}
+
+const I18N = {
+    ko: {
+        home: '홈', tasks: '작업', allTasks: '전체 작업', completed: '완료됨', progress: '진행 중', important: '중요',
+        reminders: '리마인더', projects: '프로젝트', notes: '메모', wiki: '위키', bookmarks: '북마크',
+        archive: '보관함', myPage: '마이페이지', dashboardTitle: '대시보드', dashboardSubtitle: '오늘의 작업 흐름을 확인하세요.',
+        totalTasks: '전체 작업', productivity: '생산성', recentNotes: '최근 메모', upcomingReminders: '다가오는 리마인더',
+        viewAll: '전체 보기', taskTitle: '작업', defaultSans: '기본 글꼴', addTask: '작업 추가', taskPlaceholder: '무엇을 해야 하나요?',
+        memoPlaceholder: '메모 (선택)', noProject: '프로젝트 없음', searchTasks: '작업 검색...', projectsTitle: '프로젝트',
+        projectsSubtitle: '작업을 프로젝트별로 정리하세요.', projectPlaceholder: '프로젝트 이름 (예: 업무, 공부)', createProject: '프로젝트 만들기',
+        projectWorkspace: '프로젝트 작업 공간', projectSummary: '작업, 리마인더, 위키 페이지를 한 곳에서 봅니다.',
+        openTasks: '작업 열기', openReminders: '리마인더 열기', newWikiPage: '새 위키 페이지', stickyNotes: '스티키 메모',
+        notePlaceholder: '짧은 생각이나 아이디어를 적어보세요...', addNote: '+ 메모 추가', bookmarksTitle: '북마크',
+        bookmarksSubtitle: '중요한 링크를 태그와 함께 저장하세요.', saveBookmark: '북마크 저장', docsWiki: '문서 & 위키',
+        wikiSubtitle: '노션 스타일 문서 편집기', searchPages: '페이지 검색...', saveChanges: '변경사항 저장',
+        archiveTitle: '보관함', archivedTasks: '보관된 작업', emptyArchive: '보관함 비우기', profileTitle: '마이페이지',
+        nameLabel: '이름:', emailLabel: '이메일:', loginMethodsLabel: '로그인 방식:', languageLabel: 'UI 언어',
+        emailPasswordLogin: '이메일 비밀번호 로그인', newPassword: '새 비밀번호', confirmPassword: '비밀번호 확인',
+        logout: '로그아웃', taskHeaderTitle: '내 작업', taskHeaderSubtitle: '작업 관리자', overviewHeader: '개요',
+        overviewSubtitle: '대시보드 요약', projectHeader: '프로젝트 그룹', projectSubtitle: '분류 관리자',
+        notesHeader: '스티키 보드', notesSubtitle: '아이디어 메모', bookmarksHeader: '저장한 웹', bookmarksHeaderSubtitle: '참고 링크',
+        archiveHeader: '보관함', archiveSubtitle: '이전 기록', wikiHeader: '위키 & 문서', wikiHeaderSubtitle: '지식 베이스',
+        myPageSubtitle: '사용자 계정'
+    },
+    en: {
+        home: 'Home', tasks: 'Tasks', allTasks: 'All tasks', completed: 'Completed', progress: 'Progress', important: 'Important',
+        reminders: 'Reminders', projects: 'Projects', notes: 'Notes', wiki: 'Wiki', bookmarks: 'Bookmarks',
+        archive: 'Archive', myPage: 'My Page', dashboardTitle: 'Dashboard Overview', dashboardSubtitle: "Welcome back! Here's what's happening today.",
+        totalTasks: 'Total Tasks', productivity: 'Productivity', recentNotes: 'Recent Notes', upcomingReminders: 'Upcoming Reminders',
+        viewAll: 'View All', taskTitle: 'Tasks', defaultSans: 'Default Sans', addTask: 'Add Task', taskPlaceholder: 'What needs to be done?',
+        memoPlaceholder: 'Notes (optional)', noProject: 'No Project', searchTasks: 'Search tasks...', projectsTitle: 'Projects',
+        projectsSubtitle: 'Organize your tasks into groups.', projectPlaceholder: 'Project name (e.g. Work, Study)', createProject: 'Create Project',
+        projectWorkspace: 'Project workspace', projectSummary: 'Tasks, reminders, and wiki pages in one place.',
+        openTasks: 'Open tasks', openReminders: 'Open reminders', newWikiPage: 'New wiki page', stickyNotes: 'Sticky Notes',
+        notePlaceholder: 'Jot down a quick thought or idea...', addNote: '+ Add Note', bookmarksTitle: 'Bookmarks',
+        bookmarksSubtitle: 'Save important links with tags.', saveBookmark: 'Save Bookmark', docsWiki: 'Docs & Wiki',
+        wikiSubtitle: 'Notion-like document editor', searchPages: 'Search pages...', saveChanges: 'Save Changes',
+        archiveTitle: 'Archive Vault', archivedTasks: 'Archived Tasks', emptyArchive: 'Empty Archive', profileTitle: 'My Page',
+        nameLabel: 'Name:', emailLabel: 'Email:', loginMethodsLabel: 'Login methods:', languageLabel: 'UI language',
+        emailPasswordLogin: 'Email password login', newPassword: 'New password', confirmPassword: 'Confirm password',
+        logout: 'Logout', taskHeaderTitle: 'My Tasks', taskHeaderSubtitle: 'Todo Manager', overviewHeader: 'Overview',
+        overviewSubtitle: 'Dashboard Summary', projectHeader: 'Project Groups', projectSubtitle: 'Category Manager',
+        notesHeader: 'Sticky Board', notesSubtitle: 'Idea Notes', bookmarksHeader: 'Web Saved', bookmarksHeaderSubtitle: 'Reference Links',
+        archiveHeader: 'Vault', archiveSubtitle: 'Historical Records', wikiHeader: 'Wiki & Docs', wikiHeaderSubtitle: 'Knowledge Base',
+        myPageSubtitle: 'User Account'
+    }
+};
+
+function t(key) {
+    return (I18N[currentLanguage] && I18N[currentLanguage][key]) || I18N.ko[key] || key;
+}
+
+function setText(selector, value) {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = value;
+}
+
+function setAllText(selector, value) {
+    document.querySelectorAll(selector).forEach(el => { el.textContent = value; });
+}
+
+function setPlaceholder(selector, value) {
+    const el = document.querySelector(selector);
+    if (el) el.placeholder = value;
+}
+
+function applyLanguage(lang = currentLanguage) {
+    currentLanguage = lang;
+    localStorage.setItem('planary-language', lang);
+    document.documentElement.lang = lang === 'ko' ? 'ko' : 'en';
+
+    setAllText('[data-target="page-home"] span, .fab-item[data-target="page-home"] .fab-label', t('home'));
+    setAllText('[data-target="page-tasks"]:not(.task-subnav-link) span, .fab-item[data-target="page-tasks"] .fab-label', t('tasks'));
+    setAllText('[data-target="page-projects"] span, .fab-item[data-target="page-projects"] .fab-label', t('projects'));
+    setAllText('[data-target="page-notes"] span, .fab-item[data-target="page-notes"] .fab-label', t('notes'));
+    setAllText('[data-target="page-wiki"] span, .fab-item[data-target="page-wiki"] .fab-label', t('wiki'));
+    setAllText('[data-target="page-bookmarks"] span, .fab-item[data-target="page-bookmarks"] .fab-label', t('bookmarks'));
+    setAllText('[data-target="page-archive"] span, .fab-item[data-target="page-archive"] .fab-label', t('archive'));
+    setAllText('[data-target="page-profile"] span, .fab-item[data-target="page-profile"] .fab-label', t('myPage'));
+    setText('.task-subnav-link[data-filter="all"]', t('allTasks'));
+    setText('.task-subnav-link[data-filter="active"]', t('progress'));
+    setText('.task-subnav-link[data-filter="important"]', t('important'));
+    setText('.task-subnav-link[data-filter="reminders"]', t('reminders'));
+
+    setText('#page-home .main-header h1', t('dashboardTitle'));
+    setText('#dashboard-welcome-text', t('dashboardSubtitle'));
+    const statLabels = document.querySelectorAll('.dashboard-stats-row .stat-label');
+    if (statLabels[0]) statLabels[0].textContent = t('totalTasks');
+    if (statLabels[1]) statLabels[1].textContent = t('completed');
+    if (statLabels[2]) statLabels[2].textContent = t('productivity');
+    setText('.dashboard-widget:nth-child(1) .widget-header h3', t('recentNotes'));
+    setText('.dashboard-widget:nth-child(2) .widget-header h3', t('upcomingReminders'));
+    setAllText('.widget-header .text-link-btn', t('viewAll'));
+
+    setText('#welcome-message', t('taskTitle'));
+    setText('.filter-chip[data-filter="all"]', t('allTasks'));
+    setText('.filter-chip[data-filter="completed"]', t('completed'));
+    setText('.filter-chip[data-filter="active"]', t('progress'));
+    setText('.filter-chip[data-filter="important"]', t('important'));
+    setText('.filter-chip[data-filter="reminders"]', t('reminders'));
+    setText('#add-btn', t('addTask'));
+    setPlaceholder('#todo-input', t('taskPlaceholder'));
+    setPlaceholder('#memo-input', t('memoPlaceholder'));
+    setPlaceholder('#search-input', t('searchTasks'));
+
+    setText('#page-projects .main-header h1', t('projectsTitle'));
+    setText('#page-projects .main-header p', t('projectsSubtitle'));
+    setPlaceholder('#project-input', t('projectPlaceholder'));
+    setText('#add-project-btn', t('createProject'));
+    setText('.project-detail-kicker', t('projectWorkspace'));
+    setText('#project-detail-summary', t('projectSummary'));
+    setText('#project-view-tasks-btn', t('openTasks'));
+    setText('#project-view-reminders-btn', t('openReminders'));
+    setText('#project-create-wiki-btn', t('newWikiPage'));
+
+    setText('#page-notes .main-header h1', t('stickyNotes'));
+    setPlaceholder('#note-input', t('notePlaceholder'));
+    setText('#add-note-btn', t('addNote'));
+    setText('#page-bookmarks .main-header h1', t('bookmarksTitle'));
+    setText('#page-bookmarks .main-header p', t('bookmarksSubtitle'));
+    setText('#add-bm-btn', t('saveBookmark'));
+    setText('#page-wiki .main-header h1', t('docsWiki'));
+    setText('#page-wiki .main-header p', t('wikiSubtitle'));
+    setPlaceholder('#wiki-search-input', t('searchPages'));
+    setText('#wiki-save-btn', t('saveChanges'));
+    setText('#page-archive .main-header h1', t('archiveTitle'));
+    setText('.archive-list-section .section-header h3', t('archivedTasks'));
+    setText('#empty-archive-btn', t('emptyArchive'));
+
+    setText('#page-profile .main-header h1', t('profileTitle'));
+    const profileLabels = document.querySelectorAll('.profile-card > p strong');
+    if (profileLabels[0]) profileLabels[0].textContent = t('nameLabel');
+    if (profileLabels[1]) profileLabels[1].textContent = t('emailLabel');
+    if (profileLabels[2]) profileLabels[2].textContent = t('loginMethodsLabel');
+    setText('.profile-language-panel label', t('languageLabel'));
+    setText('.profile-password-panel h3', t('emailPasswordLogin'));
+    const passwordLabels = document.querySelectorAll('.profile-password-grid label');
+    if (passwordLabels[0]) passwordLabels[0].childNodes[0].textContent = `${t('newPassword')} `;
+    if (passwordLabels[1]) passwordLabels[1].childNodes[0].textContent = `${t('confirmPassword')} `;
+    setText('#profile-logout-btn', t('logout'));
+
+    const languageSelect = getEl('app-language-select');
+    if (languageSelect) languageSelect.value = currentLanguage;
+    updateSidebarHeader((window.location.hash || '#page-home').replace('#', '').startsWith('wiki/') ? 'page-wiki' : ((window.location.hash || '#page-home').replace('#', '') || 'page-home'));
+    renderProjectsDropdown();
 }
 
 // --- CORE BUSINESS LOGIC (HOISTED) ---
@@ -183,14 +330,14 @@ function updateSidebarHeader(pageId) {
     const iconBox = getEl('sidebar-header-icon'), titleEl = getEl('sidebar-header-title'), subtitleEl = getEl('sidebar-header-subtitle');
     if (!iconBox || !titleEl) return;
     const mapper = {
-        'page-home': { title: 'Overview', subtitle: 'Dashboard Summary', icon: appIconSvg('home') },
-        'page-tasks': { title: 'My Tasks', subtitle: 'Todo Manager ↗', icon: appIconSvg('tasks') },
-        'page-projects': { title: 'Project Groups', subtitle: 'Category Manager', icon: appIconSvg('projects') },
-        'page-notes': { title: 'Sticky Board', subtitle: 'Idea Notes', icon: appIconSvg('notes') },
-        'page-bookmarks': { title: 'Web Saved', subtitle: 'Reference Links', icon: appIconSvg('bookmarks') },
-        'page-archive': { title: 'Vault', subtitle: 'Historical Records', icon: appIconSvg('archive') },
-        'page-profile': { title: 'Profile Settings', subtitle: 'User Account', icon: appIconSvg('profile') },
-        'page-wiki': { title: 'Wiki & Docs', subtitle: 'Knowledge Base', icon: appIconSvg('wiki') }
+        'page-home': { title: t('overviewHeader'), subtitle: t('overviewSubtitle'), icon: appIconSvg('home') },
+        'page-tasks': { title: t('taskHeaderTitle'), subtitle: t('taskHeaderSubtitle'), icon: appIconSvg('tasks') },
+        'page-projects': { title: t('projectHeader'), subtitle: t('projectSubtitle'), icon: appIconSvg('projects') },
+        'page-notes': { title: t('notesHeader'), subtitle: t('notesSubtitle'), icon: appIconSvg('notes') },
+        'page-bookmarks': { title: t('bookmarksHeader'), subtitle: t('bookmarksHeaderSubtitle'), icon: appIconSvg('bookmarks') },
+        'page-archive': { title: t('archiveHeader'), subtitle: t('archiveSubtitle'), icon: appIconSvg('archive') },
+        'page-profile': { title: t('profileTitle'), subtitle: t('myPageSubtitle'), icon: appIconSvg('profile') },
+        'page-wiki': { title: t('wikiHeader'), subtitle: t('wikiHeaderSubtitle'), icon: appIconSvg('wiki') }
     };
     const config = mapper[pageId] || mapper['page-tasks'];
     iconBox.innerHTML = config.icon; titleEl.textContent = config.title; subtitleEl.textContent = config.subtitle;
@@ -678,7 +825,7 @@ function renderProjectsDropdown() {
     const select = getEl('todo-project-select'); // Fixed ID
     if (!select) return;
     const current = select.value;
-    select.innerHTML = '<option value="">No Project</option>';
+    select.innerHTML = `<option value="">${t('noProject')}</option>`;
     allProjects.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
     select.value = current;
 }
@@ -913,6 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Theme & Navigation Init
     const savedTheme = localStorage.getItem('app-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    applyLanguage(currentLanguage);
     
     // Hash router
     window.addEventListener('hashchange', handleHash);
@@ -925,6 +1073,9 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('app-theme', next);
         document.documentElement.setAttribute('data-theme', next);
     };
+    if (getEl('app-language-select')) {
+        getEl('app-language-select').onchange = (event) => applyLanguage(event.target.value);
+    }
 
     if (getEl('search-input')) getEl('search-input').oninput = () => applyFilters();
 
