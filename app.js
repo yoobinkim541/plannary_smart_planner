@@ -144,7 +144,7 @@ function switchPage(targetId) {
     document.querySelectorAll('[data-target]').forEach(el => {
         if (el.getAttribute('data-target') === targetId) {
             const f = el.getAttribute('data-filter');
-            if (targetId !== 'page-tasks' || !f || f === currentFilter) el.classList.add('active');
+            if (targetId !== 'page-tasks' || f === currentFilter || (!f && currentFilter === 'all')) el.classList.add('active');
         }
     });
     document.querySelectorAll('.filter-chip').forEach(chip => {
