@@ -1,6 +1,7 @@
 {
-  "name": "Firebase Todo Manager",
-  "short_name": "Todo",
+  "name": "Planary",
+  "short_name": "Planary",
+  "description": "Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.",
   "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -9,26 +9,26 @@
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
     </script>
-    <title>Todo Planner — 스마트한 일정 관리와 위키 노트</title>
+    <title>Planary - tasks, wiki, projects in one workspace</title>
     
     <!-- Primary Meta Tags -->
-    <meta name="title" content="Todo Planner — 스마트한 일정 관리와 위키 노트">
-    <meta name="description" content="할 일 관리, 스티커 메모, 노션 스타일 위키를 하나로. 당신의 생산성을 극대화하는 올인원 워크스페이스입니다.">
+    <meta name="title" content="Planary - tasks, wiki, projects in one workspace">
+    <meta name="description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
     <meta name="keywords" content="플래너, 위키, 할일관리, 메모, 생산성, PWA, Notion-style">
     <meta name="author" content="Planner Team">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://planary-a2f6b.web.app/">
-    <meta property="og:title" content="Todo Planner — 올인원 생산성 플랫폼">
-    <meta property="og:description" content="단순한 할 일을 넘어, 지식을 기록하고 아이디어를 시각화하세요. 현대적인 디자인의 스마트 플래너.">
+    <meta property="og:title" content="Planary - tasks, wiki, projects in one workspace">
+    <meta property="og:description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
     <meta property="og:image" content="https://planary-a2f6b.web.app/icon.svg">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://planary-a2f6b.web.app/">
-    <meta property="twitter:title" content="Todo Planner — 올인원 생산성 플랫폼">
-    <meta property="twitter:description" content="단순한 할 일을 넘어, 지식을 기록하고 아이디어를 시각화하세요. 현대적인 디자인의 스마트 플래너.">
+    <meta property="twitter:title" content="Planary - tasks, wiki, projects in one workspace">
+    <meta property="twitter:description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
     <meta property="twitter:image" content="https://planary-a2f6b.web.app/icon.svg">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,7 +61,7 @@
             <button id="menu-toggle" aria-label="Open Menu">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
-            <span class="mobile-logo">Todo Planner</span>
+            <span class="mobile-logo">Planary</span>
             <div id="mobile-user-avatar">
                 <!-- Avatar cloned from sidebar by JS -->
             </div>
@@ -71,9 +71,10 @@
         <div id="sidebar-overlay"></div>
 
         <div id="icon-rail">
-            <!-- Desktop Top Icon: Plus -->
-            <button class="rail-icon desktop-only" data-target="page-tasks" title="Add">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <!-- Desktop Sidebar Toggle -->
+            <button class="rail-icon desktop-only" id="sidebar-toggle-btn" type="button" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true">
+                <svg class="sidebar-toggle-menu-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <svg class="sidebar-toggle-restore-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
             <!-- Mobile Top Icon: Rotate (↺) -->
             <button class="rail-icon mobile-only" data-target="page-tasks" title="Undo">
@@ -678,7 +679,7 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v12"></script>
+    <script src="app.js?v=v14"></script>
     <script src="wiki.js?v=v9"></script> 
 </body>
 

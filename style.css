@@ -87,6 +87,11 @@ input::placeholder, textarea::placeholder {
     grid-template-columns: 64px 260px 1fr;
     height: 100vh;
     overflow: hidden;
+    transition: grid-template-columns 0.22s ease;
+}
+
+#app-shell.sidebar-collapsed {
+    grid-template-columns: 64px 0 1fr;
 }
 
 /* === ICON RAIL === */
@@ -153,6 +158,27 @@ input::placeholder, textarea::placeholder {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    min-width: 0;
+    transition: opacity 0.18s ease, transform 0.22s ease, border-color 0.18s ease;
+}
+
+#app-shell.sidebar-collapsed #sidebar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-12px);
+    border-right-color: transparent;
+}
+
+.sidebar-toggle-restore-icon {
+    display: none;
+}
+
+#app-shell.sidebar-collapsed .sidebar-toggle-menu-icon {
+    display: none;
+}
+
+#app-shell.sidebar-collapsed .sidebar-toggle-restore-icon {
+    display: block;
 }
 
 .sidebar-top { flex: 1; }

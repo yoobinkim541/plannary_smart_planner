@@ -554,10 +554,10 @@ function showDueNotification(count) {
     
     if (navigator.serviceWorker && navigator.serviceWorker.controller) {
         navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification("Todo Planner Reminder", options);
+            reg.showNotification("Planary Reminder", options);
         });
     } else {
-        new Notification("Todo Planner Reminder", options);
+        new Notification("Planary Reminder", options);
     }
     localStorage.setItem('last-notified-date', today);
 }
@@ -885,6 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.querySelectorAll('[data-target]').forEach(link => {
+        if (link.id === 'sidebar-toggle-btn') return;
         link.onclick = (e) => {
             e.preventDefault();
             const tid = link.dataset.target;
@@ -894,6 +895,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mobile Nav
     const menuToggle = getEl('menu-toggle'), overlay = getEl('sidebar-overlay'), fabTrigger = getEl('fab-trigger'), fabContainer = getEl('mobile-nav-container');
+    const appShell = getEl('app-shell'), sidebarToggleBtn = getEl('sidebar-toggle-btn');
+    if (sidebarToggleBtn && appShell) {
+        sidebarToggleBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const collapsed = appShell.classList.toggle('sidebar-collapsed');
+            sidebarToggleBtn.setAttribute('aria-expanded', String(!collapsed));
+            sidebarToggleBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+            sidebarToggleBtn.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        };
+    }
     if (fabTrigger) fabTrigger.onclick = (e) => { e.stopPropagation(); fabContainer.classList.toggle('active'); };
     if (menuToggle) menuToggle.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('nav-open'); };
     if (overlay) overlay.onclick = () => document.body.classList.remove('nav-open');
