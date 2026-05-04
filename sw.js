@@ -1,7 +1,9 @@
-const CACHE_NAME = 'todo-pwa-cache-v29';
+const CACHE_NAME = 'todo-pwa-cache-v30';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/landing.html',
+  '/landing.css',
   '/style.css',
   '/app.js',
   '/wiki.js',

@@ -825,9 +825,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (auth) {
         auth.onAuthStateChanged(user => {
             const path = window.location.pathname.toLowerCase();
-            const isAuthPage = path.includes('login') || path.includes('signup');
+            const isAuthPage = path.includes('login') || path.includes('signup') || path.includes('landing');
             if (!user) {
-                if (!isAuthPage) window.location.href = 'login.html';
+                if (!isAuthPage) window.location.href = 'landing.html';
             } else {
                 currentUser = user;
                 updateProfileUI(user);

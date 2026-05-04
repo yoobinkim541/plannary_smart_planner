@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if (window.location.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+            window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
+        }
+    </script>
+    <title>Planary - tasks, wiki, projects in one workspace</title>
+    <meta name="description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="stylesheet" href="landing.css">
+</head>
+
+<body class="landing-page">
+    <div class="landing-shell">
+        <nav class="landing-nav" aria-label="Landing navigation">
+            <a class="landing-brand" href="landing.html" aria-label="Planary home">
+                <span class="landing-brand-mark">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                </span>
+                Planary
+            </a>
+            <div class="landing-nav-links">
+                <a href="#how">사용방법</a>
+                <a href="#features">기능</a>
+                <a href="#security">로그인</a>
+            </div>
+            <div class="landing-actions">
+                <a class="landing-btn" href="login.html">Login</a>
+                <a class="landing-btn primary" href="signup.html">Sign up</a>
+            </div>
+        </nav>
+
+        <main>
+            <section class="landing-hero">
+                <div>
+                    <h1>Planary</h1>
+                    <p class="landing-hero-copy">할 일, 리마인더, 프로젝트, 위키를 한 곳에서 정리하는 작업 공간.</p>
+                    <p class="landing-hero-subcopy">
+                        하루의 작업은 task로 잡고, 관련 문서는 wiki로 남기고, 프로젝트별로 묶어서 흐름을 잃지 않게 관리하세요.
+                    </p>
+                    <div class="landing-hero-actions">
+                        <a class="landing-btn primary" href="signup.html">Sign up</a>
+                        <a class="landing-btn" href="login.html">Login</a>
+                    </div>
+                    <div class="landing-trust-row">
+                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> Firebase Auth</div>
+                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> Project wiki</div>
+                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> Mobile ready</div>
+                    </div>
+                </div>
+
+                <div class="landing-product" aria-label="Planary product preview">
+                    <aside class="landing-product-sidebar">
+                        <div class="landing-mini-brand">
+                            <span class="landing-brand-mark">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                            </span>
+                            Planary
+                        </div>
+                        <button class="landing-mini-new" type="button">New</button>
+                        <div class="landing-product-nav">
+                            <span>Tasks</span>
+                            <span>Wiki</span>
+                            <span>Projects</span>
+                            <span>Bookmarks</span>
+                        </div>
+                        <div class="landing-favorite">
+                            <span>Work system</span>
+                            <span>Study notes</span>
+                        </div>
+                    </aside>
+                    <div class="landing-product-main">
+                        <div class="landing-product-top">
+                            <div>
+                                <h2>Today workspace</h2>
+                                <span>3 tasks · 2 wiki pages</span>
+                            </div>
+                            <span>Planary</span>
+                        </div>
+                        <div class="landing-product-grid">
+                            <section class="landing-panel">
+                                <h3>Tasks</h3>
+                                <div class="landing-task-row">
+                                    <span class="landing-checkbox"></span><span>랜딩 페이지 QA</span><span class="landing-tag">Web</span><span class="landing-time">Today</span>
+                                </div>
+                                <div class="landing-task-row">
+                                    <span class="landing-checkbox"></span><span>프로젝트 위키 정리</span><span class="landing-tag">Docs</span><span class="landing-time">Fri</span>
+                                </div>
+                                <div class="landing-task-row">
+                                    <span class="landing-checkbox"></span><span>리마인더 확인</span><span class="landing-tag">Ops</span><span class="landing-time">Mon</span>
+                                </div>
+                            </section>
+                            <section class="landing-panel">
+                                <h3>Reminders</h3>
+                                <div class="landing-day">
+                                    <div class="landing-day-row"><strong>09:00</strong><span>작업 계획 확인</span></div>
+                                    <div class="landing-day-row"><strong>14:00</strong><span>프로젝트 문서 업데이트</span></div>
+                                    <div class="landing-day-row"><strong>18:00</strong><span>오늘 완료 항목 정리</span></div>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="landing-wiki-strip">
+                            <article class="landing-wiki-card">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4v15.5"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                <strong>Project wiki</strong>
+                                <p>프로젝트별 문서와 서브페이지를 연결합니다.</p>
+                            </article>
+                            <article class="landing-wiki-card">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/></svg>
+                                <strong>Task flow</strong>
+                                <p>우선순위와 마감일을 한 화면에서 봅니다.</p>
+                            </article>
+                            <article class="landing-wiki-card">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                <strong>Saved links</strong>
+                                <p>자주 쓰는 자료를 북마크로 보관합니다.</p>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="landing-section soft" id="how">
+                <div class="landing-section-inner">
+                    <div class="landing-section-title">
+                        <h2>Planary 사용방법</h2>
+                        <p>처음부터 복잡하게 설정할 필요 없이, 오늘 할 일과 관련 문서를 만들면서 자연스럽게 작업 공간을 키울 수 있습니다.</p>
+                    </div>
+                    <div class="landing-steps">
+                        <article class="landing-step">
+                            <span class="landing-step-icon">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            </span>
+                            <h3>작업을 추가하세요</h3>
+                            <p>해야 할 일을 task로 만들고, 마감일과 우선순위를 함께 기록합니다.</p>
+                        </article>
+                        <article class="landing-step">
+                            <span class="landing-step-icon">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg>
+                            </span>
+                            <h3>위키로 정리하세요</h3>
+                            <p>회의 내용, 아이디어, 프로젝트 문서를 위키와 서브페이지로 쌓아둡니다.</p>
+                        </article>
+                        <article class="landing-step">
+                            <span class="landing-step-icon">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19H2"/><path d="M5 6h14v13H5z"/><path d="M9 10h6"/></svg>
+                            </span>
+                            <h3>프로젝트로 묶으세요</h3>
+                            <p>task, reminder, wiki를 프로젝트 단위로 모아 진행 상황을 한 번에 확인합니다.</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="landing-section" id="features">
+                <div class="landing-section-inner">
+                    <div class="landing-section-title">
+                        <h2>한 화면에서 이어지는 생산성 흐름</h2>
+                        <p>할 일 앱, 메모장, 위키, 북마크를 따로 오가지 않고 하나의 작업 문맥에서 관리합니다.</p>
+                    </div>
+                    <div class="landing-features">
+                        <article class="landing-feature">
+                            <span class="landing-feature-icon">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7H5V5h11"/></svg>
+                            </span>
+                            <h3>Tasks</h3>
+                            <p>우선순위, 마감일, 이미지 첨부, 보관함까지 작업 흐름을 관리합니다.</p>
+                        </article>
+                        <article class="landing-feature">
+                            <span class="landing-feature-icon">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4v15.5"/><path d="M6.5 2H20v20H6.5"/></svg>
+                            </span>
+                            <h3>Wiki</h3>
+                            <p>제목, 이미지, 표, 체크리스트, 서브페이지를 지원하는 문서 공간입니다.</p>
+                        </article>
+                        <article class="landing-feature">
+                            <span class="landing-feature-icon">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>
+                            </span>
+                            <h3>Projects</h3>
+                            <p>프로젝트를 누르면 관련 task, reminder, wiki를 한 곳에서 확인합니다.</p>
+                        </article>
+                        <article class="landing-feature">
+                            <span class="landing-feature-icon">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            </span>
+                            <h3>Reminders</h3>
+                            <p>오늘 확인해야 할 일을 놓치지 않도록 별도 필터와 대시보드에서 보여줍니다.</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="landing-section soft" id="security">
+                <div class="landing-section-inner landing-security">
+                    <div class="landing-section-title" style="text-align:left; margin:0;">
+                        <h2>로그인하고 내 작업 공간을 안전하게 보관하세요</h2>
+                        <p>Firebase 인증과 사용자별 데이터 규칙을 기반으로, 로그인한 사용자만 자신의 작업과 문서를 관리할 수 있게 구성되어 있습니다.</p>
+                    </div>
+                    <div class="landing-auth-card">
+                        <div class="landing-auth-logo">
+                            <span class="landing-brand-mark">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                            </span>
+                            Planary
+                        </div>
+                        <a class="landing-auth-button" href="login.html">Login with existing account</a>
+                        <a class="landing-auth-button" href="signup.html">Create a new account</a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="landing-final">
+                <h2>오늘의 작업 공간을 Planary로 시작하세요</h2>
+                <p>task를 만들고, 프로젝트로 묶고, 위키로 지식을 남기세요. 같은 흐름 안에서 모든 것이 연결됩니다.</p>
+                <div class="landing-hero-actions" style="justify-content:center; margin-top:0;">
+                    <a class="landing-btn primary" href="signup.html">Sign up</a>
+                    <a class="landing-btn" href="login.html">Login</a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-init.js?v=v1"></script>
+    <script>
+        if (typeof firebase !== 'undefined') {
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) window.location.replace('/');
+            });
+        }
+    </script>
+</body>
+
+</html>
