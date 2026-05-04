@@ -217,6 +217,9 @@ body.landing-page {
 
 .landing-product-nav span,
 .landing-favorite span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     min-height: 28px;
     padding: 7px 8px;
     border-radius: 7px;

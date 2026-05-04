@@ -49,6 +49,24 @@ const escapeHtml = (value) => String(value || '')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+const APP_ICON_PATHS = {
+    home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+    tasks: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    projects: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+    notes: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+    wiki: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+    bookmarks: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+    archive: '<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>',
+    profile: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    reminders: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    add: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'
+};
+
+function appIconSvg(name, size = 20, extraAttrs = '') {
+    const paths = APP_ICON_PATHS[name] || APP_ICON_PATHS.tasks;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extraAttrs}>${paths}</svg>`;
+}
+
 // --- CORE BUSINESS LOGIC (HOISTED) ---
 function loadTodos() {
     if (!currentUser || !db) return;
@@ -160,14 +178,14 @@ function updateSidebarHeader(pageId) {
     const iconBox = getEl('sidebar-header-icon'), titleEl = getEl('sidebar-header-title'), subtitleEl = getEl('sidebar-header-subtitle');
     if (!iconBox || !titleEl) return;
     const mapper = {
-        'page-home': { title: 'Overview', subtitle: 'Dashboard Summary', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
-        'page-tasks': { title: 'My Tasks', subtitle: 'Todo Manager ↗', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' },
-        'page-projects': { title: 'Project Groups', subtitle: 'Category Manager', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>' },
-        'page-notes': { title: 'Sticky Board', subtitle: 'Idea Notes', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' },
-        'page-bookmarks': { title: 'Web Saved', subtitle: 'Reference Links', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' },
-        'page-archive': { title: 'Vault', subtitle: 'Historical Records', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>' },
-        'page-profile': { title: 'Profile Settings', subtitle: 'User Account', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
-        'page-wiki': { title: 'Wiki & Docs', subtitle: 'Knowledge Base', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>' }
+        'page-home': { title: 'Overview', subtitle: 'Dashboard Summary', icon: appIconSvg('home') },
+        'page-tasks': { title: 'My Tasks', subtitle: 'Todo Manager ↗', icon: appIconSvg('tasks') },
+        'page-projects': { title: 'Project Groups', subtitle: 'Category Manager', icon: appIconSvg('projects') },
+        'page-notes': { title: 'Sticky Board', subtitle: 'Idea Notes', icon: appIconSvg('notes') },
+        'page-bookmarks': { title: 'Web Saved', subtitle: 'Reference Links', icon: appIconSvg('bookmarks') },
+        'page-archive': { title: 'Vault', subtitle: 'Historical Records', icon: appIconSvg('archive') },
+        'page-profile': { title: 'Profile Settings', subtitle: 'User Account', icon: appIconSvg('profile') },
+        'page-wiki': { title: 'Wiki & Docs', subtitle: 'Knowledge Base', icon: appIconSvg('wiki') }
     };
     const config = mapper[pageId] || mapper['page-tasks'];
     iconBox.innerHTML = config.icon; titleEl.textContent = config.title; subtitleEl.textContent = config.subtitle;
@@ -618,9 +636,7 @@ function renderProjectManagementList() {
         <div class="wiki-empty-container collection-empty-container project-empty-container">
             <div class="wiki-empty-content collection-empty-content">
                 <div class="wiki-empty-illustration collection-empty-illustration project-empty-illustration">
-                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    </svg>
+                    ${appIconSvg('projects', 80)}
                 </div>
                 <h2>프로젝트를 만들어보세요</h2>
                 <p>업무와 아이디어를 주제별로 나누면 정리 속도가 빨라집니다.<br>상단 입력창에서 첫 프로젝트를 추가해 작업을 묶어보세요.</p>
@@ -648,7 +664,7 @@ function renderProjectManagementList() {
         const projectWikiPages = allWikiPages.filter(page => page.projectId === p.id);
         div.innerHTML = `
             <div class="stat-icon" style="background:${p.color}33; color:${p.color}; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                ${appIconSvg('projects')}
             </div>
             <h3 style="margin-bottom:4px;">${escapeHtml(p.name)}</h3>
             <p style="font-size:0.8rem; color:var(--text-2); margin-bottom:10px;">${projectTasks.length} tasks · ${projectReminders.length} reminders · ${projectWikiPages.length} wiki</p>
