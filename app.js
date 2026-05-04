@@ -147,6 +147,11 @@ function switchPage(targetId) {
             if (targetId !== 'page-tasks' || f === currentFilter || (!f && currentFilter === 'all')) el.classList.add('active');
         }
     });
+    const sidebarNav = document.querySelector('.sidebar-nav');
+    if (sidebarNav) sidebarNav.classList.toggle('task-subnav-open', targetId === 'page-tasks');
+    document.querySelectorAll('.task-subnav-link').forEach(link => {
+        link.classList.toggle('active', targetId === 'page-tasks' && link.dataset.filter === currentFilter);
+    });
     document.querySelectorAll('.filter-chip').forEach(chip => {
         chip.classList.toggle('active', targetId === 'page-tasks' && chip.dataset.filter === currentFilter);
     });

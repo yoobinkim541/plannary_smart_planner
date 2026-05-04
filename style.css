@@ -229,6 +229,38 @@ input::placeholder, textarea::placeholder {
     color: var(--text-1);
 }
 
+.task-subnav {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    margin: -2px 0 4px 34px;
+    padding: 4px 0 4px 12px;
+    border-left: 1px solid var(--border);
+}
+
+.sidebar-nav.task-subnav-open .task-subnav {
+    display: flex;
+}
+
+.task-subnav-link {
+    display: flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: var(--text-2);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.task-subnav-link:hover,
+.task-subnav-link.active {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
 /* Sidebar Bottom (Profile) */
 .sidebar-bottom {
     border-top: 1px solid var(--border);
@@ -1213,12 +1245,20 @@ textarea.composer-input {
     }
 
     .filter-bar {
-        overflow-x: auto;
-        padding-bottom: 4px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        overflow-x: visible;
+        padding-bottom: 0;
+        width: 100%;
     }
 
     .filter-chip {
-        flex: 0 0 auto;
+        width: 100%;
+        min-width: 0;
+        padding: 9px 10px;
+        text-align: center;
+        white-space: normal;
     }
 
     .project-card {
