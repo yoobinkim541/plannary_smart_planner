@@ -971,7 +971,7 @@ textarea.composer-input {
 }
 
 .toast {
-    background: var(--black);
+    background: #0f172a;
     color: #fff;
     padding: 12px 24px;
     border-radius: var(--radius-sm);
@@ -983,8 +983,13 @@ textarea.composer-input {
     animation: toastIn .3s ease;
 }
 
-.toast.success { background: var(--green); }
-.toast.error   { background: var(--red); }
+[data-theme="dark"] .toast {
+    background: #27272a;
+    color: #f9fafb;
+}
+
+.toast.success { background: var(--green); color: #fff; }
+.toast.error   { background: var(--red); color: #fff; }
 .toast.fade-out { opacity: 0; }
 
 @keyframes toastIn {
