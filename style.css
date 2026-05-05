@@ -1025,14 +1025,14 @@ textarea.composer-input {
 }
 
 .onboarding-card {
-    width: min(560px, 100%);
+    width: min(660px, 100%);
     max-height: calc(100vh - 48px);
     overflow-y: auto;
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 18px;
     background: var(--surface);
     box-shadow: 0 30px 70px rgba(15, 23, 42, 0.28);
-    padding: 28px;
+    padding: 28px 30px;
     pointer-events: auto;
     position: relative;
     z-index: 8060;
@@ -1040,7 +1040,7 @@ textarea.composer-input {
 
 .onboarding-modal.positioned .onboarding-card {
     position: fixed;
-    width: min(460px, calc(100vw - 32px));
+    width: min(520px, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
 }
 
@@ -1137,15 +1137,19 @@ textarea.composer-input {
 }
 
 .onboarding-modal.welcome .onboarding-actions {
+    display: flex;
     justify-content: center;
+    align-items: center;
     padding-bottom: clamp(18px, 4vh, 42px);
 }
 
 .onboarding-modal.welcome #onboarding-start-btn {
-    min-width: 180px;
+    width: auto;
+    min-width: 156px;
     min-height: 48px;
     border-radius: 999px;
-    padding: 12px 26px;
+    padding: 12px 24px;
+    flex: 0 0 auto;
 }
 
 .onboarding-topbar {
@@ -1156,10 +1160,10 @@ textarea.composer-input {
 }
 
 .onboarding-exit-btn {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--bg);
     color: var(--text-2);
     display: inline-flex;
@@ -1176,7 +1180,7 @@ textarea.composer-input {
 
 .onboarding-eyebrow {
     color: var(--blue);
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 800;
     letter-spacing: 0;
     margin-bottom: 10px;
@@ -1184,16 +1188,16 @@ textarea.composer-input {
 
 .onboarding-card h2,
 #onboarding-title {
-    font-size: 1.55rem;
+    font-size: clamp(1.5rem, 3vw, 2rem);
     line-height: 1.25;
     margin: 0 0 10px;
 }
 
 .onboarding-intro {
     color: var(--text-2);
-    line-height: 1.65;
+    line-height: 1.55;
     font-size: 0.95rem;
-    margin: 12px 0 18px;
+    margin: 18px 0 18px;
 }
 
 .onboarding-progress {
@@ -1201,7 +1205,7 @@ textarea.composer-input {
     grid-template-columns: 1fr auto;
     align-items: center;
     gap: 12px;
-    margin: 6px 0 0;
+    margin: 12px 0 0;
 }
 
 .onboarding-progress-track {
@@ -1228,17 +1232,17 @@ textarea.composer-input {
 
 .onboarding-step-card {
     display: grid;
-    grid-template-columns: 46px 1fr;
-    gap: 14px;
-    padding: 16px;
+    grid-template-columns: 44px 1fr;
+    gap: 16px;
+    padding: 18px;
     border: 1px solid var(--border);
-    border-radius: 14px;
-    background: var(--bg);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg) 78%, var(--surface));
 }
 
 .onboarding-step-icon {
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
     border-radius: 12px;
     display: inline-flex;
     align-items: center;
@@ -1250,8 +1254,8 @@ textarea.composer-input {
 
 .onboarding-step-card strong {
     display: block;
-    font-size: 1rem;
-    margin-bottom: 6px;
+    font-size: 1.05rem;
+    margin-bottom: 4px;
 }
 
 .onboarding-step-card p {
@@ -1262,42 +1266,45 @@ textarea.composer-input {
 }
 
 .onboarding-step-card .onboarding-step-target {
-    margin-top: 10px;
+    margin-top: 12px;
     color: var(--blue);
     font-weight: 700;
 }
 
 .onboarding-guide-details {
     display: grid;
-    gap: 10px;
-    margin: 14px 0 2px;
+    gap: 8px;
+    margin: 14px 0 0;
 }
 
 .onboarding-detail-row {
     display: grid;
-    grid-template-columns: 104px 1fr;
-    gap: 10px;
+    grid-template-columns: 118px 1fr;
+    gap: 16px;
     align-items: start;
 }
 
 .onboarding-detail-label {
     color: var(--text-3);
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     font-weight: 800;
+    padding-top: 2px;
 }
 
 .onboarding-detail-row p {
     color: var(--text-2);
     font-size: 0.86rem;
+    line-height: 1.45;
 }
 
 .onboarding-example-row p {
-    display: inline-flex;
+    display: block;
     width: fit-content;
     max-width: 100%;
-    padding: 7px 10px;
-    border-radius: 10px;
-    background: var(--surface);
+    padding: 6px 9px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--surface) 86%, var(--blue));
     color: var(--text-1);
     font-weight: 700;
 }
@@ -1307,7 +1314,7 @@ textarea.composer-input {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: 14px 0 0;
+    margin: 16px 0 12px;
 }
 
 #onboarding-step-summary-text {
@@ -1367,9 +1374,21 @@ textarea.composer-input {
 }
 
 .onboarding-actions {
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr) minmax(180px, 1fr);
+    align-items: center;
     gap: 10px;
+}
+
+.onboarding-actions .text-link-btn {
+    white-space: nowrap;
+    justify-self: start;
+}
+
+.onboarding-actions .confirm-btn {
+    min-height: 42px;
+    justify-content: center;
+    white-space: nowrap;
 }
 
 .onboarding-spotlight-active::after {
@@ -1377,21 +1396,22 @@ textarea.composer-input {
     position: fixed;
     inset: 0;
     z-index: 8040;
-    background: rgba(15, 23, 42, 0.18);
+    background: rgba(15, 23, 42, 0.46);
     pointer-events: none;
 }
 
 .onboarding-highlight-target {
     position: relative;
-    z-index: 8050 !important;
+    z-index: 8070 !important;
+    isolation: isolate;
     outline: 3px solid var(--blue);
     outline-offset: 5px;
-    box-shadow: 0 0 0 8px rgba(74, 144, 226, 0.16), 0 20px 50px rgba(15, 23, 42, 0.22) !important;
+    box-shadow: 0 0 0 8px rgba(74, 144, 226, 0.22), 0 20px 50px rgba(15, 23, 42, 0.28) !important;
 }
 
 .onboarding-target-tip {
     position: fixed;
-    z-index: 8055;
+    z-index: 8075;
     max-width: min(300px, calc(100vw - 28px));
     padding: 10px 12px;
     border-radius: 12px;

@@ -1302,15 +1302,35 @@ function showOnboardingTargetTip(target, step, focus = null) {
     requestAnimationFrame(() => {
         const rect = target.getBoundingClientRect();
         const tipRect = tip.getBoundingClientRect();
+        const modal = getEl('onboarding-modal');
+        const card = modal ? modal.querySelector('.onboarding-card') : null;
+        const cardRect = card ? card.getBoundingClientRect() : null;
         const margin = 14;
-        const topCandidate = rect.top - tipRect.height - margin;
-        const top = topCandidate > margin ? topCandidate : rect.bottom + margin;
-        const left = Math.min(
-            Math.max(rect.left + rect.width / 2 - tipRect.width / 2, margin),
-            window.innerWidth - tipRect.width - margin
-        );
-        tip.style.top = `${Math.max(margin, top)}px`;
-        tip.style.left = `${left}px`;
+        const viewportW = window.innerWidth;
+        const viewportH = window.innerHeight;
+        const clampLeft = left => Math.min(Math.max(left, margin), viewportW - tipRect.width - margin);
+        const clampTop = top => Math.min(Math.max(top, margin), viewportH - tipRect.height - margin);
+        const intersects = (candidate, other) => {
+            if (!other) return false;
+            return !(candidate.left + candidate.width < other.left ||
+                candidate.left > other.right ||
+                candidate.top + candidate.height < other.top ||
+                candidate.top > other.bottom);
+        };
+        const candidates = [
+            { left: clampLeft(rect.left + rect.width / 2 - tipRect.width / 2), top: rect.top - tipRect.height - margin },
+            { left: clampLeft(rect.left + rect.width / 2 - tipRect.width / 2), top: rect.bottom + margin },
+            { left: rect.right + margin, top: clampTop(rect.top + rect.height / 2 - tipRect.height / 2) },
+            { left: rect.left - tipRect.width - margin, top: clampTop(rect.top + rect.height / 2 - tipRect.height / 2) }
+        ].map(candidate => ({
+            left: clampLeft(candidate.left),
+            top: clampTop(candidate.top),
+            width: tipRect.width,
+            height: tipRect.height
+        }));
+        const available = candidates.find(candidate => !intersects(candidate, cardRect)) || candidates[0];
+        tip.style.top = `${available.top}px`;
+        tip.style.left = `${available.left}px`;
     });
 }
 
