@@ -753,6 +753,62 @@
                 </div>
             </div>
         </div>
+
+        <div id="task-edit-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="task-edit-title">
+                <div class="task-modal-header">
+                    <div>
+                        <span class="task-modal-kicker">Task</span>
+                        <h2 id="task-edit-title">작업 수정</h2>
+                    </div>
+                    <button class="task-modal-close" id="task-edit-close-btn" type="button" aria-label="닫기">×</button>
+                </div>
+                <div class="task-edit-grid">
+                    <label class="task-edit-field task-edit-field-wide">
+                        <span id="task-edit-text-label">작업명</span>
+                        <input id="task-edit-text" type="text">
+                    </label>
+                    <label class="task-edit-field task-edit-field-wide">
+                        <span id="task-edit-memo-label">메모</span>
+                        <textarea id="task-edit-memo" rows="4"></textarea>
+                    </label>
+                    <label class="task-edit-field">
+                        <span id="task-edit-date-label">마감일</span>
+                        <input id="task-edit-due-date" type="date">
+                    </label>
+                    <label class="task-edit-field">
+                        <span id="task-edit-priority-label">우선순위</span>
+                        <select id="task-edit-priority">
+                            <option value="low">낮음</option>
+                            <option value="medium">보통</option>
+                            <option value="high">높음</option>
+                        </select>
+                    </label>
+                    <label class="task-edit-field task-edit-field-wide">
+                        <span id="task-edit-project-label">프로젝트</span>
+                        <select id="task-edit-project"></select>
+                    </label>
+                </div>
+                <div class="task-modal-actions">
+                    <button class="text-link-btn" id="task-edit-cancel-btn" type="button">취소</button>
+                    <button class="confirm-btn" id="task-edit-save-btn" type="button">변경사항 저장</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="task-delete-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card task-delete-card" role="dialog" aria-modal="true" aria-labelledby="task-delete-title">
+                <div class="task-delete-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
+                </div>
+                <h2 id="task-delete-title">작업을 삭제할까요?</h2>
+                <p id="task-delete-body">삭제한 작업은 되돌릴 수 없습니다.</p>
+                <div class="task-modal-actions task-delete-actions">
+                    <button class="text-link-btn" id="task-delete-cancel-btn" type="button">유지하기</button>
+                    <button class="danger-btn" id="task-delete-confirm-btn" type="button">삭제하기</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->

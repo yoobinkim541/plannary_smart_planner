@@ -28,6 +28,8 @@ let currentFilter = 'all';
 let currentProjectId = null;
 let selectedProjectOverviewId = null;
 let selectedNoteColor = 'yellow';
+let pendingDeleteTaskId = null;
+let editingTaskId = null;
 let currentLanguage = localStorage.getItem('planary-language') || 'ko';
 const DEFAULT_APP_FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 let currentAppFont = localStorage.getItem('planary-app-font') || DEFAULT_APP_FONT;
@@ -291,7 +293,10 @@ const I18N = {
         passwordMismatch: '비밀번호가 일치하지 않습니다.', updatingPassword: '비밀번호 변경 중...', connectingEmailPassword: '이메일 비밀번호 로그인 연결 중...',
         emailPasswordDone: '완료되었습니다. 이제 이 이메일과 비밀번호로 로그인할 수 있습니다.', emailPasswordEnabled: '이메일 비밀번호 로그인이 활성화되었습니다.',
         edit: '수정', delete: '삭제', restore: '복원', archiveVerb: '보관', undo: '되돌리기', complete: '완료',
-        deleteConfirm: '삭제할까요?', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
+        deleteConfirm: '삭제할까요?', deleteTaskTitle: '작업을 삭제할까요?', deleteTaskBody: '삭제한 작업은 되돌릴 수 없습니다. 필요한 내용은 삭제 전에 보관하거나 메모로 옮겨두세요.',
+        deleteTaskCancel: '유지하기', deleteTaskConfirm: '삭제하기', editTaskTitle: '작업 수정', taskNameLabel: '작업명',
+        taskMemoLabel: '메모', dueDateLabel: '마감일', projectSelectLabel: '프로젝트', saveTaskChanges: '변경사항 저장',
+        cancel: '취소', taskUpdated: '작업이 수정되었습니다.', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
         low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
         today: '오늘', active: '진행 중', noDate: '날짜 없음', deletePermanently: '영구 삭제',
         permanentDeleteConfirm: '영구 삭제할까요?', stayInspired: '계속 기록하세요.', projectTasksUnit: '작업',
@@ -483,7 +488,10 @@ const I18N = {
         passwordMismatch: 'Passwords do not match.', updatingPassword: 'Updating password...', connectingEmailPassword: 'Connecting email password login...',
         emailPasswordDone: 'Done. You can now sign in with this email and password.', emailPasswordEnabled: 'Email password login enabled.',
         edit: 'Edit', delete: 'Delete', restore: 'Restore', archiveVerb: 'Archive', undo: 'Undo', complete: 'Complete',
-        deleteConfirm: 'Delete?', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
+        deleteConfirm: 'Delete?', deleteTaskTitle: 'Delete this task?', deleteTaskBody: 'Deleted tasks cannot be restored. Archive it first if you may need it later.',
+        deleteTaskCancel: 'Keep task', deleteTaskConfirm: 'Delete task', editTaskTitle: 'Edit task', taskNameLabel: 'Task name',
+        taskMemoLabel: 'Note', dueDateLabel: 'Due date', projectSelectLabel: 'Project', saveTaskChanges: 'Save changes',
+        cancel: 'Cancel', taskUpdated: 'Task updated.', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
         low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
         today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
         permanentDeleteConfirm: 'Permanently delete?', stayInspired: 'Stay inspired.', projectTasksUnit: 'tasks',
@@ -837,6 +845,21 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#profile-password', t('passwordPlaceholder'));
     setPlaceholder('#profile-password-confirm', t('confirmPasswordPlaceholder'));
     setText('#profile-logout-btn', t('logout'));
+    setText('#task-edit-title', t('editTaskTitle'));
+    setText('#task-edit-text-label', t('taskNameLabel'));
+    setText('#task-edit-memo-label', t('taskMemoLabel'));
+    setText('#task-edit-date-label', t('dueDateLabel'));
+    setText('#task-edit-priority-label', t('priorityLabel'));
+    setText('#task-edit-project-label', t('projectSelectLabel'));
+    setOptionText('#task-edit-priority option[value="low"]', t('low'));
+    setOptionText('#task-edit-priority option[value="medium"]', t('medium'));
+    setOptionText('#task-edit-priority option[value="high"]', t('high'));
+    setText('#task-edit-cancel-btn', t('cancel'));
+    setText('#task-edit-save-btn', t('saveTaskChanges'));
+    setText('#task-delete-title', t('deleteTaskTitle'));
+    setText('#task-delete-body', t('deleteTaskBody'));
+    setText('#task-delete-cancel-btn', t('deleteTaskCancel'));
+    setText('#task-delete-confirm-btn', t('deleteTaskConfirm'));
     setText('.onboarding-eyebrow', t('onboardingEyebrow'));
     setText('#onboarding-title', t('onboardingTitle'));
     setText('.onboarding-intro', t('onboardingIntro'));
@@ -928,8 +951,19 @@ function applyFilters() {
     else if (currentFilter === 'archive') filtered = filtered.filter(t => t.archived);
     else filtered = filtered.filter(t => !t.archived);
     
-    filtered.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    filtered.sort((a, b) => getTaskSortValue(b) - getTaskSortValue(a));
     renderTodos(filtered);
+}
+
+function getTaskSortValue(task) {
+    if (typeof task.orderIndex === 'number') return task.orderIndex;
+    const createdAt = task.createdAt;
+    if (createdAt && typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+    if (createdAt) {
+        const parsed = new Date(createdAt).getTime();
+        if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
 }
 
 function switchPage(targetId) {
@@ -1718,7 +1752,8 @@ function renderTodos(todos) {
             const cards = [...todoList.querySelectorAll('.task-card')];
             cards.forEach((c, i) => {
                 const t = allTodos.find(x => x.id === c.dataset.id);
-                if (t && t.orderIndex !== i) db.collection('todos').doc(t.id).update({ orderIndex: i });
+                const nextOrder = cards.length - i;
+                if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder });
             });
         };
 
@@ -1731,7 +1766,9 @@ function renderTodos(todos) {
         const priorityText = `${t(p)} ${t('priorityLabel')}`.toUpperCase();
 
         card.innerHTML = `
-            <button class="tc-delete" data-id="${todo.id}">×</button>
+            <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
+            </button>
             <div class="tc-top">
                 <h3 class="tc-title">${todo.text}${dueBadge}</h3>
                 <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
@@ -1756,7 +1793,7 @@ function renderTodos(todos) {
         db.collection('todos').doc(b.dataset.id).update({ archived: !t.archived });
         markGuideStepComplete('taskManage');
     });
-    todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => confirm(t('deleteConfirm')) && db.collection('todos').doc(b.dataset.id).delete());
+    todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => openTaskDeleteDialog(b.dataset.id));
     todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => {
         markGuideStepComplete('taskManage');
         openEditModal('todo', b.dataset.id);
@@ -2002,6 +2039,18 @@ function renderProjectsDropdown() {
     select.value = current;
 }
 
+function renderTaskProjectSelect(select, currentProjectIdValue = '') {
+    if (!select) return;
+    select.innerHTML = `<option value="">${t('noProject')}</option>`;
+    allProjects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = project.name;
+        select.appendChild(option);
+    });
+    select.value = currentProjectIdValue || '';
+}
+
 function renderProjectManagementList() {
     const list = getEl('projects-list'); // Fixed ID
     if (!list) return;
@@ -2194,7 +2243,76 @@ function renderBookmarks() {
 }
 window.deleteBookmark = (id) => confirm(t('deleteBookmarkConfirm')) && db.collection('bookmarks').doc(id).delete();
 
+function setTaskModalOpen(modalId, open) {
+    const modal = getEl(modalId);
+    if (!modal) return;
+    modal.classList.toggle('active', open);
+    modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function openTaskDeleteDialog(id) {
+    pendingDeleteTaskId = id;
+    setTaskModalOpen('task-delete-modal', true);
+}
+
+function closeTaskDeleteDialog() {
+    pendingDeleteTaskId = null;
+    setTaskModalOpen('task-delete-modal', false);
+}
+
+async function confirmTaskDelete() {
+    if (!pendingDeleteTaskId || !db) return;
+    const id = pendingDeleteTaskId;
+    closeTaskDeleteDialog();
+    await db.collection('todos').doc(id).delete();
+}
+
+function openTaskEditDialog(id) {
+    const item = allTodos.find(x => x.id === id);
+    if (!item) return;
+    editingTaskId = id;
+    if (getEl('task-edit-text')) getEl('task-edit-text').value = item.text || '';
+    if (getEl('task-edit-memo')) getEl('task-edit-memo').value = item.memo || '';
+    if (getEl('task-edit-due-date')) getEl('task-edit-due-date').value = item.dueDate || '';
+    if (getEl('task-edit-priority')) getEl('task-edit-priority').value = item.priority || 'medium';
+    renderTaskProjectSelect(getEl('task-edit-project'), item.projectId || '');
+    setTaskModalOpen('task-edit-modal', true);
+    setTimeout(() => {
+        const input = getEl('task-edit-text');
+        if (input) input.focus();
+    }, 50);
+}
+
+function closeTaskEditDialog() {
+    editingTaskId = null;
+    setTaskModalOpen('task-edit-modal', false);
+}
+
+async function saveTaskEditDialog() {
+    if (!editingTaskId || !db) return;
+    const text = (getEl('task-edit-text')?.value || '').trim();
+    if (!text) {
+        const input = getEl('task-edit-text');
+        if (input) input.focus();
+        return;
+    }
+    const priority = getEl('task-edit-priority')?.value || 'medium';
+    await db.collection('todos').doc(editingTaskId).update({
+        text,
+        memo: (getEl('task-edit-memo')?.value || '').trim() || null,
+        dueDate: getEl('task-edit-due-date')?.value || null,
+        priority: ['low', 'medium', 'high'].includes(priority) ? priority : 'medium',
+        projectId: getEl('task-edit-project')?.value || null
+    });
+    closeTaskEditDialog();
+    showToast(t('taskUpdated'));
+}
+
 function openEditModal(type, id) {
+    if (type === 'todo') {
+        openTaskEditDialog(id);
+        return;
+    }
     const item = type === 'todo' ? allTodos.find(x => x.id === id) : allNotes.find(x => x.id === id);
     if (!item) return;
     const next = prompt(t('editContent'), item.text);
@@ -2527,6 +2645,18 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = () => openOnboarding();
+    if (getEl('task-edit-close-btn')) getEl('task-edit-close-btn').onclick = closeTaskEditDialog;
+    if (getEl('task-edit-cancel-btn')) getEl('task-edit-cancel-btn').onclick = closeTaskEditDialog;
+    if (getEl('task-edit-save-btn')) getEl('task-edit-save-btn').onclick = saveTaskEditDialog;
+    if (getEl('task-delete-cancel-btn')) getEl('task-delete-cancel-btn').onclick = closeTaskDeleteDialog;
+    if (getEl('task-delete-confirm-btn')) getEl('task-delete-confirm-btn').onclick = confirmTaskDelete;
+    document.querySelectorAll('.task-modal').forEach(modal => {
+        modal.addEventListener('click', (event) => {
+            if (event.target !== modal) return;
+            if (modal.id === 'task-edit-modal') closeTaskEditDialog();
+            if (modal.id === 'task-delete-modal') closeTaskDeleteDialog();
+        });
+    });
 
     const logout = () => confirm(t('logoutConfirm')) && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
