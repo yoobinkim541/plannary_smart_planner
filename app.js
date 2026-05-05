@@ -38,6 +38,11 @@ let onboardingTargetTipEl = null;
 let onboardingFocusIndex = 0;
 let onboardingWelcomeVisible = false;
 let onboardingSpotlightEls = [];
+// auto-scroll suppression and throttling for touch/scroll on mobile/tablet
+let onboardingSuppressAutoScroll = false;
+let onboardingSuppressTimer = null;
+let onboardingLastReposition = 0;
+let onboardingRepositionThrottleMs = 80;
 
 const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
@@ -1246,7 +1251,15 @@ function highlightOnboardingTarget(stepOrId, focusConfig = null, retryCount = 0)
     onboardingHighlightEl = target;
     document.body.classList.add('onboarding-spotlight-active');
     target.classList.add('onboarding-highlight-target');
-    target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    if (!onboardingSuppressAutoScroll) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    } else {
+        // avoid fighting user touch-driven scrolling; only jump if fully outside viewport
+        const rect = target.getBoundingClientRect();
+        if (rect.top < 0 || rect.bottom > window.innerHeight) {
+            target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+    }
     positionOnboardingSpotlight(target);
     positionOnboardingCardAroundTarget(target);
     showOnboardingTargetTip(target, step, focus);
@@ -1481,15 +1494,21 @@ window.PlanaryGuide = {
 
 function repositionActiveOnboardingGuide() {
     if (!onboardingHighlightEl) return;
+    const now = Date.now();
+    if (now - onboardingLastReposition < onboardingRepositionThrottleMs) return;
+    onboardingLastReposition = now;
     const step = GUIDE_STEPS[getCurrentGuideStepId()];
     const focus = getCurrentGuideFocus();
-    positionOnboardingSpotlight(onboardingHighlightEl);
-    positionOnboardingCardAroundTarget(onboardingHighlightEl);
-    if (onboardingTargetTipEl) {
-        onboardingTargetTipEl.remove();
-        onboardingTargetTipEl = null;
-    }
-    showOnboardingTargetTip(onboardingHighlightEl, step, focus);
+    // batch DOM reads/writes
+    requestAnimationFrame(() => {
+        positionOnboardingSpotlight(onboardingHighlightEl);
+        positionOnboardingCardAroundTarget(onboardingHighlightEl);
+        if (onboardingTargetTipEl) {
+            onboardingTargetTipEl.remove();
+            onboardingTargetTipEl = null;
+        }
+        showOnboardingTargetTip(onboardingHighlightEl, step, focus);
+    });
 }
 
 function openOnboarding(options = {}) {
@@ -2193,6 +2212,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('resize', () => requestAnimationFrame(repositionActiveOnboardingGuide));
     window.addEventListener('scroll', () => requestAnimationFrame(repositionActiveOnboardingGuide), true);
+
+    // suppress auto-scroll when user is interacting via touch to avoid fighting user scroll on mobile/tablet
+    document.addEventListener('touchstart', () => {
+        onboardingSuppressAutoScroll = true;
+        if (onboardingSuppressTimer) clearTimeout(onboardingSuppressTimer);
+    }, { passive: true });
+    document.addEventListener('touchmove', () => {
+        onboardingSuppressAutoScroll = true;
+        if (onboardingSuppressTimer) clearTimeout(onboardingSuppressTimer);
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+        if (onboardingSuppressTimer) clearTimeout(onboardingSuppressTimer);
+        onboardingSuppressTimer = setTimeout(() => { onboardingSuppressAutoScroll = false; }, 250);
+    }, { passive: true });
+
     handleHash();
 
     // Event Listeners
