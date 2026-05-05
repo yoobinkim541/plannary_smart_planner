@@ -35,36 +35,92 @@ let onboardingState = null;
 let onboardingHighlightEl = null;
 let onboardingHighlightTimer = null;
 
-const GUIDE_STEP_IDS = ['tasks', 'projects', 'wiki'];
+const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
 const GUIDE_STEPS = {
-    tasks: {
+    taskCreate: {
         icon: 'tasks',
         pageId: 'page-tasks',
         focusSelector: '#todo-input',
         fallbackSelector: '#todo-input',
         filter: 'all',
-        titleKey: 'tasks',
-        bodyKey: 'onboardingTaskBody',
-        targetKey: 'onboardingTaskTarget'
+        titleKey: 'onboardingTaskCreateTitle',
+        bodyKey: 'onboardingTaskCreateBody',
+        targetKey: 'onboardingTaskCreateTarget',
+        completionEvent: 'task-created'
+    },
+    taskDetails: {
+        icon: 'reminders',
+        pageId: 'page-tasks',
+        focusSelector: '#memo-input',
+        fallbackSelector: '#priority-select',
+        filter: 'all',
+        titleKey: 'onboardingTaskDetailsTitle',
+        bodyKey: 'onboardingTaskDetailsBody',
+        targetKey: 'onboardingTaskDetailsTarget',
+        completionEvent: 'task-created-with-details'
+    },
+    taskManage: {
+        icon: 'tasks',
+        pageId: 'page-tasks',
+        focusSelector: '.task-card .btn-edit-task',
+        fallbackSelector: '.task-card .btn-toggle',
+        filter: 'all',
+        titleKey: 'onboardingTaskManageTitle',
+        bodyKey: 'onboardingTaskManageBody',
+        targetKey: 'onboardingTaskManageTarget',
+        completionEvent: 'task-managed'
+    },
+    taskViews: {
+        icon: 'reminders',
+        pageId: 'page-tasks',
+        focusSelector: '.filter-chip[data-filter="important"]',
+        fallbackSelector: '.filter-chip[data-filter="reminders"]',
+        filter: 'all',
+        titleKey: 'onboardingTaskViewsTitle',
+        bodyKey: 'onboardingTaskViewsBody',
+        targetKey: 'onboardingTaskViewsTarget',
+        completionEvent: 'task-view-opened'
     },
     projects: {
         icon: 'projects',
         pageId: 'page-projects',
         focusSelector: '#project-input',
         fallbackSelector: '#project-input',
-        titleKey: 'projects',
-        bodyKey: 'onboardingProjectBody',
-        targetKey: 'onboardingProjectTarget'
+        titleKey: 'onboardingProjectsTitle',
+        bodyKey: 'onboardingProjectsBody',
+        targetKey: 'onboardingProjectsTarget',
+        completionEvent: 'project-created'
+    },
+    notesCreate: {
+        icon: 'notes',
+        pageId: 'page-notes',
+        focusSelector: '#note-input',
+        fallbackSelector: '#add-note-btn',
+        titleKey: 'onboardingNotesCreateTitle',
+        bodyKey: 'onboardingNotesCreateBody',
+        targetKey: 'onboardingNotesCreateTarget',
+        completionEvent: 'note-created'
+    },
+    notesManage: {
+        icon: 'notes',
+        pageId: 'page-notes',
+        focusSelector: '.note-card .note-edit-btn',
+        fallbackSelector: '.note-card .note-delete-btn',
+        titleKey: 'onboardingNotesManageTitle',
+        bodyKey: 'onboardingNotesManageBody',
+        targetKey: 'onboardingNotesManageTarget',
+        completionEvent: 'note-managed'
     },
     wiki: {
         icon: 'wiki',
         pageId: 'page-wiki',
         focusSelector: '#new-wiki-btn',
         fallbackSelector: '#wiki-empty-create-btn',
-        titleKey: 'wiki',
+        titleKey: 'onboardingWikiTitle',
         bodyKey: 'onboardingWikiBody',
-        targetKey: 'onboardingWikiTarget'
+        targetKey: 'onboardingWikiTarget',
+        completionEvent: 'wiki-created'
     }
 };
 
@@ -184,12 +240,30 @@ const I18N = {
         onboardingEyebrow: 'Planary 시작하기',
         onboardingTitle: '작업을 한 흐름으로 정리하세요',
         onboardingIntro: '처음 시작할 때는 아래 순서만 기억하면 됩니다. 할 일을 만들고, 프로젝트로 묶고, 필요한 기록은 위키에 남기세요.',
-        onboardingTaskBody: '오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.',
-        onboardingProjectBody: '작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.',
-        onboardingWikiBody: '회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.',
-        onboardingTaskTarget: '작업 화면의 입력창으로 이동해 첫 할 일을 바로 적을 수 있게 합니다.',
-        onboardingProjectTarget: '프로젝트 화면의 생성 입력창으로 이동해 관련 작업을 묶을 준비를 합니다.',
-        onboardingWikiTarget: '위키 화면의 새 페이지 버튼으로 이동해 기록을 남길 수 있게 합니다.',
+        onboardingTaskCreateTitle: '작업 만들기',
+        onboardingTaskCreateBody: '가장 먼저 오늘 할 일을 하나 만들어 흐름을 시작합니다.',
+        onboardingTaskCreateTarget: '작업 입력창에 할 일을 적고 작업 추가를 누르면 완료됩니다.',
+        onboardingTaskDetailsTitle: '세부정보 붙이기',
+        onboardingTaskDetailsBody: '작업에는 메모, 마감일, 우선순위를 함께 넣을 수 있습니다.',
+        onboardingTaskDetailsTarget: '메모나 마감일을 입력하거나 우선순위를 바꾼 뒤 작업을 추가하면 완료됩니다.',
+        onboardingTaskManageTitle: '작업 수정과 정리',
+        onboardingTaskManageBody: '만든 작업은 수정하고, 완료 처리하고, 보관함으로 정리할 수 있습니다.',
+        onboardingTaskManageTarget: '작업 카드의 수정, 완료, 보관 중 하나를 눌러보세요.',
+        onboardingTaskViewsTitle: '중요 작업과 리마인더 보기',
+        onboardingTaskViewsBody: '우선순위가 높은 작업과 마감일이 있는 작업은 필터로 따로 볼 수 있습니다.',
+        onboardingTaskViewsTarget: '중요 또는 리마인더 필터를 누르면 완료됩니다.',
+        onboardingProjectsTitle: '프로젝트로 묶기',
+        onboardingProjectsBody: '작업, 리마인더, 위키를 프로젝트 단위로 모아 관리합니다.',
+        onboardingProjectsTarget: '프로젝트 이름을 입력하고 프로젝트 만들기를 누르면 완료됩니다.',
+        onboardingNotesCreateTitle: '스티키 노트 만들기',
+        onboardingNotesCreateBody: '짧은 아이디어와 메모는 스티키 노트로 빠르게 남길 수 있습니다.',
+        onboardingNotesCreateTarget: '색상을 고르고 노트를 작성한 뒤 메모 추가를 누르면 완료됩니다.',
+        onboardingNotesManageTitle: '스티키 노트 수정하기',
+        onboardingNotesManageBody: '만든 노트는 수정하거나 삭제하고, 드래그해서 위치를 바꿀 수 있습니다.',
+        onboardingNotesManageTarget: '노트 카드의 수정 또는 삭제를 눌러보세요.',
+        onboardingWikiTitle: '위키에 기록하기',
+        onboardingWikiBody: '회의 내용, 아이디어, 자료는 위키 페이지와 하위 페이지로 정리합니다.',
+        onboardingWikiTarget: '새 페이지를 만들거나 위키 문서를 열면 완료됩니다.',
         onboardingExit: '가이드 나가기', onboardingSkipStep: '이 단계 건너뛰기', onboardingStartStep: '이 단계 시작',
         onboardingNextStep: '다음 단계', onboardingComplete: '완료', onboardingProgressText: '{current} / {total}',
         onboardingDone: '완료', onboardingSkipped: '건너뜀', onboardingPending: '대기 중',
@@ -274,12 +348,30 @@ const I18N = {
         onboardingEyebrow: 'Welcome to Planary',
         onboardingTitle: 'Organize work into one flow',
         onboardingIntro: 'To get started, remember this flow: create tasks, group them into projects, and keep important context in wiki pages.',
-        onboardingTaskBody: 'Add today’s work with due dates, priorities, and notes.',
-        onboardingProjectBody: 'Group tasks, reminders, and wiki pages by project.',
+        onboardingTaskCreateTitle: 'Create a task',
+        onboardingTaskCreateBody: 'Start the flow by creating one task for today.',
+        onboardingTaskCreateTarget: 'Type a task in the input and press Add Task to complete this step.',
+        onboardingTaskDetailsTitle: 'Add task details',
+        onboardingTaskDetailsBody: 'Tasks can carry notes, due dates, and priority.',
+        onboardingTaskDetailsTarget: 'Add a note or due date, or change priority, then create the task.',
+        onboardingTaskManageTitle: 'Edit and organize tasks',
+        onboardingTaskManageBody: 'Created tasks can be edited, completed, and archived.',
+        onboardingTaskManageTarget: 'Use Edit, Complete, or Archive on a task card.',
+        onboardingTaskViewsTitle: 'Use important and reminder views',
+        onboardingTaskViewsBody: 'High-priority and dated tasks can be reviewed with filters.',
+        onboardingTaskViewsTarget: 'Open the Important or Reminders filter to complete this step.',
+        onboardingProjectsTitle: 'Group work into projects',
+        onboardingProjectsBody: 'Projects connect tasks, reminders, and wiki pages.',
+        onboardingProjectsTarget: 'Enter a project name and press Create Project.',
+        onboardingNotesCreateTitle: 'Create a sticky note',
+        onboardingNotesCreateBody: 'Capture quick ideas and notes on the sticky board.',
+        onboardingNotesCreateTarget: 'Choose a color, write a note, and press Add Note.',
+        onboardingNotesManageTitle: 'Manage sticky notes',
+        onboardingNotesManageBody: 'Notes can be edited, deleted, and dragged into place.',
+        onboardingNotesManageTarget: 'Use Edit or Delete on a note card.',
+        onboardingWikiTitle: 'Keep context in wiki',
         onboardingWikiBody: 'Organize meetings, ideas, and references into pages and subpages.',
-        onboardingTaskTarget: 'Go to the task input so you can write the first task immediately.',
-        onboardingProjectTarget: 'Go to the project input so you can prepare a workspace for related work.',
-        onboardingWikiTarget: 'Go to the new wiki page button so you can start keeping context.',
+        onboardingWikiTarget: 'Create or open a wiki page to complete this step.',
         onboardingExit: 'Exit guide', onboardingSkipStep: 'Skip this step', onboardingStartStep: 'Start this step',
         onboardingNextStep: 'Next step', onboardingComplete: 'Done', onboardingProgressText: '{current} / {total}',
         onboardingDone: 'Done', onboardingSkipped: 'Skipped', onboardingPending: 'Pending',
@@ -752,7 +844,12 @@ function createDefaultOnboardingProgress() {
 }
 
 function normalizeOnboardingProgress(progress = {}) {
+    const legacy = progress || {};
     return GUIDE_STEP_IDS.reduce((normalized, id) => {
+        if (id === 'taskCreate' && GUIDE_STATUS.includes(legacy.tasks)) {
+            normalized[id] = legacy.tasks;
+            return normalized;
+        }
         const status = progress && GUIDE_STATUS.includes(progress[id]) ? progress[id] : 'pending';
         normalized[id] = status;
         return normalized;
@@ -796,6 +893,7 @@ function closeOnboarding() {
     const modal = getEl('onboarding-modal');
     if (modal) {
         modal.classList.remove('active');
+        modal.classList.remove('compact');
         modal.setAttribute('aria-hidden', 'true');
     }
     clearOnboardingHighlight();
@@ -896,14 +994,33 @@ function renderOnboarding() {
     }
 
     if (startBtn) startBtn.textContent = t('onboardingStartStep');
-    if (completeBtn) completeBtn.style.display = 'inline-flex';
-    if (completeBtn) completeBtn.textContent = currentIndex >= GUIDE_STEP_IDS.length - 1 ? t('onboardingComplete') : t('onboardingNextStep');
+    if (completeBtn) completeBtn.style.display = 'none';
     if (skipBtn) skipBtn.disabled = isOnboardingFinished(progress);
 }
+
+async function markGuideStepComplete(stepId) {
+    if (!currentUser || !db || !GUIDE_STEPS[stepId] || onboardingState?.completed) return;
+    const progress = normalizeOnboardingProgress(onboardingState?.progress || {});
+    if (progress[stepId] !== 'pending') return;
+    progress[stepId] = 'completed';
+    const nextStep = getNextGuideStepId(progress);
+    await saveOnboardingState({ progress, currentStep: nextStep, completed: !nextStep });
+    if (!nextStep) {
+        closeOnboarding();
+        return;
+    }
+    renderOnboarding();
+    clearOnboardingHighlight();
+}
+
+window.PlanaryGuide = {
+    markComplete: markGuideStepComplete
+};
 
 function openOnboarding(options = {}) {
     const modal = getEl('onboarding-modal');
     if (!modal) return;
+    modal.classList.remove('compact');
     const baseProgress = normalizeOnboardingProgress(onboardingState?.progress || {});
     const shouldRestart = options.restart || isOnboardingFinished(baseProgress);
     const progress = shouldRestart ? createDefaultOnboardingProgress() : baseProgress;
@@ -926,6 +1043,8 @@ async function startCurrentOnboardingStep() {
     }
     if (step.pageId === 'page-tasks') navigateAppPage(step.pageId, step.filter || 'all');
     else navigateAppPage(step.pageId);
+    const modal = getEl('onboarding-modal');
+    if (modal) modal.classList.add('compact');
     setTimeout(() => highlightOnboardingTarget(stepId), 120);
 }
 
@@ -982,7 +1101,8 @@ async function showOnboardingIfNeeded(user) {
         }
         const data = snapshot.data();
         onboardingState = buildOnboardingState(data);
-        if (!data.onboardingCompleted) openOnboarding();
+        const hasExpandedGuideProgress = data.onboardingProgress && GUIDE_STEP_IDS.every(id => GUIDE_STATUS.includes(data.onboardingProgress[id]));
+        if (!data.onboardingCompleted || !hasExpandedGuideProgress) openOnboarding();
     } catch (error) {
         console.warn('Onboarding state unavailable:', error);
     }
@@ -1075,13 +1195,18 @@ function renderTodos(todos) {
     todoList.querySelectorAll('.btn-toggle').forEach(b => b.onclick = () => {
         const t = allTodos.find(x => x.id === b.dataset.id);
         db.collection('todos').doc(b.dataset.id).update({ completed: !t.completed });
+        markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.btn-archive').forEach(b => b.onclick = () => {
         const t = allTodos.find(x => x.id === b.dataset.id);
         db.collection('todos').doc(b.dataset.id).update({ archived: !t.archived });
+        markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => confirm(t('deleteConfirm')) && db.collection('todos').doc(b.dataset.id).delete());
-    todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => openEditModal('todo', b.dataset.id));
+    todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => {
+        markGuideStepComplete('taskManage');
+        openEditModal('todo', b.dataset.id);
+    });
 }
 
 function getDragAfterElement(container, y) {
@@ -1135,8 +1260,14 @@ function renderNotes(notes) {
         list.appendChild(card);
         setupDragging(card);
     });
-    list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => db.collection('notes').doc(b.dataset.id).delete());
-    list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => openEditModal('note', b.dataset.id));
+    list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => {
+        markGuideStepComplete('notesManage');
+        db.collection('notes').doc(b.dataset.id).delete();
+    });
+    list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => {
+        markGuideStepComplete('notesManage');
+        openEditModal('note', b.dataset.id);
+    });
 }
 
 function setupDragging(el) {
@@ -1197,7 +1328,11 @@ function updateDashboardUI() {
                 <span class="reminder-text">${todo.text}</span>
                 <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : todo.dueDate}</span>
             `;
-            div.onclick = () => { currentFilter = 'reminders'; switchPage('page-tasks'); };
+            div.onclick = () => {
+                markGuideStepComplete('taskViews');
+                currentFilter = 'reminders';
+                switchPage('page-tasks');
+            };
             reminderList.appendChild(div);
         });
     }
@@ -1568,6 +1703,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.filter-chip').forEach(chip => {
         chip.onclick = () => {
+            if (['important', 'reminders'].includes(chip.dataset.filter)) markGuideStepComplete('taskViews');
             navigateAppPage('page-tasks', chip.dataset.filter || 'all');
         };
     });
@@ -1577,6 +1713,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.onclick = (e) => {
             e.preventDefault();
             const tid = link.dataset.target;
+            if (tid === 'page-tasks' && ['important', 'reminders'].includes(link.dataset.filter)) markGuideStepComplete('taskViews');
             navigateAppPage(tid, link.dataset.filter || null);
         };
     });
@@ -1667,6 +1804,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             await db.collection('todos').add(payload);
+            markGuideStepComplete('taskCreate');
+            if (payload.memo || payload.dueDate || payload.priority !== 'medium') markGuideStepComplete('taskDetails');
             input.value = '';
             memoInput.value = '';
             dateInput.value = '';
@@ -1705,6 +1844,7 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             if (projectInput) projectInput.value = '';
+            markGuideStepComplete('projects');
             showToast(t('projectCreated'));
         });
     };
@@ -1728,6 +1868,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('project-view-reminders-btn')) {
         getEl('project-view-reminders-btn').onclick = () => {
             if (!selectedProjectOverviewId) return;
+            markGuideStepComplete('taskViews');
             currentProjectId = selectedProjectOverviewId;
             currentFilter = 'reminders';
             switchPage('page-tasks');
@@ -1749,6 +1890,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                markGuideStepComplete('wiki');
                 window.location.hash = `wiki/${docRef.id}`;
             } catch (error) {
                 console.error("Project wiki creation failed:", error);
@@ -1772,6 +1914,7 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             if (noteInput) noteInput.value = '';
+            markGuideStepComplete('notesCreate');
             showToast(t('noteAdded'));
         });
     };

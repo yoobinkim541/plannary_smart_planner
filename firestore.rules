@@ -47,15 +47,20 @@ service cloud.firestore {
 
     function validOnboardingProgress(value) {
       return value is map &&
-        value.keys().hasOnly(['tasks', 'projects', 'wiki']) &&
-        value.keys().hasAll(['tasks', 'projects', 'wiki']) &&
-        validOnboardingStatus(value.tasks) &&
+        value.keys().hasOnly(['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki']) &&
+        value.keys().hasAll(['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki']) &&
+        validOnboardingStatus(value.taskCreate) &&
+        validOnboardingStatus(value.taskDetails) &&
+        validOnboardingStatus(value.taskManage) &&
+        validOnboardingStatus(value.taskViews) &&
         validOnboardingStatus(value.projects) &&
+        validOnboardingStatus(value.notesCreate) &&
+        validOnboardingStatus(value.notesManage) &&
         validOnboardingStatus(value.wiki);
     }
 
     function validOnboardingCurrentStep(value) {
-      return value == null || (value is string && value in ['tasks', 'projects', 'wiki']);
+      return value == null || (value is string && value in ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki']);
     }
 
     function validTodo() {

@@ -743,6 +743,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         db.collection('wiki_pages').add(newDoc).then(docRef => {
+            window.PlanaryGuide?.markComplete?.('wiki');
             navigateToPage(docRef.id);
         }).catch(err => {
             console.error("Creation error:", err);
