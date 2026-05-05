@@ -1,14 +1,18 @@
-const CACHE_NAME = 'todo-pwa-cache-v41';
+const CACHE_NAME = 'todo-pwa-cache-v42';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/manifest.json',
   '/landing.html',
   '/landing.css',
   '/style.css',
   '/app.js',
   '/wiki.js',
   '/firebase-init.js',
-  '/icon.svg'
+  '/icon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', event => {
