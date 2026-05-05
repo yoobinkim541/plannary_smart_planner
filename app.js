@@ -37,6 +37,21 @@ let onboardingHighlightTimer = null;
 
 const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
+const APP_FONT_OPTIONS = [
+    { value: DEFAULT_APP_FONT, labelKey: 'defaultSans' },
+    { value: "'Pretendard', sans-serif", label: 'Pretendard' },
+    { value: "'Noto Sans KR', sans-serif", label: 'Noto Sans KR' },
+    { value: "'Nanum Gothic', sans-serif", labelKey: 'fontNanumGothic' },
+    { value: "'IBM Plex Sans KR', sans-serif", label: 'IBM Plex Sans KR' },
+    { value: "'Inter', sans-serif", label: 'Inter' },
+    { value: "'Lora', serif", label: 'Lora' },
+    { value: "'Noto Serif KR', serif", label: 'Noto Serif KR' },
+    { value: "'Roboto Mono', monospace", label: 'Roboto Mono' },
+    { value: "'Caveat', cursive", label: 'Caveat' },
+    { value: "'Courier New', Courier, monospace", labelKey: 'monospace' },
+    { value: "'Georgia', serif", labelKey: 'serif' },
+    { value: "'Comic Sans MS', cursive", labelKey: 'handwritten' }
+];
 const GUIDE_STEPS = {
     taskCreate: {
         icon: 'tasks',
@@ -214,7 +229,7 @@ const I18N = {
         pasteUrl: 'URL 붙여넣기', customTitle: '사용자 지정 제목', tagsPlaceholder: '태그...', newPage: '+ 새 페이지',
         uploadingProgress: '업로드 중... 0%', subpages: '하위 페이지', newSubpage: '새 하위 페이지', deletePage: '페이지 삭제',
         archiveDescription: '완료한 작업과 지난 기록을 다시 확인하세요.', totalAchievements: '전체 성과', itemsArchived: '보관된 항목',
-        monospace: '고정폭', serif: '세리프', handwritten: '손글씨', firstTaskTitle: '할 일을 채워보세요',
+        monospace: '고정폭', serif: '세리프', handwritten: '손글씨', fontNanumGothic: '나눔고딕', firstTaskTitle: '할 일을 채워보세요',
         firstTaskBody: '해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.',
         firstTaskButton: '첫 작업 추가하기', firstNoteTitle: '메모 보드를 채워보세요',
         firstNoteBody: '아이디어와 짧은 기록을 포스트잇처럼 쌓아두는 공간입니다.<br>상단 입력창에 첫 메모를 적고 보드 위에 배치해보세요.',
@@ -322,7 +337,7 @@ const I18N = {
         pasteUrl: 'Paste URL here', customTitle: 'Custom Title', tagsPlaceholder: 'Tags...', newPage: '+ New Page',
         uploadingProgress: 'Uploading... 0%', subpages: 'Subpages', newSubpage: 'New Subpage', deletePage: 'Delete Page',
         archiveDescription: 'Review your achievements and past thoughts', totalAchievements: 'Total Achievements', itemsArchived: 'Items Archived',
-        monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', firstTaskTitle: 'Fill your task list',
+        monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', fontNanumGothic: 'Nanum Gothic', firstTaskTitle: 'Fill your task list',
         firstTaskBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',
         firstTaskButton: 'Add first task', firstNoteTitle: 'Fill your note board',
         firstNoteBody: 'Keep ideas and quick records like sticky notes.<br>Write your first note above and place it on the board.',
@@ -440,11 +455,25 @@ window.PlanaryI18n = {
 };
 
 function applyAppFont(font = currentAppFont) {
-    currentAppFont = (!font || font === 'var(--font)') ? DEFAULT_APP_FONT : font;
+    const supportedFont = APP_FONT_OPTIONS.some(option => option.value === font);
+    currentAppFont = (!font || font === 'var(--font)' || !supportedFont) ? DEFAULT_APP_FONT : font;
     localStorage.setItem('planary-app-font', currentAppFont);
     document.documentElement.style.setProperty('--font', currentAppFont);
     const fontSelect = getEl('app-font-select');
     if (fontSelect) fontSelect.value = currentAppFont;
+}
+
+function renderFontOptions() {
+    const fontSelect = getEl('app-font-select');
+    if (!fontSelect) return;
+    fontSelect.innerHTML = APP_FONT_OPTIONS.map(option => {
+        const label = option.label || t(option.labelKey);
+        return `<option value="${escapeHtml(option.value)}">${escapeHtml(label)}</option>`;
+    }).join('');
+    fontSelect.value = currentAppFont;
+    if (fontSelect.value !== currentAppFont) {
+        fontSelect.value = DEFAULT_APP_FONT;
+    }
 }
 
 function applyLanguage(lang = currentLanguage) {
@@ -497,11 +526,7 @@ function applyLanguage(lang = currentLanguage) {
     setOptionText('#priority-select option[value="low"]', t('low'));
     setOptionText('#priority-select option[value="medium"]', t('medium'));
     setOptionText('#priority-select option[value="high"]', t('high'));
-    const fontOptions = document.querySelectorAll('#app-font-select option');
-    if (fontOptions[0]) fontOptions[0].textContent = t('defaultSans');
-    if (fontOptions[2]) fontOptions[2].textContent = t('monospace');
-    if (fontOptions[3]) fontOptions[3].textContent = t('serif');
-    if (fontOptions[4]) fontOptions[4].textContent = t('handwritten');
+    renderFontOptions();
 
     setText('#page-projects .main-header h1', t('projectsTitle'));
     setText('#page-projects .main-header p', t('projectsSubtitle'));
