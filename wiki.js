@@ -33,6 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!pageWiki) return;
 
+    const tr = (key) => window.PlanaryI18n?.t?.(key) || key;
+    const fmt = (key, values = {}) => window.PlanaryI18n?.format?.(key, values)
+        || tr(key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
+
     // --- CUSTOM MATH BLOCK TOOL FOR EDITOR.JS ---
     class MathBlock {
         static get toolbox() {
@@ -62,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.input.style.minHeight = '80px';
             this.input.style.background = 'var(--bg)';
             this.input.style.color = 'var(--text-1)';
-            this.input.placeholder = 'Enter KaTeX formula (e.g. \\sum_{i=1}^n i = \\frac{n(n+1)}{2})';
+            this.input.placeholder = tr('mathPlaceholder');
             this.input.value = this.data.text || '';
 
             this.output = document.createElement('div');
@@ -86,10 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof katex !== 'undefined') {
                     katex.render(this.input.value, this.output, { throwOnError: false, displayMode: true, strict: false });
                 } else {
-                    this.output.innerText = "KaTeX not loaded.";
+                    this.output.innerText = tr('katexNotLoaded');
                 }
             } catch (e) {
-                this.output.innerText = "Syntax Error";
+                this.output.innerText = tr('syntaxError');
             }
         }
         save(blockContent) {
@@ -100,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     class SubpageTool {
         static get toolbox() {
             return {
-                title: 'Subpage',
+                title: tr('subpage'),
                 icon: '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/><path d="M4 4h6v6H4z" opacity="0.45"/></svg>'
             };
         }
@@ -109,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             container.style.display = 'none';
             setTimeout(() => {
                 if (!currentPageId) {
-                    window.showToast('Open a page first', 'error');
+                    window.showToast(tr('openPageFirst'), 'error');
                     return;
                 }
                 createNewPage(currentPageId);
@@ -168,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (saveWikiBtn) saveWikiBtn.disabled = false;
             } catch (error) {
                 console.error('[Wiki] Heading shortcut failed:', error);
-                window.showToast('Heading shortcut failed: ' + (error.message || error), 'error');
+                window.showToast(tr('headingShortcutFailed') + ': ' + (error.message || error), 'error');
             }
         };
     };
@@ -289,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (saveWikiBtn) saveWikiBtn.disabled = false;
         } catch (error) {
             console.error('[Wiki] Undo failed:', error);
-            window.showToast('Undo failed: ' + (error.message || error), 'error');
+            window.showToast(tr('undoFailed') + ': ' + (error.message || error), 'error');
         } finally {
             setTimeout(() => { isRestoringUndo = false; }, 0);
         }
@@ -314,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tools.header = {
                 class: Header,
                 config: {
-                    placeholder: 'Enter a heading',
+                    placeholder: tr('headingPlaceholder'),
                     levels: [1, 2, 3, 4, 5, 6],
                     defaultLevel: 2
                 }
@@ -371,14 +375,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const createUploader = (label = "File") => {
             return {
                 uploadByFile(file) {
-                    if (!currentUser || !storage) return Promise.reject("Please login first or Firebase not initialized");
+                    if (!currentUser || !storage) return Promise.reject(tr('loginFirstOrStorage'));
                     
                     const progressContainer = document.getElementById('wiki-upload-progress');
                     const progressBar = document.getElementById('wiki-upload-bar');
                     const progressText = document.getElementById('wiki-upload-text');
 
                     if (progressContainer) progressContainer.style.display = 'flex';
-                    if (progressText) progressText.innerText = `${label} Uploading... 0%`;
+                    if (progressText) progressText.innerText = `${label} ${tr('uploadingImage')} 0%`;
 
                     return new Promise((resolve, reject) => {
                         // Path: /wiki/{userId}/{timestamp}_{fileName}
@@ -390,12 +394,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             (snapshot) => {
                                 const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
                                 if (progressBar) progressBar.style.width = percent + '%';
-                                if (progressText) progressText.innerText = `${label} Uploading... ${percent}%`;
+                                if (progressText) progressText.innerText = `${label} ${tr('uploadingImage')} ${percent}%`;
                             }, 
                             (error) => {
                                 console.error("Upload error:", error);
                                 if (progressContainer) progressContainer.style.display = 'none';
-                                window.showToast("Upload failed: " + error.message, "error");
+                                window.showToast(tr('uploadFailed') + ': ' + error.message, "error");
                                 reject(error);
                             }, 
                             () => {
@@ -436,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tools.attaches = {
                 class: AttachesTool,
                 config: {
-                    uploader: createUploader("Attachment")
+                    uploader: createUploader(tr('attachment'))
                 }
             };
         }
@@ -444,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editor = new EditorJS({
             holder: 'editorjs',
             data: normalizeEditorData(data),
-            placeholder: 'Type "/" for commands...',
+            placeholder: tr('editorPlaceholder'),
             tools: tools,
             inlineToolbar: true,
             onReady: () => {
@@ -509,11 +513,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderProjectSelect = () => {
         if (!wikiProjectSelect) return;
         const previousValue = wikiProjectSelect.value;
-        wikiProjectSelect.innerHTML = '<option value="">No Project</option>';
+        wikiProjectSelect.innerHTML = `<option value="">${tr('noProject')}</option>`;
         allProjects.forEach(project => {
             const option = document.createElement('option');
             option.value = project.id;
-            option.textContent = project.name || 'Untitled Project';
+            option.textContent = project.name || tr('untitledProject');
             wikiProjectSelect.appendChild(option);
         });
 
@@ -530,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredPages = allPages.filter(p => (p.title && p.title.toLowerCase().includes(term)));
         }
 
-        wikiPageList.innerHTML = filteredPages.length ? '' : '<div class="empty-state" style="padding:20px;">No pages found</div>';
+        wikiPageList.innerHTML = filteredPages.length ? '' : `<div class="empty-state" style="padding:20px;">${tr('noPagesFound')}</div>`;
 
         const childrenByParent = filteredPages.reduce((groups, page) => {
             const parentId = page.parentId || '';
@@ -555,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                     </svg>
-                    <span>${escapeHtml(page.title || 'Untitled Document')}</span>
+                    <span>${escapeHtml(page.title || tr('untitledDocument'))}</span>
                 `;
                 el.onclick = () => navigateToPage(page.id);
                 wikiPageList.appendChild(el);
@@ -581,6 +585,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchInput) {
         searchInput.oninput = () => renderPageList();
     }
+
+    window.addEventListener('planary-language-change', () => {
+        renderProjectSelect();
+        renderPageList();
+        if (currentPageId) renderSubpages(currentPageId);
+        if (saveWikiBtn && !saveWikiBtn.disabled) saveWikiBtn.textContent = tr('saveChanges');
+        if (deleteWikiBtn) deleteWikiBtn.textContent = tr('deletePage');
+    });
 
     const navigateToPage = (pageId) => {
         window.location.hash = `wiki/${pageId}`;
@@ -627,8 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="wiki-subpage-card wiki-subpage-create-card" type="button" id="wiki-inline-create-subpage-btn">
                     <span class="wiki-subpage-icon">+</span>
                     <span class="wiki-subpage-text">
-                        <strong>Create first subpage</strong>
-                        <span>Keep related notes nested under this page.</span>
+                        <strong>${tr('createFirstSubpage')}</strong>
+                        <span>${tr('subpageEmptyHelp')}</span>
                     </span>
                 </button>
             `;
@@ -650,8 +662,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </svg>
                 </span>
                 <span class="wiki-subpage-text">
-                    <strong>${escapeHtml(page.title || 'Untitled Document')}</strong>
-                    <span>${page.updatedAt ? `Updated ${new Date(page.updatedAt.toMillis()).toLocaleDateString()}` : 'Open subpage'}</span>
+                    <strong>${escapeHtml(page.title || tr('untitledDocument'))}</strong>
+                    <span>${page.updatedAt ? `${tr('updated')} ${new Date(page.updatedAt.toMillis()).toLocaleDateString()}` : tr('openSubpage')}</span>
                 </span>
             `;
             item.onclick = () => navigateToPage(page.id);
@@ -713,7 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const createNewPage = (parentId = null) => {
-        if (!currentUser) return window.showToast('Please login first', 'error');
+        if (!currentUser) return window.showToast(tr('loginFirst'), 'error');
         const parentPage = parentId ? getPageById(parentId) : null;
         const rootPage = parentId ? getRootPage(parentId) : null;
         const inheritedProjectId = parentPage
@@ -722,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const newDoc = {
             uid: currentUser.uid,
-            title: 'Untitled Document',
+            title: tr('untitledDocument'),
             parentId: parentId || null,
             projectId: inheritedProjectId,
             content: {},
@@ -734,7 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             navigateToPage(docRef.id);
         }).catch(err => {
             console.error("Creation error:", err);
-            window.showToast("Failed to create page: " + err.message, "error");
+            window.showToast(tr('failedCreatePage') + ': ' + err.message, "error");
         });
     };
 
@@ -773,13 +785,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const savePage = async () => {
         if (!editor || !currentPageId || !currentUser) {
             console.warn('[Wiki] Save aborted: editor or pageId missing', { editor: !!editor, currentPageId, currentUser: !!currentUser });
-            window.showToast('Cannot save: not ready', 'error');
+            window.showToast(tr('cannotSaveNotReady'), 'error');
             return;
         }
-        const title = wikiTitleInput ? wikiTitleInput.value.trim() || 'Untitled Document' : 'Untitled Document';
+        const title = wikiTitleInput ? wikiTitleInput.value.trim() || tr('untitledDocument') : tr('untitledDocument');
         const projectId = wikiProjectSelect && wikiProjectSelect.value ? wikiProjectSelect.value : null;
 
-        if (saveWikiBtn) { saveWikiBtn.textContent = 'Saving...'; saveWikiBtn.disabled = true; }
+        if (saveWikiBtn) { saveWikiBtn.textContent = tr('saving'); saveWikiBtn.disabled = true; }
 
         try {
             const contentData = normalizeEditorData(await editor.save());
@@ -789,13 +801,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 content: contentData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            window.showToast('✅ Page saved!', 'success');
+            window.showToast(tr('pageSaved'), 'success');
         } catch (err) {
             console.error('[Wiki] Save error:', err);
             // Show actual error message for diagnosis
-            window.showToast('Save failed: ' + (err.message || err), 'error');
+            window.showToast(tr('saveFailed') + ': ' + (err.message || err), 'error');
         } finally {
-            if (saveWikiBtn) { saveWikiBtn.textContent = 'Save Changes'; saveWikiBtn.disabled = false; }
+            if (saveWikiBtn) { saveWikiBtn.textContent = tr('saveChanges'); saveWikiBtn.disabled = false; }
         }
     };
 
@@ -827,8 +839,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentPageId) return;
             const descendantIds = getDescendantPageIds(currentPageId);
             const confirmMessage = descendantIds.length
-                ? `Delete this page and ${descendantIds.length} subpage(s)?`
-                : 'Delete this page?';
+                ? fmt('deletePageWithSubpagesConfirm', { count: descendantIds.length })
+                : tr('deletePageConfirm');
             if (!confirm(confirmMessage)) return;
 
             const batch = db.batch();
@@ -838,10 +850,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             batch.commit().then(() => {
                 goBackToList();
-                window.showToast("Page deleted");
+                window.showToast(tr('pageDeleted'));
             }).catch(err => {
                 console.error("Delete error:", err);
-                window.showToast("Failed to delete page: " + err.message, "error");
+                window.showToast(tr('failedDeletePage') + ': ' + err.message, "error");
             });
         };
     }

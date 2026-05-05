@@ -58,7 +58,7 @@
     <div id="app-shell">
         <!-- Mobile Header (Visible only on mobile) -->
         <header id="mobile-header">
-            <button id="menu-toggle" aria-label="Open Menu">
+            <button id="menu-toggle" aria-label="내비게이션 열기">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <span class="mobile-logo">Planary</span>
@@ -72,38 +72,38 @@
 
         <div id="icon-rail">
             <!-- Desktop Sidebar Toggle -->
-            <button class="rail-icon desktop-only" id="sidebar-toggle-btn" type="button" title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true">
+            <button class="rail-icon desktop-only" id="sidebar-toggle-btn" type="button" title="사이드바 접기" aria-label="사이드바 접기" aria-expanded="true">
                 <svg class="sidebar-toggle-menu-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 <svg class="sidebar-toggle-restore-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
             <!-- Mobile Top Icon: Rotate (↺) -->
-            <button class="rail-icon mobile-only" data-target="page-tasks" title="Undo">
+            <button class="rail-icon mobile-only" data-target="page-tasks" title="되돌리기">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
 
             <div class="rail-icon-group">
-                <button class="rail-icon" data-target="page-home" title="Home">
+                <button class="rail-icon" data-target="page-home" title="홈">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 </button>
-                <button class="rail-icon active" data-target="page-tasks" title="Tasks">
+                <button class="rail-icon active" data-target="page-tasks" title="작업">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-projects" title="Layers">
+                <button class="rail-icon" data-target="page-projects" title="프로젝트">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-notes" title="Notes">
+                <button class="rail-icon" data-target="page-notes" title="메모">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-wiki" title="Wiki">
+                <button class="rail-icon" data-target="page-wiki" title="위키">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-bookmarks" title="Bookmarks">
+                <button class="rail-icon" data-target="page-bookmarks" title="북마크">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-archive" title="Archive">
+                <button class="rail-icon" data-target="page-archive" title="보관함">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-profile" title="Profile">
+                <button class="rail-icon" data-target="page-profile" title="마이페이지">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </button>
             </div>
@@ -121,45 +121,45 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                     </div>
                     <div>
-                        <h2 class="project-name" id="sidebar-header-title">My Tasks</h2>
-                        <span class="project-id" id="sidebar-header-subtitle">Todo Manager ↗</span>
+                        <h2 class="project-name" id="sidebar-header-title">내 작업</h2>
+                        <span class="project-id" id="sidebar-header-subtitle">작업 관리자 ↗</span>
                     </div>
                 </div>
 
                 <nav class="sidebar-nav">
                     <a href="#" class="nav-link" data-target="page-home">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                        <span>Home</span>
+                        <span>홈</span>
                     </a>
                     <a href="#" class="nav-link active" data-target="page-tasks" data-filter="all">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        <span>Tasks</span>
+                        <span>작업</span>
                     </a>
                     <div class="task-subnav" id="task-subnav">
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="all">All tasks</a>
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="active">Progress</a>
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="important">Important</a>
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="reminders">Reminders</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="all">전체 작업</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="active">진행 중</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="important">중요</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="reminders">리마인더</a>
                     </div>
                     <a href="#" class="nav-link" data-target="page-projects">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                        <span>Projects</span>
+                        <span>프로젝트</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-notes">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        <span>Notes</span>
+                        <span>메모</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-wiki">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                        <span>Wiki</span>
+                        <span>위키</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-bookmarks">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                        <span>Bookmarks</span>
+                        <span>북마크</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-archive">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-                        <span>Archive</span>
+                        <span>보관함</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-profile">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -176,10 +176,10 @@
                         <span id="user-email-sidebar" class="profile-email">user@email.com</span>
                     </div>
                     <div style="display:flex; align-items:center; gap: 8px;">
-                        <button id="theme-toggle-btn" class="profile-menu-btn" title="Toggle Theme">
+                        <button id="theme-toggle-btn" class="profile-menu-btn" title="테마 전환">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         </button>
-                        <button id="logout-btn" class="profile-menu-btn" title="Logout">
+                        <button id="logout-btn" class="profile-menu-btn" title="로그아웃">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                         </button>
                     </div>
@@ -192,8 +192,8 @@
             <!-- PAGE: HOME -->
             <section id="page-home" class="page-content">
                 <header class="main-header">
-                    <h1>Dashboard Overview</h1>
-                    <p id="dashboard-welcome-text" style="color: var(--text-2); font-size: 0.9rem; margin-top: 4px;">Welcome back! Here's what's happening today.</p>
+                    <h1>대시보드</h1>
+                    <p id="dashboard-welcome-text" style="color: var(--text-2); font-size: 0.9rem; margin-top: 4px;">오늘의 작업 흐름을 확인하세요.</p>
                 </header>
 
                 <div class="dashboard-container">
@@ -204,7 +204,7 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                             </div>
                             <div class="stat-info">
-                                <span class="stat-label">Total Tasks</span>
+                                <span class="stat-label">전체 작업</span>
                                 <h2 class="stat-value" id="stat-total-tasks">0</h2>
                             </div>
                         </div>
@@ -213,14 +213,14 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                             </div>
                             <div class="stat-info">
-                                <span class="stat-label">Completed</span>
+                                <span class="stat-label">완료됨</span>
                                 <h2 class="stat-value" id="stat-completed-tasks">0</h2>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-info" style="width: 100%;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span class="stat-label">Productivity</span>
+                                    <span class="stat-label">생산성</span>
                                     <span id="stat-progress-percent" style="font-weight: 600; font-size: 0.85rem;">0%</span>
                                 </div>
                                 <div class="progress-bar-bg">
@@ -234,8 +234,8 @@
                         <!-- Recent Notes Widget -->
                         <div class="dashboard-widget">
                             <div class="widget-header">
-                                <h3>Recent Notes</h3>
-                                <button class="text-link-btn" data-target="page-notes">View All</button>
+                                <h3>최근 메모</h3>
+                                <button class="text-link-btn" data-target="page-notes">전체 보기</button>
                             </div>
                             <div id="dash-recent-notes" class="widget-content dash-notes-list">
                                 <!-- Dynamic items -->
@@ -245,12 +245,12 @@
                         <!-- Upcoming Reminders Widget -->
                         <div class="dashboard-widget">
                             <div class="widget-header">
-                                <h3>Upcoming Reminders</h3>
-                                <button class="text-link-btn" data-target="page-tasks" data-filter="reminders">View All</button>
+                                <h3>다가오는 리마인더</h3>
+                                <button class="text-link-btn" data-target="page-tasks" data-filter="reminders">전체 보기</button>
                             </div>
                             <div id="dash-reminders-list" class="widget-content">
                                 <!-- Dynamic items -->
-                                <p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">No upcoming reminders.</p>
+                                <p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">다가오는 리마인더가 없습니다.</p>
                             </div>
                         </div>
                     </div>
@@ -260,46 +260,46 @@
             <!-- PAGE: TASKS -->
             <section id="page-tasks" class="page-content active">
                 <header class="main-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <h1 id="welcome-message">Tasks</h1>
+                    <h1 id="welcome-message">작업</h1>
                     <div class="font-selector">
                         <select id="app-font-select" class="font-dropdown">
-                            <option value="var(--font)">Default Sans</option>
+                            <option value="var(--font)">기본 글꼴</option>
                             <option value="'Pretendard', sans-serif">Pretendard</option>
-                            <option value="'Courier New', Courier, monospace">Monospace</option>
-                            <option value="'Georgia', serif">Serif</option>
-                            <option value="'Comic Sans MS', cursive">Handwritten</option>
+                            <option value="'Courier New', Courier, monospace">고정폭</option>
+                            <option value="'Georgia', serif">세리프</option>
+                            <option value="'Comic Sans MS', cursive">손글씨</option>
                         </select>
                     </div>
                 </header>
 
                 <div class="filter-bar">
-                    <button class="filter-chip active" data-filter="all">All Tasks</button>
-                    <button class="filter-chip" data-filter="completed">Completed</button>
-                    <button class="filter-chip" data-filter="active">In-Progress</button>
+                    <button class="filter-chip active" data-filter="all">전체 작업</button>
+                    <button class="filter-chip" data-filter="completed">완료됨</button>
+                    <button class="filter-chip" data-filter="active">진행 중</button>
                     <!-- Added new filters based on sidebar items -->
-                    <button class="filter-chip" data-filter="important">Important</button>
-                    <button class="filter-chip" data-filter="reminders">Reminders</button>
+                    <button class="filter-chip" data-filter="important">중요</button>
+                    <button class="filter-chip" data-filter="reminders">리마인더</button>
                 </div>
 
                 <!-- Composer -->
                 <div class="composer">
                     <div class="composer-top">
-                        <input type="text" id="todo-input" placeholder="What needs to be done?">
-                        <button id="add-btn">Add Task</button>
+                        <input type="text" id="todo-input" placeholder="무엇을 해야 하나요?">
+                        <button id="add-btn">작업 추가</button>
                     </div>
                     <div class="composer-details">
-                        <input type="text" id="memo-input" placeholder="Notes (optional)">
+                        <input type="text" id="memo-input" placeholder="메모 (선택)">
                         <input type="date" id="due-date">
                         <select id="priority-select">
-                            <option value="low">Low</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="high">High</option>
+                            <option value="low">낮음</option>
+                            <option value="medium" selected>보통</option>
+                            <option value="high">높음</option>
                         </select>
                         <select id="todo-project-select">
-                            <option value="">No Project</option>
+                            <option value="">프로젝트 없음</option>
                             <!-- Options injected by JS -->
                         </select>
-                        <button id="task-img-upload-btn" class="composer-icon-btn" title="Attach Image">
+                        <button id="task-img-upload-btn" class="composer-icon-btn" title="이미지 첨부">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         </button>
                         <input type="file" id="task-img-input" accept="image/*" style="display: none;">
@@ -313,7 +313,7 @@
                 <!-- Search -->
                 <div class="search-wrapper">
                     <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="search-input" placeholder="Search tasks...">
+                    <input type="text" id="search-input" placeholder="작업 검색...">
                 </div>
 
                 <!-- Task List -->
@@ -325,14 +325,14 @@
             <!-- PAGE: PROJECTS -->
             <section id="page-projects" class="page-content">
                 <header class="main-header">
-                    <h1>Projects</h1>
-                    <p style="color: var(--text-2); font-size: 0.9rem;">Organize your tasks into groups.</p>
+                    <h1>프로젝트</h1>
+                    <p style="color: var(--text-2); font-size: 0.9rem;">작업을 프로젝트별로 정리하세요.</p>
                 </header>
 
                 <div class="composer">
                     <div class="composer-top">
-                        <input type="text" id="project-input" class="composer-input" placeholder="Project name (e.g. Work, Study)">
-                        <button id="add-project-btn" class="composer-submit-btn">Create Project</button>
+                        <input type="text" id="project-input" class="composer-input" placeholder="프로젝트 이름 (예: 업무, 공부)">
+                        <button id="add-project-btn" class="composer-submit-btn">프로젝트 만들기</button>
                     </div>
                 </div>
 
@@ -345,32 +345,32 @@
                         <div>
                             <span class="project-detail-kicker">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:6px;"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                                Project workspace
+                                프로젝트 작업 공간
                             </span>
-                            <h2 id="project-detail-title">Project</h2>
-                            <p id="project-detail-summary">Tasks, reminders, and wiki pages in one place.</p>
+                            <h2 id="project-detail-title">프로젝트</h2>
+                            <p id="project-detail-summary">작업, 리마인더, 위키 페이지를 한 곳에서 봅니다.</p>
                         </div>
-                        <button id="project-detail-close" class="wiki-icon-btn" title="Close project view" type="button">
+                        <button id="project-detail-close" class="wiki-icon-btn" title="프로젝트 보기 닫기" type="button">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
                     <div class="project-detail-grid">
                         <section class="project-detail-section">
                             <div class="project-detail-section-header">
-                                <h3>Tasks</h3>
+                                <h3>작업</h3>
                                 <button class="text-link-btn" id="project-view-tasks-btn" type="button">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:5px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                    Open tasks
+                                    작업 열기
                                 </button>
                             </div>
                             <div id="project-detail-tasks" class="project-detail-list"></div>
                         </section>
                         <section class="project-detail-section">
                             <div class="project-detail-section-header">
-                                <h3>Reminders</h3>
+                                <h3>리마인더</h3>
                                 <button class="text-link-btn" id="project-view-reminders-btn" type="button">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:5px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                                    Open reminders
+                                    리마인더 열기
                                 </button>
                             </div>
                             <div id="project-detail-reminders" class="project-detail-list"></div>
@@ -380,7 +380,7 @@
                                 <h3>Wiki</h3>
                                 <button class="text-link-btn" id="project-create-wiki-btn" type="button">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:5px;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                                    New wiki page
+                                    새 위키 페이지
                                 </button>
                             </div>
                             <div id="project-detail-wiki" class="project-detail-list project-detail-wiki-list"></div>
@@ -392,12 +392,12 @@
             <!-- PAGE: NOTES -->
             <section id="page-notes" class="page-content">
                 <header class="main-header">
-                    <h1>Sticky Notes</h1>
+                    <h1>스티키 메모</h1>
                 </header>
                 
                 <div class="composer">
                     <div class="composer-top">
-                        <textarea id="note-input" class="composer-input" placeholder="Jot down a quick thought or idea..." rows="3" style="resize: none;"></textarea>
+                        <textarea id="note-input" class="composer-input" placeholder="짧은 생각이나 아이디어를 적어보세요..." rows="3" style="resize: none;"></textarea>
                     </div>
                     <div class="composer-details" style="justify-content: space-between; align-items: center; margin-top: 12px;">
                         <div class="color-selector" id="note-color-picker">
@@ -408,7 +408,7 @@
                             <div class="color-option opt-purple" data-color="purple" title="Purple"></div>
                             <div class="color-option opt-orange" data-color="orange" title="Orange"></div>
                         </div>
-                        <button id="add-note-btn" class="composer-submit-btn" style="padding: 10px 24px; font-size: 14px;">+ Add Note</button>
+                        <button id="add-note-btn" class="composer-submit-btn" style="padding: 10px 24px; font-size: 14px;">+ 메모 추가</button>
                     </div>
                 </div>
 
@@ -420,21 +420,21 @@
             <!-- PAGE: BOOKMARKS -->
             <section id="page-bookmarks" class="page-content">
                 <header class="main-header">
-                    <h1>Bookmarks</h1>
-                    <p style="color: var(--text-2); font-size: 0.9rem;">Save important links with tags.</p>
+                    <h1>북마크</h1>
+                    <p style="color: var(--text-2); font-size: 0.9rem;">중요한 링크를 태그와 함께 저장하세요.</p>
                 </header>
 
                 <div class="composer">
                     <div class="composer-top">
                         <div style="display:flex; align-items:center; flex:1; gap:10px;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                            <input type="text" id="bm-url-input" class="composer-input" placeholder="Paste URL here (https://...)">
+                            <input type="text" id="bm-url-input" class="composer-input" placeholder="URL 붙여넣기 (https://...)">
                         </div>
-                        <button id="add-bm-btn" class="composer-submit-btn">Save Bookmark</button>
+                        <button id="add-bm-btn" class="composer-submit-btn">북마크 저장</button>
                     </div>
                     <div class="composer-details">
-                        <input type="text" id="bm-title-input" class="composer-input" placeholder="Custom Title (Optional)">
-                        <input type="text" id="bm-tags-input" class="composer-input" placeholder="Tags (e.g. dev, inspiration, news)">
+                        <input type="text" id="bm-title-input" class="composer-input" placeholder="사용자 지정 제목 (선택)">
+                        <input type="text" id="bm-tags-input" class="composer-input" placeholder="태그 (예: 개발, 자료, 뉴스)">
                     </div>
                 </div>
 
@@ -447,17 +447,17 @@
             <section id="page-wiki" class="page-content">
                 <header class="main-header" style="flex-wrap: wrap; gap: 10px;">
                     <div>
-                        <h1>Docs & Wiki</h1>
-                        <p style="color: var(--text-2); font-size: 0.9rem;">Notion-like document editor</p>
+                        <h1>문서 & 위키</h1>
+                        <p style="color: var(--text-2); font-size: 0.9rem;">노션 스타일 문서 편집기</p>
                     </div>
-                    <button class="confirm-btn block-btn" id="new-wiki-btn" style="width: auto;">+ New Page</button>
+                    <button class="confirm-btn block-btn" id="new-wiki-btn" style="width: auto;">+ 새 페이지</button>
                 </header>
                 
                 <div class="wiki-layout">
                     <!-- Wiki Page List -->
                     <div class="wiki-sidebar">
                         <div class="search-box">
-                            <input type="text" id="wiki-search-input" placeholder="Search pages...">
+                            <input type="text" id="wiki-search-input" placeholder="페이지 검색...">
                         </div>
                         <div id="wiki-page-list" class="wiki-list">
                             <!-- Page items injected by JS -->
@@ -467,13 +467,13 @@
                     <!-- Editor UI -->
                     <div class="wiki-editor-container" id="wiki-editor-view" style="display: none;">
                         <div class="wiki-editor-header">
-                            <button id="wiki-back-btn" class="wiki-icon-btn mobile-only" title="Back to list">
+                            <button id="wiki-back-btn" class="wiki-icon-btn mobile-only" title="목록으로 돌아가기">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                             </button>
                             <div class="wiki-title-row">
-                                <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="Untitled Document">
-                                <select id="wiki-project-select" class="wiki-project-select" aria-label="Wiki project">
-                                    <option value="">No Project</option>
+                                <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="제목 없는 문서">
+                                <select id="wiki-project-select" class="wiki-project-select" aria-label="위키 프로젝트">
+                                    <option value="">프로젝트 없음</option>
                                 </select>
                             </div>
                         </div>
@@ -481,19 +481,19 @@
                             <div class="progress-bar-bg">
                                 <div class="progress-bar-fill" id="wiki-upload-bar"></div>
                             </div>
-                            <span id="wiki-upload-text" class="progress-text">Uploading... 0%</span>
+                            <span id="wiki-upload-text" class="progress-text">업로드 중... 0%</span>
                         </div>
                         <div id="editorjs"></div>
                         <section class="wiki-subpages-section" id="wiki-subpages-section">
                             <div class="wiki-subpages-header">
-                                <h3>Subpages</h3>
-                                <button id="wiki-create-subpage-btn" class="text-link-btn" type="button">New Subpage</button>
+                                <h3>하위 페이지</h3>
+                                <button id="wiki-create-subpage-btn" class="text-link-btn" type="button">새 하위 페이지</button>
                             </div>
                             <div id="wiki-subpages-list" class="wiki-subpages-list"></div>
                         </section>
                         <div class="wiki-actions">
-                            <button id="wiki-save-btn" class="confirm-btn">Save Changes</button>
-                            <button id="wiki-delete-btn" class="cancel-btn">Delete Page</button>
+                            <button id="wiki-save-btn" class="confirm-btn">변경사항 저장</button>
+                            <button id="wiki-delete-btn" class="cancel-btn">페이지 삭제</button>
                         </div>
                     </div>
 
@@ -523,8 +523,8 @@
             <!-- PAGE: ARCHIVE -->
             <section id="page-archive" class="page-content">
                 <header class="main-header">
-                    <h1>Archive Vault</h1>
-                    <p style="color: var(--text-2); font-size: 0.9rem;">Review your achievements and past thoughts.</p>
+                    <h1>보관함</h1>
+                    <p style="color: var(--text-2); font-size: 0.9rem;">완료한 작업과 지난 기록을 다시 확인하세요.</p>
                 </header>
 
                 <div class="archive-dashboard">
@@ -535,7 +535,7 @@
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                             </div>
                             <div class="archive-stat-info">
-                                <span class="stat-label">Total Achievements</span>
+                                <span class="stat-label">전체 성과</span>
                                 <span class="stat-value" id="archive-total-completed">0</span>
                             </div>
                         </div>
@@ -544,7 +544,7 @@
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                             </div>
                             <div class="archive-stat-info">
-                                <span class="stat-label">Items Archived</span>
+                                <span class="stat-label">보관된 항목</span>
                                 <span class="stat-value" id="archive-total-items">0</span>
                             </div>
                         </div>
@@ -568,8 +568,8 @@
 
                 <div class="archive-list-section">
                     <div class="section-header">
-                        <h3>Archived Tasks</h3>
-                        <button class="text-link-btn" id="empty-archive-btn">Empty Archive</button>
+                        <h3>보관된 작업</h3>
+                        <button class="text-link-btn" id="empty-archive-btn">보관함 비우기</button>
                     </div>
                     <div class="archive-list" id="archive-tasks-list">
                         <!-- Archived items injected by JS -->
@@ -583,12 +583,12 @@
                     <h1>마이페이지</h1>
                 </header>
                 <div class="profile-card">
-                    <p><strong>Name:</strong> <span id="profile-view-name"></span></p>
-                    <p><strong>Email:</strong> <span id="profile-view-email"></span></p>
-                    <p><strong>Login methods:</strong> <span id="profile-login-methods"></span></p>
+                    <p><strong>이름:</strong> <span id="profile-view-name"></span></p>
+                    <p><strong>이메일:</strong> <span id="profile-view-email"></span></p>
+                    <p><strong>로그인 방식:</strong> <span id="profile-login-methods"></span></p>
 
                     <div class="profile-language-panel">
-                        <label for="app-language-select">UI language</label>
+                        <label for="app-language-select">UI 언어</label>
                         <select id="app-language-select" class="font-dropdown">
                             <option value="ko">한국어</option>
                             <option value="en">English</option>
@@ -604,25 +604,25 @@
                     </div>
 
                     <div class="profile-password-panel">
-                        <h3>Email password login</h3>
+                        <h3>이메일 비밀번호 로그인</h3>
                         <p id="profile-password-help" class="profile-help-text">
-                            Set a password for this email so you can sign in with email and password too.
+                            이 이메일로 비밀번호 로그인도 할 수 있도록 비밀번호를 설정합니다.
                         </p>
                         <div class="profile-password-grid">
                             <label>
-                                New password
-                                <input type="password" id="profile-password" class="auth-input" autocomplete="new-password" placeholder="At least 6 characters">
+                                새 비밀번호
+                                <input type="password" id="profile-password" class="auth-input" autocomplete="new-password" placeholder="6자 이상">
                             </label>
                             <label>
-                                Confirm password
-                                <input type="password" id="profile-password-confirm" class="auth-input" autocomplete="new-password" placeholder="Confirm password">
+                                비밀번호 확인
+                                <input type="password" id="profile-password-confirm" class="auth-input" autocomplete="new-password" placeholder="비밀번호 확인">
                             </label>
                         </div>
-                        <button class="confirm-btn" id="profile-password-btn" style="width: auto; padding: 10px 24px; margin-top: 14px;">Set password login</button>
+                        <button class="confirm-btn" id="profile-password-btn" style="width: auto; padding: 10px 24px; margin-top: 14px;">비밀번호 로그인 설정</button>
                         <p id="profile-password-status" class="profile-status-text" role="status"></p>
                     </div>
 
-                    <button class="confirm-btn" id="profile-logout-btn" style="width: auto; padding: 10px 24px; margin-top: 20px;">Logout</button>
+                    <button class="confirm-btn" id="profile-logout-btn" style="width: auto; padding: 10px 24px; margin-top: 20px;">로그아웃</button>
                 </div>
             </section>
         </main>
@@ -630,47 +630,47 @@
         <!-- Radial FAB for Mobile (Bottom Right) -->
         <div id="mobile-nav-container" class="fab-container">
             <div class="fab-menu" id="fab-menu">
-                <button class="fab-item" data-target="page-home" title="Home">
+                <button class="fab-item" data-target="page-home" title="홈">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    <span class="fab-label">Home</span>
+                    <span class="fab-label">홈</span>
                 </button>
-                <button class="fab-item" data-target="page-tasks" title="Tasks">
+                <button class="fab-item" data-target="page-tasks" title="작업">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    <span class="fab-label">Tasks</span>
+                    <span class="fab-label">작업</span>
                 </button>
-                <button class="fab-item" data-target="page-projects" title="Projects">
+                <button class="fab-item" data-target="page-projects" title="프로젝트">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                    <span class="fab-label">Projects</span>
+                    <span class="fab-label">프로젝트</span>
                 </button>
-                <button class="fab-item" data-target="page-notes" title="Notes">
+                <button class="fab-item" data-target="page-notes" title="메모">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    <span class="fab-label">Notes</span>
+                    <span class="fab-label">메모</span>
                 </button>
-                <button class="fab-item" data-target="page-wiki" title="Wiki">
+                <button class="fab-item" data-target="page-wiki" title="위키">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                    <span class="fab-label">Wiki</span>
+                    <span class="fab-label">위키</span>
                 </button>
-                <button class="fab-item" data-target="page-bookmarks" title="Bookmarks">
+                <button class="fab-item" data-target="page-bookmarks" title="북마크">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                    <span class="fab-label">Bookmarks</span>
+                    <span class="fab-label">북마크</span>
                 </button>
-                <button class="fab-item" data-target="page-archive" title="Archive">
+                <button class="fab-item" data-target="page-archive" title="보관함">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-                    <span class="fab-label">Archive</span>
+                    <span class="fab-label">보관함</span>
                 </button>
-                <button class="fab-item" data-target="page-profile" title="My Page">
+                <button class="fab-item" data-target="page-profile" title="마이페이지">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <span class="fab-label">마이페이지</span>
                 </button>
             </div>
-            <button id="fab-trigger" class="fab-main" aria-label="Toggle Navigation">
+            <button id="fab-trigger" class="fab-main" aria-label="내비게이션 열기">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
         </div>
 
         <div id="onboarding-modal" class="onboarding-modal" aria-hidden="true">
             <div class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-                <div class="onboarding-eyebrow">Welcome to Planary</div>
+                <div class="onboarding-eyebrow">Planary 시작하기</div>
                 <h2 id="onboarding-title">작업을 한 흐름으로 정리하세요</h2>
                 <p class="onboarding-intro">처음 시작할 때는 아래 순서만 기억하면 됩니다. 할 일을 만들고, 프로젝트로 묶고, 필요한 기록은 위키에 남기세요.</p>
                 <div class="onboarding-steps">
@@ -679,7 +679,7 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         </span>
                         <div>
-                            <strong>Tasks</strong>
+                            <strong>작업</strong>
                             <span>오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.</span>
                         </div>
                     </div>
@@ -688,7 +688,7 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                         </span>
                         <div>
-                            <strong>Projects</strong>
+                            <strong>프로젝트</strong>
                             <span>작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.</span>
                         </div>
                     </div>
@@ -697,14 +697,14 @@
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                         </span>
                         <div>
-                            <strong>Wiki</strong>
+                            <strong>위키</strong>
                             <span>회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.</span>
                         </div>
                     </div>
                 </div>
                 <div class="onboarding-actions">
                     <button id="onboarding-skip-btn" class="text-link-btn" type="button">나중에 볼게요</button>
-                    <button id="onboarding-start-btn" class="confirm-btn" type="button">Task 만들러 가기</button>
+                    <button id="onboarding-start-btn" class="confirm-btn" type="button">작업 만들러 가기</button>
                 </div>
             </div>
         </div>
@@ -736,8 +736,8 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v18"></script>
-    <script src="wiki.js?v=v9"></script> 
+    <script src="app.js?v=v19"></script>
+    <script src="wiki.js?v=v10"></script>
 </body>
 
 </html>

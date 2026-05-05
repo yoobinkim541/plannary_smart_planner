@@ -90,7 +90,67 @@ const I18N = {
         overviewSubtitle: '대시보드 요약', projectHeader: '프로젝트 그룹', projectSubtitle: '분류 관리자',
         notesHeader: '스티키 보드', notesSubtitle: '아이디어 메모', bookmarksHeader: '저장한 웹', bookmarksHeaderSubtitle: '참고 링크',
         archiveHeader: '보관함', archiveSubtitle: '이전 기록', wikiHeader: '위키 & 문서', wikiHeaderSubtitle: '지식 베이스',
-        myPageSubtitle: '사용자 계정'
+        myPageSubtitle: '사용자 계정', googleProvider: '구글', emailPasswordProvider: '이메일 비밀번호',
+        emailPasswordAlreadyEnabled: '이메일 비밀번호 로그인이 이미 활성화되어 있습니다. 새 비밀번호를 입력하면 변경됩니다.',
+        setPasswordHelp: '이 이메일로 비밀번호 로그인도 할 수 있도록 비밀번호를 설정합니다.',
+        updatePassword: '비밀번호 변경', setPasswordLogin: '비밀번호 로그인 설정', passwordPlaceholder: '6자 이상',
+        confirmPasswordPlaceholder: '비밀번호 확인', authUnknownError: '알 수 없는 오류입니다.',
+        recentLoginRequired: '보안을 위해 로그아웃 후 구글로 다시 로그인한 다음 비밀번호를 설정하세요.',
+        weakPassword: '비밀번호는 최소 6자 이상이어야 합니다.', emailAlreadyConnected: '이 이메일은 이미 다른 계정에 연결되어 있습니다. 먼저 해당 방식으로 로그인하세요.',
+        providerAlreadyLinked: '이 계정에는 이메일 비밀번호 로그인이 이미 활성화되어 있습니다.',
+        emailPasswordDisabled: 'Firebase 프로젝트에서 이메일/비밀번호 로그인이 비활성화되어 있습니다. Firebase Console > Authentication > Sign-in method > Email/Password를 활성화한 뒤 다시 시도하세요.',
+        authFailed: '인증에 실패했습니다.', noEmailToConnect: '연결할 이메일 주소가 없는 계정입니다.',
+        passwordMismatch: '비밀번호가 일치하지 않습니다.', updatingPassword: '비밀번호 변경 중...', connectingEmailPassword: '이메일 비밀번호 로그인 연결 중...',
+        emailPasswordDone: '완료되었습니다. 이제 이 이메일과 비밀번호로 로그인할 수 있습니다.', emailPasswordEnabled: '이메일 비밀번호 로그인이 활성화되었습니다.',
+        edit: '수정', delete: '삭제', restore: '복원', archiveVerb: '보관', undo: '되돌리기', complete: '완료',
+        deleteConfirm: '삭제할까요?', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
+        low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
+        today: '오늘', active: '진행 중', noDate: '날짜 없음', deletePermanently: '영구 삭제',
+        permanentDeleteConfirm: '영구 삭제할까요?', stayInspired: '계속 기록하세요.', projectTasksUnit: '작업',
+        projectRemindersUnit: '리마인더', projectWikiUnit: '위키', open: '열기', deleteProjectConfirm: '프로젝트를 삭제할까요?',
+        taskCountSummary: '{tasks}개 작업, {reminders}개 리마인더, {wiki}개 위키 페이지',
+        noTasksInProject: '이 프로젝트에 작업이 없습니다.', noActiveReminders: '활성 리마인더가 없습니다.',
+        untitledDocument: '제목 없는 문서', subpage: '하위 페이지', rootPage: '루트 페이지', noWikiInProject: '이 프로젝트에 연결된 위키 페이지가 없습니다.',
+        visitWebsite: '웹사이트 방문', deleteBookmark: '북마크 삭제', deleteBookmarkConfirm: '북마크를 삭제할까요?',
+        editContent: '내용 수정:', updated: '수정되었습니다.', uploadingImage: '이미지 업로드 중...', imageUploadFailed: '이미지 업로드에 실패해 이미지 없이 저장합니다.',
+        added: '추가되었습니다.', taskCreationFailed: '작업 생성에 실패했습니다.', bookmarkSaved: '북마크가 저장되었습니다.',
+        projectCreated: '프로젝트가 생성되었습니다.', projectNotesTitle: '{project} 메모', failedCreateWiki: '위키 페이지 생성에 실패했습니다.',
+        noteAdded: '메모가 추가되었습니다.', logoutConfirm: '로그아웃할까요?', uploadImageTitle: '이미지 첨부',
+        pasteUrl: 'URL 붙여넣기', customTitle: '사용자 지정 제목', tagsPlaceholder: '태그...', newPage: '+ 새 페이지',
+        uploadingProgress: '업로드 중... 0%', subpages: '하위 페이지', newSubpage: '새 하위 페이지', deletePage: '페이지 삭제',
+        archiveDescription: '완료한 작업과 지난 기록을 다시 확인하세요.', totalAchievements: '전체 성과', itemsArchived: '보관된 항목',
+        monospace: '고정폭', serif: '세리프', handwritten: '손글씨', firstTaskTitle: '할 일을 채워보세요',
+        firstTaskBody: '해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.',
+        firstTaskButton: '첫 작업 추가하기', firstNoteTitle: '메모 보드를 채워보세요',
+        firstNoteBody: '아이디어와 짧은 기록을 포스트잇처럼 쌓아두는 공간입니다.<br>상단 입력창에 첫 메모를 적고 보드 위에 배치해보세요.',
+        firstNoteButton: '첫 메모 작성하기', firstProjectTitle: '프로젝트를 만들어보세요',
+        firstProjectBody: '업무와 아이디어를 주제별로 나누면 정리 속도가 빨라집니다.<br>상단 입력창에서 첫 프로젝트를 추가해 작업을 묶어보세요.',
+        firstProjectButton: '첫 프로젝트 만들기', firstBookmarkTitle: '북마크를 저장해보세요',
+        firstBookmarkBody: '자주 참고하는 링크를 태그와 함께 모아두는 공간입니다.<br>상단 입력창에 URL을 붙여 첫 북마크를 저장하세요.',
+        firstBookmarkButton: '첫 북마크 저장하기', emptyArchiveTitle: '보관함이 비어 있습니다',
+        emptyArchiveBody: '완료했거나 잠시 치워둔 작업이 여기에 쌓입니다.<br>작업 화면에서 항목을 보관하면 이곳에서 다시 꺼낼 수 있습니다.',
+        expandSidebar: '사이드바 펼치기', collapseSidebar: '사이드바 접기',
+        openPageFirst: '먼저 페이지를 열어주세요', untitledProject: '제목 없는 프로젝트', noPagesFound: '페이지가 없습니다',
+        createFirstSubpage: '첫 하위 페이지 만들기', subpageEmptyHelp: '관련 메모를 이 페이지 아래에 정리하세요.',
+        openSubpage: '하위 페이지 열기', loginFirst: '먼저 로그인해주세요', failedCreatePage: '페이지 생성 실패',
+        cannotSaveNotReady: '저장할 수 없습니다. 페이지가 준비되지 않았습니다.', saving: '저장 중...', pageSaved: '페이지가 저장되었습니다',
+        saveFailed: '저장 실패', deletePageConfirm: '이 페이지를 삭제할까요?',
+        deletePageWithSubpagesConfirm: '이 페이지와 하위 페이지 {count}개를 삭제할까요?', pageDeleted: '페이지가 삭제되었습니다',
+        failedDeletePage: '페이지 삭제 실패', mathPlaceholder: 'KaTeX 수식을 입력하세요 (예: \\sum_{i=1}^n i = \\frac{n(n+1)}{2})',
+        headingShortcutFailed: '제목 단축키 실패', undoFailed: '되돌리기 실패', headingPlaceholder: '제목 입력',
+        loginFirstOrStorage: '먼저 로그인하거나 Firebase Storage 초기화를 확인해주세요', uploadFailed: '업로드 실패',
+        editorPlaceholder: '명령어는 "/"를 입력하세요...', wikiEmptyTitle: '지식 창고를 채워보세요',
+        wikiEmptyBody: '생각을 정리하고 아이디어를 기록하는 당신만의 위키 공간입니다.<br>왼쪽 목록에서 문서를 선택하거나 새로 만들어 시작하세요.',
+        createNewPage: '새 페이지 만들기', inspirationTitle: '과거의 나로부터의 영감',
+        onboardingEyebrow: 'Planary 시작하기',
+        onboardingTitle: '작업을 한 흐름으로 정리하세요',
+        onboardingIntro: '처음 시작할 때는 아래 순서만 기억하면 됩니다. 할 일을 만들고, 프로젝트로 묶고, 필요한 기록은 위키에 남기세요.',
+        onboardingTaskBody: '오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.',
+        onboardingProjectBody: '작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.',
+        onboardingWikiBody: '회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.',
+        onboardingLater: '나중에 볼게요', onboardingStart: '작업 만들러 가기', backToList: '목록으로 돌아가기',
+        toggleTheme: '테마 전환', toggleNavigation: '내비게이션 열기', attachment: '첨부파일',
+        katexNotLoaded: 'KaTeX를 불러오지 못했습니다.', syntaxError: '문법 오류'
     },
     en: {
         home: 'Home', tasks: 'Tasks', allTasks: 'All tasks', completed: 'Completed', progress: 'Progress', important: 'Important',
@@ -113,7 +173,67 @@ const I18N = {
         overviewSubtitle: 'Dashboard Summary', projectHeader: 'Project Groups', projectSubtitle: 'Category Manager',
         notesHeader: 'Sticky Board', notesSubtitle: 'Idea Notes', bookmarksHeader: 'Web Saved', bookmarksHeaderSubtitle: 'Reference Links',
         archiveHeader: 'Vault', archiveSubtitle: 'Historical Records', wikiHeader: 'Wiki & Docs', wikiHeaderSubtitle: 'Knowledge Base',
-        myPageSubtitle: 'User Account'
+        myPageSubtitle: 'User Account', googleProvider: 'Google', emailPasswordProvider: 'Email password',
+        emailPasswordAlreadyEnabled: 'Email password login is already enabled. Enter a new password to update it.',
+        setPasswordHelp: 'Set a password for this email so you can sign in with email and password too.',
+        updatePassword: 'Update password', setPasswordLogin: 'Set password login', passwordPlaceholder: 'At least 6 characters',
+        confirmPasswordPlaceholder: 'Confirm password', authUnknownError: 'Unknown error.',
+        recentLoginRequired: 'For security, please log out, sign in with Google again, then set the password.',
+        weakPassword: 'Password should be at least 6 characters.', emailAlreadyConnected: 'This email is already connected to another account. Sign in with that method first.',
+        providerAlreadyLinked: 'Email password login is already enabled for this account.',
+        emailPasswordDisabled: 'Email/Password login is disabled in this Firebase project. Enable Firebase Console > Authentication > Sign-in method > Email/Password, then try again.',
+        authFailed: 'Authentication failed.', noEmailToConnect: 'This account has no email address to connect.',
+        passwordMismatch: 'Passwords do not match.', updatingPassword: 'Updating password...', connectingEmailPassword: 'Connecting email password login...',
+        emailPasswordDone: 'Done. You can now sign in with this email and password.', emailPasswordEnabled: 'Email password login enabled.',
+        edit: 'Edit', delete: 'Delete', restore: 'Restore', archiveVerb: 'Archive', undo: 'Undo', complete: 'Complete',
+        deleteConfirm: 'Delete?', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
+        low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
+        today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
+        permanentDeleteConfirm: 'Permanently delete?', stayInspired: 'Stay inspired.', projectTasksUnit: 'tasks',
+        projectRemindersUnit: 'reminders', projectWikiUnit: 'wiki', open: 'Open', deleteProjectConfirm: 'Delete project?',
+        taskCountSummary: '{tasks} tasks, {reminders} reminders, {wiki} wiki pages',
+        noTasksInProject: 'No tasks in this project.', noActiveReminders: 'No active reminders.',
+        untitledDocument: 'Untitled Document', subpage: 'Subpage', rootPage: 'Root page', noWikiInProject: 'No wiki pages linked to this project.',
+        visitWebsite: 'Visit Website', deleteBookmark: 'Delete bookmark', deleteBookmarkConfirm: 'Delete bookmark?',
+        editContent: 'Edit content:', updated: 'Updated!', uploadingImage: 'Uploading image...', imageUploadFailed: 'Image upload failed, saving task without image',
+        added: 'Added!', taskCreationFailed: 'Task creation failed.', bookmarkSaved: 'Bookmark saved!',
+        projectCreated: 'Project created!', projectNotesTitle: '{project} Notes', failedCreateWiki: 'Failed to create wiki page.',
+        noteAdded: 'Note added!', logoutConfirm: 'Logout?', uploadImageTitle: 'Attach Image',
+        pasteUrl: 'Paste URL here', customTitle: 'Custom Title', tagsPlaceholder: 'Tags...', newPage: '+ New Page',
+        uploadingProgress: 'Uploading... 0%', subpages: 'Subpages', newSubpage: 'New Subpage', deletePage: 'Delete Page',
+        archiveDescription: 'Review your achievements and past thoughts', totalAchievements: 'Total Achievements', itemsArchived: 'Items Archived',
+        monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', firstTaskTitle: 'Fill your task list',
+        firstTaskBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',
+        firstTaskButton: 'Add first task', firstNoteTitle: 'Fill your note board',
+        firstNoteBody: 'Keep ideas and quick records like sticky notes.<br>Write your first note above and place it on the board.',
+        firstNoteButton: 'Write first note', firstProjectTitle: 'Create your first project',
+        firstProjectBody: 'Grouping work and ideas by topic makes planning faster.<br>Add your first project above to connect related work.',
+        firstProjectButton: 'Create first project', firstBookmarkTitle: 'Save your first bookmark',
+        firstBookmarkBody: 'Collect frequently referenced links with tags.<br>Paste a URL above to save your first bookmark.',
+        firstBookmarkButton: 'Save first bookmark', emptyArchiveTitle: 'Archive is empty',
+        emptyArchiveBody: 'Completed or tucked-away tasks will collect here.<br>Archive items from Tasks to restore them later.',
+        expandSidebar: 'Expand sidebar', collapseSidebar: 'Collapse sidebar',
+        openPageFirst: 'Open a page first', untitledProject: 'Untitled Project', noPagesFound: 'No pages found',
+        createFirstSubpage: 'Create first subpage', subpageEmptyHelp: 'Keep related notes nested under this page.',
+        openSubpage: 'Open subpage', loginFirst: 'Please login first', failedCreatePage: 'Failed to create page',
+        cannotSaveNotReady: 'Cannot save: not ready', saving: 'Saving...', pageSaved: 'Page saved',
+        saveFailed: 'Save failed', deletePageConfirm: 'Delete this page?',
+        deletePageWithSubpagesConfirm: 'Delete this page and {count} subpage(s)?', pageDeleted: 'Page deleted',
+        failedDeletePage: 'Failed to delete page', mathPlaceholder: 'Enter KaTeX formula (e.g. \\sum_{i=1}^n i = \\frac{n(n+1)}{2})',
+        headingShortcutFailed: 'Heading shortcut failed', undoFailed: 'Undo failed', headingPlaceholder: 'Enter a heading',
+        loginFirstOrStorage: 'Please login first or Firebase is not initialized', uploadFailed: 'Upload failed',
+        editorPlaceholder: 'Type "/" for commands...', wikiEmptyTitle: 'Fill your knowledge base',
+        wikiEmptyBody: 'Your own wiki space for organizing thoughts and ideas.<br>Select a document from the left or create a new one to start.',
+        createNewPage: 'Create new page', inspirationTitle: 'Inspiration from past notes',
+        onboardingEyebrow: 'Welcome to Planary',
+        onboardingTitle: 'Organize work into one flow',
+        onboardingIntro: 'To get started, remember this flow: create tasks, group them into projects, and keep important context in wiki pages.',
+        onboardingTaskBody: 'Add today’s work with due dates, priorities, and notes.',
+        onboardingProjectBody: 'Group tasks, reminders, and wiki pages by project.',
+        onboardingWikiBody: 'Organize meetings, ideas, and references into pages and subpages.',
+        onboardingLater: 'Maybe later', onboardingStart: 'Create a task', backToList: 'Back to list',
+        toggleTheme: 'Toggle theme', toggleNavigation: 'Toggle navigation', attachment: 'Attachment',
+        katexNotLoaded: 'KaTeX not loaded.', syntaxError: 'Syntax Error'
     }
 };
 
@@ -126,6 +246,11 @@ function setText(selector, value) {
     if (el) el.textContent = value;
 }
 
+function setHtml(selector, value) {
+    const el = document.querySelector(selector);
+    if (el) el.innerHTML = value;
+}
+
 function setAllText(selector, value) {
     document.querySelectorAll(selector).forEach(el => { el.textContent = value; });
 }
@@ -134,6 +259,41 @@ function setPlaceholder(selector, value) {
     const el = document.querySelector(selector);
     if (el) el.placeholder = value;
 }
+
+function setTitle(selector, value) {
+    const el = document.querySelector(selector);
+    if (el) {
+        el.title = value;
+        el.setAttribute('aria-label', value);
+    }
+}
+
+function setOptionText(selector, value) {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = value;
+}
+
+function formatText(key, values = {}) {
+    return t(key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
+}
+
+function setButtonTextPreserveIcon(selector, value) {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    const icon = el.querySelector('svg');
+    el.textContent = '';
+    if (icon) {
+        el.appendChild(icon);
+        el.appendChild(document.createTextNode(' '));
+    }
+    el.appendChild(document.createTextNode(value));
+}
+
+window.PlanaryI18n = {
+    t: (key) => t(key),
+    format: (key, values) => formatText(key, values),
+    getLanguage: () => currentLanguage
+};
 
 function applyLanguage(lang = currentLanguage) {
     currentLanguage = lang;
@@ -148,6 +308,14 @@ function applyLanguage(lang = currentLanguage) {
     setAllText('[data-target="page-bookmarks"] span, .fab-item[data-target="page-bookmarks"] .fab-label', t('bookmarks'));
     setAllText('[data-target="page-archive"] span, .fab-item[data-target="page-archive"] .fab-label', t('archive'));
     setAllText('[data-target="page-profile"] span, .fab-item[data-target="page-profile"] .fab-label', t('myPage'));
+    document.querySelectorAll('[data-target="page-home"]').forEach(el => el.title = t('home'));
+    document.querySelectorAll('[data-target="page-tasks"]').forEach(el => el.title = t('tasks'));
+    document.querySelectorAll('[data-target="page-projects"]').forEach(el => el.title = t('projects'));
+    document.querySelectorAll('[data-target="page-notes"]').forEach(el => el.title = t('notes'));
+    document.querySelectorAll('[data-target="page-wiki"]').forEach(el => el.title = t('wiki'));
+    document.querySelectorAll('[data-target="page-bookmarks"]').forEach(el => el.title = t('bookmarks'));
+    document.querySelectorAll('[data-target="page-archive"]').forEach(el => el.title = t('archive'));
+    document.querySelectorAll('[data-target="page-profile"]').forEach(el => el.title = t('myPage'));
     setText('.task-subnav-link[data-filter="all"]', t('allTasks'));
     setText('.task-subnav-link[data-filter="active"]', t('progress'));
     setText('.task-subnav-link[data-filter="important"]', t('important'));
@@ -173,16 +341,29 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#todo-input', t('taskPlaceholder'));
     setPlaceholder('#memo-input', t('memoPlaceholder'));
     setPlaceholder('#search-input', t('searchTasks'));
+    setTitle('#task-img-upload-btn', t('uploadImageTitle'));
+    setOptionText('#priority-select option[value="low"]', t('low'));
+    setOptionText('#priority-select option[value="medium"]', t('medium'));
+    setOptionText('#priority-select option[value="high"]', t('high'));
+    const fontOptions = document.querySelectorAll('#app-font-select option');
+    if (fontOptions[0]) fontOptions[0].textContent = t('defaultSans');
+    if (fontOptions[2]) fontOptions[2].textContent = t('monospace');
+    if (fontOptions[3]) fontOptions[3].textContent = t('serif');
+    if (fontOptions[4]) fontOptions[4].textContent = t('handwritten');
 
     setText('#page-projects .main-header h1', t('projectsTitle'));
     setText('#page-projects .main-header p', t('projectsSubtitle'));
     setPlaceholder('#project-input', t('projectPlaceholder'));
     setText('#add-project-btn', t('createProject'));
-    setText('.project-detail-kicker', t('projectWorkspace'));
+    setButtonTextPreserveIcon('.project-detail-kicker', t('projectWorkspace'));
     setText('#project-detail-summary', t('projectSummary'));
-    setText('#project-view-tasks-btn', t('openTasks'));
-    setText('#project-view-reminders-btn', t('openReminders'));
-    setText('#project-create-wiki-btn', t('newWikiPage'));
+    const projectSectionTitles = document.querySelectorAll('.project-detail-section-header h3');
+    if (projectSectionTitles[0]) projectSectionTitles[0].textContent = t('tasks');
+    if (projectSectionTitles[1]) projectSectionTitles[1].textContent = t('reminders');
+    if (projectSectionTitles[2]) projectSectionTitles[2].textContent = t('wiki');
+    setButtonTextPreserveIcon('#project-view-tasks-btn', t('openTasks'));
+    setButtonTextPreserveIcon('#project-view-reminders-btn', t('openReminders'));
+    setButtonTextPreserveIcon('#project-create-wiki-btn', t('newWikiPage'));
 
     setText('#page-notes .main-header h1', t('stickyNotes'));
     setPlaceholder('#note-input', t('notePlaceholder'));
@@ -190,13 +371,31 @@ function applyLanguage(lang = currentLanguage) {
     setText('#page-bookmarks .main-header h1', t('bookmarksTitle'));
     setText('#page-bookmarks .main-header p', t('bookmarksSubtitle'));
     setText('#add-bm-btn', t('saveBookmark'));
+    setPlaceholder('#bm-url-input', t('pasteUrl'));
+    setPlaceholder('#bm-title-input', t('customTitle'));
+    setPlaceholder('#bm-tags-input', t('tagsPlaceholder'));
     setText('#page-wiki .main-header h1', t('docsWiki'));
     setText('#page-wiki .main-header p', t('wikiSubtitle'));
     setPlaceholder('#wiki-search-input', t('searchPages'));
+    setText('#new-wiki-btn', t('newPage'));
+    setPlaceholder('#wiki-title-input', t('untitledDocument'));
+    setOptionText('#wiki-project-select option[value=""]', t('noProject'));
+    setText('#wiki-upload-text', t('uploadingProgress'));
+    setText('#wiki-subpages-section h3', t('subpages'));
+    setText('#wiki-create-subpage-btn', t('newSubpage'));
     setText('#wiki-save-btn', t('saveChanges'));
+    setText('#wiki-delete-btn', t('deletePage'));
+    setText('#wiki-empty-view h2', t('wikiEmptyTitle'));
+    setHtml('#wiki-empty-view p', t('wikiEmptyBody'));
+    setText('#wiki-empty-create-btn span', t('createNewPage'));
     setText('#page-archive .main-header h1', t('archiveTitle'));
+    setText('#page-archive .main-header p', t('archiveDescription'));
+    const archiveStatLabels = document.querySelectorAll('#page-archive .archive-stat-card .stat-label');
+    if (archiveStatLabels[0]) archiveStatLabels[0].textContent = t('totalAchievements');
+    if (archiveStatLabels[1]) archiveStatLabels[1].textContent = t('itemsArchived');
     setText('.archive-list-section .section-header h3', t('archivedTasks'));
     setText('#empty-archive-btn', t('emptyArchive'));
+    setText('.inspiration-header span', t('inspirationTitle'));
 
     setText('#page-profile .main-header h1', t('profileTitle'));
     const profileLabels = document.querySelectorAll('.profile-card > p strong');
@@ -211,12 +410,41 @@ function applyLanguage(lang = currentLanguage) {
     const passwordLabels = document.querySelectorAll('.profile-password-grid label');
     if (passwordLabels[0]) passwordLabels[0].childNodes[0].textContent = `${t('newPassword')} `;
     if (passwordLabels[1]) passwordLabels[1].childNodes[0].textContent = `${t('confirmPassword')} `;
+    setPlaceholder('#profile-password', t('passwordPlaceholder'));
+    setPlaceholder('#profile-password-confirm', t('confirmPasswordPlaceholder'));
     setText('#profile-logout-btn', t('logout'));
+    setText('.onboarding-eyebrow', t('onboardingEyebrow'));
+    setText('#onboarding-title', t('onboardingTitle'));
+    setText('.onboarding-intro', t('onboardingIntro'));
+    const onboardingTitles = document.querySelectorAll('.onboarding-step strong');
+    if (onboardingTitles[0]) onboardingTitles[0].textContent = t('tasks');
+    if (onboardingTitles[1]) onboardingTitles[1].textContent = t('projects');
+    if (onboardingTitles[2]) onboardingTitles[2].textContent = t('wiki');
+    const onboardingBodies = document.querySelectorAll('.onboarding-step span:last-child');
+    if (onboardingBodies[0]) onboardingBodies[0].textContent = t('onboardingTaskBody');
+    if (onboardingBodies[1]) onboardingBodies[1].textContent = t('onboardingProjectBody');
+    if (onboardingBodies[2]) onboardingBodies[2].textContent = t('onboardingWikiBody');
+    setText('#onboarding-skip-btn', t('onboardingLater'));
+    setText('#onboarding-start-btn', t('onboardingStart'));
+
+    setTitle('#menu-toggle', t('toggleNavigation'));
+    setTitle('#fab-trigger', t('toggleNavigation'));
+    setTitle('#theme-toggle-btn', t('toggleTheme'));
+    setTitle('#logout-btn', t('logout'));
+    setTitle('#wiki-back-btn', t('backToList'));
 
     const languageSelect = getEl('app-language-select');
     if (languageSelect) languageSelect.value = currentLanguage;
     updateSidebarHeader((window.location.hash || '#page-home').replace('#', '').startsWith('wiki/') ? 'page-wiki' : ((window.location.hash || '#page-home').replace('#', '') || 'page-home'));
     renderProjectsDropdown();
+    if (currentUser) updateProfileUI(currentUser);
+    applyFilters();
+    renderNotes(allNotes);
+    renderProjectManagementList();
+    renderBookmarks();
+    renderArchive();
+    updateDashboardUI();
+    window.dispatchEvent(new CustomEvent('planary-language-change'));
 }
 
 // --- CORE BUSINESS LOGIC (HOISTED) ---
@@ -359,8 +587,8 @@ function updateProfileUI(user) {
     if (!user) return;
     const name = user.displayName || user.email.split('@')[0];
     const providerLabels = {
-        'google.com': 'Google',
-        'password': 'Email password'
+        'google.com': t('googleProvider'),
+        'password': t('emailPasswordProvider')
     };
     const providerIds = user.providerData.map(provider => provider.providerId);
     const hasPasswordProvider = providerIds.includes('password');
@@ -374,36 +602,36 @@ function updateProfileUI(user) {
     if (getEl('profile-view-name')) getEl('profile-view-name').textContent = name;
     if (getEl('profile-view-email')) getEl('profile-view-email').textContent = user.email;
     if (getEl('profile-login-methods')) {
-        getEl('profile-login-methods').textContent = providerIds.map(id => providerLabels[id] || id).join(', ') || 'Email password';
+        getEl('profile-login-methods').textContent = providerIds.map(id => providerLabels[id] || id).join(', ') || t('emailPasswordProvider');
     }
     if (getEl('profile-password-help')) {
         getEl('profile-password-help').textContent = hasPasswordProvider
-            ? 'Email password login is already enabled. Enter a new password to update it.'
-            : 'Set a password for this email so you can sign in with email and password too.';
+            ? t('emailPasswordAlreadyEnabled')
+            : t('setPasswordHelp');
     }
     if (getEl('profile-password-btn')) {
-        getEl('profile-password-btn').textContent = hasPasswordProvider ? 'Update password' : 'Set password login';
+        getEl('profile-password-btn').textContent = hasPasswordProvider ? t('updatePassword') : t('setPasswordLogin');
     }
 }
 
 function getAuthActionErrorMessage(error) {
-    if (!error) return 'Unknown error.';
+    if (!error) return t('authUnknownError');
     if (error.code === 'auth/requires-recent-login') {
-        return 'For security, please log out, sign in with Google again, then set the password.';
+        return t('recentLoginRequired');
     }
     if (error.code === 'auth/weak-password') {
-        return 'Password should be at least 6 characters.';
+        return t('weakPassword');
     }
     if (error.code === 'auth/email-already-in-use' || error.code === 'auth/credential-already-in-use') {
-        return 'This email is already connected to another account. Sign in with that method first.';
+        return t('emailAlreadyConnected');
     }
     if (error.code === 'auth/provider-already-linked') {
-        return 'Email password login is already enabled for this account.';
+        return t('providerAlreadyLinked');
     }
     if (error.code === 'auth/operation-not-allowed') {
-        return 'Email/Password login is disabled in this Firebase project. Enable Firebase Console > Authentication > Sign-in method > Email/Password, then try again.';
+        return t('emailPasswordDisabled');
     }
-    return error.message || 'Authentication failed.';
+    return error.message || t('authFailed');
 }
 
 async function connectEmailPasswordLogin() {
@@ -425,21 +653,21 @@ async function connectEmailPasswordLogin() {
     };
 
     if (!user.email) {
-        setStatus('This account has no email address to connect.', 'error');
+        setStatus(t('noEmailToConnect'), 'error');
         return;
     }
     if (!password || password.length < 6) {
-        setStatus('Password should be at least 6 characters.', 'error');
+        setStatus(t('weakPassword'), 'error');
         return;
     }
     if (password !== confirmPassword) {
-        setStatus('Passwords do not match.', 'error');
+        setStatus(t('passwordMismatch'), 'error');
         return;
     }
 
     try {
         if (button) button.disabled = true;
-        setStatus(hasPasswordProvider ? 'Updating password...' : 'Connecting email password login...');
+        setStatus(hasPasswordProvider ? t('updatingPassword') : t('connectingEmailPassword'));
 
         if (hasPasswordProvider) {
             await user.updatePassword(password);
@@ -453,8 +681,8 @@ async function connectEmailPasswordLogin() {
         await user.reload();
         currentUser = auth.currentUser;
         updateProfileUI(currentUser);
-        setStatus('Done. You can now sign in with this email and password.', 'success');
-        showToast('Email password login enabled.');
+        setStatus(t('emailPasswordDone'), 'success');
+        showToast(t('emailPasswordEnabled'));
     } catch (error) {
         setStatus(getAuthActionErrorMessage(error), 'error');
     } finally {
@@ -524,11 +752,11 @@ function renderTodos(todos) {
                         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                     </svg>
                 </div>
-                <h2>할 일을 채워보세요</h2>
-                <p>해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.</p>
+                <h2>${t('firstTaskTitle')}</h2>
+                <p>${t('firstTaskBody')}</p>
                 <button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span style="vertical-align: middle;">첫 작업 추가하기</span>
+                    <span style="vertical-align: middle;">${t('firstTaskButton')}</span>
                 </button>
             </div>
         </div>`;
@@ -576,7 +804,8 @@ function renderTodos(todos) {
         const tag = proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${proj.name}</span>` : '';
         const img = todo.imageUrl ? `<img src="${todo.imageUrl}" class="tc-img" alt="task image" onclick="window.open('${todo.imageUrl}', '_blank')">` : '';
         
-        const dueBadge = isDueToday ? `<span class="due-today-badge">Due Today</span>` : '';
+        const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';
+        const priorityText = `${t(p)} ${t('priorityLabel')}`.toUpperCase();
 
         card.innerHTML = `
             <button class="tc-delete" data-id="${todo.id}">×</button>
@@ -584,12 +813,12 @@ function renderTodos(todos) {
                 <h3 class="tc-title">${todo.text}${dueBadge}</h3>
                 <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
             </div>
-            <div class="tc-subtitle">${p.toUpperCase()} PRIORITY ${todo.dueDate ? '• 📅 ' + todo.dueDate : ''}</div>
-            ${img}<p class="tc-desc">${todo.memo || 'No notes.'}</p><div style="margin-top: 8px;">${tag}</div>
+            <div class="tc-subtitle">${priorityText} ${todo.dueDate ? '• 📅 ' + todo.dueDate : ''}</div>
+            ${img}<p class="tc-desc">${todo.memo || t('noNotes')}</p><div style="margin-top: 8px;">${tag}</div>
             <div class="tc-actions">
-                <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? 'Undo' : 'Complete'}</button>
-                <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">Edit</button>
-                <button class="tc-action-btn btn-archive" data-id="${todo.id}">${todo.archived ? 'Restore' : 'Archive'}</button>
+                <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
+                <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">${t('edit')}</button>
+                <button class="tc-action-btn btn-archive" data-id="${todo.id}">${todo.archived ? t('restore') : t('archiveVerb')}</button>
             </div>`;
         todoList.appendChild(card);
     });
@@ -602,7 +831,7 @@ function renderTodos(todos) {
         const t = allTodos.find(x => x.id === b.dataset.id);
         db.collection('todos').doc(b.dataset.id).update({ archived: !t.archived });
     });
-    todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => confirm('Delete?') && db.collection('todos').doc(b.dataset.id).delete());
+    todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => confirm(t('deleteConfirm')) && db.collection('todos').doc(b.dataset.id).delete());
     todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => openEditModal('todo', b.dataset.id));
 }
 
@@ -631,11 +860,11 @@ function renderNotes(notes) {
                         <path d="M5 19h9"></path>
                     </svg>
                 </div>
-                <h2>메모 보드를 채워보세요</h2>
-                <p>아이디어와 짧은 기록을 포스트잇처럼 쌓아두는 공간입니다.<br>상단 입력창에 첫 메모를 적고 보드 위에 배치해보세요.</p>
+                <h2>${t('firstNoteTitle')}</h2>
+                <p>${t('firstNoteBody')}</p>
                 <button class="confirm-btn collection-empty-create-btn" id="note-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span style="vertical-align: middle;">첫 메모 작성하기</span>
+                    <span style="vertical-align: middle;">${t('firstNoteButton')}</span>
                 </button>
             </div>
         </div>`;
@@ -653,7 +882,7 @@ function renderNotes(notes) {
         const card = document.createElement('div');
         card.className = `note-card color-${note.color || 'yellow'}`;
         card.dataset.id = note.id; card.style.left = (note.x || 20) + 'px'; card.style.top = (note.y || 20) + 'px';
-        card.innerHTML = `<div class="note-content">${note.text}</div><div class="note-footer"><button class="note-edit-btn" data-id="${note.id}">Edit</button><button class="note-delete-btn" data-id="${note.id}">Delete</button></div>`;
+        card.innerHTML = `<div class="note-content">${note.text}</div><div class="note-footer"><button class="note-edit-btn" data-id="${note.id}">${t('edit')}</button><button class="note-delete-btn" data-id="${note.id}">${t('delete')}</button></div>`;
         list.appendChild(card);
         setupDragging(card);
     });
@@ -695,7 +924,7 @@ function updateDashboardUI() {
 
     const recentNotesList = getEl('dash-recent-notes');
     if (recentNotesList) {
-        recentNotesList.innerHTML = allNotes.length ? '' : '<p style="font-size:0.85rem; color:var(--text-3);">No recent notes.</p>';
+        recentNotesList.innerHTML = allNotes.length ? '' : `<p style="font-size:0.85rem; color:var(--text-3);">${t('noRecentNotes')}</p>`;
         [...allNotes].reverse().slice(0, 3).forEach(note => {
             const div = document.createElement('div');
             div.className = `dash-recent-note-card ${note.color || 'yellow'}`;
@@ -710,14 +939,14 @@ function updateDashboardUI() {
         const today = new Date().toISOString().split('T')[0];
         const upcoming = allTodos.filter(t => !t.completed && !t.archived && t.dueDate).sort((a,b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
         
-        reminderList.innerHTML = upcoming.length ? '' : '<p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">No upcoming reminders.</p>';
-        upcoming.forEach(t => {
-            const isToday = t.dueDate === today;
+        reminderList.innerHTML = upcoming.length ? '' : `<p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">${t('noUpcomingReminders')}</p>`;
+        upcoming.forEach(todo => {
+            const isToday = todo.dueDate === today;
             const div = document.createElement('div');
             div.className = 'dash-reminder-item';
             div.innerHTML = `
-                <span class="reminder-text">${t.text}</span>
-                <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? 'TODAY' : t.dueDate}</span>
+                <span class="reminder-text">${todo.text}</span>
+                <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : todo.dueDate}</span>
             `;
             div.onclick = () => { currentFilter = 'reminders'; switchPage('page-tasks'); };
             reminderList.appendChild(div);
@@ -778,8 +1007,8 @@ function renderArchive() {
                         <line x1="10" y1="12" x2="14" y2="12"></line>
                     </svg>
                 </div>
-                <h2>보관함이 비어 있습니다</h2>
-                <p>완료했거나 잠시 치워둔 작업이 여기에 쌓입니다.<br>Tasks 화면에서 항목을 보관하면 이곳에서 다시 꺼낼 수 있습니다.</p>
+                <h2>${t('emptyArchiveTitle')}</h2>
+                <p>${t('emptyArchiveBody')}</p>
             </div>
         </div>`;
     if (!archived.length) return;
@@ -791,16 +1020,16 @@ function renderArchive() {
                 <div class="archive-item-title">${task.text}</div>
                 <div class="archive-item-meta">
                     <span class="archive-status-badge ${task.completed ? 'status-completed' : 'status-pending'}">
-                        ${task.completed ? 'Completed' : 'Active'}
+                        ${task.completed ? t('completed') : t('active')}
                     </span>
-                    <span>📅 ${task.dueDate || 'No Date'}</span>
+                    <span>📅 ${task.dueDate || t('noDate')}</span>
                 </div>
             </div>
             <div class="archive-item-actions">
-                <button class="archive-btn restore-btn" data-id="${task.id}" title="Restore">
+                <button class="archive-btn restore-btn" data-id="${task.id}" title="${t('restore')}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                 </button>
-                <button class="archive-btn del-perm-btn" data-id="${task.id}" title="Delete Permanently">
+                <button class="archive-btn del-perm-btn" data-id="${task.id}" title="${t('deletePermanently')}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                 </button>
             </div>
@@ -808,7 +1037,7 @@ function renderArchive() {
         archiveListEl.appendChild(item);
     });
     archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => db.collection('todos').doc(b.dataset.id).update({ archived: false }));
-    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => confirm('Permanently delete?') && db.collection('todos').doc(b.dataset.id).delete());
+    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => confirm(t('permanentDeleteConfirm')) && db.collection('todos').doc(b.dataset.id).delete());
     window.refreshInspiration();
 }
 
@@ -820,9 +1049,9 @@ window.refreshInspiration = () => {
     if (source.length > 0) {
         const r = source[Math.floor(Math.random() * source.length)];
         textEl.textContent = `"${r.text || r.memo}"`;
-        dateEl.textContent = r.createdAt ? new Date(r.createdAt.toMillis ? r.createdAt.toMillis() : r.createdAt).toLocaleDateString() : 'Stay inspired.';
+        dateEl.textContent = r.createdAt ? new Date(r.createdAt.toMillis ? r.createdAt.toMillis() : r.createdAt).toLocaleDateString() : t('stayInspired');
     } else {
-        textEl.textContent = '"기록은 기억을 지배합니다."'; dateEl.textContent = 'Stay inspired.';
+        textEl.textContent = currentLanguage === 'ko' ? '"기록은 기억을 지배합니다."' : '"Records shape memory."'; dateEl.textContent = t('stayInspired');
     }
 };
 
@@ -844,11 +1073,11 @@ function renderProjectManagementList() {
                 <div class="wiki-empty-illustration collection-empty-illustration project-empty-illustration">
                     ${appIconSvg('projects', 80)}
                 </div>
-                <h2>프로젝트를 만들어보세요</h2>
-                <p>업무와 아이디어를 주제별로 나누면 정리 속도가 빨라집니다.<br>상단 입력창에서 첫 프로젝트를 추가해 작업을 묶어보세요.</p>
+                <h2>${t('firstProjectTitle')}</h2>
+                <p>${t('firstProjectBody')}</p>
                 <button class="confirm-btn collection-empty-create-btn" id="project-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span style="vertical-align: middle;">첫 프로젝트 만들기</span>
+                    <span style="vertical-align: middle;">${t('firstProjectButton')}</span>
                 </button>
             </div>
         </div>`;
@@ -873,10 +1102,10 @@ function renderProjectManagementList() {
                 ${appIconSvg('projects')}
             </div>
             <h3 style="margin-bottom:4px;">${escapeHtml(p.name)}</h3>
-            <p style="font-size:0.8rem; color:var(--text-2); margin-bottom:10px;">${projectTasks.length} tasks · ${projectReminders.length} reminders · ${projectWikiPages.length} wiki</p>
+            <p style="font-size:0.8rem; color:var(--text-2); margin-bottom:10px;">${projectTasks.length} ${t('projectTasksUnit')} · ${projectReminders.length} ${t('projectRemindersUnit')} · ${projectWikiPages.length} ${t('projectWikiUnit')}</p>
             <div class="project-card-actions">
-                <button class="text-link-btn project-open-btn" data-id="${p.id}" type="button">Open</button>
-                <button class="text-link-btn project-delete-btn" data-id="${p.id}" type="button">Delete</button>
+                <button class="text-link-btn project-open-btn" data-id="${p.id}" type="button">${t('open')}</button>
+                <button class="text-link-btn project-delete-btn" data-id="${p.id}" type="button">${t('delete')}</button>
             </div>
         `;
         div.onclick = () => openProjectOverview(p.id);
@@ -892,7 +1121,7 @@ function renderProjectManagementList() {
     });
     renderProjectOverview();
 }
-window.deleteProject = (id) => confirm('Delete project?') && db.collection('projects').doc(id).delete();
+window.deleteProject = (id) => confirm(t('deleteProjectConfirm')) && db.collection('projects').doc(id).delete();
 
 function openProjectOverview(projectId) {
     selectedProjectOverviewId = projectId;
@@ -922,16 +1151,16 @@ function renderProjectOverview() {
     panel.style.display = 'block';
     if (getEl('project-detail-title')) getEl('project-detail-title').textContent = project.name;
     if (getEl('project-detail-summary')) {
-        getEl('project-detail-summary').textContent = `${projectTasks.length} tasks, ${projectReminders.length} reminders, ${projectWikiPages.length} wiki pages`;
+        getEl('project-detail-summary').textContent = formatText('taskCountSummary', { tasks: projectTasks.length, reminders: projectReminders.length, wiki: projectWikiPages.length });
     }
 
     const renderTaskItem = (task) => `
         <button class="project-detail-item project-task-link" data-id="${task.id}" type="button">
             <span>
                 <strong>${escapeHtml(task.text)}</strong>
-                <small>${task.memo ? escapeHtml(task.memo) : 'No notes'}</small>
+                <small>${task.memo ? escapeHtml(task.memo) : t('noNotes')}</small>
             </span>
-            <em>${task.completed ? 'Done' : (task.dueDate || task.priority || 'Task')}</em>
+            <em>${task.completed ? t('completed') : (task.dueDate || t(task.priority || 'tasks'))}</em>
         </button>
     `;
 
@@ -939,14 +1168,14 @@ function renderProjectOverview() {
     if (tasksList) {
         tasksList.innerHTML = projectTasks.length
             ? projectTasks.slice(0, 6).map(renderTaskItem).join('')
-            : '<p class="project-detail-empty">No tasks in this project.</p>';
+            : `<p class="project-detail-empty">${t('noTasksInProject')}</p>`;
     }
 
     const remindersList = getEl('project-detail-reminders');
     if (remindersList) {
         remindersList.innerHTML = projectReminders.length
             ? projectReminders.slice(0, 6).map(renderTaskItem).join('')
-            : '<p class="project-detail-empty">No active reminders.</p>';
+            : `<p class="project-detail-empty">${t('noActiveReminders')}</p>`;
     }
 
     const wikiList = getEl('project-detail-wiki');
@@ -955,13 +1184,13 @@ function renderProjectOverview() {
             ? projectWikiPages.map(page => `
                 <button class="project-detail-item project-wiki-link" data-id="${page.id}" type="button">
                     <span>
-                        <strong>${escapeHtml(page.title || 'Untitled Document')}</strong>
-                        <small>${page.parentId ? 'Subpage' : 'Root page'}</small>
+                        <strong>${escapeHtml(page.title || t('untitledDocument'))}</strong>
+                        <small>${page.parentId ? t('subpage') : t('rootPage')}</small>
                     </span>
-                    <em>Open</em>
+                    <em>${t('open')}</em>
                 </button>
             `).join('')
-            : '<p class="project-detail-empty">No wiki pages linked to this project.</p>';
+            : `<p class="project-detail-empty">${t('noWikiInProject')}</p>`;
     }
 
     document.querySelectorAll('.project-task-link').forEach(item => item.onclick = () => {
@@ -984,11 +1213,11 @@ function renderBookmarks() {
                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                     </svg>
                 </div>
-                <h2>북마크를 저장해보세요</h2>
-                <p>자주 참고하는 링크를 태그와 함께 모아두는 공간입니다.<br>상단 입력창에 URL을 붙여 첫 북마크를 저장하세요.</p>
+                <h2>${t('firstBookmarkTitle')}</h2>
+                <p>${t('firstBookmarkBody')}</p>
                 <button class="confirm-btn collection-empty-create-btn" id="bookmark-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span style="vertical-align: middle;">첫 북마크 저장하기</span>
+                    <span style="vertical-align: middle;">${t('firstBookmarkButton')}</span>
                 </button>
             </div>
         </div>`;
@@ -1010,7 +1239,7 @@ function renderBookmarks() {
         const div = document.createElement('div'); div.className = 'bookmark-card';
         const tags = bm.tags ? bm.tags.map(t => `<span class="bm-tag">#${t}</span>`).join(' ') : '';
         div.innerHTML = `
-            <button class="bm-delete-btn" onclick="deleteBookmark('${bm.id}')" aria-label="Delete bookmark">×</button>
+            <button class="bm-delete-btn" onclick="deleteBookmark('${bm.id}')" aria-label="${t('deleteBookmark')}">×</button>
             <div class="bm-main">
                 <img src="${favicon}" class="bm-favicon" onerror="this.src='icon.svg'">
                 <div class="bm-info">
@@ -1020,18 +1249,18 @@ function renderBookmarks() {
             </div>
             <div style="margin-top:12px;">${tags}</div>
             <div class="tc-actions" style="margin-top:auto; padding-top:16px;">
-                <button class="tc-action-btn" onclick="window.open('${bm.url}', '_blank')">Visit Website</button>
+                <button class="tc-action-btn" onclick="window.open('${bm.url}', '_blank')">${t('visitWebsite')}</button>
             </div>`;
         list.appendChild(div);
     });
 }
-window.deleteBookmark = (id) => confirm('Delete bookmark?') && db.collection('bookmarks').doc(id).delete();
+window.deleteBookmark = (id) => confirm(t('deleteBookmarkConfirm')) && db.collection('bookmarks').doc(id).delete();
 
 function openEditModal(type, id) {
     const item = type === 'todo' ? allTodos.find(x => x.id === id) : allNotes.find(x => x.id === id);
     if (!item) return;
-    const next = prompt("Edit content:", item.text);
-    if (next && next.trim()) db.collection(type === 'todo' ? 'todos' : 'notes').doc(id).update({ text: next.trim() }).then(() => showToast("Updated!"));
+    const next = prompt(t('editContent'), item.text);
+    if (next && next.trim()) db.collection(type === 'todo' ? 'todos' : 'notes').doc(id).update({ text: next.trim() }).then(() => showToast(t('updated')));
 }
 
 // --- INITIALIZATION ---
@@ -1108,8 +1337,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             const collapsed = appShell.classList.toggle('sidebar-collapsed');
             sidebarToggleBtn.setAttribute('aria-expanded', String(!collapsed));
-            sidebarToggleBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
-            sidebarToggleBtn.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+            sidebarToggleBtn.setAttribute('aria-label', collapsed ? t('expandSidebar') : t('collapseSidebar'));
+            sidebarToggleBtn.setAttribute('title', collapsed ? t('expandSidebar') : t('collapseSidebar'));
         };
     }
     if (fabTrigger) fabTrigger.onclick = (e) => { e.stopPropagation(); fabContainer.classList.toggle('active'); };
@@ -1155,14 +1384,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let imageUrl = null;
         if (selectedTaskImgFile) {
             try {
-                showToast("Uploading image...");
+                showToast(t('uploadingImage'));
                 const filePath = `tasks/${currentUser.uid}/${Date.now()}_${selectedTaskImgFile.name}`;
                 const storageRef = firebase.storage().ref().child(filePath);
                 const snapshot = await storageRef.put(selectedTaskImgFile);
                 imageUrl = await snapshot.ref.getDownloadURL();
             } catch (err) {
                 console.error("Image upload failed:", err);
-                showToast("Image upload failed, saving task without image", "error");
+                showToast(t('imageUploadFailed'), "error");
             }
         }
 
@@ -1191,10 +1420,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (priorityInput) priorityInput.value = 'medium';
             if (projectInput) projectInput.value = '';
             if (getEl('remove-task-img')) getEl('remove-task-img').click();
-            showToast("Added!");
+            showToast(t('added'));
         } catch (error) {
             console.error("Task creation failed:", error, payload);
-            showToast(error && error.message ? error.message : "Task creation failed.", "error");
+            showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
         }
     };
 
@@ -1205,7 +1434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
         db.collection('bookmarks').add({
             uid: currentUser.uid, url, title: titleInput.value.trim(), tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => { urlInput.value = ''; titleInput.value = ''; tagsInput.value = ''; showToast("Bookmark saved!"); });
+        }).then(() => { urlInput.value = ''; titleInput.value = ''; tagsInput.value = ''; showToast(t('bookmarkSaved')); });
     };
 
     if (getEl('add-project-btn')) getEl('add-project-btn').onclick = async () => {
@@ -1223,7 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             if (projectInput) projectInput.value = '';
-            showToast("Project created!");
+            showToast(t('projectCreated'));
         });
     };
 
@@ -1260,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const docRef = await db.collection('wiki_pages').add({
                     uid: currentUser.uid,
-                    title: `${project.name} Notes`,
+                    title: formatText('projectNotesTitle', { project: project.name }),
                     parentId: null,
                     projectId: project.id,
                     content: { blocks: [] },
@@ -1270,7 +1499,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.hash = `wiki/${docRef.id}`;
             } catch (error) {
                 console.error("Project wiki creation failed:", error);
-                showToast(error && error.message ? error.message : "Failed to create wiki page.", "error");
+                showToast(error && error.message ? error.message : t('failedCreateWiki'), "error");
             }
         };
     }
@@ -1290,7 +1519,7 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             if (noteInput) noteInput.value = '';
-            showToast("Note added!");
+            showToast(t('noteAdded'));
         });
     };
 
@@ -1319,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = openOnboarding;
 
-    const logout = () => confirm('Logout?') && auth.signOut().then(() => window.location.href = 'login.html');
+    const logout = () => confirm(t('logoutConfirm')) && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
 });
