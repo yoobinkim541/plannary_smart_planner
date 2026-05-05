@@ -52,10 +52,15 @@ const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
 const APP_FONT_OPTIONS = [
     { value: DEFAULT_APP_FONT, labelKey: 'defaultSans' },
-    { value: "'Pretendard', sans-serif", label: 'Pretendard' },
+    { value: "'Gothic A1', sans-serif", label: 'Gothic A1' },
+    { value: "'Gowun Dodum', sans-serif", label: 'Gowun Dodum' },
+    { value: "'Hahmlet', serif", label: 'Hahmlet' },
     { value: "'Noto Sans KR', sans-serif", label: 'Noto Sans KR' },
     { value: "'Nanum Gothic', sans-serif", labelKey: 'fontNanumGothic' },
     { value: "'IBM Plex Sans KR', sans-serif", label: 'IBM Plex Sans KR' },
+    { value: "'Nanum Myeongjo', serif", label: 'Nanum Myeongjo' },
+    { value: "'Jua', sans-serif", label: 'Jua' },
+    { value: "'Do Hyeon', sans-serif", label: 'Do Hyeon' },
     { value: "'Inter', sans-serif", label: 'Inter' },
     { value: "'Lora', serif", label: 'Lora' },
     { value: "'Noto Serif KR', serif", label: 'Noto Serif KR' },
@@ -1766,9 +1771,7 @@ function renderTodos(todos) {
         const priorityText = `${t(p)} ${t('priorityLabel')}`.toUpperCase();
 
         card.innerHTML = `
-            <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
-            </button>
+            <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">&times;</button>
             <div class="tc-top">
                 <h3 class="tc-title">${todo.text}${dueBadge}</h3>
                 <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>

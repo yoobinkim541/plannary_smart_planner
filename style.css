@@ -2,7 +2,7 @@
    STYLE.CSS — Todo App (Light Dashboard Theme)
    ================================================ */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Do+Hyeon&family=Gothic+A1:wght@400;500;600;700;800&family=Gowun+Dodum&family=Hahmlet:wght@400;500;600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Jua&family=Lora:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
 /* === RESET & VARIABLES === */
@@ -689,7 +689,7 @@ textarea.composer-input {
     color: var(--btn-text);
 }
 
-/* Delete button (hidden by default) */
+/* Delete button */
 .tc-delete {
     position: absolute;
     top: 12px;
@@ -703,21 +703,20 @@ textarea.composer-input {
     background: color-mix(in srgb, var(--surface) 88%, transparent);
     border: 1px solid var(--border);
     color: var(--text-3);
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1;
     cursor: pointer;
-    opacity: 0;
-    transform: translateY(-2px);
-    transition: opacity .15s ease, color .15s ease, background .15s ease, border-color .15s ease, transform .15s ease;
-}
-
-.task-card:hover .tc-delete {
     opacity: 1;
     transform: translateY(0);
+    transition: color .15s ease, background .15s ease, border-color .15s ease, transform .15s ease;
 }
 
 .tc-delete:hover {
     color: var(--red);
     background: rgba(239, 68, 68, 0.08);
     border-color: rgba(239, 68, 68, 0.28);
+    transform: translateY(-1px);
 }
 
 /* Empty state */
@@ -1105,6 +1104,18 @@ textarea.composer-input {
     z-index: 2;
 }
 
+.onboarding-modal.welcome .onboarding-exit-btn {
+    position: fixed;
+    top: max(24px, env(safe-area-inset-top));
+    right: max(24px, env(safe-area-inset-right));
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(16px);
+    z-index: 4;
+}
+
 .onboarding-modal.welcome .onboarding-eyebrow,
 .onboarding-modal.welcome #onboarding-title,
 .onboarding-modal.welcome .onboarding-progress,
@@ -1156,6 +1167,9 @@ textarea.composer-input {
     font-weight: 850;
     line-height: 1.04;
     letter-spacing: 0;
+    word-break: keep-all;
+    overflow-wrap: normal;
+    text-wrap: balance;
 }
 
 .onboarding-welcome p {
@@ -1164,6 +1178,8 @@ textarea.composer-input {
     color: var(--text-2);
     font-size: clamp(1.05rem, 2vw, 1.35rem);
     line-height: 1.65;
+    word-break: keep-all;
+    text-wrap: pretty;
 }
 
 .onboarding-welcome span {
@@ -1531,6 +1547,36 @@ textarea.composer-input {
         width: min(680px, calc(100vw - 32px));
         max-height: min(46vh, 420px);
     }
+
+    .onboarding-modal.welcome {
+        align-items: stretch;
+        padding: 0;
+    }
+
+    .onboarding-modal.welcome .onboarding-card {
+        max-width: none;
+        padding: 28px clamp(28px, 5vw, 64px);
+    }
+
+    .onboarding-modal.welcome .onboarding-exit-btn {
+        top: max(24px, env(safe-area-inset-top));
+        right: max(24px, env(safe-area-inset-right));
+    }
+
+    .onboarding-modal.welcome .onboarding-welcome {
+        gap: 16px;
+        padding-inline: 18px;
+    }
+
+    .onboarding-welcome h3 {
+        max-width: min(980px, calc(100vw - 128px));
+        font-size: clamp(3rem, 5.6vw, 4.6rem);
+        line-height: 1.08;
+    }
+
+    .onboarding-welcome p {
+        max-width: min(760px, calc(100vw - 160px));
+    }
 }
 
 @media (max-width: 520px) {
@@ -1553,6 +1599,46 @@ textarea.composer-input {
         top: auto !important;
         width: 100%;
         max-height: 88vh;
+    }
+
+    .onboarding-modal.welcome {
+        align-items: stretch;
+        justify-content: stretch;
+        padding: 0;
+    }
+
+    .onboarding-modal.welcome .onboarding-card {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        padding: 24px 18px calc(18px + env(safe-area-inset-bottom));
+    }
+
+    .onboarding-modal.welcome .onboarding-exit-btn {
+        top: max(16px, env(safe-area-inset-top));
+        right: max(16px, env(safe-area-inset-right));
+        width: 48px;
+        height: 48px;
+        border-radius: 15px;
+    }
+
+    .onboarding-modal.welcome .onboarding-welcome {
+        gap: 14px;
+        padding: 64px 0 24px;
+    }
+
+    .onboarding-welcome h3 {
+        max-width: min(430px, calc(100vw - 40px));
+        font-size: clamp(2.15rem, 11vw, 3.25rem);
+        line-height: 1.1;
+    }
+
+    .onboarding-welcome p {
+        max-width: min(390px, calc(100vw - 44px));
+        font-size: 1rem;
+        line-height: 1.58;
     }
 
     .onboarding-modal.compact .onboarding-card {
