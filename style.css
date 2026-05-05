@@ -1046,6 +1046,23 @@ textarea.composer-input {
     max-height: min(720px, calc(100vh - 32px));
 }
 
+.onboarding-modal.tablet-stable {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 18px 24px;
+}
+
+.onboarding-modal.tablet-stable .onboarding-card {
+    position: fixed;
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: max(18px, env(safe-area-inset-bottom)) !important;
+    width: min(720px, calc(100vw - 48px));
+    max-height: min(44vh, 430px);
+    transform: translateX(-50%);
+}
+
 .onboarding-modal.welcome {
     padding: 0;
     background:
@@ -1490,6 +1507,15 @@ textarea.composer-input {
 
     .onboarding-step-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .onboarding-modal.tablet-stable {
+        padding: 16px;
+    }
+
+    .onboarding-modal.tablet-stable .onboarding-card {
+        width: min(680px, calc(100vw - 32px));
+        max-height: min(46vh, 420px);
     }
 }
 

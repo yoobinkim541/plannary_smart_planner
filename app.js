@@ -42,7 +42,10 @@ let onboardingSpotlightEls = [];
 let onboardingSuppressAutoScroll = false;
 let onboardingSuppressTimer = null;
 let onboardingLastReposition = 0;
-let onboardingRepositionThrottleMs = 80;
+let onboardingRepositionThrottleMs = 160;
+let onboardingRepositionFrame = null;
+let onboardingScrollSettleTimer = null;
+let onboardingLastTargetRect = null;
 
 const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
@@ -1123,10 +1126,19 @@ function clearOnboardingHighlight() {
         clearTimeout(onboardingHighlightTimer);
         onboardingHighlightTimer = null;
     }
+    if (onboardingRepositionFrame) {
+        cancelAnimationFrame(onboardingRepositionFrame);
+        onboardingRepositionFrame = null;
+    }
+    if (onboardingScrollSettleTimer) {
+        clearTimeout(onboardingScrollSettleTimer);
+        onboardingScrollSettleTimer = null;
+    }
     if (onboardingHighlightEl) {
         onboardingHighlightEl.classList.remove('onboarding-highlight-target');
         onboardingHighlightEl = null;
     }
+    onboardingLastTargetRect = null;
     if (onboardingTargetTipEl) {
         onboardingTargetTipEl.remove();
         onboardingTargetTipEl = null;
@@ -1220,6 +1232,30 @@ function getOnboardingFocusTarget(focus) {
     return document.querySelector(focus.selector) || (focus.fallbackSelector ? document.querySelector(focus.fallbackSelector) : null);
 }
 
+function isTabletGuideLayout() {
+    return window.matchMedia('(min-width: 768px) and (max-width: 1366px)').matches;
+}
+
+function getTargetRectSnapshot(target) {
+    const rect = target.getBoundingClientRect();
+    return {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+    };
+}
+
+function targetRectMovedEnough(rect, lastRect = onboardingLastTargetRect) {
+    if (!lastRect) return true;
+    return Math.abs(rect.top - lastRect.top) > 12 ||
+        Math.abs(rect.left - lastRect.left) > 12 ||
+        Math.abs(rect.width - lastRect.width) > 8 ||
+        Math.abs(rect.height - lastRect.height) > 8;
+}
+
 function canAdvanceGuideFocus() {
     const focus = getCurrentGuideFocus();
     const target = getOnboardingFocusTarget(focus);
@@ -1249,6 +1285,7 @@ function highlightOnboardingTarget(stepOrId, focusConfig = null, retryCount = 0)
     }
     if (!target) return;
     onboardingHighlightEl = target;
+    onboardingLastTargetRect = getTargetRectSnapshot(target);
     document.body.classList.add('onboarding-spotlight-active');
     target.classList.add('onboarding-highlight-target');
     if (!onboardingSuppressAutoScroll) {
@@ -1307,10 +1344,12 @@ function positionOnboardingCardAroundTarget(target) {
     const card = modal ? modal.querySelector('.onboarding-card') : null;
     if (!modal || !card || window.matchMedia('(max-width: 520px)').matches) return;
     modal.classList.add('positioned');
+    modal.classList.toggle('tablet-stable', isTabletGuideLayout());
     card.style.top = '';
     card.style.left = '';
     card.style.right = '';
     card.style.bottom = '';
+    if (isTabletGuideLayout()) return;
 
     requestAnimationFrame(() => {
         const rect = target.getBoundingClientRect();
@@ -1499,15 +1538,23 @@ function repositionActiveOnboardingGuide() {
     onboardingLastReposition = now;
     const step = GUIDE_STEPS[getCurrentGuideStepId()];
     const focus = getCurrentGuideFocus();
-    // batch DOM reads/writes
-    requestAnimationFrame(() => {
+    if (onboardingRepositionFrame) cancelAnimationFrame(onboardingRepositionFrame);
+    onboardingRepositionFrame = requestAnimationFrame(() => {
+        onboardingRepositionFrame = null;
+        const rect = getTargetRectSnapshot(onboardingHighlightEl);
+        if (!targetRectMovedEnough(rect)) return;
+        onboardingLastTargetRect = rect;
         positionOnboardingSpotlight(onboardingHighlightEl);
-        positionOnboardingCardAroundTarget(onboardingHighlightEl);
+        if (!isTabletGuideLayout()) {
+            positionOnboardingCardAroundTarget(onboardingHighlightEl);
+        }
         if (onboardingTargetTipEl) {
             onboardingTargetTipEl.remove();
             onboardingTargetTipEl = null;
         }
-        showOnboardingTargetTip(onboardingHighlightEl, step, focus);
+        if (!isTabletGuideLayout()) {
+            showOnboardingTargetTip(onboardingHighlightEl, step, focus);
+        }
     });
 }
 
@@ -2210,8 +2257,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Hash router
     window.addEventListener('hashchange', handleHash);
-    window.addEventListener('resize', () => requestAnimationFrame(repositionActiveOnboardingGuide));
-    window.addEventListener('scroll', () => requestAnimationFrame(repositionActiveOnboardingGuide), true);
+    window.addEventListener('resize', () => repositionActiveOnboardingGuide());
+    window.addEventListener('scroll', () => {
+        if (isTabletGuideLayout()) {
+            if (onboardingScrollSettleTimer) clearTimeout(onboardingScrollSettleTimer);
+            onboardingScrollSettleTimer = setTimeout(repositionActiveOnboardingGuide, 180);
+            return;
+        }
+        repositionActiveOnboardingGuide();
+    }, true);
 
     // suppress auto-scroll when user is interacting via touch to avoid fighting user scroll on mobile/tablet
     document.addEventListener('touchstart', () => {
