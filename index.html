@@ -203,6 +203,49 @@
                 </header>
 
                 <div class="dashboard-container">
+                    <section class="today-hub">
+                        <div class="today-hub-main">
+                            <span class="today-hub-kicker" id="today-hub-kicker">Today Overview</span>
+                            <h2 id="today-hub-title">오늘 해야 할 일을 한눈에 확인하세요</h2>
+                            <p id="today-hub-summary">오늘 마감, 중요 작업, 진행 중인 프로젝트를 바로 확인합니다.</p>
+                            <div class="today-hub-actions">
+                                <button class="confirm-btn" type="button" data-target="page-tasks" data-filter="active">작업 열기</button>
+                                <button class="text-link-btn" type="button" data-target="page-tasks" data-filter="important">중요 작업</button>
+                            </div>
+                        </div>
+                        <div class="today-hub-side">
+                            <div class="today-hub-metric">
+                                <span id="today-due-label">오늘 마감</span>
+                                <strong id="today-due-count">0</strong>
+                            </div>
+                            <div class="today-hub-metric">
+                                <span id="today-important-label">중요</span>
+                                <strong id="today-important-count">0</strong>
+                            </div>
+                            <div class="today-hub-metric">
+                                <span id="today-project-label">프로젝트</span>
+                                <strong id="today-project-count">0</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="today-focus-grid">
+                        <section class="dashboard-widget today-focus-card">
+                            <div class="widget-header">
+                                <h3 id="today-focus-title">오늘의 우선 작업</h3>
+                                <button class="text-link-btn" type="button" data-target="page-tasks" data-filter="all">전체 보기</button>
+                            </div>
+                            <div id="today-focus-list" class="today-focus-list"></div>
+                        </section>
+                        <section class="dashboard-widget today-project-card">
+                            <div class="widget-header">
+                                <h3 id="today-projects-title">진행 중 프로젝트</h3>
+                                <button class="text-link-btn" type="button" data-target="page-projects">전체 보기</button>
+                            </div>
+                            <div id="today-projects-list" class="today-projects-list"></div>
+                        </section>
+                    </div>
+
                     <!-- Stats Section -->
                     <div class="dashboard-stats-row">
                         <div class="stat-card">

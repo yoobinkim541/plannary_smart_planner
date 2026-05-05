@@ -266,6 +266,11 @@ const I18N = {
         home: '홈', tasks: '작업', allTasks: '전체 작업', completed: '완료됨', progress: '진행 중', important: '중요',
         reminders: '리마인더', projects: '프로젝트', notes: '메모', wiki: '위키', bookmarks: '북마크',
         archive: '보관함', myPage: '마이페이지', dashboardTitle: '대시보드', dashboardSubtitle: '오늘의 작업 흐름을 확인하세요.',
+        todayOverview: 'Today Overview', todayHubTitle: '오늘 해야 할 일을 한눈에 확인하세요',
+        todayHubSummary: '오늘 마감 {due}개, 중요 작업 {important}개, 진행 중 프로젝트 {projects}개가 있습니다.',
+        todayDue: '오늘 마감', todayImportant: '중요', todayProjects: '프로젝트',
+        todayFocusTitle: '오늘의 우선 작업', activeProjectsTitle: '진행 중 프로젝트', noTodayFocus: '오늘 바로 처리할 작업이 없습니다.',
+        noActiveProjectsToday: '진행 중인 프로젝트가 없습니다.', noProject: '프로젝트 없음',
         totalTasks: '전체 작업', productivity: '생산성', recentNotes: '최근 메모', upcomingReminders: '다가오는 리마인더',
         viewAll: '전체 보기', taskTitle: '작업', defaultSans: '기본 글꼴', addTask: '작업 추가', taskPlaceholder: '무엇을 해야 하나요?',
         memoPlaceholder: '메모 (선택)', noProject: '프로젝트 없음', searchTasks: '작업 검색...', projectsTitle: '프로젝트',
@@ -461,6 +466,11 @@ const I18N = {
         home: 'Home', tasks: 'Tasks', allTasks: 'All tasks', completed: 'Completed', progress: 'Progress', important: 'Important',
         reminders: 'Reminders', projects: 'Projects', notes: 'Notes', wiki: 'Wiki', bookmarks: 'Bookmarks',
         archive: 'Archive', myPage: 'My Page', dashboardTitle: 'Dashboard Overview', dashboardSubtitle: "Welcome back! Here's what's happening today.",
+        todayOverview: 'Today Overview', todayHubTitle: "See today's work at a glance",
+        todayHubSummary: '{due} due today, {important} important, {projects} active projects.',
+        todayDue: 'Due today', todayImportant: 'Important', todayProjects: 'Projects',
+        todayFocusTitle: "Today's priority tasks", activeProjectsTitle: 'Active projects', noTodayFocus: 'No priority work for today.',
+        noActiveProjectsToday: 'No active projects yet.', noProject: 'No project',
         totalTasks: 'Total Tasks', productivity: 'Productivity', recentNotes: 'Recent Notes', upcomingReminders: 'Upcoming Reminders',
         viewAll: 'View All', taskTitle: 'Tasks', defaultSans: 'Default Sans', addTask: 'Add Task', taskPlaceholder: 'What needs to be done?',
         memoPlaceholder: 'Notes (optional)', noProject: 'No Project', searchTasks: 'Search tasks...', projectsTitle: 'Projects',
@@ -762,6 +772,15 @@ function applyLanguage(lang = currentLanguage) {
 
     setText('#page-home .main-header h1', t('dashboardTitle'));
     setText('#dashboard-welcome-text', t('dashboardSubtitle'));
+    setText('#today-hub-kicker', t('todayOverview'));
+    setText('#today-hub-title', t('todayHubTitle'));
+    setText('#today-due-label', t('todayDue'));
+    setText('#today-important-label', t('todayImportant'));
+    setText('#today-project-label', t('todayProjects'));
+    setText('#today-focus-title', t('todayFocusTitle'));
+    setText('#today-projects-title', t('activeProjectsTitle'));
+    setButtonTextPreserveIcon('.today-hub-actions .confirm-btn', t('openTasks'));
+    setButtonTextPreserveIcon('.today-hub-actions .text-link-btn', t('important'));
     const statLabels = document.querySelectorAll('.dashboard-stats-row .stat-label');
     if (statLabels[0]) statLabels[0].textContent = t('totalTasks');
     if (statLabels[1]) statLabels[1].textContent = t('completed');
@@ -1891,10 +1910,78 @@ function setupDragging(el) {
 function updateDashboardUI() {
     if (!getEl('page-home')) return;
     const total = allTodos.filter(t => !t.archived).length, completed = allTodos.filter(t => t.completed && !t.archived).length, percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const today = new Date().toISOString().split('T')[0];
+    const activeTodos = allTodos.filter(todo => !todo.completed && !todo.archived);
+    const todayDueTodos = activeTodos.filter(todo => todo.dueDate === today);
+    const importantTodos = activeTodos.filter(todo => todo.priority === 'high');
+    const activeProjects = allProjects.filter(project => activeTodos.some(todo => todo.projectId === project.id));
+    const focusTodos = [...activeTodos]
+        .filter(todo => todo.dueDate === today || todo.priority === 'high')
+        .sort((a, b) => {
+            if ((a.dueDate === today) !== (b.dueDate === today)) return a.dueDate === today ? -1 : 1;
+            if ((a.priority === 'high') !== (b.priority === 'high')) return a.priority === 'high' ? -1 : 1;
+            return getTaskSortValue(b) - getTaskSortValue(a);
+        })
+        .slice(0, 4);
+
+    if (getEl('today-due-count')) getEl('today-due-count').textContent = todayDueTodos.length;
+    if (getEl('today-important-count')) getEl('today-important-count').textContent = importantTodos.length;
+    if (getEl('today-project-count')) getEl('today-project-count').textContent = activeProjects.length;
+    if (getEl('today-hub-summary')) {
+        getEl('today-hub-summary').textContent = formatText('todayHubSummary', {
+            due: todayDueTodos.length,
+            important: importantTodos.length,
+            projects: activeProjects.length
+        });
+    }
+
     if (getEl('stat-total-tasks')) getEl('stat-total-tasks').textContent = total;
     if (getEl('stat-completed-tasks')) getEl('stat-completed-tasks').textContent = completed;
     if (getEl('stat-progress-percent')) getEl('stat-progress-percent').textContent = `${percent}%`;
     if (getEl('stat-progress-bar')) getEl('stat-progress-bar').style.width = `${percent}%`;
+
+    const focusList = getEl('today-focus-list');
+    if (focusList) {
+        focusList.innerHTML = focusTodos.length ? '' : `<p class="empty-msg">${t('noTodayFocus')}</p>`;
+        focusTodos.forEach(todo => {
+            const project = allProjects.find(p => p.id === todo.projectId);
+            const isToday = todo.dueDate === today;
+            const div = document.createElement('button');
+            div.className = 'today-focus-item';
+            div.type = 'button';
+            div.innerHTML = `
+                <span class="today-focus-dot ${todo.priority === 'high' ? 'high' : 'normal'}"></span>
+                <span class="today-focus-text">${todo.text}</span>
+                <span class="today-focus-meta">${isToday ? t('todayDue') : (project ? project.name : t('noProject'))}</span>
+            `;
+            div.onclick = () => {
+                currentFilter = isToday ? 'reminders' : 'important';
+                switchPage('page-tasks');
+            };
+            focusList.appendChild(div);
+        });
+    }
+
+    const projectList = getEl('today-projects-list');
+    if (projectList) {
+        projectList.innerHTML = activeProjects.length ? '' : `<p class="empty-msg">${t('noActiveProjectsToday')}</p>`;
+        activeProjects.slice(0, 4).forEach(project => {
+            const projectTasks = activeTodos.filter(todo => todo.projectId === project.id);
+            const div = document.createElement('button');
+            div.className = 'today-project-item';
+            div.type = 'button';
+            div.innerHTML = `
+                <span class="today-project-color" style="background:${project.color || 'var(--blue)'}"></span>
+                <span class="today-project-name">${project.name}</span>
+                <span class="today-project-count">${projectTasks.length}</span>
+            `;
+            div.onclick = () => {
+                selectedProjectOverviewId = project.id;
+                switchPage('page-projects');
+            };
+            projectList.appendChild(div);
+        });
+    }
 
     const recentNotesList = getEl('dash-recent-notes');
     if (recentNotesList) {
@@ -1910,7 +1997,6 @@ function updateDashboardUI() {
 
     const reminderList = getEl('dash-reminders-list');
     if (reminderList) {
-        const today = new Date().toISOString().split('T')[0];
         const upcoming = allTodos.filter(t => !t.completed && !t.archived && t.dueDate).sort((a,b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
         
         reminderList.innerHTML = upcoming.length ? '' : `<p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">${t('noUpcomingReminders')}</p>`;

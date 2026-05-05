@@ -2146,6 +2146,165 @@ textarea.composer-input {
     margin-top: 24px;
 }
 
+.today-hub {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.44fr);
+    gap: 24px;
+    align-items: stretch;
+    padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--blue) 10%, transparent), transparent 42%),
+        var(--surface);
+}
+
+.today-hub-main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 12px;
+}
+
+.today-hub-kicker {
+    color: var(--blue);
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.today-hub h2 {
+    margin: 0;
+    color: var(--text-1);
+    font-size: clamp(1.65rem, 3vw, 2.45rem);
+    line-height: 1.16;
+    letter-spacing: 0;
+}
+
+.today-hub p {
+    max-width: 660px;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 0.98rem;
+    line-height: 1.7;
+}
+
+.today-hub-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.today-hub-side {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.today-hub-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface) 82%, var(--bg));
+}
+
+.today-hub-metric span {
+    color: var(--text-2);
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.today-hub-metric strong {
+    color: var(--text-1);
+    font-size: 1.55rem;
+    line-height: 1;
+}
+
+.today-focus-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    gap: 24px;
+}
+
+.today-focus-list,
+.today-projects-list {
+    display: grid;
+    gap: 10px;
+}
+
+.today-focus-item,
+.today-project-item {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--text-1);
+    display: grid;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.today-focus-item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.today-focus-item:hover,
+.today-project-item:hover {
+    background: var(--surface);
+    border-color: color-mix(in srgb, var(--blue) 38%, var(--border));
+    transform: translateY(-1px);
+}
+
+.today-focus-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--blue);
+}
+
+.today-focus-dot.high {
+    background: var(--red);
+}
+
+.today-focus-text,
+.today-project-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    font-weight: 750;
+}
+
+.today-focus-meta,
+.today-project-count {
+    color: var(--text-2);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.today-project-item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.today-project-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+}
+
 .dashboard-stats-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -2907,7 +3066,33 @@ textarea.composer-input {
     #memo-input { width: 100%; flex: none; }
 
     /* Dashboard & Cards */
-    .dashboard-stats-row, .dashboard-grid { grid-template-columns: 1fr !important; }
+    .today-hub,
+    .today-focus-grid,
+    .dashboard-stats-row,
+    .dashboard-grid { grid-template-columns: 1fr !important; }
+
+    .today-hub {
+        padding: 22px;
+    }
+
+    .today-hub-side {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .today-hub-metric {
+        display: grid;
+        justify-items: start;
+        gap: 8px;
+    }
+
+    .today-focus-item {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .today-focus-meta {
+        grid-column: 2;
+    }
+
     .projects-grid, .bookmarks-grid { grid-template-columns: 1fr !important; }
     .stat-card, .task-card { padding: 16px; }
     .tc-title { font-size: 15px; }
