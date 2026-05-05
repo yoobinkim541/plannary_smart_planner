@@ -37,6 +37,7 @@ let onboardingHighlightTimer = null;
 let onboardingTargetTipEl = null;
 let onboardingFocusIndex = 0;
 let onboardingWelcomeVisible = false;
+let onboardingSpotlightEls = [];
 
 const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
@@ -316,6 +317,7 @@ const I18N = {
         onboardingWelcomeBody: '해야 할 일, 떠오른 생각, 길어지는 기록을 Planary 안에서 자연스럽게 연결해보세요.',
         onboardingWelcomeHint: '몇 분 동안 직접 눌러보며 작업, 프로젝트, 스티키 노트, 위키 흐름을 익힙니다.',
         onboardingBeginGuide: '가이드 시작하기',
+        onboardingLanguageLabel: '가이드 언어 선택',
         onboardingIntro: '처음 시작할 때는 아래 순서만 기억하면 됩니다. 할 일을 만들고, 프로젝트로 묶고, 필요한 기록은 위키에 남기세요.',
         onboardingTaskCreateTitle: '작업 만들기',
         onboardingTaskCreateBody: '가장 먼저 오늘 할 일을 하나 만들어 흐름을 시작합니다.',
@@ -495,6 +497,7 @@ const I18N = {
         onboardingWelcomeBody: 'Connect tasks, quick thoughts, and long-form notes naturally inside Planary.',
         onboardingWelcomeHint: 'Spend a few minutes trying tasks, projects, sticky notes, and wiki in the real interface.',
         onboardingBeginGuide: 'Start guide',
+        onboardingLanguageLabel: 'Choose guide language',
         onboardingIntro: 'To get started, remember this flow: create tasks, group them into projects, and keep important context in wiki pages.',
         onboardingTaskCreateTitle: 'Create a task',
         onboardingTaskCreateBody: 'Start the flow by creating one task for today.',
@@ -1120,6 +1123,8 @@ function clearOnboardingHighlight() {
         onboardingTargetTipEl.remove();
         onboardingTargetTipEl = null;
     }
+    onboardingSpotlightEls.forEach(el => el.remove());
+    onboardingSpotlightEls = [];
     const modal = getEl('onboarding-modal');
     const card = modal ? modal.querySelector('.onboarding-card') : null;
     if (modal) modal.classList.remove('positioned');
@@ -1239,11 +1244,46 @@ function highlightOnboardingTarget(stepOrId, focusConfig = null, retryCount = 0)
     document.body.classList.add('onboarding-spotlight-active');
     target.classList.add('onboarding-highlight-target');
     target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    positionOnboardingSpotlight(target);
     positionOnboardingCardAroundTarget(target);
     showOnboardingTargetTip(target, step, focus);
     setTimeout(() => {
         if (typeof target.focus === 'function') target.focus({ preventScroll: true });
     }, 220);
+}
+
+function positionOnboardingSpotlight(target) {
+    if (!target) return;
+    if (!onboardingSpotlightEls.length) {
+        onboardingSpotlightEls = Array.from({ length: 4 }, () => {
+            const el = document.createElement('div');
+            el.className = 'onboarding-spotlight-shade';
+            document.body.appendChild(el);
+            return el;
+        });
+    }
+
+    requestAnimationFrame(() => {
+        const rect = target.getBoundingClientRect();
+        const padding = 10;
+        const left = Math.max(0, rect.left - padding);
+        const top = Math.max(0, rect.top - padding);
+        const right = Math.min(window.innerWidth, rect.right + padding);
+        const bottom = Math.min(window.innerHeight, rect.bottom + padding);
+        const areas = [
+            { left: 0, top: 0, width: window.innerWidth, height: top },
+            { left: 0, top: bottom, width: window.innerWidth, height: Math.max(0, window.innerHeight - bottom) },
+            { left: 0, top, width: left, height: Math.max(0, bottom - top) },
+            { left: right, top, width: Math.max(0, window.innerWidth - right), height: Math.max(0, bottom - top) }
+        ];
+        onboardingSpotlightEls.forEach((el, index) => {
+            const area = areas[index];
+            el.style.left = `${area.left}px`;
+            el.style.top = `${area.top}px`;
+            el.style.width = `${area.width}px`;
+            el.style.height = `${area.height}px`;
+        });
+    });
 }
 
 function positionOnboardingCardAroundTarget(target) {
@@ -1358,6 +1398,13 @@ function renderOnboarding() {
     setText('#onboarding-welcome-title', t('onboardingWelcomeTitle').replace('{name}', getUserGuideName()));
     setText('#onboarding-welcome-body', t('onboardingWelcomeBody'));
     setText('#onboarding-welcome-hint', t('onboardingWelcomeHint'));
+    const languageChoice = modal.querySelector('.onboarding-language-choice');
+    if (languageChoice) languageChoice.setAttribute('aria-label', t('onboardingLanguageLabel'));
+    modal.querySelectorAll('.onboarding-language-option').forEach(button => {
+        const active = button.dataset.guideLanguage === currentLanguage;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
     setText('#onboarding-step-title', t(step.titleKey));
     setText('#onboarding-step-body', t(step.bodyKey));
     setText('#onboarding-step-target', t((currentFocus && currentFocus.targetKey) || step.targetKey));
@@ -1433,6 +1480,7 @@ function repositionActiveOnboardingGuide() {
     if (!onboardingHighlightEl) return;
     const step = GUIDE_STEPS[getCurrentGuideStepId()];
     const focus = getCurrentGuideFocus();
+    positionOnboardingSpotlight(onboardingHighlightEl);
     positionOnboardingCardAroundTarget(onboardingHighlightEl);
     if (onboardingTargetTipEl) {
         onboardingTargetTipEl.remove();
@@ -2154,6 +2202,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('app-language-select')) {
         getEl('app-language-select').onchange = (event) => applyLanguage(event.target.value);
     }
+    document.querySelectorAll('.onboarding-language-option').forEach(button => {
+        button.onclick = () => applyLanguage(button.dataset.guideLanguage || 'ko');
+    });
     if (getEl('app-font-select')) {
         getEl('app-font-select').onchange = (event) => applyAppFont(event.target.value);
     }

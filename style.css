@@ -1136,6 +1136,42 @@ textarea.composer-input {
     font-weight: 700;
 }
 
+.onboarding-language-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px;
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 76%, transparent);
+    box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+.onboarding-language-option {
+    min-width: 92px;
+    min-height: 36px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.onboarding-language-option:hover {
+    color: var(--text-1);
+}
+
+.onboarding-language-option.active {
+    background: var(--text-1);
+    color: var(--surface);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.16);
+}
+
 .onboarding-modal.welcome .onboarding-actions {
     display: flex;
     justify-content: center;
@@ -1391,10 +1427,8 @@ textarea.composer-input {
     white-space: nowrap;
 }
 
-.onboarding-spotlight-active::after {
-    content: '';
+.onboarding-spotlight-shade {
     position: fixed;
-    inset: 0;
     z-index: 8040;
     background: rgba(15, 23, 42, 0.46);
     pointer-events: none;
