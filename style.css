@@ -1321,9 +1321,21 @@ textarea.composer-input {
 }
 
 .onboarding-step-card .onboarding-step-target {
+    display: grid;
+    gap: 6px;
     margin-top: 12px;
+}
+
+#onboarding-step-tip {
+    display: block;
     color: var(--blue);
+    font-size: 0.88rem;
     font-weight: 700;
+}
+
+#onboarding-step-target {
+    color: var(--text-2);
+    font-size: 0.84rem;
 }
 
 .onboarding-guide-details {
@@ -1466,21 +1478,6 @@ textarea.composer-input {
     box-shadow: 0 0 0 8px rgba(74, 144, 226, 0.22), 0 20px 50px rgba(15, 23, 42, 0.28) !important;
 }
 
-.onboarding-target-tip {
-    position: fixed;
-    z-index: 8075;
-    max-width: min(300px, calc(100vw - 28px));
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: var(--text-1);
-    color: var(--surface);
-    font-size: 0.84rem;
-    font-weight: 800;
-    line-height: 1.35;
-    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.24);
-    pointer-events: none;
-}
-
 @media (max-width: 1024px) {
     .onboarding-modal {
         align-items: flex-end;
@@ -1591,6 +1588,14 @@ textarea.composer-input {
         margin-top: 2px;
         font-size: 0.78rem;
         line-height: 1.35;
+    }
+
+    .onboarding-modal.compact #onboarding-step-tip {
+        font-size: 0.78rem;
+    }
+
+    .onboarding-modal.compact #onboarding-step-target {
+        display: none;
     }
 
     .onboarding-modal.compact .onboarding-actions {
@@ -3376,6 +3381,12 @@ textarea.composer-input {
 
 .task-empty-illustration {
     color: var(--green);
+}
+
+.task-empty-illustration svg {
+    width: 80px;
+    height: 80px;
+    stroke-width: 1.35;
 }
 
 .collection-empty-illustration {

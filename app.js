@@ -34,7 +34,6 @@ let currentAppFont = localStorage.getItem('planary-app-font') || DEFAULT_APP_FON
 let onboardingState = null;
 let onboardingHighlightEl = null;
 let onboardingHighlightTimer = null;
-let onboardingTargetTipEl = null;
 let onboardingFocusIndex = 0;
 let onboardingWelcomeVisible = false;
 let onboardingSpotlightEls = [];
@@ -236,7 +235,18 @@ const APP_ICON_PATHS = {
     archive: '<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>',
     profile: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
     reminders: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    complete: '<path d="M20 6 9 17l-5-5"/>',
+    progress: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+    important: '<path d="M12 2 2 22h20L12 2z"/><path d="M12 9v5"/><path d="M12 18h.01"/>',
     add: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'
+};
+
+const TASK_EMPTY_STATES = {
+    all: { icon: 'tasks', titleKey: 'emptyTasksAllTitle', bodyKey: 'emptyTasksAllBody' },
+    completed: { icon: 'complete', titleKey: 'emptyTasksCompletedTitle', bodyKey: 'emptyTasksCompletedBody' },
+    active: { icon: 'progress', titleKey: 'emptyTasksActiveTitle', bodyKey: 'emptyTasksActiveBody' },
+    important: { icon: 'important', titleKey: 'emptyTasksImportantTitle', bodyKey: 'emptyTasksImportantBody' },
+    reminders: { icon: 'reminders', titleKey: 'emptyTasksRemindersTitle', bodyKey: 'emptyTasksRemindersBody' }
 };
 
 function appIconSvg(name, size = 20, extraAttrs = '') {
@@ -297,7 +307,18 @@ const I18N = {
         pasteUrl: 'URL 붙여넣기', customTitle: '사용자 지정 제목', tagsPlaceholder: '태그...', newPage: '+ 새 페이지',
         uploadingProgress: '업로드 중... 0%', subpages: '하위 페이지', newSubpage: '새 하위 페이지', deletePage: '페이지 삭제',
         archiveDescription: '완료한 작업과 지난 기록을 다시 확인하세요.', totalAchievements: '전체 성과', itemsArchived: '보관된 항목',
-        monospace: '고정폭', serif: '세리프', handwritten: '손글씨', fontNanumGothic: '나눔고딕', firstTaskTitle: '할 일을 채워보세요',
+        monospace: '고정폭', serif: '세리프', handwritten: '손글씨', fontNanumGothic: '나눔고딕',
+        emptyTasksAllTitle: '할 일을 채워보세요',
+        emptyTasksAllBody: '해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.',
+        emptyTasksCompletedTitle: '아직 완료한 작업이 없습니다',
+        emptyTasksCompletedBody: '작업을 끝내고 완료 처리하면 이곳에서 성과를 한눈에 볼 수 있습니다.<br>먼저 작은 일 하나를 끝내보세요.',
+        emptyTasksActiveTitle: '진행 중인 작업이 없습니다',
+        emptyTasksActiveBody: '지금 할 일이 없다면 아주 좋은 상태입니다.<br>새로운 할 일이 생기면 입력창에 적어 진행 목록을 채워보세요.',
+        emptyTasksImportantTitle: '중요 작업이 없습니다',
+        emptyTasksImportantBody: '우선순위를 높음으로 지정한 작업이 이곳에 모입니다.<br>놓치면 안 되는 일만 선별해 집중하세요.',
+        emptyTasksRemindersTitle: '예정된 리마인더가 없습니다',
+        emptyTasksRemindersBody: '마감일이 있는 미완료 작업이 이곳에 표시됩니다.<br>날짜가 필요한 작업에 마감일을 추가해보세요.',
+        firstTaskTitle: '할 일을 채워보세요',
         firstTaskBody: '해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.',
         firstTaskButton: '첫 작업 추가하기', firstNoteTitle: '메모 보드를 채워보세요',
         firstNoteBody: '아이디어와 짧은 기록을 포스트잇처럼 쌓아두는 공간입니다.<br>상단 입력창에 첫 메모를 적고 보드 위에 배치해보세요.',
@@ -478,7 +499,18 @@ const I18N = {
         pasteUrl: 'Paste URL here', customTitle: 'Custom Title', tagsPlaceholder: 'Tags...', newPage: '+ New Page',
         uploadingProgress: 'Uploading... 0%', subpages: 'Subpages', newSubpage: 'New Subpage', deletePage: 'Delete Page',
         archiveDescription: 'Review your achievements and past thoughts', totalAchievements: 'Total Achievements', itemsArchived: 'Items Archived',
-        monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', fontNanumGothic: 'Nanum Gothic', firstTaskTitle: 'Fill your task list',
+        monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', fontNanumGothic: 'Nanum Gothic',
+        emptyTasksAllTitle: 'Fill your task list',
+        emptyTasksAllBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',
+        emptyTasksCompletedTitle: 'No completed tasks yet',
+        emptyTasksCompletedBody: 'Finished tasks will collect here after you mark them complete.<br>Wrap up one small task to start your progress log.',
+        emptyTasksActiveTitle: 'No tasks in progress',
+        emptyTasksActiveBody: 'Nothing needs your attention right now.<br>When new work appears, add it above to keep the active list moving.',
+        emptyTasksImportantTitle: 'No important tasks',
+        emptyTasksImportantBody: 'Tasks marked High priority appear here.<br>Use this view for work that should not slip.',
+        emptyTasksRemindersTitle: 'No upcoming reminders',
+        emptyTasksRemindersBody: 'Incomplete tasks with due dates appear here.<br>Add a due date to any task that needs a reminder.',
+        firstTaskTitle: 'Fill your task list',
         firstTaskBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',
         firstTaskButton: 'Add first task', firstNoteTitle: 'Fill your note board',
         firstNoteBody: 'Keep ideas and quick records like sticky notes.<br>Write your first note above and place it on the board.',
@@ -1139,10 +1171,6 @@ function clearOnboardingHighlight() {
         onboardingHighlightEl = null;
     }
     onboardingLastTargetRect = null;
-    if (onboardingTargetTipEl) {
-        onboardingTargetTipEl.remove();
-        onboardingTargetTipEl = null;
-    }
     onboardingSpotlightEls.forEach(el => el.remove());
     onboardingSpotlightEls = [];
     const modal = getEl('onboarding-modal');
@@ -1299,7 +1327,6 @@ function highlightOnboardingTarget(stepOrId, focusConfig = null, retryCount = 0)
     }
     positionOnboardingSpotlight(target);
     positionOnboardingCardAroundTarget(target);
-    showOnboardingTargetTip(target, step, focus);
     setTimeout(() => {
         if (typeof target.focus === 'function') target.focus({ preventScroll: true });
     }, 220);
@@ -1386,49 +1413,6 @@ function positionOnboardingCardAroundTarget(target) {
     });
 }
 
-function showOnboardingTargetTip(target, step, focus = null) {
-    if (window.matchMedia('(max-width: 520px)').matches) return;
-    const tip = document.createElement('div');
-    tip.className = 'onboarding-target-tip';
-    tip.textContent = t((focus && focus.tipKey) || step.tipKey);
-    document.body.appendChild(tip);
-    onboardingTargetTipEl = tip;
-
-    requestAnimationFrame(() => {
-        const rect = target.getBoundingClientRect();
-        const tipRect = tip.getBoundingClientRect();
-        const modal = getEl('onboarding-modal');
-        const card = modal ? modal.querySelector('.onboarding-card') : null;
-        const cardRect = card ? card.getBoundingClientRect() : null;
-        const margin = 14;
-        const viewportW = window.innerWidth;
-        const viewportH = window.innerHeight;
-        const clampLeft = left => Math.min(Math.max(left, margin), viewportW - tipRect.width - margin);
-        const clampTop = top => Math.min(Math.max(top, margin), viewportH - tipRect.height - margin);
-        const intersects = (candidate, other) => {
-            if (!other) return false;
-            return !(candidate.left + candidate.width < other.left ||
-                candidate.left > other.right ||
-                candidate.top + candidate.height < other.top ||
-                candidate.top > other.bottom);
-        };
-        const candidates = [
-            { left: clampLeft(rect.left + rect.width / 2 - tipRect.width / 2), top: rect.top - tipRect.height - margin },
-            { left: clampLeft(rect.left + rect.width / 2 - tipRect.width / 2), top: rect.bottom + margin },
-            { left: rect.right + margin, top: clampTop(rect.top + rect.height / 2 - tipRect.height / 2) },
-            { left: rect.left - tipRect.width - margin, top: clampTop(rect.top + rect.height / 2 - tipRect.height / 2) }
-        ].map(candidate => ({
-            left: clampLeft(candidate.left),
-            top: clampTop(candidate.top),
-            width: tipRect.width,
-            height: tipRect.height
-        }));
-        const available = candidates.find(candidate => !intersects(candidate, cardRect)) || candidates[0];
-        tip.style.top = `${available.top}px`;
-        tip.style.left = `${available.left}px`;
-    });
-}
-
 function renderOnboarding() {
     const modal = getEl('onboarding-modal');
     if (!modal || !onboardingState) return;
@@ -1462,6 +1446,7 @@ function renderOnboarding() {
     });
     setText('#onboarding-step-title', t(step.titleKey));
     setText('#onboarding-step-body', t(step.bodyKey));
+    setText('#onboarding-step-tip', t((currentFocus && currentFocus.tipKey) || step.tipKey));
     setText('#onboarding-step-target', t((currentFocus && currentFocus.targetKey) || step.targetKey));
     setText('#onboarding-step-why', t(step.whyKey));
     setText('#onboarding-step-example', t(step.exampleKey));
@@ -1547,13 +1532,6 @@ function repositionActiveOnboardingGuide() {
         positionOnboardingSpotlight(onboardingHighlightEl);
         if (!isTabletGuideLayout()) {
             positionOnboardingCardAroundTarget(onboardingHighlightEl);
-        }
-        if (onboardingTargetTipEl) {
-            onboardingTargetTipEl.remove();
-            onboardingTargetTipEl = null;
-        }
-        if (!isTabletGuideLayout()) {
-            showOnboardingTargetTip(onboardingHighlightEl, step, focus);
         }
     });
 }
@@ -1683,20 +1661,22 @@ async function showOnboardingIfNeeded(user) {
 }
 
 // --- RENDER FUNCTIONS ---
+function getTaskEmptyState() {
+    return TASK_EMPTY_STATES[currentFilter] || TASK_EMPTY_STATES.all;
+}
+
 function renderTodos(todos) {
     const todoList = getEl('todo-list');
     if (!todoList) return;
+    const emptyState = getTaskEmptyState();
     todoList.innerHTML = todos.length ? '' : `
         <div class="wiki-empty-container task-empty-container">
             <div class="wiki-empty-content task-empty-content">
                 <div class="wiki-empty-illustration task-empty-illustration">
-                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 11l3 3L22 4"></path>
-                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                    </svg>
+                    ${appIconSvg(emptyState.icon, 80)}
                 </div>
-                <h2>${t('firstTaskTitle')}</h2>
-                <p>${t('firstTaskBody')}</p>
+                <h2>${t(emptyState.titleKey)}</h2>
+                <p>${t(emptyState.bodyKey)}</p>
                 <button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     <span style="vertical-align: middle;">${t('firstTaskButton')}</span>
