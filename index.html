@@ -259,17 +259,8 @@
 
             <!-- PAGE: TASKS -->
             <section id="page-tasks" class="page-content active">
-                <header class="main-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <header class="main-header">
                     <h1 id="welcome-message">작업</h1>
-                    <div class="font-selector">
-                        <select id="app-font-select" class="font-dropdown">
-                            <option value="var(--font)">기본 글꼴</option>
-                            <option value="'Pretendard', sans-serif">Pretendard</option>
-                            <option value="'Courier New', Courier, monospace">고정폭</option>
-                            <option value="'Georgia', serif">세리프</option>
-                            <option value="'Comic Sans MS', cursive">손글씨</option>
-                        </select>
-                    </div>
                 </header>
 
                 <div class="filter-bar">
@@ -588,10 +579,21 @@
                     <p><strong>로그인 방식:</strong> <span id="profile-login-methods"></span></p>
 
                     <div class="profile-language-panel">
-                        <label for="app-language-select">UI 언어</label>
+                        <label id="profile-language-label" for="app-language-select">UI 언어</label>
                         <select id="app-language-select" class="font-dropdown">
                             <option value="ko">한국어</option>
                             <option value="en">English</option>
+                        </select>
+                    </div>
+
+                    <div class="profile-font-panel">
+                        <label id="profile-font-label" for="app-font-select">전체 글꼴</label>
+                        <select id="app-font-select" class="font-dropdown">
+                            <option value="'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif">기본 글꼴</option>
+                            <option value="'Pretendard', sans-serif">Pretendard</option>
+                            <option value="'Courier New', Courier, monospace">고정폭</option>
+                            <option value="'Georgia', serif">세리프</option>
+                            <option value="'Comic Sans MS', cursive">손글씨</option>
                         </select>
                     </div>
 
@@ -670,41 +672,35 @@
 
         <div id="onboarding-modal" class="onboarding-modal" aria-hidden="true">
             <div class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-                <div class="onboarding-eyebrow">Planary 시작하기</div>
-                <h2 id="onboarding-title">작업을 한 흐름으로 정리하세요</h2>
-                <p class="onboarding-intro">처음 시작할 때는 아래 순서만 기억하면 됩니다. 할 일을 만들고, 프로젝트로 묶고, 필요한 기록은 위키에 남기세요.</p>
-                <div class="onboarding-steps">
-                    <div class="onboarding-step">
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        </span>
-                        <div>
-                            <strong>작업</strong>
-                            <span>오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.</span>
-                        </div>
+                <div class="onboarding-topbar">
+                    <div>
+                        <div class="onboarding-eyebrow">Planary 시작하기</div>
+                        <h2 id="onboarding-title">작업을 한 흐름으로 정리하세요</h2>
                     </div>
-                    <div class="onboarding-step">
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                        </span>
-                        <div>
-                            <strong>프로젝트</strong>
-                            <span>작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.</span>
-                        </div>
+                    <button id="onboarding-exit-btn" class="onboarding-exit-btn" type="button" aria-label="가이드 나가기">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="onboarding-progress">
+                    <div class="onboarding-progress-track">
+                        <div id="onboarding-progress-fill" class="onboarding-progress-fill"></div>
                     </div>
-                    <div class="onboarding-step">
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                        </span>
-                        <div>
-                            <strong>위키</strong>
-                            <span>회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.</span>
-                        </div>
+                    <span id="onboarding-progress-text">1 / 3</span>
+                </div>
+                <p class="onboarding-intro">처음 시작할 때는 아래 순서만 기억하면 됩니다.</p>
+                <div id="onboarding-step-card" class="onboarding-step-card">
+                    <span id="onboarding-step-icon" class="onboarding-step-icon"></span>
+                    <div>
+                        <strong id="onboarding-step-title">작업</strong>
+                        <p id="onboarding-step-body">오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.</p>
+                        <p id="onboarding-step-target" class="onboarding-step-target">작업 입력창으로 이동합니다.</p>
                     </div>
                 </div>
+                <div id="onboarding-step-list" class="onboarding-step-list" aria-label="가이드 단계"></div>
                 <div class="onboarding-actions">
-                    <button id="onboarding-skip-btn" class="text-link-btn" type="button">나중에 볼게요</button>
-                    <button id="onboarding-start-btn" class="confirm-btn" type="button">작업 만들러 가기</button>
+                    <button id="onboarding-skip-btn" class="text-link-btn" type="button">이 단계 건너뛰기</button>
+                    <button id="onboarding-start-btn" class="confirm-btn" type="button">이 단계 시작</button>
+                    <button id="onboarding-complete-btn" class="confirm-btn" type="button">완료</button>
                 </div>
             </div>
         </div>

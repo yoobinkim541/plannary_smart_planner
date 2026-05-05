@@ -29,6 +29,44 @@ let currentProjectId = null;
 let selectedProjectOverviewId = null;
 let selectedNoteColor = 'yellow';
 let currentLanguage = localStorage.getItem('planary-language') || 'ko';
+const DEFAULT_APP_FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
+let currentAppFont = localStorage.getItem('planary-app-font') || DEFAULT_APP_FONT;
+let onboardingState = null;
+let onboardingHighlightEl = null;
+let onboardingHighlightTimer = null;
+
+const GUIDE_STEP_IDS = ['tasks', 'projects', 'wiki'];
+const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
+const GUIDE_STEPS = {
+    tasks: {
+        icon: 'tasks',
+        pageId: 'page-tasks',
+        focusSelector: '#todo-input',
+        fallbackSelector: '#todo-input',
+        filter: 'all',
+        titleKey: 'tasks',
+        bodyKey: 'onboardingTaskBody',
+        targetKey: 'onboardingTaskTarget'
+    },
+    projects: {
+        icon: 'projects',
+        pageId: 'page-projects',
+        focusSelector: '#project-input',
+        fallbackSelector: '#project-input',
+        titleKey: 'projects',
+        bodyKey: 'onboardingProjectBody',
+        targetKey: 'onboardingProjectTarget'
+    },
+    wiki: {
+        icon: 'wiki',
+        pageId: 'page-wiki',
+        focusSelector: '#new-wiki-btn',
+        fallbackSelector: '#wiki-empty-create-btn',
+        titleKey: 'wiki',
+        bodyKey: 'onboardingWikiBody',
+        targetKey: 'onboardingWikiTarget'
+    }
+};
 
 // --- CORE UTILITY FUNCTIONS ---
 const getEl = (id) => document.getElementById(id);
@@ -84,6 +122,7 @@ const I18N = {
         wikiSubtitle: '노션 스타일 문서 편집기', searchPages: '페이지 검색...', saveChanges: '변경사항 저장',
         archiveTitle: '보관함', archivedTasks: '보관된 작업', emptyArchive: '보관함 비우기', profileTitle: '마이페이지',
         nameLabel: '이름:', emailLabel: '이메일:', loginMethodsLabel: '로그인 방식:', languageLabel: 'UI 언어',
+        appFontLabel: '전체 글꼴',
         guideTitle: '가이드', guideDescription: 'Planary의 기본 사용 흐름을 다시 확인합니다.', replayGuide: '가이드 다시 보기',
         emailPasswordLogin: '이메일 비밀번호 로그인', newPassword: '새 비밀번호', confirmPassword: '비밀번호 확인',
         logout: '로그아웃', taskHeaderTitle: '내 작업', taskHeaderSubtitle: '작업 관리자', overviewHeader: '개요',
@@ -148,6 +187,12 @@ const I18N = {
         onboardingTaskBody: '오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.',
         onboardingProjectBody: '작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.',
         onboardingWikiBody: '회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.',
+        onboardingTaskTarget: '작업 화면의 입력창으로 이동해 첫 할 일을 바로 적을 수 있게 합니다.',
+        onboardingProjectTarget: '프로젝트 화면의 생성 입력창으로 이동해 관련 작업을 묶을 준비를 합니다.',
+        onboardingWikiTarget: '위키 화면의 새 페이지 버튼으로 이동해 기록을 남길 수 있게 합니다.',
+        onboardingExit: '가이드 나가기', onboardingSkipStep: '이 단계 건너뛰기', onboardingStartStep: '이 단계 시작',
+        onboardingNextStep: '다음 단계', onboardingComplete: '완료', onboardingProgressText: '{current} / {total}',
+        onboardingDone: '완료', onboardingSkipped: '건너뜀', onboardingPending: '대기 중',
         onboardingLater: '나중에 볼게요', onboardingStart: '작업 만들러 가기', backToList: '목록으로 돌아가기',
         toggleTheme: '테마 전환', toggleNavigation: '내비게이션 열기', attachment: '첨부파일',
         katexNotLoaded: 'KaTeX를 불러오지 못했습니다.', syntaxError: '문법 오류'
@@ -167,6 +212,7 @@ const I18N = {
         wikiSubtitle: 'Notion-like document editor', searchPages: 'Search pages...', saveChanges: 'Save Changes',
         archiveTitle: 'Archive Vault', archivedTasks: 'Archived Tasks', emptyArchive: 'Empty Archive', profileTitle: 'My Page',
         nameLabel: 'Name:', emailLabel: 'Email:', loginMethodsLabel: 'Login methods:', languageLabel: 'UI language',
+        appFontLabel: 'App font',
         guideTitle: 'Guide', guideDescription: 'Review the basic Planary workflow again.', replayGuide: 'Replay guide',
         emailPasswordLogin: 'Email password login', newPassword: 'New password', confirmPassword: 'Confirm password',
         logout: 'Logout', taskHeaderTitle: 'My Tasks', taskHeaderSubtitle: 'Todo Manager', overviewHeader: 'Overview',
@@ -231,6 +277,12 @@ const I18N = {
         onboardingTaskBody: 'Add today’s work with due dates, priorities, and notes.',
         onboardingProjectBody: 'Group tasks, reminders, and wiki pages by project.',
         onboardingWikiBody: 'Organize meetings, ideas, and references into pages and subpages.',
+        onboardingTaskTarget: 'Go to the task input so you can write the first task immediately.',
+        onboardingProjectTarget: 'Go to the project input so you can prepare a workspace for related work.',
+        onboardingWikiTarget: 'Go to the new wiki page button so you can start keeping context.',
+        onboardingExit: 'Exit guide', onboardingSkipStep: 'Skip this step', onboardingStartStep: 'Start this step',
+        onboardingNextStep: 'Next step', onboardingComplete: 'Done', onboardingProgressText: '{current} / {total}',
+        onboardingDone: 'Done', onboardingSkipped: 'Skipped', onboardingPending: 'Pending',
         onboardingLater: 'Maybe later', onboardingStart: 'Create a task', backToList: 'Back to list',
         toggleTheme: 'Toggle theme', toggleNavigation: 'Toggle navigation', attachment: 'Attachment',
         katexNotLoaded: 'KaTeX not loaded.', syntaxError: 'Syntax Error'
@@ -294,6 +346,14 @@ window.PlanaryI18n = {
     format: (key, values) => formatText(key, values),
     getLanguage: () => currentLanguage
 };
+
+function applyAppFont(font = currentAppFont) {
+    currentAppFont = (!font || font === 'var(--font)') ? DEFAULT_APP_FONT : font;
+    localStorage.setItem('planary-app-font', currentAppFont);
+    document.documentElement.style.setProperty('--font', currentAppFont);
+    const fontSelect = getEl('app-font-select');
+    if (fontSelect) fontSelect.value = currentAppFont;
+}
 
 function applyLanguage(lang = currentLanguage) {
     currentLanguage = lang;
@@ -402,7 +462,8 @@ function applyLanguage(lang = currentLanguage) {
     if (profileLabels[0]) profileLabels[0].textContent = t('nameLabel');
     if (profileLabels[1]) profileLabels[1].textContent = t('emailLabel');
     if (profileLabels[2]) profileLabels[2].textContent = t('loginMethodsLabel');
-    setText('.profile-language-panel label', t('languageLabel'));
+    setText('#profile-language-label', t('languageLabel'));
+    setText('#profile-font-label', t('appFontLabel'));
     setText('.profile-guide-panel h3', t('guideTitle'));
     setText('.profile-guide-panel p', t('guideDescription'));
     setText('#profile-guide-btn', t('replayGuide'));
@@ -416,16 +477,9 @@ function applyLanguage(lang = currentLanguage) {
     setText('.onboarding-eyebrow', t('onboardingEyebrow'));
     setText('#onboarding-title', t('onboardingTitle'));
     setText('.onboarding-intro', t('onboardingIntro'));
-    const onboardingTitles = document.querySelectorAll('.onboarding-step strong');
-    if (onboardingTitles[0]) onboardingTitles[0].textContent = t('tasks');
-    if (onboardingTitles[1]) onboardingTitles[1].textContent = t('projects');
-    if (onboardingTitles[2]) onboardingTitles[2].textContent = t('wiki');
-    const onboardingBodies = document.querySelectorAll('.onboarding-step span:last-child');
-    if (onboardingBodies[0]) onboardingBodies[0].textContent = t('onboardingTaskBody');
-    if (onboardingBodies[1]) onboardingBodies[1].textContent = t('onboardingProjectBody');
-    if (onboardingBodies[2]) onboardingBodies[2].textContent = t('onboardingWikiBody');
-    setText('#onboarding-skip-btn', t('onboardingLater'));
-    setText('#onboarding-start-btn', t('onboardingStart'));
+    setTitle('#onboarding-exit-btn', t('onboardingExit'));
+    setText('#onboarding-skip-btn', t('onboardingSkipStep'));
+    renderOnboarding();
 
     setTitle('#menu-toggle', t('toggleNavigation'));
     setTitle('#fab-trigger', t('toggleNavigation'));
@@ -690,30 +744,219 @@ async function connectEmailPasswordLogin() {
     }
 }
 
-async function completeOnboarding() {
+function createDefaultOnboardingProgress() {
+    return GUIDE_STEP_IDS.reduce((progress, id) => {
+        progress[id] = 'pending';
+        return progress;
+    }, {});
+}
+
+function normalizeOnboardingProgress(progress = {}) {
+    return GUIDE_STEP_IDS.reduce((normalized, id) => {
+        const status = progress && GUIDE_STATUS.includes(progress[id]) ? progress[id] : 'pending';
+        normalized[id] = status;
+        return normalized;
+    }, {});
+}
+
+function getNextGuideStepId(progress = onboardingState?.progress) {
+    const normalized = normalizeOnboardingProgress(progress);
+    return GUIDE_STEP_IDS.find(id => normalized[id] === 'pending') || null;
+}
+
+function isOnboardingFinished(progress = onboardingState?.progress) {
+    return !getNextGuideStepId(progress);
+}
+
+function buildOnboardingState(data = {}) {
+    const progress = normalizeOnboardingProgress(data.onboardingProgress || {});
+    const currentStep = GUIDE_STEP_IDS.includes(data.onboardingCurrentStep) && progress[data.onboardingCurrentStep] === 'pending'
+        ? data.onboardingCurrentStep
+        : getNextGuideStepId(progress);
+    return {
+        completed: Boolean(data.onboardingCompleted),
+        progress,
+        currentStep
+    };
+}
+
+function clearOnboardingHighlight() {
+    if (onboardingHighlightTimer) {
+        clearTimeout(onboardingHighlightTimer);
+        onboardingHighlightTimer = null;
+    }
+    if (onboardingHighlightEl) {
+        onboardingHighlightEl.classList.remove('onboarding-highlight-target');
+        onboardingHighlightEl = null;
+    }
+    document.body.classList.remove('onboarding-spotlight-active');
+}
+
+function closeOnboarding() {
     const modal = getEl('onboarding-modal');
     if (modal) {
         modal.classList.remove('active');
         modal.setAttribute('aria-hidden', 'true');
     }
+    clearOnboardingHighlight();
+}
+
+async function saveOnboardingState({ progress, currentStep, completed } = {}) {
     if (!currentUser || !db) return;
+    const nextProgress = normalizeOnboardingProgress(progress || onboardingState?.progress || {});
+    const done = completed ?? isOnboardingFinished(nextProgress);
+    onboardingState = {
+        completed: done,
+        progress: nextProgress,
+        currentStep: done ? null : (currentStep || getNextGuideStepId(nextProgress))
+    };
     try {
-        await db.collection('users').doc(currentUser.uid).set({
+        const payload = {
             uid: currentUser.uid,
-            onboardingCompleted: true,
-            onboardingCompletedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            onboardingCompleted: done,
+            onboardingProgress: nextProgress,
+            onboardingCurrentStep: onboardingState.currentStep,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        };
+        if (done) payload.onboardingCompletedAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('users').doc(currentUser.uid).set(payload, { merge: true });
     } catch (error) {
-        console.warn('Onboarding completion was not saved:', error);
+        console.warn('Onboarding state was not saved:', error);
     }
 }
 
-function openOnboarding() {
+async function completeOnboarding() {
+    const progress = normalizeOnboardingProgress(onboardingState?.progress || {});
+    GUIDE_STEP_IDS.forEach(id => {
+        if (progress[id] === 'pending') progress[id] = 'completed';
+    });
+    await saveOnboardingState({ progress, completed: true, currentStep: null });
+    closeOnboarding();
+}
+
+function getOnboardingTarget(step) {
+    return document.querySelector(step.focusSelector) || document.querySelector(step.fallbackSelector);
+}
+
+function highlightOnboardingTarget(stepId, retryCount = 0) {
+    clearOnboardingHighlight();
+    const step = GUIDE_STEPS[stepId];
+    if (!step) return;
+    const target = getOnboardingTarget(step);
+    if (!target && retryCount < 3) {
+        onboardingHighlightTimer = setTimeout(() => highlightOnboardingTarget(stepId, retryCount + 1), 160);
+        return;
+    }
+    if (!target) return;
+    onboardingHighlightEl = target;
+    document.body.classList.add('onboarding-spotlight-active');
+    target.classList.add('onboarding-highlight-target');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    setTimeout(() => {
+        if (typeof target.focus === 'function') target.focus({ preventScroll: true });
+    }, 220);
+}
+
+function renderOnboarding() {
+    const modal = getEl('onboarding-modal');
+    if (!modal || !onboardingState) return;
+    const progress = normalizeOnboardingProgress(onboardingState.progress);
+    const stepId = onboardingState.currentStep || getNextGuideStepId(progress) || GUIDE_STEP_IDS[GUIDE_STEP_IDS.length - 1];
+    const step = GUIDE_STEPS[stepId];
+    const currentIndex = GUIDE_STEP_IDS.indexOf(stepId);
+    const doneCount = GUIDE_STEP_IDS.filter(id => progress[id] !== 'pending').length;
+    const progressFill = getEl('onboarding-progress-fill');
+    const progressText = getEl('onboarding-progress-text');
+    const stepIcon = getEl('onboarding-step-icon');
+    const stepList = getEl('onboarding-step-list');
+    const startBtn = getEl('onboarding-start-btn');
+    const completeBtn = getEl('onboarding-complete-btn');
+    const skipBtn = getEl('onboarding-skip-btn');
+
+    setText('#onboarding-step-title', t(step.titleKey));
+    setText('#onboarding-step-body', t(step.bodyKey));
+    setText('#onboarding-step-target', t(step.targetKey));
+    if (stepIcon) stepIcon.innerHTML = appIconSvg(step.icon, 20);
+    if (progressFill) progressFill.style.width = `${Math.max(doneCount, currentIndex + 1) / GUIDE_STEP_IDS.length * 100}%`;
+    if (progressText) progressText.textContent = t('onboardingProgressText')
+        .replace('{current}', String(Math.min(currentIndex + 1, GUIDE_STEP_IDS.length)))
+        .replace('{total}', String(GUIDE_STEP_IDS.length));
+
+    if (stepList) {
+        stepList.innerHTML = GUIDE_STEP_IDS.map(id => {
+            const item = GUIDE_STEPS[id];
+            const status = progress[id];
+            const labelKey = status === 'completed' ? 'onboardingDone' : (status === 'skipped' ? 'onboardingSkipped' : 'onboardingPending');
+            return `<div class="onboarding-step-pill ${id === stepId ? 'active' : ''} ${status}">
+                ${appIconSvg(item.icon, 16)}
+                <span>${t(item.titleKey)}</span>
+                <em>${t(labelKey)}</em>
+            </div>`;
+        }).join('');
+    }
+
+    if (startBtn) startBtn.textContent = t('onboardingStartStep');
+    if (completeBtn) completeBtn.style.display = 'inline-flex';
+    if (completeBtn) completeBtn.textContent = currentIndex >= GUIDE_STEP_IDS.length - 1 ? t('onboardingComplete') : t('onboardingNextStep');
+    if (skipBtn) skipBtn.disabled = isOnboardingFinished(progress);
+}
+
+function openOnboarding(options = {}) {
     const modal = getEl('onboarding-modal');
     if (!modal) return;
+    const baseProgress = normalizeOnboardingProgress(onboardingState?.progress || {});
+    const shouldRestart = options.restart || isOnboardingFinished(baseProgress);
+    const progress = shouldRestart ? createDefaultOnboardingProgress() : baseProgress;
+    onboardingState = {
+        completed: false,
+        progress,
+        currentStep: options.stepId || getNextGuideStepId(progress) || GUIDE_STEP_IDS[0]
+    };
+    renderOnboarding();
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
+}
+
+async function startCurrentOnboardingStep() {
+    const stepId = onboardingState?.currentStep || getNextGuideStepId();
+    const step = GUIDE_STEPS[stepId];
+    if (!step) {
+        await completeOnboarding();
+        return;
+    }
+    if (step.pageId === 'page-tasks') navigateAppPage(step.pageId, step.filter || 'all');
+    else navigateAppPage(step.pageId);
+    setTimeout(() => highlightOnboardingTarget(stepId), 120);
+}
+
+async function skipCurrentOnboardingStep() {
+    const stepId = onboardingState?.currentStep || getNextGuideStepId();
+    if (!stepId) return completeOnboarding();
+    const progress = normalizeOnboardingProgress(onboardingState.progress);
+    progress[stepId] = 'skipped';
+    const nextStep = getNextGuideStepId(progress);
+    await saveOnboardingState({ progress, currentStep: nextStep, completed: !nextStep });
+    if (!nextStep) {
+        closeOnboarding();
+        return;
+    }
+    renderOnboarding();
+    clearOnboardingHighlight();
+}
+
+async function completeCurrentOnboardingStep() {
+    const stepId = onboardingState?.currentStep || getNextGuideStepId();
+    if (!stepId) return completeOnboarding();
+    const progress = normalizeOnboardingProgress(onboardingState.progress);
+    progress[stepId] = 'completed';
+    const nextStep = getNextGuideStepId(progress);
+    await saveOnboardingState({ progress, currentStep: nextStep, completed: !nextStep });
+    if (!nextStep) {
+        closeOnboarding();
+        return;
+    }
+    renderOnboarding();
+    clearOnboardingHighlight();
 }
 
 async function showOnboardingIfNeeded(user) {
@@ -722,18 +965,24 @@ async function showOnboardingIfNeeded(user) {
         const ref = db.collection('users').doc(user.uid);
         const snapshot = await ref.get();
         if (!snapshot.exists) {
+            const progress = createDefaultOnboardingProgress();
             await ref.set({
                 uid: user.uid,
                 email: user.email || null,
                 displayName: user.displayName || null,
                 onboardingCompleted: false,
+                onboardingProgress: progress,
+                onboardingCurrentStep: GUIDE_STEP_IDS[0],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
+            onboardingState = buildOnboardingState({ onboardingProgress: progress, onboardingCurrentStep: GUIDE_STEP_IDS[0] });
             openOnboarding();
             return;
         }
-        if (!snapshot.data().onboardingCompleted) openOnboarding();
+        const data = snapshot.data();
+        onboardingState = buildOnboardingState(data);
+        if (!data.onboardingCompleted) openOnboarding();
     } catch (error) {
         console.warn('Onboarding state unavailable:', error);
     }
@@ -1294,6 +1543,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Theme & Navigation Init
     const savedTheme = localStorage.getItem('app-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    applyAppFont(currentAppFont);
     applyLanguage(currentLanguage);
     
     // Hash router
@@ -1309,6 +1559,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     if (getEl('app-language-select')) {
         getEl('app-language-select').onchange = (event) => applyLanguage(event.target.value);
+    }
+    if (getEl('app-font-select')) {
+        getEl('app-font-select').onchange = (event) => applyAppFont(event.target.value);
     }
 
     if (getEl('search-input')) getEl('search-input').oninput = () => applyFilters();
@@ -1535,18 +1788,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Logout
     if (getEl('profile-password-btn')) getEl('profile-password-btn').onclick = connectEmailPasswordLogin;
-    if (getEl('onboarding-skip-btn')) getEl('onboarding-skip-btn').onclick = completeOnboarding;
+    if (getEl('onboarding-exit-btn')) getEl('onboarding-exit-btn').onclick = closeOnboarding;
+    if (getEl('onboarding-skip-btn')) getEl('onboarding-skip-btn').onclick = skipCurrentOnboardingStep;
     if (getEl('onboarding-start-btn')) {
-        getEl('onboarding-start-btn').onclick = async () => {
-            await completeOnboarding();
-            navigateAppPage('page-tasks', 'all');
-            setTimeout(() => {
-                const input = getEl('todo-input');
-                if (input) input.focus();
-            }, 50);
-        };
+        getEl('onboarding-start-btn').onclick = startCurrentOnboardingStep;
     }
-    if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = openOnboarding;
+    if (getEl('onboarding-complete-btn')) getEl('onboarding-complete-btn').onclick = completeCurrentOnboardingStep;
+    if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = () => openOnboarding();
 
     const logout = () => confirm(t('logoutConfirm')) && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;

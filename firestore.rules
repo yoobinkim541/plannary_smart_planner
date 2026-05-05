@@ -41,6 +41,23 @@ service cloud.firestore {
       return value == null || value is int || value is float;
     }
 
+    function validOnboardingStatus(value) {
+      return value is string && value in ['pending', 'completed', 'skipped'];
+    }
+
+    function validOnboardingProgress(value) {
+      return value is map &&
+        value.keys().hasOnly(['tasks', 'projects', 'wiki']) &&
+        value.keys().hasAll(['tasks', 'projects', 'wiki']) &&
+        validOnboardingStatus(value.tasks) &&
+        validOnboardingStatus(value.projects) &&
+        validOnboardingStatus(value.wiki);
+    }
+
+    function validOnboardingCurrentStep(value) {
+      return value == null || (value is string && value in ['tasks', 'projects', 'wiki']);
+    }
+
     function validTodo() {
       return hasOnlyKeys([
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
@@ -144,12 +161,15 @@ service cloud.firestore {
         request.resource.data.uid == userId &&
         hasOnlyKeys([
           'uid', 'email', 'displayName', 'onboardingCompleted',
-          'onboardingCompletedAt', 'createdAt', 'updatedAt'
+          'onboardingCompletedAt', 'onboardingProgress', 'onboardingCurrentStep',
+          'createdAt', 'updatedAt'
         ]) &&
         isStringOrNull(request.resource.data.email) &&
         isStringOrNull(request.resource.data.displayName) &&
         request.resource.data.onboardingCompleted is bool &&
         isTimestampOrNull(request.resource.data.onboardingCompletedAt) &&
+        validOnboardingProgress(request.resource.data.onboardingProgress) &&
+        validOnboardingCurrentStep(request.resource.data.onboardingCurrentStep) &&
         isTimestampOrNull(request.resource.data.createdAt) &&
         isTimestampOrNull(request.resource.data.updatedAt);
       allow delete: if false;
