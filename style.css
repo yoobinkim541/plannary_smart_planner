@@ -598,6 +598,8 @@ textarea.composer-input {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 12px;
+    padding-right: 48px;
     margin-bottom: 4px;
 }
 
@@ -605,6 +607,7 @@ textarea.composer-input {
     font-size: 17px;
     font-weight: 600;
     color: var(--text-1);
+    min-width: 0;
 }
 
 .tc-status {
