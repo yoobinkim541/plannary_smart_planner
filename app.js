@@ -84,6 +84,7 @@ const I18N = {
         wikiSubtitle: '노션 스타일 문서 편집기', searchPages: '페이지 검색...', saveChanges: '변경사항 저장',
         archiveTitle: '보관함', archivedTasks: '보관된 작업', emptyArchive: '보관함 비우기', profileTitle: '마이페이지',
         nameLabel: '이름:', emailLabel: '이메일:', loginMethodsLabel: '로그인 방식:', languageLabel: 'UI 언어',
+        guideTitle: '가이드', guideDescription: 'Planary의 기본 사용 흐름을 다시 확인합니다.', replayGuide: '가이드 다시 보기',
         emailPasswordLogin: '이메일 비밀번호 로그인', newPassword: '새 비밀번호', confirmPassword: '비밀번호 확인',
         logout: '로그아웃', taskHeaderTitle: '내 작업', taskHeaderSubtitle: '작업 관리자', overviewHeader: '개요',
         overviewSubtitle: '대시보드 요약', projectHeader: '프로젝트 그룹', projectSubtitle: '분류 관리자',
@@ -106,6 +107,7 @@ const I18N = {
         wikiSubtitle: 'Notion-like document editor', searchPages: 'Search pages...', saveChanges: 'Save Changes',
         archiveTitle: 'Archive Vault', archivedTasks: 'Archived Tasks', emptyArchive: 'Empty Archive', profileTitle: 'My Page',
         nameLabel: 'Name:', emailLabel: 'Email:', loginMethodsLabel: 'Login methods:', languageLabel: 'UI language',
+        guideTitle: 'Guide', guideDescription: 'Review the basic Planary workflow again.', replayGuide: 'Replay guide',
         emailPasswordLogin: 'Email password login', newPassword: 'New password', confirmPassword: 'Confirm password',
         logout: 'Logout', taskHeaderTitle: 'My Tasks', taskHeaderSubtitle: 'Todo Manager', overviewHeader: 'Overview',
         overviewSubtitle: 'Dashboard Summary', projectHeader: 'Project Groups', projectSubtitle: 'Category Manager',
@@ -202,6 +204,9 @@ function applyLanguage(lang = currentLanguage) {
     if (profileLabels[1]) profileLabels[1].textContent = t('emailLabel');
     if (profileLabels[2]) profileLabels[2].textContent = t('loginMethodsLabel');
     setText('.profile-language-panel label', t('languageLabel'));
+    setText('.profile-guide-panel h3', t('guideTitle'));
+    setText('.profile-guide-panel p', t('guideDescription'));
+    setText('#profile-guide-btn', t('replayGuide'));
     setText('.profile-password-panel h3', t('emailPasswordLogin'));
     const passwordLabels = document.querySelectorAll('.profile-password-grid label');
     if (passwordLabels[0]) passwordLabels[0].childNodes[0].textContent = `${t('newPassword')} `;
@@ -1312,6 +1317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 50);
         };
     }
+    if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = openOnboarding;
 
     const logout = () => confirm('Logout?') && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
