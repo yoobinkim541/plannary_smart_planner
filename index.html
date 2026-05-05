@@ -672,39 +672,116 @@
             <div class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
                 <div class="onboarding-eyebrow">Planary 시작하기</div>
                 <h2 id="onboarding-title">작업을 한 흐름으로 정리하세요</h2>
-                <p class="onboarding-intro">처음 시작할 때는 아래 순서만 기억하면 됩니다. 할 일을 만들고, 프로젝트로 묶고, 필요한 기록은 위키에 남기세요.</p>
+                <p class="onboarding-intro">처음 사용하는 동안 핵심 기능을 하나씩 직접 써볼 수 있게 안내합니다. 각 단계는 바로 실행하거나 건너뛸 수 있습니다.</p>
                 <div class="onboarding-steps">
-                    <div class="onboarding-step">
+                    <div class="onboarding-step" data-guide-step>
                         <span class="onboarding-step-icon">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                         </span>
                         <div>
-                            <strong>작업</strong>
-                            <span>오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.</span>
+                            <strong data-i18n="onboardingTaskCreateTitle">작업 만들기</strong>
+                            <span data-i18n="onboardingTaskCreateBody">Tasks에서 오늘 할 일을 하나 입력하고 작업 추가를 눌러보세요.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-create">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="onboarding-step">
+                    <div class="onboarding-step" data-guide-step>
+                        <span class="onboarding-step-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg>
+                        </span>
+                        <div>
+                            <strong data-i18n="onboardingPriorityTitle">중요도 설정</strong>
+                            <span data-i18n="onboardingPriorityBody">작업 작성 영역에서 중요도를 높음으로 바꿔 중요한 일을 표시해보세요.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-priority">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="onboarding-step" data-guide-step>
+                        <span class="onboarding-step-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        </span>
+                        <div>
+                            <strong data-i18n="onboardingReminderTitle">리마인더 사용</strong>
+                            <span data-i18n="onboardingReminderBody">마감일을 지정한 작업을 만들어 리마인더 목록에 나타나는지 확인해보세요.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-reminder">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="onboarding-step" data-guide-step>
+                        <span class="onboarding-step-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3h8l1 3h3v15H4V6h3z"/><path d="M9 14h6"/><path d="M12 11v6"/></svg>
+                        </span>
+                        <div>
+                            <strong data-i18n="onboardingTaskDragTitle">작업 드래그 앤 드랍</strong>
+                            <span data-i18n="onboardingTaskDragBody">작업이 2개 이상 있으면 카드 하나를 끌어 순서를 바꿔보세요. 컴퓨터 UI에서 가장 편하게 동작합니다.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-drag">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="onboarding-step" data-guide-step>
+                        <span class="onboarding-step-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+                        </span>
+                        <div>
+                            <strong data-i18n="onboardingNoteCreateTitle">스티키 노트 포스트</strong>
+                            <span data-i18n="onboardingNoteCreateBody">Notes에서 짧은 아이디어를 적고 메모 추가를 눌러 보드에 붙여보세요.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="note-create">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="onboarding-step" data-guide-step>
+                        <span class="onboarding-step-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M19 9l3 3-3 3"/><path d="M9 5l3-3 3 3"/><path d="M9 19l3 3 3-3"/><path d="M12 2v20"/><path d="M2 12h20"/></svg>
+                        </span>
+                        <div>
+                            <strong data-i18n="onboardingNoteDragTitle">컴퓨터 UI에서 노트 이동</strong>
+                            <span data-i18n="onboardingNoteDragBody">데스크톱 화면에서는 스티키 노트를 잡고 원하는 위치로 드래그해보세요.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="note-drag">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="onboarding-step" data-guide-step>
                         <span class="onboarding-step-icon">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                         </span>
                         <div>
-                            <strong>프로젝트</strong>
-                            <span>작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.</span>
+                            <strong data-i18n="onboardingProjectCreateTitle">프로젝트 만들기</strong>
+                            <span data-i18n="onboardingProjectCreateBody">Projects에서 업무, 공부 같은 프로젝트를 직접 만들고 작업을 묶어보세요.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="project-create">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="onboarding-step">
+                    <div class="onboarding-step" data-guide-step>
                         <span class="onboarding-step-icon">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                         </span>
                         <div>
-                            <strong>위키</strong>
-                            <span>회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.</span>
+                            <strong data-i18n="onboardingWikiCreateTitle">위키 문서 만들기</strong>
+                            <span data-i18n="onboardingWikiCreateBody">Wiki에서 새 페이지를 만들고 제목과 첫 문단을 입력해 지식 베이스를 시작하세요.</span>
+                            <div class="onboarding-step-actions">
+                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="wiki-create">해보기</button>
+                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="onboarding-actions">
-                    <button id="onboarding-skip-btn" class="text-link-btn" type="button">나중에 볼게요</button>
-                    <button id="onboarding-start-btn" class="confirm-btn" type="button">작업 만들러 가기</button>
+                    <button id="onboarding-skip-btn" class="text-link-btn" type="button">전체 스킵</button>
+                    <button id="onboarding-start-btn" class="confirm-btn" type="button">가이드 완료</button>
                 </div>
             </div>
         </div>

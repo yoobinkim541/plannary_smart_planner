@@ -144,11 +144,20 @@ const I18N = {
         createNewPage: '새 페이지 만들기', inspirationTitle: '과거의 나로부터의 영감',
         onboardingEyebrow: 'Planary 시작하기',
         onboardingTitle: '작업을 한 흐름으로 정리하세요',
-        onboardingIntro: '처음 시작할 때는 아래 순서만 기억하면 됩니다. 할 일을 만들고, 프로젝트로 묶고, 필요한 기록은 위키에 남기세요.',
+        onboardingIntro: '처음 사용하는 동안 핵심 기능을 하나씩 직접 써볼 수 있게 안내합니다. 각 단계는 바로 실행하거나 건너뛸 수 있습니다.',
         onboardingTaskBody: '오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.',
         onboardingProjectBody: '작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.',
         onboardingWikiBody: '회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.',
-        onboardingLater: '나중에 볼게요', onboardingStart: '작업 만들러 가기', backToList: '목록으로 돌아가기',
+        onboardingTaskCreateTitle: '작업 만들기', onboardingTaskCreateBody: 'Tasks에서 오늘 할 일을 하나 입력하고 작업 추가를 눌러보세요.',
+        onboardingPriorityTitle: '중요도 설정', onboardingPriorityBody: '작업 작성 영역에서 중요도를 높음으로 바꿔 중요한 일을 표시해보세요.',
+        onboardingReminderTitle: '리마인더 사용', onboardingReminderBody: '마감일을 지정한 작업을 만들어 리마인더 목록에 나타나는지 확인해보세요.',
+        onboardingTaskDragTitle: '작업 드래그 앤 드랍', onboardingTaskDragBody: '작업이 2개 이상 있으면 카드 하나를 끌어 순서를 바꿔보세요. 컴퓨터 UI에서 가장 편하게 동작합니다.',
+        onboardingNoteCreateTitle: '스티키 노트 포스트', onboardingNoteCreateBody: 'Notes에서 짧은 아이디어를 적고 메모 추가를 눌러 보드에 붙여보세요.',
+        onboardingNoteDragTitle: '컴퓨터 UI에서 노트 이동', onboardingNoteDragBody: '데스크톱 화면에서는 스티키 노트를 잡고 원하는 위치로 드래그해보세요.',
+        onboardingProjectCreateTitle: '프로젝트 만들기', onboardingProjectCreateBody: 'Projects에서 업무, 공부 같은 프로젝트를 직접 만들고 작업을 묶어보세요.',
+        onboardingWikiCreateTitle: '위키 문서 만들기', onboardingWikiCreateBody: 'Wiki에서 새 페이지를 만들고 제목과 첫 문단을 입력해 지식 베이스를 시작하세요.',
+        onboardingTry: '해보기', onboardingSkipStep: '이 단계 스킵', onboardingStepSkipped: '스킵됨',
+        onboardingLater: '전체 스킵', onboardingStart: '가이드 완료', backToList: '목록으로 돌아가기',
         toggleTheme: '테마 전환', toggleNavigation: '내비게이션 열기', attachment: '첨부파일',
         katexNotLoaded: 'KaTeX를 불러오지 못했습니다.', syntaxError: '문법 오류'
     },
@@ -227,11 +236,20 @@ const I18N = {
         createNewPage: 'Create new page', inspirationTitle: 'Inspiration from past notes',
         onboardingEyebrow: 'Welcome to Planary',
         onboardingTitle: 'Organize work into one flow',
-        onboardingIntro: 'To get started, remember this flow: create tasks, group them into projects, and keep important context in wiki pages.',
+        onboardingIntro: 'This guide walks new users through the core features one by one. Every step can be tried immediately or skipped.',
         onboardingTaskBody: 'Add today’s work with due dates, priorities, and notes.',
         onboardingProjectBody: 'Group tasks, reminders, and wiki pages by project.',
         onboardingWikiBody: 'Organize meetings, ideas, and references into pages and subpages.',
-        onboardingLater: 'Maybe later', onboardingStart: 'Create a task', backToList: 'Back to list',
+        onboardingTaskCreateTitle: 'Create a task', onboardingTaskCreateBody: 'Go to Tasks, enter one thing to do today, and press Add Task.',
+        onboardingPriorityTitle: 'Set priority', onboardingPriorityBody: 'Use the task composer to switch priority to High so important work stands out.',
+        onboardingReminderTitle: 'Use a reminder', onboardingReminderBody: 'Add a due date to a task and confirm it appears in the reminders view.',
+        onboardingTaskDragTitle: 'Drag and drop tasks', onboardingTaskDragBody: 'When you have at least two tasks, drag a card to reorder it. This works best in the desktop UI.',
+        onboardingNoteCreateTitle: 'Post a sticky note', onboardingNoteCreateBody: 'Go to Notes, write a quick idea, and add it to the board.',
+        onboardingNoteDragTitle: 'Move notes on desktop', onboardingNoteDragBody: 'On a desktop screen, grab a sticky note and drag it to a new position.',
+        onboardingProjectCreateTitle: 'Create a project', onboardingProjectCreateBody: 'Go to Projects, create a project like Work or Study, and start grouping tasks.',
+        onboardingWikiCreateTitle: 'Create a wiki document', onboardingWikiCreateBody: 'Go to Wiki, create a new page, then add a title and first paragraph.',
+        onboardingTry: 'Try it', onboardingSkipStep: 'Skip this step', onboardingStepSkipped: 'Skipped',
+        onboardingLater: 'Skip all', onboardingStart: 'Finish guide', backToList: 'Back to list',
         toggleTheme: 'Toggle theme', toggleNavigation: 'Toggle navigation', attachment: 'Attachment',
         katexNotLoaded: 'KaTeX not loaded.', syntaxError: 'Syntax Error'
     }
@@ -416,14 +434,17 @@ function applyLanguage(lang = currentLanguage) {
     setText('.onboarding-eyebrow', t('onboardingEyebrow'));
     setText('#onboarding-title', t('onboardingTitle'));
     setText('.onboarding-intro', t('onboardingIntro'));
-    const onboardingTitles = document.querySelectorAll('.onboarding-step strong');
-    if (onboardingTitles[0]) onboardingTitles[0].textContent = t('tasks');
-    if (onboardingTitles[1]) onboardingTitles[1].textContent = t('projects');
-    if (onboardingTitles[2]) onboardingTitles[2].textContent = t('wiki');
-    const onboardingBodies = document.querySelectorAll('.onboarding-step span:last-child');
-    if (onboardingBodies[0]) onboardingBodies[0].textContent = t('onboardingTaskBody');
-    if (onboardingBodies[1]) onboardingBodies[1].textContent = t('onboardingProjectBody');
-    if (onboardingBodies[2]) onboardingBodies[2].textContent = t('onboardingWikiBody');
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('.onboarding-action-btn').forEach(btn => {
+        btn.textContent = t('onboardingTry');
+    });
+    document.querySelectorAll('.onboarding-step-skip').forEach(btn => {
+        btn.textContent = btn.closest('.onboarding-step')?.classList.contains('skipped')
+            ? t('onboardingStepSkipped')
+            : t('onboardingSkipStep');
+    });
     setText('#onboarding-skip-btn', t('onboardingLater'));
     setText('#onboarding-start-btn', t('onboardingStart'));
 
@@ -691,11 +712,7 @@ async function connectEmailPasswordLogin() {
 }
 
 async function completeOnboarding() {
-    const modal = getEl('onboarding-modal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.setAttribute('aria-hidden', 'true');
-    }
+    closeOnboardingModal();
     if (!currentUser || !db) return;
     try {
         await db.collection('users').doc(currentUser.uid).set({
@@ -709,11 +726,75 @@ async function completeOnboarding() {
     }
 }
 
+function closeOnboardingModal() {
+    const modal = getEl('onboarding-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+}
+
 function openOnboarding() {
     const modal = getEl('onboarding-modal');
     if (!modal) return;
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
+}
+
+function focusGuideTarget(selector) {
+    setTimeout(() => {
+        const el = document.querySelector(selector);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof el.focus === 'function') el.focus();
+    }, 120);
+}
+
+function runOnboardingAction(action) {
+    closeOnboardingModal();
+    const actions = {
+        'task-create': () => {
+            navigateAppPage('page-tasks', 'all');
+            focusGuideTarget('#todo-input');
+        },
+        'task-priority': () => {
+            navigateAppPage('page-tasks', 'all');
+            focusGuideTarget('#priority-select');
+        },
+        'task-reminder': () => {
+            navigateAppPage('page-tasks', 'all');
+            focusGuideTarget('#due-date');
+        },
+        'task-drag': () => {
+            navigateAppPage('page-tasks', 'all');
+            focusGuideTarget('#todo-list .task-card, #todo-input');
+        },
+        'note-create': () => {
+            navigateAppPage('page-notes');
+            focusGuideTarget('#note-input');
+        },
+        'note-drag': () => {
+            navigateAppPage('page-notes');
+            focusGuideTarget('#notes-list .note-card, #note-input');
+        },
+        'project-create': () => {
+            navigateAppPage('page-projects');
+            focusGuideTarget('#project-input');
+        },
+        'wiki-create': () => {
+            navigateAppPage('page-wiki');
+            focusGuideTarget('#new-wiki-btn, #wiki-empty-create-btn');
+        }
+    };
+    if (actions[action]) actions[action]();
+}
+
+function skipOnboardingStep(button) {
+    const step = button.closest('.onboarding-step');
+    if (!step) return;
+    step.classList.add('skipped');
+    button.textContent = t('onboardingStepSkipped');
+    button.disabled = true;
 }
 
 async function showOnboardingIfNeeded(user) {
@@ -1537,15 +1618,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('profile-password-btn')) getEl('profile-password-btn').onclick = connectEmailPasswordLogin;
     if (getEl('onboarding-skip-btn')) getEl('onboarding-skip-btn').onclick = completeOnboarding;
     if (getEl('onboarding-start-btn')) {
-        getEl('onboarding-start-btn').onclick = async () => {
-            await completeOnboarding();
-            navigateAppPage('page-tasks', 'all');
-            setTimeout(() => {
-                const input = getEl('todo-input');
-                if (input) input.focus();
-            }, 50);
-        };
+        getEl('onboarding-start-btn').onclick = completeOnboarding;
     }
+    document.querySelectorAll('.onboarding-action-btn').forEach(btn => {
+        btn.onclick = () => runOnboardingAction(btn.dataset.guideAction);
+    });
+    document.querySelectorAll('.onboarding-step-skip').forEach(btn => {
+        btn.onclick = () => skipOnboardingStep(btn);
+    });
     if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = openOnboarding;
 
     const logout = () => confirm(t('logoutConfirm')) && auth.signOut().then(() => window.location.href = 'login.html');
