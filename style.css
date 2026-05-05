@@ -2244,7 +2244,8 @@ textarea.composer-input {
 
     .fab-container.active .fab-main {
         transform: none;
-        background: var(--black);
+        background: var(--blue);
+        color: #fff;
     }
 
     .fab-menu {
