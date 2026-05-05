@@ -65,7 +65,7 @@
         const secureBrowserLink = document.getElementById('secure-browser-link');
         const secureBrowserCopyBtn = document.getElementById('secure-browser-copy-btn');
         const googleLoginDefaultText = googleLoginBtn.textContent.trim();
-        const secureLoginUrl = window.location.origin;
+        const secureLoginUrl = window.location.origin + '/login.html';
         const googleProvider = new firebase.auth.GoogleAuthProvider();
         googleProvider.setCustomParameters({ prompt: 'select_account' });
         let isNavigatingToApp = false;
@@ -77,12 +77,13 @@
             window.location.replace('/');
         };
 
-        const isEmbeddedBrowser = () => {
+        const shouldUseRedirectLogin = () => {
             const ua = navigator.userAgent || '';
             const isIOS = /iPhone|iPad|iPod/i.test(ua);
+            const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
             const isIOSWebView = isIOS && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua);
             const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-            return isStandalone || isIOSWebView || /FBAN|FBAV|FB_IAB|Instagram|Line\/|KAKAOTALK|NAVER|DaumApps|Twitter|TikTok|Snapchat|Pinterest|; wv\)|\bwv\b|WebView/i.test(ua);
+            return isStandalone || isIOS || isSafari || isIOSWebView || /FBAN|FBAV|FB_IAB|Instagram|Line\/|KAKAOTALK|NAVER|DaumApps|Twitter|TikTok|Snapchat|Pinterest|; wv\)|\bwv\b|WebView/i.test(ua);
         };
 
         const openInSecureBrowser = () => {
@@ -90,10 +91,9 @@
             copySecureBrowserUrl();
         };
 
-        const embeddedBrowserBlocked = isEmbeddedBrowser();
-        if (embeddedBrowserBlocked) {
-            secureBrowserWarning.hidden = false;
-            googleLoginBtn.lastChild.textContent = ' Copy secure login link';
+        const redirectLoginPreferred = shouldUseRedirectLogin();
+        if (redirectLoginPreferred) {
+            secureBrowserWarning.hidden = true;
         }
 
         const copySecureBrowserUrl = async () => {
@@ -116,7 +116,7 @@
                 return 'Email/Password login is disabled in Firebase Console. Enable Authentication > Sign-in method > Email/Password, then try again.';
             }
             if (error.code === 'auth/operation-not-supported-in-this-environment') {
-                return 'Google login is not supported in this browser environment. Please open the deployed Firebase Hosting URL or use a Firebase local server.';
+                return 'Google login is not supported in this browser environment. Try opening this page in Safari, Chrome, or your default browser.';
             }
             if (error.code === 'auth/popup-blocked') {
                 return 'The browser blocked Google login. Please allow popups for this site or open it in Chrome/Safari.';
@@ -140,9 +140,24 @@
 
         const signInWithGoogle = () => {
             setGoogleLoginLoading(true);
+            if (redirectLoginPreferred) {
+                auth.signInWithRedirect(googleProvider).catch((error) => {
+                    setGoogleLoginLoading(false);
+                    alert('Google login failed: ' + getAuthErrorMessage(error));
+                });
+                return;
+            }
+
             auth.signInWithPopup(googleProvider)
                 .then(goToApp)
                 .catch((error) => {
+                    if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(error.code)) {
+                        auth.signInWithRedirect(googleProvider).catch((redirectError) => {
+                            setGoogleLoginLoading(false);
+                            alert('Google login failed: ' + getAuthErrorMessage(redirectError));
+                        });
+                        return;
+                    }
                     setGoogleLoginLoading(false);
                     alert('Google login failed: ' + getAuthErrorMessage(error));
                 });
@@ -160,13 +175,16 @@
 
         // Google Login
         googleLoginBtn.addEventListener('click', () => {
-            if (embeddedBrowserBlocked) {
-                openInSecureBrowser();
-                return;
-            }
-
             signInWithGoogle();
         });
+
+        auth.getRedirectResult()
+            .then((result) => {
+                if (result && result.user) goToApp();
+            })
+            .catch((error) => {
+                alert('Google login failed: ' + getAuthErrorMessage(error));
+            });
 
         auth.onAuthStateChanged((user) => {
             if (user) goToApp();
