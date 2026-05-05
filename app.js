@@ -247,6 +247,7 @@ const I18N = {
         projectsSubtitle: '작업을 프로젝트별로 정리하세요.', projectPlaceholder: '프로젝트 이름 (예: 업무, 공부)', createProject: '프로젝트 만들기',
         projectWorkspace: '프로젝트 작업 공간', projectSummary: '작업, 리마인더, 위키 페이지를 한 곳에서 봅니다.',
         openTasks: '작업 열기', openReminders: '리마인더 열기', newWikiPage: '새 위키 페이지', stickyNotes: '스티키 메모',
+        projectLabel: '프로젝트',
         notePlaceholder: '짧은 생각이나 아이디어를 적어보세요...', addNote: '+ 메모 추가', bookmarksTitle: '북마크',
         bookmarksSubtitle: '중요한 링크를 태그와 함께 저장하세요.', saveBookmark: '북마크 저장', docsWiki: '문서 & 위키',
         wikiSubtitle: '노션 스타일 문서 편집기', searchPages: '페이지 검색...', saveChanges: '변경사항 저장',
@@ -427,6 +428,7 @@ const I18N = {
         projectsSubtitle: 'Organize your tasks into groups.', projectPlaceholder: 'Project name (e.g. Work, Study)', createProject: 'Create Project',
         projectWorkspace: 'Project workspace', projectSummary: 'Tasks, reminders, and wiki pages in one place.',
         openTasks: 'Open tasks', openReminders: 'Open reminders', newWikiPage: 'New wiki page', stickyNotes: 'Sticky Notes',
+        projectLabel: 'Project',
         notePlaceholder: 'Jot down a quick thought or idea...', addNote: '+ Add Note', bookmarksTitle: 'Bookmarks',
         bookmarksSubtitle: 'Save important links with tags.', saveBookmark: 'Save Bookmark', docsWiki: 'Docs & Wiki',
         wikiSubtitle: 'Notion-like document editor', searchPages: 'Search pages...', saveChanges: 'Save Changes',
@@ -761,6 +763,7 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#wiki-title-input', t('untitledDocument'));
     setOptionText('#wiki-project-select option[value=""]', t('noProject'));
     setText('#wiki-upload-text', t('uploadingProgress'));
+    setText('.wiki-project-control label', t('projectLabel'));
     setText('#wiki-subpages-section h3', t('subpages'));
     setText('#wiki-create-subpage-btn', t('newSubpage'));
     setText('#wiki-save-btn', t('saveChanges'));

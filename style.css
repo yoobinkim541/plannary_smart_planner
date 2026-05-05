@@ -1025,8 +1025,9 @@ textarea.composer-input {
 }
 
 .onboarding-card {
-    width: min(660px, 100%);
-    max-height: calc(100vh - 48px);
+    width: clamp(520px, 62vw, 760px);
+    max-width: calc(100vw - 48px);
+    max-height: min(820px, calc(100vh - 48px));
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 18px;
@@ -1040,8 +1041,9 @@ textarea.composer-input {
 
 .onboarding-modal.positioned .onboarding-card {
     position: fixed;
-    width: min(520px, calc(100vw - 32px));
-    max-height: calc(100vh - 32px);
+    width: clamp(380px, 34vw, 560px);
+    max-width: calc(100vw - 32px);
+    max-height: min(720px, calc(100vh - 32px));
 }
 
 .onboarding-modal.welcome {
@@ -1410,18 +1412,22 @@ textarea.composer-input {
 }
 
 .onboarding-actions {
-    display: grid;
-    grid-template-columns: auto minmax(180px, 1fr) minmax(180px, 1fr);
+    display: flex;
     align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
     gap: 10px;
 }
 
 .onboarding-actions .text-link-btn {
     white-space: nowrap;
-    justify-self: start;
+    min-height: 42px;
+    padding: 10px 14px;
+    justify-content: center;
 }
 
 .onboarding-actions .confirm-btn {
+    width: clamp(180px, 28vw, 270px);
     min-height: 42px;
     justify-content: center;
     white-space: nowrap;
@@ -2875,9 +2881,32 @@ textarea.composer-input {
     width: 100%;
 }
 
+.wiki-title-wrap {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    padding-right: 220px;
+}
+
 .wiki-title-row .wiki-title-input {
     flex: 1;
     min-width: 0;
+}
+
+.wiki-project-control {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wiki-project-control label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-2);
+    white-space: nowrap;
 }
 
 .wiki-project-select {
@@ -3442,7 +3471,7 @@ textarea.composer-input {
 
 .wiki-editor-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
     margin-bottom: 24px;
 }
@@ -3467,6 +3496,8 @@ textarea.composer-input {
 
 .wiki-title-input {
     flex: 1;
+    width: 100%;
+    min-width: 0;
     font-size: 32px;
     font-weight: 800;
     border: none;
@@ -3557,12 +3588,24 @@ textarea.composer-input {
     }
 
     .wiki-title-row {
+        display: block;
+    }
+
+    .wiki-title-wrap {
+        display: flex;
         flex-direction: column;
-        gap: 10px;
+        padding-right: 0;
+    }
+
+    .wiki-project-control {
+        position: static;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+        order: -1;
     }
 
     .wiki-project-select {
-        width: 100%;
+        width: min(220px, 100%);
         min-width: 0;
     }
 }
