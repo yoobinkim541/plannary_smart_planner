@@ -695,14 +695,40 @@
                     </div>
                     <span id="onboarding-progress-text">1 / 3</span>
                 </div>
+                <div id="onboarding-welcome" class="onboarding-welcome">
+                    <div class="onboarding-welcome-mark" aria-hidden="true">
+                        <img src="icon.svg" alt="">
+                    </div>
+                    <h3 id="onboarding-welcome-title">Planary에 오신 것을 환영합니다</h3>
+                    <p id="onboarding-welcome-body">해야 할 일, 떠오른 생각, 길어지는 기록을 Planary 안에서 자연스럽게 연결해보세요.</p>
+                    <span id="onboarding-welcome-hint">몇 분 동안 직접 눌러보며 핵심 흐름을 익힙니다.</span>
+                </div>
                 <p class="onboarding-intro">처음 시작할 때는 아래 순서만 기억하면 됩니다.</p>
                 <div id="onboarding-step-card" class="onboarding-step-card">
                     <span id="onboarding-step-icon" class="onboarding-step-icon"></span>
                     <div>
                         <strong id="onboarding-step-title">작업</strong>
                         <p id="onboarding-step-body">오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.</p>
+                        <div class="onboarding-guide-details">
+                            <div class="onboarding-detail-row">
+                                <span id="onboarding-why-label" class="onboarding-detail-label">왜 쓰나요</span>
+                                <p id="onboarding-step-why">할 일을 한 곳에 모아 오늘의 흐름을 만듭니다.</p>
+                            </div>
+                            <div class="onboarding-detail-row onboarding-example-row">
+                                <span id="onboarding-example-label" class="onboarding-detail-label">이렇게 해보세요</span>
+                                <p id="onboarding-step-example">예: 오늘 회의 자료 정리</p>
+                            </div>
+                            <div class="onboarding-detail-row">
+                                <span id="onboarding-done-label" class="onboarding-detail-label">완료 조건</span>
+                                <p id="onboarding-step-done">작업을 추가하면 자동으로 다음 단계로 넘어갑니다.</p>
+                            </div>
+                        </div>
                         <p id="onboarding-step-target" class="onboarding-step-target">작업 입력창으로 이동합니다.</p>
                     </div>
+                </div>
+                <div class="onboarding-step-summary">
+                    <span id="onboarding-step-summary-text">0개 완료, 1번째 단계 진행 중</span>
+                    <button id="onboarding-toggle-steps-btn" class="text-link-btn" type="button">전체 단계 보기</button>
                 </div>
                 <div id="onboarding-step-list" class="onboarding-step-list" aria-label="가이드 단계"></div>
                 <div class="onboarding-actions">
