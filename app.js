@@ -2497,7 +2497,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hash router
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('resize', () => repositionActiveOnboardingGuide());
-    window.addEventListener('scroll', () => {
+    window.addEventListener('scroll', (event) => {
+        if (event.target && event.target.closest && event.target.closest('.onboarding-card')) return;
         if (isTabletGuideLayout()) {
             if (onboardingScrollSettleTimer) clearTimeout(onboardingScrollSettleTimer);
             onboardingScrollSettleTimer = setTimeout(repositionActiveOnboardingGuide, 180);

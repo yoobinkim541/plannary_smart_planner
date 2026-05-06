@@ -1044,6 +1044,8 @@ textarea.composer-input {
     max-width: calc(100vw - 48px);
     max-height: min(820px, calc(100vh - 48px));
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     border: 1px solid var(--border);
     border-radius: 18px;
     background: var(--surface);
