@@ -1239,6 +1239,8 @@ function clearOnboardingHighlight() {
         card.style.left = '';
         card.style.right = '';
         card.style.bottom = '';
+        card.style.width = '';
+        card.style.maxHeight = '';
     }
     document.body.classList.remove('onboarding-spotlight-active');
 }
@@ -1374,12 +1376,13 @@ function highlightOnboardingTarget(stepOrId, focusConfig = null, retryCount = 0)
     onboardingLastTargetRect = getTargetRectSnapshot(target);
     document.body.classList.add('onboarding-spotlight-active');
     target.classList.add('onboarding-highlight-target');
-    if (!onboardingSuppressAutoScroll) {
+    const isDesktopGuide = !isTabletGuideLayout() && !window.matchMedia('(max-width: 520px)').matches;
+    if (!onboardingSuppressAutoScroll && !isDesktopGuide) {
         target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     } else {
         // avoid fighting user touch-driven scrolling; only jump if fully outside viewport
         const rect = target.getBoundingClientRect();
-        if (rect.top < 0 || rect.bottom > window.innerHeight) {
+        if (!isDesktopGuide && (rect.top < 0 || rect.bottom > window.innerHeight)) {
             target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
     }
@@ -1435,6 +1438,7 @@ function positionOnboardingCardAroundTarget(target) {
     card.style.right = '';
     card.style.bottom = '';
     card.style.maxHeight = '';
+    card.style.width = '';
     if (isTabletGuideLayout()) return;
 
     requestAnimationFrame(() => {
@@ -1452,10 +1456,23 @@ function positionOnboardingCardAroundTarget(target) {
         let left;
         let top;
 
-        if (targetSpansWide && (fitsBelow || fitsAbove)) {
-            left = Math.min(Math.max(rect.left + rect.width / 2 - cardRect.width / 2, margin), viewportW - cardRect.width - margin);
-            top = fitsBelow ? rect.bottom + margin : rect.top - cardRect.height - margin;
-        } else if (fitsRight) {
+        if (targetSpansWide) {
+            const belowSpace = viewportH - rect.bottom - margin;
+            const aboveSpace = rect.top - margin;
+            const placeBelow = belowSpace >= aboveSpace || belowSpace >= 320;
+            const wideWidth = Math.min(Math.max(720, rect.width), viewportW - margin * 2);
+            card.style.width = `${wideWidth}px`;
+            const availableHeight = Math.max(320, Math.min(720, (placeBelow ? belowSpace : aboveSpace) - margin));
+            card.style.maxHeight = `${availableHeight}px`;
+            const nextCardRect = card.getBoundingClientRect();
+            left = Math.min(Math.max(rect.left + rect.width / 2 - nextCardRect.width / 2, margin), viewportW - nextCardRect.width - margin);
+            top = placeBelow ? rect.bottom + margin : rect.top - nextCardRect.height - margin;
+            card.style.left = `${left}px`;
+            card.style.top = `${Math.min(Math.max(top, margin), viewportH - nextCardRect.height - margin)}px`;
+            return;
+        }
+
+        if (fitsRight) {
             left = rect.right + margin;
             top = rect.top + rect.height / 2 - cardRect.height / 2;
         } else if (fitsLeft) {

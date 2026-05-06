@@ -1510,6 +1510,14 @@ textarea.composer-input {
     box-shadow: 0 0 0 8px rgba(74, 144, 226, 0.22), 0 20px 50px rgba(15, 23, 42, 0.28) !important;
 }
 
+body.onboarding-spotlight-active {
+    overflow: hidden;
+}
+
+body.onboarding-spotlight-active #main-area {
+    overflow: hidden;
+}
+
 @media (max-width: 1024px) {
     .onboarding-modal {
         align-items: flex-end;
