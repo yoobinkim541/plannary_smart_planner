@@ -1434,22 +1434,28 @@ function positionOnboardingCardAroundTarget(target) {
     card.style.left = '';
     card.style.right = '';
     card.style.bottom = '';
+    card.style.maxHeight = '';
     if (isTabletGuideLayout()) return;
 
     requestAnimationFrame(() => {
         const rect = target.getBoundingClientRect();
-        const cardRect = card.getBoundingClientRect();
         const margin = 18;
         const viewportW = window.innerWidth;
         const viewportH = window.innerHeight;
+        card.style.maxHeight = `${Math.max(320, Math.min(720, viewportH - margin * 2))}px`;
+        const cardRect = card.getBoundingClientRect();
         const fitsRight = viewportW - rect.right >= cardRect.width + margin * 2;
         const fitsLeft = rect.left >= cardRect.width + margin * 2;
         const fitsBelow = viewportH - rect.bottom >= cardRect.height + margin * 2;
         const fitsAbove = rect.top >= cardRect.height + margin * 2;
+        const targetSpansWide = rect.width > viewportW * 0.42;
         let left;
         let top;
 
-        if (fitsRight) {
+        if (targetSpansWide && (fitsBelow || fitsAbove)) {
+            left = Math.min(Math.max(rect.left + rect.width / 2 - cardRect.width / 2, margin), viewportW - cardRect.width - margin);
+            top = fitsBelow ? rect.bottom + margin : rect.top - cardRect.height - margin;
+        } else if (fitsRight) {
             left = rect.right + margin;
             top = rect.top + rect.height / 2 - cardRect.height / 2;
         } else if (fitsLeft) {
@@ -1466,8 +1472,37 @@ function positionOnboardingCardAroundTarget(target) {
             top = margin;
         }
 
-        card.style.left = `${Math.min(Math.max(left, margin), viewportW - cardRect.width - margin)}px`;
-        card.style.top = `${Math.min(Math.max(top, margin), viewportH - cardRect.height - margin)}px`;
+        const clampLeft = value => Math.min(Math.max(value, margin), viewportW - cardRect.width - margin);
+        const clampTop = value => Math.min(Math.max(value, margin), viewportH - cardRect.height - margin);
+        const overlapArea = (candidateLeft, candidateTop) => {
+            const overlapW = Math.max(0, Math.min(candidateLeft + cardRect.width, rect.right) - Math.max(candidateLeft, rect.left));
+            const overlapH = Math.max(0, Math.min(candidateTop + cardRect.height, rect.bottom) - Math.max(candidateTop, rect.top));
+            return overlapW * overlapH;
+        };
+        let finalLeft = clampLeft(left);
+        let finalTop = clampTop(top);
+
+        if (overlapArea(finalLeft, finalTop) > 0) {
+            const candidates = [
+                { left: rect.right + margin, top: rect.top + rect.height / 2 - cardRect.height / 2 },
+                { left: rect.left - cardRect.width - margin, top: rect.top + rect.height / 2 - cardRect.height / 2 },
+                { left: rect.left + rect.width / 2 - cardRect.width / 2, top: rect.bottom + margin },
+                { left: rect.left + rect.width / 2 - cardRect.width / 2, top: rect.top - cardRect.height - margin }
+            ].map(candidate => {
+                const candidateLeft = clampLeft(candidate.left);
+                const candidateTop = clampTop(candidate.top);
+                return {
+                    left: candidateLeft,
+                    top: candidateTop,
+                    overlap: overlapArea(candidateLeft, candidateTop)
+                };
+            }).sort((a, b) => a.overlap - b.overlap || Math.abs(a.top - rect.top) - Math.abs(b.top - rect.top));
+            finalLeft = candidates[0].left;
+            finalTop = candidates[0].top;
+        }
+
+        card.style.left = `${finalLeft}px`;
+        card.style.top = `${finalTop}px`;
     });
 }
 
