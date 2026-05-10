@@ -82,13 +82,11 @@
             window.location.replace('/');
         };
 
-        const shouldUseRedirectLogin = () => {
+        const isEmbeddedBrowser = () => {
             const ua = navigator.userAgent || '';
             const isIOS = /iPhone|iPad|iPod/i.test(ua);
-            const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
             const isIOSWebView = isIOS && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua);
-            const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-            return isStandalone || isIOS || isSafari || isIOSWebView || /FBAN|FBAV|FB_IAB|Instagram|Line\/|KAKAOTALK|NAVER|DaumApps|Twitter|TikTok|Snapchat|Pinterest|; wv\)|\bwv\b|WebView/i.test(ua);
+            return isIOSWebView || /FBAN|FBAV|FB_IAB|Instagram|Line\/|KAKAOTALK|NAVER|DaumApps|Twitter|TikTok|Snapchat|Pinterest|; wv\)|\bwv\b|WebView/i.test(ua);
         };
 
         const openInSecureBrowser = () => {
@@ -96,9 +94,8 @@
             copySecureBrowserUrl();
         };
 
-        const redirectLoginPreferred = shouldUseRedirectLogin();
-        if (redirectLoginPreferred) {
-            secureBrowserWarning.hidden = true;
+        if (isEmbeddedBrowser()) {
+            secureBrowserWarning.hidden = false;
         }
 
         const copySecureBrowserUrl = async () => {
@@ -144,19 +141,21 @@
         };
 
         const signInWithGoogle = () => {
-            setGoogleSignupLoading(true);
-            if (redirectLoginPreferred) {
-                auth.signInWithRedirect(googleProvider).catch((error) => {
-                    setGoogleSignupLoading(false);
-                    alert('Google login failed: ' + getAuthErrorMessage(error));
-                });
+            if (isEmbeddedBrowser()) {
+                openInSecureBrowser();
                 return;
             }
 
+            setGoogleSignupLoading(true);
             auth.signInWithPopup(googleProvider)
                 .then(goToApp)
                 .catch((error) => {
-                    if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(error.code)) {
+                    if (error.code === 'auth/popup-closed-by-user') {
+                        setGoogleSignupLoading(false);
+                        alert('Google login failed: ' + getAuthErrorMessage(error));
+                        return;
+                    }
+                    if (['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(error.code)) {
                         auth.signInWithRedirect(googleProvider).catch((redirectError) => {
                             setGoogleSignupLoading(false);
                             alert('Google login failed: ' + getAuthErrorMessage(redirectError));
