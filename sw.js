@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-pwa-cache-v42';
+const CACHE_NAME = 'todo-pwa-cache-v43';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -55,6 +55,22 @@ self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  if (
+    requestUrl.origin === self.location.origin &&
+    ['.js', '.css', '.html'].some(ext => requestUrl.pathname.endsWith(ext))
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
