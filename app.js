@@ -1740,6 +1740,16 @@ async function completeCurrentOnboardingStep() {
     renderOnboarding();
 }
 
+async function userHasNoWork(uid) {
+    if (!uid || !db) return false;
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    const checks = collections.map(name =>
+        db.collection(name).where('uid', '==', uid).limit(1).get()
+    );
+    const snapshots = await Promise.all(checks);
+    return snapshots.every(snapshot => snapshot.empty);
+}
+
 async function showOnboardingIfNeeded(user) {
     if (!user || !db) return;
     try {
@@ -1752,6 +1762,7 @@ async function showOnboardingIfNeeded(user) {
                 email: user.email || null,
                 displayName: user.displayName || null,
                 onboardingCompleted: false,
+                onboardingCompletedAt: null,
                 onboardingProgress: progress,
                 onboardingCurrentStep: GUIDE_STEP_IDS[0],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1764,7 +1775,8 @@ async function showOnboardingIfNeeded(user) {
         const data = snapshot.data();
         onboardingState = buildOnboardingState(data);
         const hasExpandedGuideProgress = data.onboardingProgress && GUIDE_STEP_IDS.every(id => GUIDE_STATUS.includes(data.onboardingProgress[id]));
-        if (!data.onboardingCompleted || !hasExpandedGuideProgress) openOnboarding();
+        const hasNoWork = await userHasNoWork(user.uid);
+        if (!data.onboardingCompleted || !hasExpandedGuideProgress || hasNoWork) openOnboarding();
     } catch (error) {
         console.warn('Onboarding state unavailable:', error);
     }
