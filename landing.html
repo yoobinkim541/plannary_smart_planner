@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="stylesheet" href="landing.css">
+    <link rel="stylesheet" href="landing.css?v=v2">
 </head>
 
 <body class="landing-page">
@@ -288,6 +288,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-init.js?v=v1"></script>
     <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then((registration) => {
+                    registration.update();
+                }).catch(() => {});
+            });
+        }
+
         if (typeof firebase !== 'undefined') {
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) window.location.replace('/');
