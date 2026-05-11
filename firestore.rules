@@ -188,7 +188,7 @@ service cloud.firestore {
         validOnboardingCurrentStep(request.resource.data.onboardingCurrentStep) &&
         isTimestampOrNull(request.resource.data.createdAt) &&
         isTimestampOrNull(request.resource.data.updatedAt);
-      allow delete: if false;
+      allow delete: if isOwner(userId);
     }
   }
 }

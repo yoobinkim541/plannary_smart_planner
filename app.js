@@ -371,6 +371,10 @@ const I18N = {
         notifyReminderTime: '리마인더 시간에 알림 받기', allowBrowserNotifications: '브라우저 알림 허용',
         notificationsAllowed: '브라우저 알림이 허용되었습니다', notificationsDenied: '브라우저 알림이 차단되어 있습니다',
         todayTaskNotificationBody: '오늘 처리할 일이 {count}개 있습니다.', reminderNotificationBody: '{time} 예정된 작업입니다.',
+        deleteAccountTitle: '회원탈퇴', deleteAccountDescription: '계정과 저장된 작업, 메모, 프로젝트, 위키, 북마크를 모두 삭제합니다.',
+        deleteAccountButton: '회원탈퇴', deleteAccountConfirm: '정말 탈퇴할까요? 이 작업은 되돌릴 수 없습니다.',
+        deleteAccountConfirmEmail: '탈퇴를 확인하려면 이메일을 입력하세요: {email}', deleteAccountPasswordPrompt: '계정 삭제를 위해 비밀번호를 다시 입력하세요.',
+        deletingAccount: '계정 삭제 중...', accountDeleted: '계정이 삭제되었습니다.', accountDeleteFailed: '회원탈퇴 실패',
         cancel: '취소', taskUpdated: '작업이 수정되었습니다.', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
         low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
         today: '오늘', active: '진행 중', noDate: '날짜 없음', deletePermanently: '영구 삭제',
@@ -603,6 +607,10 @@ const I18N = {
         notifyReminderTime: 'Notify at reminder time', allowBrowserNotifications: 'Allow browser notifications',
         notificationsAllowed: 'Browser notifications are allowed', notificationsDenied: 'Browser notifications are blocked',
         todayTaskNotificationBody: 'You have {count} task(s) to handle today.', reminderNotificationBody: 'Scheduled for {time}.',
+        deleteAccountTitle: 'Delete account', deleteAccountDescription: 'Delete your account and all saved tasks, notes, projects, wiki pages, and bookmarks.',
+        deleteAccountButton: 'Delete account', deleteAccountConfirm: 'Delete your account? This cannot be undone.',
+        deleteAccountConfirmEmail: 'Type your email to confirm deletion: {email}', deleteAccountPasswordPrompt: 'Enter your password again to delete this account.',
+        deletingAccount: 'Deleting account...', accountDeleted: 'Account deleted.', accountDeleteFailed: 'Failed to delete account',
         cancel: 'Cancel', taskUpdated: 'Task updated.', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
         low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
         today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
@@ -1048,6 +1056,9 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#profile-password', t('passwordPlaceholder'));
     setPlaceholder('#profile-password-confirm', t('confirmPasswordPlaceholder'));
     setText('#profile-logout-btn', t('logout'));
+    setText('#profile-delete-title', t('deleteAccountTitle'));
+    setText('#profile-delete-description', t('deleteAccountDescription'));
+    setText('#profile-delete-account-btn', t('deleteAccountButton'));
     setText('.onboarding-language-option[data-guide-language="ko"]', t('koreanLanguage'));
     setText('.onboarding-language-option[data-guide-language="en"]', t('englishLanguage'));
     setText('#task-edit-title', t('editTaskTitle'));
@@ -1351,6 +1362,82 @@ async function connectEmailPasswordLogin() {
         showToast(t('emailPasswordEnabled'));
     } catch (error) {
         setStatus(getAuthActionErrorMessage(error), 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
+async function deleteCurrentUserData(uid) {
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    for (const name of collections) {
+        let snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
+        while (!snapshot.empty) {
+            const batch = db.batch();
+            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
+        }
+    }
+    await db.collection('users').doc(uid).delete().catch(() => {});
+}
+
+async function reauthenticateForAccountDeletion(user) {
+    const providers = user.providerData.map(provider => provider.providerId);
+    if (providers.includes('google.com')) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await user.reauthenticateWithPopup(provider);
+        return;
+    }
+    if (providers.includes('password') && user.email) {
+        const password = prompt(t('deleteAccountPasswordPrompt'));
+        if (!password) throw new Error(t('recentLoginRequired'));
+        const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+        await user.reauthenticateWithCredential(credential);
+        return;
+    }
+    throw new Error(t('recentLoginRequired'));
+}
+
+async function deleteAccount() {
+    if (!auth || !auth.currentUser || !db) return;
+    const user = auth.currentUser;
+    const status = getEl('profile-delete-status');
+    const button = getEl('profile-delete-account-btn');
+    const setStatus = (message, type = '') => {
+        if (!status) return;
+        status.textContent = message;
+        status.className = `profile-status-text ${type}`.trim();
+    };
+
+    if (!confirm(t('deleteAccountConfirm'))) return;
+    if (user.email) {
+        const typedEmail = prompt(formatMessage('deleteAccountConfirmEmail', { email: user.email }));
+        if (typedEmail !== user.email) return;
+    }
+
+    try {
+        if (button) button.disabled = true;
+        setStatus(t('deletingAccount'));
+        await deleteCurrentUserData(user.uid);
+        await user.delete();
+        showToast(t('accountDeleted'));
+        window.location.href = 'signup.html';
+    } catch (error) {
+        if (error.code === 'auth/requires-recent-login') {
+            try {
+                await reauthenticateForAccountDeletion(user);
+                await deleteCurrentUserData(user.uid);
+                await user.delete();
+                showToast(t('accountDeleted'));
+                window.location.href = 'signup.html';
+                return;
+            } catch (reauthError) {
+                setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(reauthError)}`, 'error');
+                return;
+            }
+        }
+        setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(error)}`, 'error');
     } finally {
         if (button) button.disabled = false;
     }
@@ -3353,4 +3440,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const logout = () => confirm(t('logoutConfirm')) && auth.signOut().then(() => window.location.href = 'login.html');
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
+    if (getEl('profile-delete-account-btn')) getEl('profile-delete-account-btn').onclick = deleteAccount;
 });

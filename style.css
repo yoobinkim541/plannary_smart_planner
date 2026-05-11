@@ -2051,6 +2051,24 @@ body.onboarding-spotlight-active #main-area {
     border-top: 1px solid var(--border);
 }
 
+.profile-danger-panel {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 12px;
+}
+
+.profile-danger-panel h3 {
+    margin: 0 0 6px;
+    color: var(--red);
+}
+
+.profile-danger-panel p {
+    margin: 0;
+    color: var(--text-2);
+}
+
 .profile-language-panel,
 .profile-font-panel {
     margin-top: 18px;

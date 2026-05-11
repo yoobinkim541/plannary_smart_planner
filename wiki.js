@@ -377,6 +377,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return match ? match[1].length : null;
     };
 
+    const focusEditorBlockAtEnd = (index) => {
+        requestAnimationFrame(() => {
+            const block = document.querySelectorAll('#editorjs .ce-block')[index];
+            const editable = block?.querySelector('[contenteditable="true"]');
+            if (!editable) return;
+            editable.focus({ preventScroll: true });
+            const range = document.createRange();
+            range.selectNodeContents(editable);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        });
+    };
+
     const createHeadingShortcutHandler = () => {
         return (event) => {
             if (event.key !== ' ' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
@@ -393,8 +408,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 editor.blocks.delete(currentIndex);
-                editor.blocks.insert('header', { text: '', level }, {}, currentIndex, true);
-                if (saveWikiBtn) saveWikiBtn.disabled = false;
+                editor.blocks.insert('header', { text: '', level }, {}, currentIndex, false);
+                focusEditorBlockAtEnd(currentIndex);
+                markDirty();
             } catch (error) {
                 console.error('[Wiki] Heading shortcut failed:', error);
                 window.showToast(tr('headingShortcutFailed') + ': ' + (error.message || error), 'error');
