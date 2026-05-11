@@ -17,6 +17,40 @@ if ('serviceWorker' in navigator) {
 let db = null;
 let auth = null;
 
+function bindResilientMobileNav() {
+    const menuToggle = getEl('menu-toggle');
+    const overlay = getEl('sidebar-overlay');
+
+    if (menuToggle && !menuToggle.dataset.mobileNavBound) {
+        menuToggle.dataset.mobileNavBound = 'true';
+        menuToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = document.body.classList.toggle('nav-open');
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+    }
+
+    if (overlay && !overlay.dataset.mobileNavBound) {
+        overlay.dataset.mobileNavBound = 'true';
+        overlay.addEventListener('click', () => {
+            document.body.classList.remove('nav-open');
+            if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    document.querySelectorAll('[data-target]').forEach(link => {
+        if (link.dataset.mobileNavCloseBound) return;
+        link.dataset.mobileNavCloseBound = 'true';
+        link.addEventListener('click', () => {
+            document.body.classList.remove('nav-open');
+            if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bindResilientMobileNav);
+
 // Core App State (Global)
 let currentUser = null;
 let allTodos = [];
@@ -2742,8 +2776,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     if (fabTrigger) fabTrigger.onclick = (e) => { e.stopPropagation(); fabContainer.classList.toggle('active'); };
-    if (menuToggle) menuToggle.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('nav-open'); };
-    if (overlay) overlay.onclick = () => document.body.classList.remove('nav-open');
+    if (menuToggle && !menuToggle.dataset.mobileNavBound) {
+        menuToggle.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('nav-open'); };
+    }
+    if (overlay && !overlay.dataset.mobileNavBound) overlay.onclick = () => document.body.classList.remove('nav-open');
     document.addEventListener('click', (e) => { if (fabContainer && !fabContainer.contains(e.target)) fabContainer.classList.remove('active'); });
 
     // Task Add

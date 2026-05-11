@@ -1,6 +1,6 @@
 (function () {
     if (typeof firebase === 'undefined') {
-        console.error('Firebase SDK is not loaded.');
+        console.warn('Firebase SDK is not loaded.');
         return;
     }
 
