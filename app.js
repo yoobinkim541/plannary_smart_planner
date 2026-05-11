@@ -81,6 +81,7 @@ let onboardingRepositionThrottleMs = 160;
 let onboardingRepositionFrame = null;
 let onboardingScrollSettleTimer = null;
 let onboardingLastTargetRect = null;
+let onboardingLockScrollY = 0;
 
 const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
@@ -1279,6 +1280,76 @@ function clearOnboardingHighlight() {
     document.body.classList.remove('onboarding-spotlight-active');
 }
 
+function lockOnboardingScroll() {
+    onboardingLockScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.documentElement.style.setProperty('--onboarding-lock-scroll-y', `${onboardingLockScrollY}px`);
+    document.body.classList.add('onboarding-interaction-locked');
+}
+
+function unlockOnboardingScroll() {
+    const shouldRestore = document.body.classList.contains('onboarding-interaction-locked');
+    document.body.classList.remove('onboarding-interaction-locked');
+    document.documentElement.style.removeProperty('--onboarding-lock-scroll-y');
+    if (shouldRestore) window.scrollTo(0, onboardingLockScrollY || 0);
+}
+
+function isOnboardingInteractionLocked() {
+    const modal = getEl('onboarding-modal');
+    return Boolean(modal && modal.classList.contains('active'));
+}
+
+function canScrollWithinOnboardingTarget(target, deltaY) {
+    let el = target;
+    while (el && el !== document.body) {
+        if (isOnboardingAllowedContainer(el)) {
+            const style = window.getComputedStyle(el);
+            const canScroll = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
+            if (canScroll) {
+                if (deltaY < 0 && el.scrollTop > 0) return true;
+                if (deltaY > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true;
+                return false;
+            }
+        }
+        el = el.parentElement;
+    }
+    return false;
+}
+
+function isOnboardingAllowedContainer(target) {
+    if (!target || !isOnboardingInteractionLocked()) return true;
+    const modalCard = document.querySelector('#onboarding-modal .onboarding-card');
+    if (modalCard && modalCard.contains(target)) return true;
+    return Boolean(onboardingHighlightEl && onboardingHighlightEl.contains(target));
+}
+
+function isAllowedOnboardingTarget(target) {
+    return isOnboardingAllowedContainer(target);
+}
+
+function blockOnboardingBackgroundEvent(event) {
+    if (!isOnboardingInteractionLocked()) return;
+    if (isAllowedOnboardingTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function blockOnboardingBackgroundScroll(event) {
+    if (!isOnboardingInteractionLocked()) return;
+    const deltaY = event.deltaY || 0;
+    if (isAllowedOnboardingTarget(event.target) && canScrollWithinOnboardingTarget(event.target, deltaY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function blockOnboardingBackgroundKeys(event) {
+    if (!isOnboardingInteractionLocked()) return;
+    if (isAllowedOnboardingTarget(event.target)) return;
+    const blockedKeys = [' ', 'Spacebar', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'];
+    if (!blockedKeys.includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
 function closeOnboarding() {
     const modal = getEl('onboarding-modal');
     if (modal) {
@@ -1290,6 +1361,7 @@ function closeOnboarding() {
     }
     onboardingWelcomeVisible = false;
     clearOnboardingHighlight();
+    unlockOnboardingScroll();
 }
 
 async function saveOnboardingState({ progress, currentStep, completed } = {}) {
@@ -1683,6 +1755,7 @@ function repositionActiveOnboardingGuide() {
 function openOnboarding(options = {}) {
     const modal = getEl('onboarding-modal');
     if (!modal) return;
+    lockOnboardingScroll();
     modal.classList.remove('compact');
     const baseProgress = normalizeOnboardingProgress(onboardingState?.progress || {});
     const shouldRestart = options.restart || isOnboardingFinished(baseProgress);
@@ -2545,6 +2618,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hash router
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('resize', () => repositionActiveOnboardingGuide());
+    document.addEventListener('click', blockOnboardingBackgroundEvent, true);
+    document.addEventListener('mousedown', blockOnboardingBackgroundEvent, true);
+    document.addEventListener('pointerdown', blockOnboardingBackgroundEvent, true);
+    document.addEventListener('touchstart', blockOnboardingBackgroundEvent, { capture: true, passive: false });
+    document.addEventListener('touchmove', blockOnboardingBackgroundScroll, { capture: true, passive: false });
+    document.addEventListener('wheel', blockOnboardingBackgroundScroll, { capture: true, passive: false });
+    document.addEventListener('keydown', blockOnboardingBackgroundKeys, true);
     window.addEventListener('scroll', (event) => {
         if (event.target && event.target.closest && event.target.closest('.onboarding-card')) return;
         if (isTabletGuideLayout()) {
