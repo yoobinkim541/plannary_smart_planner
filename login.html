@@ -113,6 +113,21 @@
             if (isAndroid()) window.location.href = externalUrl;
         };
 
+        const signInWithPopupThenRedirect = async () => {
+            try {
+                await auth.signInWithPopup(googleProvider);
+                goToApp();
+            } catch (popupError) {
+                if (popupError.code === 'auth/popup-closed-by-user' || popupError.code === 'auth/cancelled-popup-request') {
+                    throw popupError;
+                }
+                if (popupError.code === 'auth/operation-not-supported-in-this-environment' || popupError.code === 'auth/web-storage-unsupported' || /disallowed_useragent|embedded|webview/i.test(popupError.message || '')) {
+                    throw popupError;
+                }
+                await auth.signInWithRedirect(googleProvider);
+            }
+        };
+
         if (isEmbeddedBrowser()) {
             secureBrowserWarning.hidden = false;
         }
@@ -164,19 +179,17 @@
 
         const signInWithGoogle = () => {
             if (isEmbeddedBrowser()) {
-                setGoogleLoginLoading(true);
-                auth.signInWithRedirect(googleProvider).catch((redirectError) => {
-                    setGoogleLoginLoading(false);
-                    openInSecureBrowser();
-                    alert('Google login failed: ' + getAuthErrorMessage(redirectError));
-                });
+                openInSecureBrowser();
                 return;
             }
 
             setGoogleLoginLoading(true);
-            auth.signInWithRedirect(googleProvider)
+            signInWithPopupThenRedirect()
                 .catch((error) => {
                     setGoogleLoginLoading(false);
+                    if (error.code === 'auth/operation-not-supported-in-this-environment' || error.code === 'auth/web-storage-unsupported' || /disallowed_useragent|embedded|webview/i.test(error.message || '')) {
+                        openInSecureBrowser();
+                    }
                     alert('Google login failed: ' + getAuthErrorMessage(error));
                 });
         };

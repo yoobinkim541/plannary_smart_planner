@@ -2104,17 +2104,20 @@ function renderTodos(todos) {
         const img = todo.imageUrl ? `<img src="${todo.imageUrl}" class="tc-img" alt="task image" onclick="window.open('${todo.imageUrl}', '_blank')">` : '';
         
         const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';
-        const priorityText = `${t(p)} ${t('priorityLabel')}`.toUpperCase();
+        const priorityText = `${t(p)} ${t('priorityLabel')}`;
 
         card.innerHTML = `
             <div class="tc-top">
                 <h3 class="tc-title">${todo.text}${dueBadge}</h3>
                 <div class="tc-top-actions">
-                    <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
+                    <span class="tc-priority-chip ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}">
+                        <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
+                        ${priorityText}
+                    </span>
                     <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">&times;</button>
                 </div>
             </div>
-            <div class="tc-subtitle">${priorityText} ${todo.dueDate ? '• 📅 ' + todo.dueDate + (todo.dueTime ? ' ' + todo.dueTime : '') : ''}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
+            <div class="tc-subtitle">${todo.dueDate ? '📅 ' + todo.dueDate + (todo.dueTime ? ' ' + todo.dueTime : '') : t('noDate')}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
             ${img}<p class="tc-desc">${todo.memo || t('noNotes')}</p><div style="margin-top: 8px;">${tag}</div>
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
