@@ -66,14 +66,19 @@ service cloud.firestore {
     function validTodo() {
       return hasOnlyKeys([
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
-        'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex'
+        'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
+        'dueTime', 'calendarReminderMinutes', 'syncCalendar', 'calendarEventId'
       ]) &&
       request.resource.data.text is string &&
       request.resource.data.text.size() > 0 &&
       isStringOrNull(request.resource.data.memo) &&
       isStringOrNull(request.resource.data.dueDate) &&
+      (!request.resource.data.keys().hasAny(['dueTime']) || isStringOrNull(request.resource.data.dueTime)) &&
       isStringOrNull(request.resource.data.projectId) &&
       isStringOrNull(request.resource.data.imageUrl) &&
+      (!request.resource.data.keys().hasAny(['calendarEventId']) || isStringOrNull(request.resource.data.calendarEventId)) &&
+      (!request.resource.data.keys().hasAny(['calendarReminderMinutes']) || isNumberOrNull(request.resource.data.calendarReminderMinutes)) &&
+      (!request.resource.data.keys().hasAny(['syncCalendar']) || isBoolOrNull(request.resource.data.syncCalendar)) &&
       request.resource.data.priority is string &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&
       request.resource.data.completed is bool &&
@@ -120,12 +125,15 @@ service cloud.firestore {
 
     function validWikiPage() {
       return hasOnlyKeys([
-        'uid', 'title', 'parentId', 'projectId', 'content', 'createdAt', 'updatedAt'
+        'uid', 'title', 'parentId', 'projectId', 'content', 'createdAt', 'updatedAt',
+        'icon', 'coverUrl'
       ]) &&
       request.resource.data.title is string &&
       request.resource.data.title.size() > 0 &&
       isStringOrNull(request.resource.data.parentId) &&
       (!request.resource.data.keys().hasAny(['projectId']) || isStringOrNull(request.resource.data.projectId)) &&
+      (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
+      (!request.resource.data.keys().hasAny(['coverUrl']) || isStringOrNull(request.resource.data.coverUrl)) &&
       request.resource.data.content is map &&
       isTimestampOrNull(request.resource.data.createdAt) &&
       isTimestampOrNull(request.resource.data.updatedAt);

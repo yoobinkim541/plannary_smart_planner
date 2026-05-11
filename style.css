@@ -416,12 +416,14 @@ input::placeholder, textarea::placeholder {
     border-radius: var(--radius);
     padding: 16px 20px;
     margin-bottom: 20px;
+    position: relative;
 }
 
 .composer-top {
     display: flex;
     gap: 12px;
-    margin-bottom: 12px;
+    align-items: center;
+    margin-bottom: 0;
 }
 
 #todo-input, .composer-input {
@@ -462,8 +464,27 @@ textarea.composer-input {
 }
 
 .composer-details {
-    display: flex;
+    display: none;
     gap: 12px;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 20px;
+    right: 20px;
+    z-index: 30;
+    flex-wrap: wrap;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
+}
+
+.composer.details-open {
+    margin-bottom: 110px;
+}
+
+.composer.details-open .composer-details {
+    display: flex;
 }
 
 .composer-details input,
@@ -602,6 +623,10 @@ textarea.composer-input {
     gap: 12px;
     padding-right: 0;
     margin-bottom: 4px;
+}
+
+.task-details-toggle {
+    white-space: nowrap;
 }
 
 .tc-title {
@@ -3120,9 +3145,10 @@ body.onboarding-spotlight-active #main-area {
 
     /* Composer Adjustments */
     .composer { padding: 12px 16px; }
-    .composer-top { flex-direction: column; gap: 8px; }
+    .composer-top { flex-direction: column; gap: 8px; align-items: stretch; }
     #add-btn, .composer-submit-btn { width: 100%; padding: 10px; }
-    .composer-details { flex-wrap: wrap; gap: 8px; }
+    .composer-details { left: 12px; right: 12px; flex-wrap: wrap; gap: 8px; }
+    .composer.details-open { margin-bottom: 190px; }
     .composer-details input, .composer-details select { flex: 1; min-width: 120px; }
     #memo-input { width: 100%; flex: none; }
 

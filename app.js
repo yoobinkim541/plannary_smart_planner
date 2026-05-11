@@ -362,6 +362,7 @@ const I18N = {
         deleteTaskCancel: '유지하기', deleteTaskConfirm: '삭제하기', editTaskTitle: '작업 수정', taskNameLabel: '작업명',
         taskMemoLabel: '메모', dueDateLabel: '마감일', projectSelectLabel: '프로젝트', saveTaskChanges: '변경사항 저장',
         dueTimeLabel: '시간', calendarReminderLabel: '캘린더 알림', calendarConnectTask: 'Google Calendar 연결',
+        taskDetailsToggle: '세부 설정',
         notifyAtTime: '정시에 알림', notifyBefore10: '10분 전', notifyBefore30: '30분 전', notifyBefore60: '1시간 전',
         notifyBefore120: '2시간 전', notifyBefore1440: '1일 전', calendarSyncOn: '캘린더 연동됨',
         calendarSyncFailed: '캘린더 일정 생성 실패', calendarTaskSynced: 'Google Calendar에 일정이 추가되었습니다',
@@ -586,6 +587,7 @@ const I18N = {
         deleteTaskCancel: 'Keep task', deleteTaskConfirm: 'Delete task', editTaskTitle: 'Edit task', taskNameLabel: 'Task name',
         taskMemoLabel: 'Note', dueDateLabel: 'Due date', projectSelectLabel: 'Project', saveTaskChanges: 'Save changes',
         dueTimeLabel: 'Time', calendarReminderLabel: 'Calendar alert', calendarConnectTask: 'Connect Google Calendar',
+        taskDetailsToggle: 'Details',
         notifyAtTime: 'At time', notifyBefore10: '10 min before', notifyBefore30: '30 min before', notifyBefore60: '1 hour before',
         notifyBefore120: '2 hours before', notifyBefore1440: '1 day before', calendarSyncOn: 'Calendar sync on',
         calendarSyncFailed: 'Calendar event creation failed', calendarTaskSynced: 'Added to Google Calendar',
@@ -919,6 +921,7 @@ function applyLanguage(lang = currentLanguage) {
     setText('.filter-chip[data-filter="important"]', t('important'));
     setText('.filter-chip[data-filter="reminders"]', t('reminders'));
     setText('#add-btn', t('addTask'));
+    setText('#task-details-toggle', t('taskDetailsToggle'));
     setPlaceholder('#todo-input', t('taskPlaceholder'));
     setPlaceholder('#memo-input', t('memoPlaceholder'));
     setPlaceholder('#search-input', t('searchTasks'));
@@ -3023,6 +3026,13 @@ document.addEventListener('DOMContentLoaded', () => {
     bindNotificationSettings();
 
     if (getEl('search-input')) getEl('search-input').oninput = () => applyFilters();
+
+    if (getEl('task-details-toggle')) {
+        getEl('task-details-toggle').onclick = () => {
+            const composer = getEl('task-details-toggle').closest('.composer');
+            composer?.classList.toggle('details-open');
+        };
+    }
 
     document.querySelectorAll('.filter-chip').forEach(chip => {
         chip.onclick = () => {

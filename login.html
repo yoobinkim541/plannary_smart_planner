@@ -174,21 +174,8 @@
             }
 
             setGoogleLoginLoading(true);
-            auth.signInWithPopup(googleProvider)
-                .then(goToApp)
+            auth.signInWithRedirect(googleProvider)
                 .catch((error) => {
-                    if (error.code === 'auth/popup-closed-by-user') {
-                        setGoogleLoginLoading(false);
-                        alert('Google login failed: ' + getAuthErrorMessage(error));
-                        return;
-                    }
-                    if (['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment'].includes(error.code)) {
-                        auth.signInWithRedirect(googleProvider).catch((redirectError) => {
-                            setGoogleLoginLoading(false);
-                            alert('Google login failed: ' + getAuthErrorMessage(redirectError));
-                        });
-                        return;
-                    }
                     setGoogleLoginLoading(false);
                     alert('Google login failed: ' + getAuthErrorMessage(error));
                 });
