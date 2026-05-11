@@ -536,7 +536,21 @@
                     <!-- Editor UI -->
                     <div class="wiki-editor-container" id="wiki-editor-view" style="display: none;">
                         <div class="wiki-cover" id="wiki-cover">
-                            <button id="wiki-cover-btn" class="wiki-cover-action" type="button">커버 변경</button>
+                            <div class="wiki-cover-actions">
+                                <button id="wiki-cover-btn" class="wiki-cover-action" type="button">커버 변경</button>
+                                <button id="wiki-cover-adjust-btn" class="wiki-cover-action" type="button">위치/면적</button>
+                            </div>
+                            <div class="wiki-cover-panel" id="wiki-cover-panel" hidden>
+                                <label>
+                                    <span id="wiki-cover-position-label">이미지 위치</span>
+                                    <input id="wiki-cover-position-range" type="range" min="0" max="100" value="50">
+                                </label>
+                                <label>
+                                    <span id="wiki-cover-height-label">보이는 면적</span>
+                                    <input id="wiki-cover-height-range" type="range" min="120" max="360" value="180">
+                                </label>
+                                <button id="wiki-cover-reset-btn" class="text-link-btn" type="button">기본값</button>
+                            </div>
                         </div>
                         <div class="wiki-editor-header">
                             <button id="wiki-back-btn" class="wiki-icon-btn mobile-only" title="목록으로 돌아가기">
@@ -994,7 +1008,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
     <script src="app.js?v=v25"></script>
-    <script src="wiki.js?v=v12"></script>
+    <script src="wiki.js?v=v13"></script>
 </body>
 
 </html>

@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allPages = [];
     let allProjects = [];
     let currentPageId = null;
-    let currentPageMeta = { icon: '📄', coverUrl: '' };
+    let currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverHeight: 180 };
 
     const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
     const storage = typeof firebase !== 'undefined' ? firebase.storage() : null;
@@ -44,6 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageIconBtn = document.getElementById('wiki-icon-btn');
     const coverEl = document.getElementById('wiki-cover');
     const coverBtn = document.getElementById('wiki-cover-btn');
+    const coverAdjustBtn = document.getElementById('wiki-cover-adjust-btn');
+    const coverPanel = document.getElementById('wiki-cover-panel');
+    const coverPositionRange = document.getElementById('wiki-cover-position-range');
+    const coverHeightRange = document.getElementById('wiki-cover-height-range');
+    const coverResetBtn = document.getElementById('wiki-cover-reset-btn');
     const saveStateEl = document.getElementById('wiki-save-state');
     const updatedAtEl = document.getElementById('wiki-updated-at');
     const widgetNewSubpageBtn = document.getElementById('wiki-widget-new-subpage-btn');
@@ -123,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     class SubpageTool {
         static get toolbox() {
             return {
-                title: tr('subpage'),
+                title: tr('wikiToolPage'),
                 icon: '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M12 5v14M5 12h14"/><path d="M4 4h6v6H4z" opacity="0.45"/></svg>'
             };
         }
@@ -141,6 +146,207 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         save() {
             return {};
+        }
+    }
+
+    class ToggleBlockTool {
+        static get toolbox() {
+            return {
+                title: tr('wikiToolToggle'),
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>'
+            };
+        }
+        constructor({ data }) {
+            this.data = data || {};
+            this.open = this.data.open !== false;
+        }
+        render() {
+            this.container = document.createElement('div');
+            this.container.className = 'wiki-tool-toggle';
+            this.container.dataset.open = String(this.open);
+
+            this.summary = document.createElement('div');
+            this.summary.className = 'wiki-tool-toggle-summary';
+            this.summary.contentEditable = 'true';
+            this.summary.dataset.placeholder = tr('wikiToggleTitlePlaceholder');
+            this.summary.innerHTML = this.data.title || '';
+
+            this.chevron = document.createElement('button');
+            this.chevron.className = 'wiki-tool-toggle-chevron';
+            this.chevron.type = 'button';
+            this.chevron.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+            this.chevron.onclick = () => {
+                this.open = !this.open;
+                this.container.dataset.open = String(this.open);
+            };
+
+            this.content = document.createElement('div');
+            this.content.className = 'wiki-tool-toggle-content';
+            this.content.contentEditable = 'true';
+            this.content.dataset.placeholder = tr('wikiToggleBodyPlaceholder');
+            this.content.innerHTML = this.data.text || '';
+
+            const head = document.createElement('div');
+            head.className = 'wiki-tool-toggle-head';
+            head.append(this.chevron, this.summary);
+            this.container.append(head, this.content);
+            return this.container;
+        }
+        save(blockContent) {
+            return {
+                title: blockContent.querySelector('.wiki-tool-toggle-summary')?.innerHTML || '',
+                text: blockContent.querySelector('.wiki-tool-toggle-content')?.innerHTML || '',
+                open: blockContent.dataset.open !== 'false'
+            };
+        }
+    }
+
+    class CalloutTool {
+        static get toolbox() {
+            return {
+                title: tr('wikiToolCallout'),
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>'
+            };
+        }
+        constructor({ data }) {
+            this.data = data || {};
+        }
+        render() {
+            const container = document.createElement('div');
+            container.className = 'wiki-tool-callout';
+
+            const icon = document.createElement('div');
+            icon.className = 'wiki-tool-callout-icon';
+            icon.contentEditable = 'true';
+            icon.dataset.placeholder = '💡';
+            icon.textContent = this.data.icon || '💡';
+
+            const text = document.createElement('div');
+            text.className = 'wiki-tool-callout-text';
+            text.contentEditable = 'true';
+            text.dataset.placeholder = tr('wikiCalloutPlaceholder');
+            text.innerHTML = this.data.text || '';
+
+            container.append(icon, text);
+            return container;
+        }
+        save(blockContent) {
+            return {
+                icon: blockContent.querySelector('.wiki-tool-callout-icon')?.textContent.trim().slice(0, 4) || '💡',
+                text: blockContent.querySelector('.wiki-tool-callout-text')?.innerHTML || ''
+            };
+        }
+    }
+
+    class QuoteBlockTool {
+        static get toolbox() {
+            return {
+                title: tr('wikiToolQuote'),
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7.17 6A5.17 5.17 0 0 0 2 11.17V18h7v-7H5.1A2.07 2.07 0 0 1 7.17 8.93V6Zm10 0A5.17 5.17 0 0 0 12 11.17V18h7v-7h-3.9a2.07 2.07 0 0 1 2.07-2.07V6Z"/></svg>'
+            };
+        }
+        constructor({ data }) {
+            this.data = data || {};
+        }
+        render() {
+            const container = document.createElement('blockquote');
+            container.className = 'wiki-tool-quote';
+
+            const text = document.createElement('div');
+            text.className = 'wiki-tool-quote-text';
+            text.contentEditable = 'true';
+            text.dataset.placeholder = tr('wikiQuotePlaceholder');
+            text.innerHTML = this.data.text || '';
+
+            const caption = document.createElement('div');
+            caption.className = 'wiki-tool-quote-caption';
+            caption.contentEditable = 'true';
+            caption.dataset.placeholder = tr('wikiQuoteCaptionPlaceholder');
+            caption.innerHTML = this.data.caption || '';
+
+            container.append(text, caption);
+            return container;
+        }
+        save(blockContent) {
+            return {
+                text: blockContent.querySelector('.wiki-tool-quote-text')?.innerHTML || '',
+                caption: blockContent.querySelector('.wiki-tool-quote-caption')?.innerHTML || ''
+            };
+        }
+    }
+
+    class DividerTool {
+        static get toolbox() {
+            return {
+                title: tr('wikiToolDivider'),
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/></svg>'
+            };
+        }
+        render() {
+            const divider = document.createElement('div');
+            divider.className = 'wiki-tool-divider';
+            return divider;
+        }
+        save() {
+            return {};
+        }
+    }
+
+    class PageLinkTool {
+        static get toolbox() {
+            return {
+                title: tr('wikiToolPageLink'),
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.15 1.15"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2A5 5 0 0 0 12 20.07l1.15-1.15"/></svg>'
+            };
+        }
+        constructor({ data }) {
+            this.data = data || {};
+        }
+        render() {
+            const container = document.createElement('div');
+            container.className = 'wiki-tool-page-link';
+
+            this.select = document.createElement('select');
+            this.select.className = 'wiki-tool-page-link-select';
+            this.select.innerHTML = `<option value="">${tr('wikiPageLinkSelect')}</option>`;
+            allPages
+                .filter(page => page.id !== currentPageId)
+                .forEach(page => {
+                    const option = document.createElement('option');
+                    option.value = page.id;
+                    option.textContent = `${page.icon || '📄'} ${page.title || tr('untitledDocument')}`;
+                    if (page.id === this.data.pageId) option.selected = true;
+                    this.select.appendChild(option);
+                });
+
+            this.card = document.createElement('button');
+            this.card.className = 'wiki-tool-page-link-card';
+            this.card.type = 'button';
+            this.card.onclick = () => {
+                const pageId = this.select.value;
+                if (pageId) navigateToPage(pageId);
+            };
+
+            const renderCard = () => {
+                const page = getPageById(this.select.value);
+                this.card.innerHTML = page
+                    ? `<span>${escapeHtml(page.icon || '📄')}</span><strong>${escapeHtml(page.title || tr('untitledDocument'))}</strong>`
+                    : `<span>🔗</span><strong>${tr('wikiPageLinkEmpty')}</strong>`;
+            };
+            this.select.onchange = renderCard;
+            renderCard();
+
+            container.append(this.select, this.card);
+            return container;
+        }
+        save(blockContent) {
+            const pageId = blockContent.querySelector('.wiki-tool-page-link-select')?.value || '';
+            const page = getPageById(pageId);
+            return {
+                pageId,
+                title: page ? (page.title || tr('untitledDocument')) : '',
+                icon: page ? (page.icon || '📄') : '📄'
+            };
         }
     }
 
@@ -197,6 +403,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const toStringValue = (value) => value == null ? '' : String(value);
+    const toBoundedNumber = (value, fallback, min, max) => {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return fallback;
+        return Math.min(max, Math.max(min, number));
+    };
 
     const normalizeEditorBlock = (block) => {
         if (!block || typeof block !== 'object') return null;
@@ -244,6 +455,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return data.file && typeof data.file.url === 'string' ? { type, data } : null;
             case 'math':
                 return { type, data: { text: toStringValue(data.text) } };
+            case 'toggle':
+                return { type, data: { title: toStringValue(data.title), text: toStringValue(data.text), open: data.open !== false } };
+            case 'callout':
+                return { type, data: { icon: toStringValue(data.icon).trim().slice(0, 4) || '💡', text: toStringValue(data.text) } };
+            case 'quote':
+                return { type, data: { text: toStringValue(data.text), caption: toStringValue(data.caption) } };
+            case 'divider':
+                return { type, data: {} };
+            case 'pageLink':
+                return { type, data: { pageId: toStringValue(data.pageId), title: toStringValue(data.title), icon: toStringValue(data.icon) || '📄' } };
+            case 'subpage':
+                return { type, data: {} };
             default:
                 return data.text != null ? { type: 'paragraph', data: { text: toStringValue(data.text) } } : null;
         }
@@ -356,7 +579,9 @@ document.addEventListener('DOMContentLoaded', () => {
         title: wikiTitleInput ? wikiTitleInput.value : '',
         projectId: wikiProjectSelect ? wikiProjectSelect.value : '',
         icon: currentPageMeta.icon || '📄',
-        coverUrl: currentPageMeta.coverUrl || ''
+        coverUrl: currentPageMeta.coverUrl || '',
+        coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
+        coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360)
     });
 
     const pushMetaUndoSnapshot = () => {
@@ -372,8 +597,14 @@ document.addEventListener('DOMContentLoaded', () => {
         pushMetaUndoSnapshot();
     };
 
-    const applyCover = (url) => {
+    const applyCover = (url, position = 50, height = 180) => {
         if (!coverEl) return;
+        const safePosition = toBoundedNumber(position, 50, 0, 100);
+        const safeHeight = toBoundedNumber(height, 180, 120, 360);
+        coverEl.style.setProperty('--wiki-cover-position', `${safePosition}%`);
+        coverEl.style.setProperty('--wiki-cover-height', `${safeHeight}px`);
+        if (coverPositionRange) coverPositionRange.value = String(safePosition);
+        if (coverHeightRange) coverHeightRange.value = String(safeHeight);
         if (url) {
             coverEl.dataset.coverUrl = url;
             coverEl.style.backgroundImage = `linear-gradient(rgba(15,23,42,0.04), rgba(15,23,42,0.14)), url("${url.replace(/"/g, '%22')}")`;
@@ -386,12 +617,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyPageMeta = (meta, shouldMarkDirty = true) => {
         currentPageMeta = {
             icon: meta.icon || '📄',
-            coverUrl: meta.coverUrl || ''
+            coverUrl: meta.coverUrl || '',
+            coverPosition: toBoundedNumber(meta.coverPosition, 50, 0, 100),
+            coverHeight: toBoundedNumber(meta.coverHeight, 180, 120, 360)
         };
         if (wikiTitleInput && meta.title != null) wikiTitleInput.value = meta.title;
         if (wikiProjectSelect && meta.projectId != null) wikiProjectSelect.value = meta.projectId;
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
-        applyCover(currentPageMeta.coverUrl);
+        applyCover(currentPageMeta.coverUrl, currentPageMeta.coverPosition, currentPageMeta.coverHeight);
         if (shouldMarkDirty) markDirty();
         renderWidgets();
     };
@@ -517,6 +750,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         tools.math = { class: MathBlock };
+        tools.toggle = { class: ToggleBlockTool };
+        tools.callout = { class: CalloutTool };
+        tools.quote = { class: QuoteBlockTool };
+        tools.divider = { class: DividerTool };
+        tools.pageLink = { class: PageLinkTool };
         tools.subpage = { class: SubpageTool };
 
         const createUploader = (label = "File") => {
@@ -775,6 +1013,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('wiki-calendar-connect-btn', tr('googleCalendarConnect'));
         setText('wiki-calendar-create-btn', tr('createCalendarFromPage'));
         setText('wiki-cover-btn', tr('changeCover'));
+        setText('wiki-cover-adjust-btn', tr('adjustCover'));
+        setText('wiki-cover-position-label', tr('coverPosition'));
+        setText('wiki-cover-height-label', tr('coverHeight'));
+        setText('wiki-cover-reset-btn', tr('resetCover'));
         if (backBtn) {
             backBtn.title = tr('backToList');
             backBtn.setAttribute('aria-label', tr('backToList'));
@@ -970,9 +1212,14 @@ document.addEventListener('DOMContentLoaded', () => {
         wikiEditorView.classList.add('fade-in');
 
         wikiTitleInput.value = page.title || '';
-        currentPageMeta = { icon: page.icon || '📄', coverUrl: page.coverUrl || '' };
+        currentPageMeta = {
+            icon: page.icon || '📄',
+            coverUrl: page.coverUrl || '',
+            coverPosition: toBoundedNumber(page.coverPosition, 50, 0, 100),
+            coverHeight: toBoundedNumber(page.coverHeight, 180, 120, 360)
+        };
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
-        applyCover(currentPageMeta.coverUrl);
+        applyCover(currentPageMeta.coverUrl, currentPageMeta.coverPosition, currentPageMeta.coverHeight);
         if (wikiProjectSelect) {
             wikiProjectSelect.value = getInheritedProjectId(page);
         }
@@ -994,9 +1241,9 @@ document.addEventListener('DOMContentLoaded', () => {
         wikiEditorView.style.display = 'none';
         wikiEmptyView.style.display = 'flex';
         if (wikiProjectSelect) wikiProjectSelect.value = '';
-        currentPageMeta = { icon: '📄', coverUrl: '' };
+        currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverHeight: 180 };
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
-        applyCover('');
+        applyCover('', 50, 180);
         renderSubpages(null);
         renderWidgets();
         renderPageList();
@@ -1017,6 +1264,8 @@ document.addEventListener('DOMContentLoaded', () => {
             projectId: inheritedProjectId,
             icon: '📄',
             coverUrl: '',
+            coverPosition: 50,
+            coverHeight: 180,
             content: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1136,6 +1385,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (coverBtn) coverBtn.onclick = chooseCoverImage;
 
+    if (coverAdjustBtn && coverPanel) {
+        coverAdjustBtn.onclick = () => {
+            if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
+            coverPanel.hidden = !coverPanel.hidden;
+        };
+    }
+
+    const updateCoverAdjustments = () => {
+        const nextMeta = {
+            ...getMetaSnapshot(),
+            coverPosition: toBoundedNumber(coverPositionRange?.value, 50, 0, 100),
+            coverHeight: toBoundedNumber(coverHeightRange?.value, 180, 120, 360)
+        };
+        applyPageMeta(nextMeta);
+    };
+
+    if (coverPositionRange) {
+        coverPositionRange.addEventListener('pointerdown', pushMetaUndoSnapshot);
+        coverPositionRange.addEventListener('input', updateCoverAdjustments);
+        coverPositionRange.addEventListener('change', pushMetaUndoSnapshot);
+    }
+
+    if (coverHeightRange) {
+        coverHeightRange.addEventListener('pointerdown', pushMetaUndoSnapshot);
+        coverHeightRange.addEventListener('input', updateCoverAdjustments);
+        coverHeightRange.addEventListener('change', pushMetaUndoSnapshot);
+    }
+
+    if (coverResetBtn) {
+        coverResetBtn.onclick = () => {
+            pushMetaUndoSnapshot();
+            applyPageMeta({ ...getMetaSnapshot(), coverPosition: 50, coverHeight: 180 });
+            pushMetaUndoSnapshot();
+        };
+    }
+
     const requestCalendarToken = async () => {
         const user = firebase.auth().currentUser;
         if (!user) throw new Error(tr('loginFirst'));
@@ -1225,6 +1510,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectId,
                 icon: currentPageMeta.icon || '📄',
                 coverUrl: currentPageMeta.coverUrl || '',
+                coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
+                coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360),
                 content: contentData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
