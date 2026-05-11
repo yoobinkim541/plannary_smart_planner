@@ -1032,6 +1032,7 @@ textarea.composer-input {
 
 .onboarding-modal.active {
     display: flex;
+    pointer-events: auto;
 }
 
 .onboarding-modal.positioned {
@@ -1500,7 +1501,8 @@ textarea.composer-input {
     position: fixed;
     z-index: 8040;
     background: rgba(15, 23, 42, 0.46);
-    pointer-events: none;
+    pointer-events: auto;
+    cursor: not-allowed;
 }
 
 .onboarding-highlight-target {
@@ -1514,6 +1516,20 @@ textarea.composer-input {
 
 body.onboarding-spotlight-active {
     overflow: hidden;
+}
+
+body.onboarding-interaction-locked {
+    position: fixed;
+    inset: calc(var(--onboarding-lock-scroll-y, 0px) * -1) 0 auto 0;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+}
+
+body.onboarding-interaction-locked .onboarding-card,
+body.onboarding-interaction-locked .onboarding-highlight-target {
+    touch-action: auto;
 }
 
 body.onboarding-spotlight-active #main-area {
