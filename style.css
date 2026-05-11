@@ -4129,7 +4129,7 @@ body.onboarding-spotlight-active #main-area {
     }
 
     .editor-active .wiki-editor-container {
-        transform: translateX(0);
+        transform: none;
         display: flex !important;
     }
 
@@ -4161,7 +4161,9 @@ body.onboarding-spotlight-active #main-area {
         right: 0;
     }
 
-    #editorjs .ce-popover {
+    #editorjs .ce-popover,
+    #editorjs .ce-popover--opened,
+    #editorjs .ce-popover__container {
         position: fixed !important;
         left: 12px !important;
         right: 12px !important;
@@ -4171,6 +4173,17 @@ body.onboarding-spotlight-active #main-area {
         max-width: none;
         max-height: min(420px, calc(100vh - 140px));
         overflow-y: auto;
+        z-index: 12000 !important;
+        transform: none !important;
+    }
+
+    #editorjs .ce-popover {
+        border-radius: 16px;
+        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+    }
+
+    #editorjs .ce-toolbar__actions {
+        z-index: 11000;
     }
 
     .wiki-title-row {
