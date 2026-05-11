@@ -31,7 +31,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="landing.css">
 </head>
 
@@ -40,7 +48,7 @@
         <nav class="landing-nav" aria-label="Landing navigation">
             <a class="landing-brand" href="landing.html" aria-label="Planary home">
                 <span class="landing-brand-mark">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                    <img src="/icons/icon-192.png" alt="" onerror="this.onerror=null;this.src='/icon.svg';">
                 </span>
                 Planary
             </a>
@@ -142,7 +150,7 @@
                             <span>Projects</span>
                         </div>
                         <div class="landing-composer">
-                            <span>오늘 처리할 작업을 입력하세요...</span>
+                            <span>오늘 챙길 일을 적어보세요...</span>
                             <button type="button">추가</button>
                         </div>
                         <div class="landing-filter-row">
@@ -155,26 +163,26 @@
                             <article class="landing-real-task">
                                 <button type="button" aria-label="완료"></button>
                                 <div>
-                                    <strong>랜딩 페이지 QA</strong>
-                                    <small>오늘 · Web project</small>
-                                    <p>실제 앱 화면과 랜딩 프리뷰의 레이아웃, 카드, 색상을 맞춥니다.</p>
+                                    <strong>저녁 장보기</strong>
+                                    <small>오늘 · 집안일</small>
+                                    <p>우유, 계란, 샐러드 채소를 퇴근길에 사 오기.</p>
                                 </div>
                                 <span class="blue"></span>
                             </article>
                             <article class="landing-real-task">
                                 <button type="button" aria-label="완료"></button>
                                 <div>
-                                    <strong>프로젝트 위키 정리</strong>
-                                    <small>금요일 · Docs</small>
-                                    <p>회의록과 참고 링크를 위키 하위 페이지로 정리합니다.</p>
+                                    <strong>치과 예약 확인</strong>
+                                    <small>내일 · 개인 일정</small>
+                                    <p>예약 시간 확인하고 신분증 챙기기.</p>
                                 </div>
                                 <span class="green"></span>
                             </article>
                             <article class="landing-real-task compact">
                                 <button type="button" aria-label="완료"></button>
                                 <div>
-                                    <strong>리마인더 확인</strong>
-                                    <small>월요일 · Ops</small>
+                                    <strong>택배 반품 접수하기</strong>
+                                    <small>주말 · 집안일</small>
                                 </div>
                                 <span class="red"></span>
                             </article>
@@ -263,7 +271,7 @@
                     <div class="landing-auth-card">
                         <div class="landing-auth-logo">
                             <span class="landing-brand-mark">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                                <img src="/icons/icon-192.png" alt="" onerror="this.onerror=null;this.src='/icon.svg';">
                             </span>
                             Planary
                         </div>

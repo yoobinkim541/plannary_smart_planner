@@ -1776,7 +1776,9 @@ async function showOnboardingIfNeeded(user) {
         onboardingState = buildOnboardingState(data);
         const hasExpandedGuideProgress = data.onboardingProgress && GUIDE_STEP_IDS.every(id => GUIDE_STATUS.includes(data.onboardingProgress[id]));
         const hasNoWork = await userHasNoWork(user.uid);
-        if (!data.onboardingCompleted || !hasExpandedGuideProgress || hasNoWork) openOnboarding();
+        if (!data.onboardingCompleted || !hasExpandedGuideProgress || hasNoWork) {
+            openOnboarding({ restart: hasNoWork && data.onboardingCompleted });
+        }
     } catch (error) {
         console.warn('Onboarding state unavailable:', error);
     }
