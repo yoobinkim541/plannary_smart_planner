@@ -461,7 +461,10 @@ const I18N = {
         onboardingDone: '완료', onboardingSkipped: '건너뜀', onboardingPending: '대기 중',
         onboardingLater: '나중에 볼게요', onboardingStart: '작업 만들러 가기', backToList: '목록으로 돌아가기',
         toggleTheme: '테마 전환', toggleNavigation: '내비게이션 열기', attachment: '첨부파일',
-        katexNotLoaded: 'KaTeX를 불러오지 못했습니다.', syntaxError: '문법 오류'
+        katexNotLoaded: 'KaTeX를 불러오지 못했습니다.', syntaxError: '문법 오류',
+        closeProjectView: '프로젝트 보기 닫기', wikiProjectSelect: '위키 프로젝트',
+        onboardingStepsLabel: '가이드 단계', koreanLanguage: '한국어', englishLanguage: 'English',
+        close: '닫기'
     },
     en: {
         home: 'Home', tasks: 'Tasks', allTasks: 'All tasks', completed: 'Completed', progress: 'Progress', important: 'Important',
@@ -661,7 +664,10 @@ const I18N = {
         onboardingDone: 'Done', onboardingSkipped: 'Skipped', onboardingPending: 'Pending',
         onboardingLater: 'Maybe later', onboardingStart: 'Create a task', backToList: 'Back to list',
         toggleTheme: 'Toggle theme', toggleNavigation: 'Toggle navigation', attachment: 'Attachment',
-        katexNotLoaded: 'KaTeX not loaded.', syntaxError: 'Syntax Error'
+        katexNotLoaded: 'KaTeX not loaded.', syntaxError: 'Syntax Error',
+        closeProjectView: 'Close project view', wikiProjectSelect: 'Wiki project',
+        onboardingStepsLabel: 'Guide steps', koreanLanguage: 'Korean', englishLanguage: 'English',
+        close: 'Close'
     }
 };
 
@@ -681,6 +687,13 @@ function setHtml(selector, value) {
 
 function setAllText(selector, value) {
     document.querySelectorAll(selector).forEach(el => { el.textContent = value; });
+}
+
+function setAllTitle(selector, value, includeAria = true) {
+    document.querySelectorAll(selector).forEach(el => {
+        el.title = value;
+        if (includeAria) el.setAttribute('aria-label', value);
+    });
 }
 
 function setPlaceholder(selector, value) {
@@ -715,6 +728,18 @@ function setButtonTextPreserveIcon(selector, value) {
         el.appendChild(document.createTextNode(' '));
     }
     el.appendChild(document.createTextNode(value));
+}
+
+function setAllButtonTextPreserveIcon(selector, value) {
+    document.querySelectorAll(selector).forEach(el => {
+        const icon = el.querySelector('svg');
+        el.textContent = '';
+        if (icon) {
+            el.appendChild(icon);
+            el.appendChild(document.createTextNode(' '));
+        }
+        el.appendChild(document.createTextNode(value));
+    });
 }
 
 window.PlanaryI18n = {
@@ -758,14 +783,15 @@ function applyLanguage(lang = currentLanguage) {
     setAllText('[data-target="page-bookmarks"] span, .fab-item[data-target="page-bookmarks"] .fab-label', t('bookmarks'));
     setAllText('[data-target="page-archive"] span, .fab-item[data-target="page-archive"] .fab-label', t('archive'));
     setAllText('[data-target="page-profile"] span, .fab-item[data-target="page-profile"] .fab-label', t('myPage'));
-    document.querySelectorAll('[data-target="page-home"]').forEach(el => el.title = t('home'));
-    document.querySelectorAll('[data-target="page-tasks"]').forEach(el => el.title = t('tasks'));
-    document.querySelectorAll('[data-target="page-projects"]').forEach(el => el.title = t('projects'));
-    document.querySelectorAll('[data-target="page-notes"]').forEach(el => el.title = t('notes'));
-    document.querySelectorAll('[data-target="page-wiki"]').forEach(el => el.title = t('wiki'));
-    document.querySelectorAll('[data-target="page-bookmarks"]').forEach(el => el.title = t('bookmarks'));
-    document.querySelectorAll('[data-target="page-archive"]').forEach(el => el.title = t('archive'));
-    document.querySelectorAll('[data-target="page-profile"]').forEach(el => el.title = t('myPage'));
+    setAllTitle('[data-target="page-home"]', t('home'));
+    setAllTitle('[data-target="page-tasks"]', t('tasks'));
+    setAllTitle('[data-target="page-projects"]', t('projects'));
+    setAllTitle('[data-target="page-notes"]', t('notes'));
+    setAllTitle('[data-target="page-wiki"]', t('wiki'));
+    setAllTitle('[data-target="page-bookmarks"]', t('bookmarks'));
+    setAllTitle('[data-target="page-archive"]', t('archive'));
+    setAllTitle('[data-target="page-profile"]', t('myPage'));
+    setAllTitle('.rail-icon.mobile-only[data-target="page-tasks"]', t('undo'));
     setText('.task-subnav-link[data-filter="all"]', t('allTasks'));
     setText('.task-subnav-link[data-filter="active"]', t('progress'));
     setText('.task-subnav-link[data-filter="important"]', t('important'));
@@ -780,8 +806,8 @@ function applyLanguage(lang = currentLanguage) {
     setText('#today-project-label', t('todayProjects'));
     setText('#today-focus-title', t('todayFocusTitle'));
     setText('#today-projects-title', t('activeProjectsTitle'));
-    setButtonTextPreserveIcon('.today-hub-actions .confirm-btn', t('openTasks'));
-    setButtonTextPreserveIcon('.today-hub-actions .text-link-btn', t('important'));
+    setAllButtonTextPreserveIcon('.today-hub-actions .confirm-btn', t('openTasks'));
+    setAllButtonTextPreserveIcon('.today-hub-actions .text-link-btn', t('important'));
     const statLabels = document.querySelectorAll('.dashboard-stats-row .stat-label');
     if (statLabels[0]) statLabels[0].textContent = t('totalTasks');
     if (statLabels[1]) statLabels[1].textContent = t('completed');
@@ -812,6 +838,7 @@ function applyLanguage(lang = currentLanguage) {
     setText('#add-project-btn', t('createProject'));
     setButtonTextPreserveIcon('.project-detail-kicker', t('projectWorkspace'));
     setText('#project-detail-summary', t('projectSummary'));
+    setTitle('#project-detail-close', t('closeProjectView'));
     const projectSectionTitles = document.querySelectorAll('.project-detail-section-header h3');
     if (projectSectionTitles[0]) projectSectionTitles[0].textContent = t('tasks');
     if (projectSectionTitles[1]) projectSectionTitles[1].textContent = t('reminders');
@@ -835,6 +862,8 @@ function applyLanguage(lang = currentLanguage) {
     setText('#new-wiki-btn', t('newPage'));
     setPlaceholder('#wiki-title-input', t('untitledDocument'));
     setOptionText('#wiki-project-select option[value=""]', t('noProject'));
+    const wikiProjectSelect = getEl('wiki-project-select');
+    if (wikiProjectSelect) wikiProjectSelect.setAttribute('aria-label', t('wikiProjectSelect'));
     setText('#wiki-upload-text', t('uploadingProgress'));
     setText('.wiki-project-control label', t('projectLabel'));
     setText('#wiki-subpages-section h3', t('subpages'));
@@ -844,6 +873,8 @@ function applyLanguage(lang = currentLanguage) {
     setText('#wiki-empty-view h2', t('wikiEmptyTitle'));
     setHtml('#wiki-empty-view p', t('wikiEmptyBody'));
     setText('#wiki-empty-create-btn span', t('createNewPage'));
+    const wikiStepList = getEl('onboarding-step-list');
+    if (wikiStepList) wikiStepList.setAttribute('aria-label', t('onboardingStepsLabel'));
     setText('#page-archive .main-header h1', t('archiveTitle'));
     setText('#page-archive .main-header p', t('archiveDescription'));
     const archiveStatLabels = document.querySelectorAll('#page-archive .archive-stat-card .stat-label');
@@ -870,6 +901,8 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#profile-password', t('passwordPlaceholder'));
     setPlaceholder('#profile-password-confirm', t('confirmPasswordPlaceholder'));
     setText('#profile-logout-btn', t('logout'));
+    setText('.onboarding-language-option[data-guide-language="ko"]', t('koreanLanguage'));
+    setText('.onboarding-language-option[data-guide-language="en"]', t('englishLanguage'));
     setText('#task-edit-title', t('editTaskTitle'));
     setText('#task-edit-text-label', t('taskNameLabel'));
     setText('#task-edit-memo-label', t('taskMemoLabel'));
@@ -881,6 +914,7 @@ function applyLanguage(lang = currentLanguage) {
     setOptionText('#task-edit-priority option[value="high"]', t('high'));
     setText('#task-edit-cancel-btn', t('cancel'));
     setText('#task-edit-save-btn', t('saveTaskChanges'));
+    setTitle('#task-edit-close-btn', t('close'));
     setText('#task-delete-title', t('deleteTaskTitle'));
     setText('#task-delete-body', t('deleteTaskBody'));
     setText('#task-delete-cancel-btn', t('deleteTaskCancel'));
@@ -1785,6 +1819,7 @@ function advanceGuideFocus() {
 async function skipCurrentOnboardingStep() {
     const stepId = onboardingState?.currentStep || getNextGuideStepId();
     if (!stepId) return completeOnboarding();
+    onboardingWelcomeVisible = false;
     const progress = normalizeOnboardingProgress(onboardingState.progress);
     progress[stepId] = 'skipped';
     const nextStep = getNextGuideStepId(progress);

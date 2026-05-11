@@ -98,9 +98,19 @@
             return isIOSWebView || /FBAN|FBAV|FB_IAB|Instagram|Line\/|KAKAOTALK|NAVER|DaumApps|Twitter|TikTok|Snapchat|Pinterest|; wv\)|\bwv\b|WebView/i.test(ua);
         };
 
+        const isAndroid = () => /Android/i.test(navigator.userAgent || '');
+
+        const getExternalBrowserUrl = () => {
+            if (!isAndroid()) return secureLoginUrl;
+            const target = new URL(secureLoginUrl);
+            return `intent://${target.host}${target.pathname}${target.search}#Intent;scheme=${target.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(secureLoginUrl)};end`;
+        };
+
         const openInSecureBrowser = () => {
             secureBrowserWarning.hidden = false;
-            copySecureBrowserUrl();
+            const externalUrl = getExternalBrowserUrl();
+            if (secureBrowserLink) secureBrowserLink.href = externalUrl;
+            if (isAndroid()) window.location.href = externalUrl;
         };
 
         if (isEmbeddedBrowser()) {
@@ -129,6 +139,9 @@
             if (error.code === 'auth/operation-not-supported-in-this-environment') {
                 return 'Google login is not supported in this browser environment. Try opening this page in Safari, Chrome, or your default browser.';
             }
+            if (error.code === 'auth/web-storage-unsupported' || /disallowed_useragent|embedded|webview/i.test(error.message || '')) {
+                return 'Instagram and other in-app browsers can block Google sign-in. Continue in Chrome, Safari, or your default browser.';
+            }
             if (error.code === 'auth/popup-blocked') {
                 return 'The browser blocked Google login. Please allow popups for this site or open it in Chrome/Safari.';
             }
@@ -151,7 +164,12 @@
 
         const signInWithGoogle = () => {
             if (isEmbeddedBrowser()) {
-                openInSecureBrowser();
+                setGoogleLoginLoading(true);
+                auth.signInWithRedirect(googleProvider).catch((redirectError) => {
+                    setGoogleLoginLoading(false);
+                    openInSecureBrowser();
+                    alert('Google login failed: ' + getAuthErrorMessage(redirectError));
+                });
                 return;
             }
 
