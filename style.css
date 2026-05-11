@@ -4230,6 +4230,46 @@ body.onboarding-spotlight-active #main-area {
     border-color: rgba(16, 185, 129, 0.35);
 }
 
+.profile-notification-panel {
+    margin-top: 20px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg);
+}
+
+.profile-notification-panel h3 {
+    margin: 0 0 14px;
+    color: var(--text-1);
+}
+
+.profile-toggle-row,
+.profile-setting-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 42px;
+    color: var(--text-1);
+    font-weight: 600;
+}
+
+.profile-toggle-row span,
+.profile-setting-field span {
+    flex: 1;
+    text-align: left;
+}
+
+.profile-toggle-row input[type="checkbox"] {
+    order: 2;
+    width: 18px;
+    height: 18px;
+}
+
+.profile-setting-field input {
+    max-width: 150px;
+}
+
 .wiki-control-btn {
     width: 34px;
     height: 34px;

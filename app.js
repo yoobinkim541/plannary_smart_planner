@@ -79,6 +79,13 @@ let onboardingSuppressTimer = null;
 let onboardingLastReposition = 0;
 let onboardingRepositionThrottleMs = 160;
 let taskCalendarAccessToken = null;
+const reminderNotificationTimers = new Map();
+const DEFAULT_NOTIFICATION_SETTINGS = {
+    dailyTasks: false,
+    dailyTime: '09:00',
+    reminders: true
+};
+let notificationSettings = { ...DEFAULT_NOTIFICATION_SETTINGS, ...loadNotificationSettings() };
 let onboardingRepositionFrame = null;
 let onboardingScrollSettleTimer = null;
 let onboardingLastTargetRect = null;
@@ -261,6 +268,18 @@ function showToast(message, type = 'info') {
 }
 window.showToast = showToast; // Export to global
 
+function loadNotificationSettings() {
+    try {
+        return JSON.parse(localStorage.getItem('planary-notification-settings') || '{}');
+    } catch (error) {
+        return {};
+    }
+}
+
+function saveNotificationSettings() {
+    localStorage.setItem('planary-notification-settings', JSON.stringify(notificationSettings));
+}
+
 const escapeHtml = (value) => String(value || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -346,6 +365,11 @@ const I18N = {
         notifyAtTime: '정시에 알림', notifyBefore10: '10분 전', notifyBefore30: '30분 전', notifyBefore60: '1시간 전',
         notifyBefore120: '2시간 전', notifyBefore1440: '1일 전', calendarSyncOn: '캘린더 연동됨',
         calendarSyncFailed: '캘린더 일정 생성 실패', calendarTaskSynced: 'Google Calendar에 일정이 추가되었습니다',
+        appleCalendarTask: 'Apple Calendar에 추가', appleCalendarDownloaded: 'Apple Calendar 일정 파일을 만들었습니다',
+        notificationSettings: '알림 설정', notifyDailyTasks: '오늘 할 일 요약 알림 받기', notifyDailyTime: '요약 알림 시간',
+        notifyReminderTime: '리마인더 시간에 알림 받기', allowBrowserNotifications: '브라우저 알림 허용',
+        notificationsAllowed: '브라우저 알림이 허용되었습니다', notificationsDenied: '브라우저 알림이 차단되어 있습니다',
+        todayTaskNotificationBody: '오늘 처리할 일이 {count}개 있습니다.', reminderNotificationBody: '{time} 예정된 작업입니다.',
         cancel: '취소', taskUpdated: '작업이 수정되었습니다.', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
         low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
         today: '오늘', active: '진행 중', noDate: '날짜 없음', deletePermanently: '영구 삭제',
@@ -565,6 +589,11 @@ const I18N = {
         notifyAtTime: 'At time', notifyBefore10: '10 min before', notifyBefore30: '30 min before', notifyBefore60: '1 hour before',
         notifyBefore120: '2 hours before', notifyBefore1440: '1 day before', calendarSyncOn: 'Calendar sync on',
         calendarSyncFailed: 'Calendar event creation failed', calendarTaskSynced: 'Added to Google Calendar',
+        appleCalendarTask: 'Add to Apple Calendar', appleCalendarDownloaded: 'Apple Calendar event file created',
+        notificationSettings: 'Notification settings', notifyDailyTasks: "Send today's task summary", notifyDailyTime: 'Summary notification time',
+        notifyReminderTime: 'Notify at reminder time', allowBrowserNotifications: 'Allow browser notifications',
+        notificationsAllowed: 'Browser notifications are allowed', notificationsDenied: 'Browser notifications are blocked',
+        todayTaskNotificationBody: 'You have {count} task(s) to handle today.', reminderNotificationBody: 'Scheduled for {time}.',
         cancel: 'Cancel', taskUpdated: 'Task updated.', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
         low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
         today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
@@ -895,6 +924,8 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#search-input', t('searchTasks'));
     setTitle('#task-img-upload-btn', t('uploadImageTitle'));
     setTitle('#task-calendar-connect-btn', t('calendarConnectTask'));
+    setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
+    setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
     const dueTimeInput = getEl('due-time');
     if (dueTimeInput) dueTimeInput.setAttribute('aria-label', t('dueTimeLabel'));
     const calendarReminderSelect = getEl('calendar-reminder-select');
@@ -985,6 +1016,12 @@ function applyLanguage(lang = currentLanguage) {
     if (profileLabels[2]) profileLabels[2].textContent = t('loginMethodsLabel');
     setText('#profile-language-label', t('languageLabel'));
     setText('#profile-font-label', t('appFontLabel'));
+    setText('#profile-notification-title', t('notificationSettings'));
+    setText('#notify-daily-tasks-label', t('notifyDailyTasks'));
+    setText('#notify-daily-time-label', t('notifyDailyTime'));
+    setText('#notify-reminders-label', t('notifyReminderTime'));
+    setText('#notification-permission-btn', t('allowBrowserNotifications'));
+    syncNotificationSettingsUI();
     setText('.profile-guide-panel h3', t('guideTitle'));
     setText('.profile-guide-panel p', t('guideDescription'));
     setText('#profile-guide-btn', t('replayGuide'));
@@ -1057,6 +1094,7 @@ function loadTodos() {
         updateDashboardUI();
         renderProjectManagementList();
         checkDueNotifications(); // Check for reminders when data updates
+        scheduleReminderNotifications();
     });
 }
 
@@ -2078,6 +2116,7 @@ function renderTodos(todos) {
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
                 <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">${t('edit')}</button>
+                ${todo.dueDate ? `<button class="tc-action-btn btn-apple-calendar" data-id="${todo.id}">Apple</button>` : ''}
                 <button class="tc-action-btn btn-archive" data-id="${todo.id}">${todo.archived ? t('restore') : t('archiveVerb')}</button>
             </div>`;
         todoList.appendChild(card);
@@ -2097,6 +2136,10 @@ function renderTodos(todos) {
     todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => {
         markGuideStepComplete('taskManage');
         openEditModal('todo', b.dataset.id);
+    });
+    todoList.querySelectorAll('.btn-apple-calendar').forEach(b => b.onclick = () => {
+        const task = allTodos.find(x => x.id === b.dataset.id);
+        if (task) downloadAppleCalendarEvent(task);
     });
 }
 
@@ -2298,6 +2341,7 @@ function updateDashboardUI() {
 
 function checkDueNotifications() {
     if (!('Notification' in window)) return;
+    if (!notificationSettings.dailyTasks) return;
     const today = new Date().toISOString().split('T')[0];
     const due = allTodos.filter(t => !t.completed && !t.archived && t.dueDate === today);
     
@@ -2332,6 +2376,51 @@ function showDueNotification(count) {
         new Notification("Planary Reminder", options);
     }
     localStorage.setItem('last-notified-date', today);
+}
+
+function notifyUser(title, body, tag) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const options = { body, icon: '/icon.svg', badge: '/icon.svg', tag };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options));
+    } else {
+        new Notification(title, options);
+    }
+}
+
+function scheduleReminderNotifications() {
+    reminderNotificationTimers.forEach(timer => clearTimeout(timer));
+    reminderNotificationTimers.clear();
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const now = Date.now();
+    if (notificationSettings.dailyTasks) {
+        const today = new Date();
+        const [hour, minute] = (notificationSettings.dailyTime || '09:00').split(':').map(Number);
+        const scheduled = new Date(today);
+        scheduled.setHours(hour || 9, minute || 0, 0, 0);
+        const todayKey = today.toISOString().slice(0, 10);
+        const activeToday = allTodos.filter(task => !task.completed && !task.archived && task.dueDate === todayKey);
+        if (activeToday.length && scheduled.getTime() > now) {
+            const timer = setTimeout(() => {
+                notifyUser('Planary', formatText('todayTaskNotificationBody', { count: activeToday.length }), 'daily-tasks');
+            }, scheduled.getTime() - now);
+            reminderNotificationTimers.set('daily-tasks', timer);
+        }
+    }
+
+    if (notificationSettings.reminders !== false) {
+        allTodos
+            .filter(task => !task.completed && !task.archived && task.dueDate && task.dueTime)
+            .forEach(task => {
+                const trigger = new Date(`${task.dueDate}T${task.dueTime}:00`).getTime();
+                if (!Number.isFinite(trigger) || trigger <= now) return;
+                const timer = setTimeout(() => {
+                    notifyUser(task.text || t('untitledTask'), formatText('reminderNotificationBody', { time: task.dueTime }), `task-${task.id}`);
+                }, trigger - now);
+                reminderNotificationTimers.set(`task-${task.id}`, timer);
+            });
+    }
 }
 
 function renderArchive() {
@@ -2657,6 +2746,64 @@ function closeTaskEditDialog() {
     setTaskModalOpen('task-edit-modal', false);
 }
 
+function syncNotificationSettingsUI() {
+    const dailyToggle = getEl('notify-daily-tasks-toggle');
+    const dailyTime = getEl('notify-daily-time');
+    const remindersToggle = getEl('notify-reminders-toggle');
+    const status = getEl('notification-status-text');
+    if (dailyToggle) dailyToggle.checked = !!notificationSettings.dailyTasks;
+    if (dailyTime) dailyTime.value = notificationSettings.dailyTime || '09:00';
+    if (remindersToggle) remindersToggle.checked = notificationSettings.reminders !== false;
+    if (status && 'Notification' in window) {
+        status.textContent = Notification.permission === 'granted'
+            ? t('notificationsAllowed')
+            : Notification.permission === 'denied'
+                ? t('notificationsDenied')
+                : '';
+    }
+}
+
+function bindNotificationSettings() {
+    const dailyToggle = getEl('notify-daily-tasks-toggle');
+    const dailyTime = getEl('notify-daily-time');
+    const remindersToggle = getEl('notify-reminders-toggle');
+    const permissionBtn = getEl('notification-permission-btn');
+    if (dailyToggle && !dailyToggle.dataset.bound) {
+        dailyToggle.dataset.bound = 'true';
+        dailyToggle.onchange = () => {
+            notificationSettings.dailyTasks = dailyToggle.checked;
+            saveNotificationSettings();
+            scheduleReminderNotifications();
+        };
+    }
+    if (dailyTime && !dailyTime.dataset.bound) {
+        dailyTime.dataset.bound = 'true';
+        dailyTime.onchange = () => {
+            notificationSettings.dailyTime = dailyTime.value || '09:00';
+            saveNotificationSettings();
+            scheduleReminderNotifications();
+        };
+    }
+    if (remindersToggle && !remindersToggle.dataset.bound) {
+        remindersToggle.dataset.bound = 'true';
+        remindersToggle.onchange = () => {
+            notificationSettings.reminders = remindersToggle.checked;
+            saveNotificationSettings();
+            scheduleReminderNotifications();
+        };
+    }
+    if (permissionBtn && !permissionBtn.dataset.bound) {
+        permissionBtn.dataset.bound = 'true';
+        permissionBtn.onclick = async () => {
+            if (!('Notification' in window)) return;
+            await Notification.requestPermission();
+            syncNotificationSettingsUI();
+            scheduleReminderNotifications();
+        };
+    }
+    syncNotificationSettingsUI();
+}
+
 async function ensureTaskCalendarAccess() {
     const user = auth?.currentUser || (typeof firebase !== 'undefined' ? firebase.auth().currentUser : null);
     if (!user) throw new Error(t('loginFirst'));
@@ -2706,6 +2853,52 @@ async function syncTaskToGoogleCalendar(task) {
     });
     if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
     return response.json();
+}
+
+function toIcsDate(date) {
+    return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function downloadAppleCalendarEvent(task) {
+    const event = buildTaskCalendarEvent(task);
+    if (!event) {
+        showToast(t('dueDateLabel') + ' / ' + t('dueTimeLabel'), 'error');
+        return;
+    }
+    const start = new Date(event.start.dateTime);
+    const end = new Date(event.end.dateTime);
+    const title = (event.summary || t('untitledTask')).replace(/([,;\\])/g, '\\$1');
+    const description = (event.description || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+    const minutes = Number(task.calendarReminderMinutes || 30);
+    const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Planary//Reminder//EN',
+        'BEGIN:VEVENT',
+        `UID:${task.id || Date.now()}@planary`,
+        `DTSTAMP:${toIcsDate(new Date())}`,
+        `DTSTART:${toIcsDate(start)}`,
+        `DTEND:${toIcsDate(end)}`,
+        `SUMMARY:${title}`,
+        `DESCRIPTION:${description}`,
+        'BEGIN:VALARM',
+        `TRIGGER:-PT${minutes}M`,
+        'ACTION:DISPLAY',
+        `DESCRIPTION:${title}`,
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(task.text || 'planary-event').replace(/[\\/:*?"<>|]/g, '-')}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast(t('appleCalendarDownloaded'), 'success');
 }
 
 async function saveTaskEditDialog() {
@@ -2827,6 +3020,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('app-font-select')) {
         getEl('app-font-select').onchange = (event) => applyAppFont(event.target.value);
     }
+    bindNotificationSettings();
 
     if (getEl('search-input')) getEl('search-input').oninput = () => applyFilters();
 
@@ -2906,6 +3100,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Calendar connect failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
             }
+        };
+    }
+
+    if (getEl('task-apple-calendar-btn')) {
+        getEl('task-apple-calendar-btn').onclick = () => {
+            const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), timeInput = getEl('due-time'), reminderInput = getEl('calendar-reminder-select');
+            const task = {
+                text: input?.value?.trim() || t('untitledTask'),
+                memo: memoInput?.value?.trim() || '',
+                dueDate: dateInput?.value || null,
+                dueTime: timeInput?.value || '09:00',
+                calendarReminderMinutes: Number(reminderInput?.value || 30)
+            };
+            downloadAppleCalendarEvent(task);
         };
     }
 

@@ -349,6 +349,9 @@
                         <button id="task-calendar-connect-btn" class="composer-icon-btn calendar-connect-btn" type="button" title="Google Calendar 연결">
                             GCal
                         </button>
+                        <button id="task-apple-calendar-btn" class="composer-icon-btn calendar-connect-btn" type="button" title="Apple Calendar에 추가">
+                            Apple
+                        </button>
                         <select id="priority-select">
                             <option value="low">낮음</option>
                             <option value="medium" selected>보통</option>
@@ -732,6 +735,24 @@
                         </select>
                     </div>
 
+                    <div class="profile-notification-panel">
+                        <h3 id="profile-notification-title">알림 설정</h3>
+                        <label class="profile-toggle-row">
+                            <input type="checkbox" id="notify-daily-tasks-toggle">
+                            <span id="notify-daily-tasks-label">오늘 할 일 요약 알림 받기</span>
+                        </label>
+                        <label class="profile-setting-field">
+                            <span id="notify-daily-time-label">요약 알림 시간</span>
+                            <input type="time" id="notify-daily-time" value="09:00">
+                        </label>
+                        <label class="profile-toggle-row">
+                            <input type="checkbox" id="notify-reminders-toggle">
+                            <span id="notify-reminders-label">리마인더 시간에 알림 받기</span>
+                        </label>
+                        <button id="notification-permission-btn" class="confirm-btn" type="button">브라우저 알림 허용</button>
+                        <p id="notification-status-text" class="profile-status-text"></p>
+                    </div>
+
                     <div class="profile-guide-panel">
                         <div>
                             <h3>가이드</h3>
@@ -971,7 +992,7 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v24"></script>
+    <script src="app.js?v=v25"></script>
     <script src="wiki.js?v=v12"></script>
 </body>
 
