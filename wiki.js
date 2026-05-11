@@ -594,6 +594,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProjectSelect();
         renderPageList();
         if (currentPageId) renderSubpages(currentPageId);
+        if (wikiTitleInput) wikiTitleInput.placeholder = tr('untitledDocument');
+        if (searchInput) searchInput.placeholder = tr('searchPages');
+        if (wikiProjectSelect) wikiProjectSelect.setAttribute('aria-label', tr('wikiProjectSelect'));
+        if (backBtn) {
+            backBtn.title = tr('backToList');
+            backBtn.setAttribute('aria-label', tr('backToList'));
+        }
         if (saveWikiBtn && !saveWikiBtn.disabled) saveWikiBtn.textContent = tr('saveChanges');
         if (deleteWikiBtn) deleteWikiBtn.textContent = tr('deletePage');
     });
