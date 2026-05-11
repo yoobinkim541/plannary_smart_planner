@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let calendarEvents = [];
     let allTodos = [];
     let allPages = [];
+    let uploadedWikiStorageUrls = new Set();
     let allProjects = [];
     let currentPageId = null;
     let currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverHeight: 180 };
@@ -518,6 +519,79 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'");
 
+    const getFirebaseStoragePathFromUrl = (url) => {
+        if (!url || typeof url !== 'string') return null;
+        try {
+            const parsed = new URL(url);
+            const marker = '/o/';
+            const index = parsed.pathname.indexOf(marker);
+            if (index === -1) return null;
+            return decodeURIComponent(parsed.pathname.slice(index + marker.length));
+        } catch (error) {
+            return null;
+        }
+    };
+
+    const collectStorageUrlsFromValue = (value, target = new Set()) => {
+        if (!value) return target;
+        if (typeof value === 'string') {
+            if (getFirebaseStoragePathFromUrl(value)) target.add(value);
+            return target;
+        }
+        if (Array.isArray(value)) {
+            value.forEach(item => collectStorageUrlsFromValue(item, target));
+            return target;
+        }
+        if (typeof value === 'object') {
+            Object.values(value).forEach(item => collectStorageUrlsFromValue(item, target));
+        }
+        return target;
+    };
+
+    const getWikiPageStorageUrls = (page) => {
+        const urls = new Set();
+        if (!page) return urls;
+        collectStorageUrlsFromValue(page.coverUrl, urls);
+        collectStorageUrlsFromValue(page.content, urls);
+        return urls;
+    };
+
+    const getLinkedWikiStorageUrls = (replacementPage = null, excludedPageIds = new Set()) => {
+        const urls = new Set();
+        allPages.forEach(page => {
+            if (excludedPageIds.has(page.id)) return;
+            getWikiPageStorageUrls(replacementPage && page.id === replacementPage.id ? replacementPage : page)
+                .forEach(url => urls.add(url));
+        });
+        return urls;
+    };
+
+    const deleteStorageUrls = async (urls) => {
+        if (!storage || !currentUser) return;
+        await Promise.allSettled([...urls].map(async (url) => {
+            const path = getFirebaseStoragePathFromUrl(url);
+            if (!path || !path.startsWith(`wiki/${currentUser.uid}/`)) return;
+            try {
+                await storage.ref().child(path).delete();
+            } catch (error) {
+                if (error.code !== 'storage/object-not-found') console.warn('[Wiki] Failed to delete orphaned file:', path, error);
+            }
+        }));
+    };
+
+    const deleteUnlinkedWikiStorageUrls = async (beforeUrls, linkedUrls) => {
+        const orphaned = new Set([...beforeUrls].filter(url => !linkedUrls.has(url)));
+        await deleteStorageUrls(orphaned);
+    };
+
+    const cleanupPendingWikiUploads = () => {
+        if (!uploadedWikiStorageUrls.size) return;
+        const linkedUrls = getLinkedWikiStorageUrls();
+        const pendingOrphans = new Set([...uploadedWikiStorageUrls].filter(url => !linkedUrls.has(url)));
+        uploadedWikiStorageUrls = new Set([...uploadedWikiStorageUrls].filter(url => linkedUrls.has(url)));
+        deleteStorageUrls(pendingOrphans);
+    };
+
     const parseMarkdownMath = (value) => {
         const text = decodeBasicHtml(value).trim();
         if (!text) return null;
@@ -820,6 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             url: downloadURL
                                         }
                                     });
+                                    uploadedWikiStorageUrls.add(downloadURL);
                                 });
                             }
                         );
@@ -1218,6 +1293,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openPage = (page) => {
         if (currentPageId === page.id) return;
+        cleanupPendingWikiUploads();
         currentPageId = page.id;
 
         // Notion-like: Hide list on small screens, show editor as full page
@@ -1252,6 +1328,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const closeEditor = () => {
+        cleanupPendingWikiUploads();
         currentPageId = null;
         pageWiki.classList.remove('editor-active');
         wikiEditorView.style.display = 'none';
@@ -1368,7 +1445,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadCoverFile = (file) => {
         if (!file || !currentUser || !storage) return Promise.reject(new Error(tr('loginFirstOrStorage')));
         const filePath = `wiki/${currentUser.uid}/covers/${Date.now()}_${file.name}`;
-        return storage.ref().child(filePath).put(file).then(snapshot => snapshot.ref.getDownloadURL());
+        return storage.ref().child(filePath).put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(url => {
+            uploadedWikiStorageUrls.add(url);
+            return url;
+        });
     };
 
     const chooseCoverImage = () => {
@@ -1520,7 +1600,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveWikiBtn) { saveWikiBtn.textContent = tr('saving'); saveWikiBtn.disabled = true; }
 
         try {
+            const previousPage = getCurrentPage();
+            const previousUrls = getWikiPageStorageUrls(previousPage);
             const contentData = normalizeEditorData(await editor.save());
+            const nextPage = {
+                ...(previousPage || {}),
+                id: currentPageId,
+                coverUrl: currentPageMeta.coverUrl || '',
+                content: contentData
+            };
             await db.collection('wiki_pages').doc(currentPageId).update({
                 title: title,
                 projectId,
@@ -1531,6 +1619,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 content: contentData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            const linkedUrls = getLinkedWikiStorageUrls(nextPage);
+            await deleteUnlinkedWikiStorageUrls(new Set([...previousUrls, ...uploadedWikiStorageUrls]), linkedUrls);
+            uploadedWikiStorageUrls = new Set([...uploadedWikiStorageUrls].filter(url => linkedUrls.has(url)));
             resetUndoHistory(contentData);
             resetMetaUndoHistory();
             if (saveStateEl) saveStateEl.textContent = tr('saved');
@@ -1579,7 +1670,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (deleteWikiBtn) {
-        deleteWikiBtn.onclick = () => {
+        deleteWikiBtn.onclick = async () => {
             if (!currentPageId) return;
             const descendantIds = getDescendantPageIds(currentPageId);
             const confirmMessage = descendantIds.length
@@ -1588,11 +1679,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirm(confirmMessage)) return;
 
             const batch = db.batch();
-            [currentPageId, ...descendantIds].forEach(pageId => {
+            const deletingIds = [currentPageId, ...descendantIds];
+            const deletingIdSet = new Set(deletingIds);
+            const deletingUrls = new Set();
+            deletingIds.forEach(pageId => {
+                getWikiPageStorageUrls(getPageById(pageId)).forEach(url => deletingUrls.add(url));
                 batch.delete(db.collection('wiki_pages').doc(pageId));
             });
 
-            batch.commit().then(() => {
+            batch.commit().then(async () => {
+                await deleteUnlinkedWikiStorageUrls(deletingUrls, getLinkedWikiStorageUrls(null, deletingIdSet));
                 goBackToList();
                 window.showToast(tr('pageDeleted'));
             }).catch(err => {

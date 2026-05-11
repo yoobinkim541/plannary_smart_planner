@@ -1369,16 +1369,66 @@ async function connectEmailPasswordLogin() {
 
 async function deleteCurrentUserData(uid) {
     const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    const storageUrls = new Set();
     for (const name of collections) {
         let snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
         while (!snapshot.empty) {
             const batch = db.batch();
-            snapshot.docs.forEach(doc => batch.delete(doc.ref));
+            snapshot.docs.forEach(doc => {
+                collectStorageUrlsFromValue(doc.data(), storageUrls);
+                batch.delete(doc.ref);
+            });
             await batch.commit();
             snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
         }
     }
+    await deleteStorageUrls(storageUrls);
     await db.collection('users').doc(uid).delete().catch(() => {});
+}
+
+function getFirebaseStoragePathFromUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    try {
+        const parsed = new URL(url);
+        const marker = '/o/';
+        const index = parsed.pathname.indexOf(marker);
+        if (index === -1) return null;
+        return decodeURIComponent(parsed.pathname.slice(index + marker.length));
+    } catch (error) {
+        return null;
+    }
+}
+
+function collectStorageUrlsFromValue(value, target = new Set()) {
+    if (!value) return target;
+    if (typeof value === 'string') {
+        if (getFirebaseStoragePathFromUrl(value)) target.add(value);
+        return target;
+    }
+    if (Array.isArray(value)) {
+        value.forEach(item => collectStorageUrlsFromValue(item, target));
+        return target;
+    }
+    if (typeof value === 'object') {
+        Object.values(value).forEach(item => collectStorageUrlsFromValue(item, target));
+    }
+    return target;
+}
+
+async function deleteStorageUrls(urls) {
+    if (!firebase?.storage) return;
+    const uid = auth?.currentUser?.uid;
+    const uniqueUrls = [...urls].filter(Boolean);
+    await Promise.allSettled(uniqueUrls.map(async (url) => {
+        const path = getFirebaseStoragePathFromUrl(url);
+        if (!path) return;
+        if (uid && !path.startsWith(`tasks/${uid}/`) && !path.startsWith(`wiki/${uid}/`)) return;
+        try {
+            await firebase.storage().ref().child(path).delete();
+        } catch (error) {
+            if (error.code !== 'storage/object-not-found') console.warn('[Storage] Failed to delete orphaned file:', path, error);
+        }
+    }));
 }
 
 async function reauthenticateForAccountDeletion(user) {
@@ -2574,7 +2624,12 @@ function renderArchive() {
         archiveListEl.appendChild(item);
     });
     archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => db.collection('todos').doc(b.dataset.id).update({ archived: false }));
-    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => confirm(t('permanentDeleteConfirm')) && db.collection('todos').doc(b.dataset.id).delete());
+    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = async () => {
+        if (!confirm(t('permanentDeleteConfirm'))) return;
+        const task = allTodos.find(item => item.id === b.dataset.id);
+        await db.collection('todos').doc(b.dataset.id).delete();
+        if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+    });
     window.refreshInspiration();
 }
 
@@ -2825,8 +2880,10 @@ function closeTaskDeleteDialog() {
 async function confirmTaskDelete() {
     if (!pendingDeleteTaskId || !db) return;
     const id = pendingDeleteTaskId;
+    const task = allTodos.find(item => item.id === id);
     closeTaskDeleteDialog();
     await db.collection('todos').doc(id).delete();
+    if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
 }
 
 function openTaskEditDialog(id) {
@@ -3293,6 +3350,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(calendarEvent?.id ? t('calendarTaskSynced') : t('added'));
         } catch (error) {
             console.error("Task creation failed:", error, payload);
+            if (imageUrl) await deleteStorageUrls(new Set([imageUrl]));
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
         }
     };
