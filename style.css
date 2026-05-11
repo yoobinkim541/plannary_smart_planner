@@ -598,9 +598,9 @@ textarea.composer-input {
 .tc-top {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
-    padding-right: 48px;
+    padding-right: 0;
     margin-bottom: 4px;
 }
 
@@ -609,6 +609,15 @@ textarea.composer-input {
     font-weight: 600;
     color: var(--text-1);
     min-width: 0;
+    flex: 1;
+}
+
+.tc-top-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .tc-status {
@@ -616,7 +625,6 @@ textarea.composer-input {
     height: 16px;
     border-radius: 50%;
     flex-shrink: 0;
-    margin-top: 2px;
 }
 
 .tc-status.green  { border: 2.5px solid var(--green); }
@@ -692,9 +700,6 @@ textarea.composer-input {
 
 /* Delete button */
 .tc-delete {
-    position: absolute;
-    top: 22px;
-    right: 20px;
     width: 34px;
     height: 34px;
     border-radius: 50%;
@@ -4211,6 +4216,20 @@ body.onboarding-spotlight-active #main-area {
     font-family: inherit;
 }
 
+.calendar-connect-btn {
+    min-width: 58px;
+    padding: 0 10px;
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: var(--blue);
+}
+
+.calendar-connect-btn.active {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--green);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
 .wiki-control-btn {
     width: 34px;
     height: 34px;
@@ -4460,6 +4479,12 @@ body.onboarding-spotlight-active #main-area {
     .wiki-widget-panel {
         width: 100%;
         transform: translateX(0);
+    }
+
+    .wiki-layout.wiki-widgets-collapsed .wiki-widget-panel {
+        transform: translateX(100%);
+        opacity: 0;
+        pointer-events: none;
     }
 }
 

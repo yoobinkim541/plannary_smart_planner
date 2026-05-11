@@ -78,6 +78,7 @@ let onboardingSuppressAutoScroll = false;
 let onboardingSuppressTimer = null;
 let onboardingLastReposition = 0;
 let onboardingRepositionThrottleMs = 160;
+let taskCalendarAccessToken = null;
 let onboardingRepositionFrame = null;
 let onboardingScrollSettleTimer = null;
 let onboardingLastTargetRect = null;
@@ -341,6 +342,10 @@ const I18N = {
         deleteConfirm: '삭제할까요?', deleteTaskTitle: '작업을 삭제할까요?', deleteTaskBody: '삭제한 작업은 되돌릴 수 없습니다. 필요한 내용은 삭제 전에 보관하거나 메모로 옮겨두세요.',
         deleteTaskCancel: '유지하기', deleteTaskConfirm: '삭제하기', editTaskTitle: '작업 수정', taskNameLabel: '작업명',
         taskMemoLabel: '메모', dueDateLabel: '마감일', projectSelectLabel: '프로젝트', saveTaskChanges: '변경사항 저장',
+        dueTimeLabel: '시간', calendarReminderLabel: '캘린더 알림', calendarConnectTask: 'Google Calendar 연결',
+        notifyAtTime: '정시에 알림', notifyBefore10: '10분 전', notifyBefore30: '30분 전', notifyBefore60: '1시간 전',
+        notifyBefore120: '2시간 전', notifyBefore1440: '1일 전', calendarSyncOn: '캘린더 연동됨',
+        calendarSyncFailed: '캘린더 일정 생성 실패', calendarTaskSynced: 'Google Calendar에 일정이 추가되었습니다',
         cancel: '취소', taskUpdated: '작업이 수정되었습니다.', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
         low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
         today: '오늘', active: '진행 중', noDate: '날짜 없음', deletePermanently: '영구 삭제',
@@ -556,6 +561,10 @@ const I18N = {
         deleteConfirm: 'Delete?', deleteTaskTitle: 'Delete this task?', deleteTaskBody: 'Deleted tasks cannot be restored. Archive it first if you may need it later.',
         deleteTaskCancel: 'Keep task', deleteTaskConfirm: 'Delete task', editTaskTitle: 'Edit task', taskNameLabel: 'Task name',
         taskMemoLabel: 'Note', dueDateLabel: 'Due date', projectSelectLabel: 'Project', saveTaskChanges: 'Save changes',
+        dueTimeLabel: 'Time', calendarReminderLabel: 'Calendar alert', calendarConnectTask: 'Connect Google Calendar',
+        notifyAtTime: 'At time', notifyBefore10: '10 min before', notifyBefore30: '30 min before', notifyBefore60: '1 hour before',
+        notifyBefore120: '2 hours before', notifyBefore1440: '1 day before', calendarSyncOn: 'Calendar sync on',
+        calendarSyncFailed: 'Calendar event creation failed', calendarTaskSynced: 'Added to Google Calendar',
         cancel: 'Cancel', taskUpdated: 'Task updated.', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
         low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
         today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
@@ -885,6 +894,17 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#memo-input', t('memoPlaceholder'));
     setPlaceholder('#search-input', t('searchTasks'));
     setTitle('#task-img-upload-btn', t('uploadImageTitle'));
+    setTitle('#task-calendar-connect-btn', t('calendarConnectTask'));
+    const dueTimeInput = getEl('due-time');
+    if (dueTimeInput) dueTimeInput.setAttribute('aria-label', t('dueTimeLabel'));
+    const calendarReminderSelect = getEl('calendar-reminder-select');
+    if (calendarReminderSelect) calendarReminderSelect.setAttribute('aria-label', t('calendarReminderLabel'));
+    setOptionText('#calendar-reminder-select option[value="0"]', t('notifyAtTime'));
+    setOptionText('#calendar-reminder-select option[value="10"]', t('notifyBefore10'));
+    setOptionText('#calendar-reminder-select option[value="30"]', t('notifyBefore30'));
+    setOptionText('#calendar-reminder-select option[value="60"]', t('notifyBefore60'));
+    setOptionText('#calendar-reminder-select option[value="120"]', t('notifyBefore120'));
+    setOptionText('#calendar-reminder-select option[value="1440"]', t('notifyBefore1440'));
     setOptionText('#priority-select option[value="low"]', t('low'));
     setOptionText('#priority-select option[value="medium"]', t('medium'));
     setOptionText('#priority-select option[value="high"]', t('high'));
@@ -981,6 +1001,14 @@ function applyLanguage(lang = currentLanguage) {
     setText('#task-edit-text-label', t('taskNameLabel'));
     setText('#task-edit-memo-label', t('taskMemoLabel'));
     setText('#task-edit-date-label', t('dueDateLabel'));
+    setText('#task-edit-time-label', t('dueTimeLabel'));
+    setText('#task-edit-calendar-label', t('calendarReminderLabel'));
+    setOptionText('#task-edit-calendar-reminder option[value="0"]', t('notifyAtTime'));
+    setOptionText('#task-edit-calendar-reminder option[value="10"]', t('notifyBefore10'));
+    setOptionText('#task-edit-calendar-reminder option[value="30"]', t('notifyBefore30'));
+    setOptionText('#task-edit-calendar-reminder option[value="60"]', t('notifyBefore60'));
+    setOptionText('#task-edit-calendar-reminder option[value="120"]', t('notifyBefore120'));
+    setOptionText('#task-edit-calendar-reminder option[value="1440"]', t('notifyBefore1440'));
     setText('#task-edit-priority-label', t('priorityLabel'));
     setText('#task-edit-project-label', t('projectSelectLabel'));
     setOptionText('#task-edit-priority option[value="low"]', t('low'));
@@ -2038,12 +2066,14 @@ function renderTodos(todos) {
         const priorityText = `${t(p)} ${t('priorityLabel')}`.toUpperCase();
 
         card.innerHTML = `
-            <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">&times;</button>
             <div class="tc-top">
                 <h3 class="tc-title">${todo.text}${dueBadge}</h3>
-                <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
+                <div class="tc-top-actions">
+                    <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
+                    <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">&times;</button>
+                </div>
             </div>
-            <div class="tc-subtitle">${priorityText} ${todo.dueDate ? '• 📅 ' + todo.dueDate : ''}</div>
+            <div class="tc-subtitle">${priorityText} ${todo.dueDate ? '• 📅 ' + todo.dueDate + (todo.dueTime ? ' ' + todo.dueTime : '') : ''}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
             ${img}<p class="tc-desc">${todo.memo || t('noNotes')}</p><div style="margin-top: 8px;">${tag}</div>
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
@@ -2611,6 +2641,8 @@ function openTaskEditDialog(id) {
     if (getEl('task-edit-text')) getEl('task-edit-text').value = item.text || '';
     if (getEl('task-edit-memo')) getEl('task-edit-memo').value = item.memo || '';
     if (getEl('task-edit-due-date')) getEl('task-edit-due-date').value = item.dueDate || '';
+    if (getEl('task-edit-due-time')) getEl('task-edit-due-time').value = item.dueTime || '';
+    if (getEl('task-edit-calendar-reminder')) getEl('task-edit-calendar-reminder').value = String(item.calendarReminderMinutes ?? 30);
     if (getEl('task-edit-priority')) getEl('task-edit-priority').value = item.priority || 'medium';
     renderTaskProjectSelect(getEl('task-edit-project'), item.projectId || '');
     setTaskModalOpen('task-edit-modal', true);
@@ -2623,6 +2655,57 @@ function openTaskEditDialog(id) {
 function closeTaskEditDialog() {
     editingTaskId = null;
     setTaskModalOpen('task-edit-modal', false);
+}
+
+async function ensureTaskCalendarAccess() {
+    const user = auth?.currentUser || (typeof firebase !== 'undefined' ? firebase.auth().currentUser : null);
+    if (!user) throw new Error(t('loginFirst'));
+    if (taskCalendarAccessToken) return taskCalendarAccessToken;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/calendar.events');
+    const result = await user.reauthenticateWithPopup(provider);
+    const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+    if (!credential || !credential.accessToken) throw new Error(t('calendarTokenMissing'));
+    taskCalendarAccessToken = credential.accessToken;
+    const connectBtn = getEl('task-calendar-connect-btn');
+    if (connectBtn) connectBtn.classList.add('active');
+    return taskCalendarAccessToken;
+}
+
+function buildTaskCalendarEvent(task) {
+    if (!task || !task.dueDate) return null;
+    const start = new Date(`${task.dueDate}T${task.dueTime || '09:00'}:00`);
+    if (Number.isNaN(start.getTime())) return null;
+    const end = new Date(start);
+    end.setMinutes(end.getMinutes() + 30);
+    const minutes = Number.isFinite(Number(task.calendarReminderMinutes)) ? Number(task.calendarReminderMinutes) : 30;
+    return {
+        summary: task.text || t('untitledTask'),
+        description: task.memo || '',
+        start: { dateTime: start.toISOString() },
+        end: { dateTime: end.toISOString() },
+        reminders: {
+            useDefault: false,
+            overrides: [{ method: 'popup', minutes }]
+        }
+    };
+}
+
+async function syncTaskToGoogleCalendar(task) {
+    if (!task || !task.dueDate || !task.syncCalendar) return null;
+    const token = await ensureTaskCalendarAccess();
+    const body = buildTaskCalendarEvent(task);
+    if (!body) return null;
+    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    return response.json();
 }
 
 async function saveTaskEditDialog() {
@@ -2638,6 +2721,8 @@ async function saveTaskEditDialog() {
         text,
         memo: (getEl('task-edit-memo')?.value || '').trim() || null,
         dueDate: getEl('task-edit-due-date')?.value || null,
+        dueTime: getEl('task-edit-due-time')?.value || null,
+        calendarReminderMinutes: Number(getEl('task-edit-calendar-reminder')?.value || 30),
         priority: ['low', 'medium', 'high'].includes(priority) ? priority : 'medium',
         projectId: getEl('task-edit-project')?.value || null
     });
@@ -2812,8 +2897,20 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    if (getEl('task-calendar-connect-btn')) {
+        getEl('task-calendar-connect-btn').onclick = async () => {
+            try {
+                await ensureTaskCalendarAccess();
+                showToast(t('calendarConnected'), 'success');
+            } catch (error) {
+                console.error('Calendar connect failed:', error);
+                showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            }
+        };
+    }
+
     if (getEl('add-btn')) getEl('add-btn').onclick = async () => {
-        const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), priorityInput = getEl('priority-select'), projectInput = getEl('todo-project-select');
+        const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), timeInput = getEl('due-time'), reminderInput = getEl('calendar-reminder-select'), priorityInput = getEl('priority-select'), projectInput = getEl('todo-project-select');
         const text = input.value.trim();
         if (!text || !currentUser) return;
 
@@ -2839,6 +2936,9 @@ document.addEventListener('DOMContentLoaded', () => {
             text,
             memo: memoInput.value.trim() || null,
             dueDate: dateInput.value || null,
+            dueTime: timeInput.value || null,
+            calendarReminderMinutes: Number(reminderInput?.value || 30),
+            syncCalendar: !!dateInput.value && !!taskCalendarAccessToken,
             priority: selectedPriority,
             projectId: projectInput.value || null,
             imageUrl,
@@ -2849,16 +2949,27 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
+            let calendarEvent = null;
+            if (payload.syncCalendar) {
+                try {
+                    calendarEvent = await syncTaskToGoogleCalendar(payload);
+                    if (calendarEvent?.id) payload.calendarEventId = calendarEvent.id;
+                } catch (calendarError) {
+                    console.error('Calendar sync failed:', calendarError);
+                    showToast(t('calendarSyncFailed') + ': ' + (calendarError.message || calendarError), 'error');
+                }
+            }
             await db.collection('todos').add(payload);
             markGuideStepComplete('taskCreate');
             if (payload.memo || payload.dueDate || payload.priority !== 'medium') markGuideStepComplete('taskDetails');
             input.value = '';
             memoInput.value = '';
             dateInput.value = '';
+            if (timeInput) timeInput.value = '';
             if (priorityInput) priorityInput.value = 'medium';
             if (projectInput) projectInput.value = '';
             if (getEl('remove-task-img')) getEl('remove-task-img').click();
-            showToast(t('added'));
+            showToast(calendarEvent?.id ? t('calendarTaskSynced') : t('added'));
         } catch (error) {
             console.error("Task creation failed:", error, payload);
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");

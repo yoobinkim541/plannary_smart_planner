@@ -337,6 +337,18 @@
                     <div class="composer-details">
                         <input type="text" id="memo-input" placeholder="메모 (선택)">
                         <input type="date" id="due-date">
+                        <input type="time" id="due-time" aria-label="리마인더 시간">
+                        <select id="calendar-reminder-select" aria-label="캘린더 알림">
+                            <option value="0">정시에 알림</option>
+                            <option value="10">10분 전</option>
+                            <option value="30" selected>30분 전</option>
+                            <option value="60">1시간 전</option>
+                            <option value="120">2시간 전</option>
+                            <option value="1440">1일 전</option>
+                        </select>
+                        <button id="task-calendar-connect-btn" class="composer-icon-btn calendar-connect-btn" type="button" title="Google Calendar 연결">
+                            GCal
+                        </button>
                         <select id="priority-select">
                             <option value="low">낮음</option>
                             <option value="medium" selected>보통</option>
@@ -884,6 +896,21 @@
                         <input id="task-edit-due-date" type="date">
                     </label>
                     <label class="task-edit-field">
+                        <span id="task-edit-time-label">시간</span>
+                        <input id="task-edit-due-time" type="time">
+                    </label>
+                    <label class="task-edit-field">
+                        <span id="task-edit-calendar-label">캘린더 알림</span>
+                        <select id="task-edit-calendar-reminder">
+                            <option value="0">정시에 알림</option>
+                            <option value="10">10분 전</option>
+                            <option value="30">30분 전</option>
+                            <option value="60">1시간 전</option>
+                            <option value="120">2시간 전</option>
+                            <option value="1440">1일 전</option>
+                        </select>
+                    </label>
+                    <label class="task-edit-field">
                         <span id="task-edit-priority-label">우선순위</span>
                         <select id="task-edit-priority">
                             <option value="low">낮음</option>
@@ -944,7 +971,7 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v23"></script>
+    <script src="app.js?v=v24"></script>
     <script src="wiki.js?v=v12"></script>
 </body>
 
