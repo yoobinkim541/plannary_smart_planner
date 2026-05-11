@@ -4,7 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let headingShortcutHandler = null;
     let undoStack = [];
     let undoCaptureTimer = null;
+    let markdownMathTimer = null;
     let isRestoringUndo = false;
+    let isConvertingMarkdownMath = false;
     let lastUndoSnapshot = '';
     let pageMetaUndoStack = [];
     let calendarAccessToken = null;
@@ -250,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const normalizeEditorData = (data) => {
         if (!data || !Array.isArray(data.blocks)) return { blocks: [] };
         const blocks = data.blocks
-            .map(normalizeEditorBlock)
+            .map((block) => convertMarkdownMathBlock(normalizeEditorBlock(block)))
             .filter(Boolean);
         return {
             time: data.time || Date.now(),
@@ -265,6 +267,68 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+
+    const decodeBasicHtml = (value) => String(value || '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/div>\s*<div>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+
+    const parseMarkdownMath = (value) => {
+        const text = decodeBasicHtml(value).trim();
+        if (!text) return null;
+        const patterns = [
+            /^\$\$([\s\S]+?)\$\$$/,
+            /^\\\[([\s\S]+?)\\\]$/,
+            /^\\\(([\s\S]+?)\\\)$/,
+            /^\$([^\n$]+?)\$$/
+        ];
+        for (const pattern of patterns) {
+            const match = text.match(pattern);
+            if (match && match[1] && match[1].trim()) return match[1].trim();
+        }
+        return null;
+    };
+
+    function convertMarkdownMathBlock(block) {
+        if (!block || block.type !== 'paragraph') return block;
+        const mathText = parseMarkdownMath(block.data?.text);
+        return mathText ? { type: 'math', data: { text: mathText } } : block;
+    }
+
+    const convertMarkdownMathData = (data) => {
+        const normalized = normalizeEditorData(data);
+        return {
+            ...normalized,
+            blocks: normalized.blocks.map(convertMarkdownMathBlock)
+        };
+    };
+
+    const scheduleMarkdownMathConversion = () => {
+        if (!editor || isRestoringUndo || isConvertingMarkdownMath) return;
+        clearTimeout(markdownMathTimer);
+        markdownMathTimer = setTimeout(async () => {
+            if (!editor || isRestoringUndo || isConvertingMarkdownMath) return;
+            try {
+                const current = normalizeEditorData(await editor.save());
+                const converted = convertMarkdownMathData(current);
+                if (serializeEditorData(current) === serializeEditorData(converted)) return;
+                isConvertingMarkdownMath = true;
+                await editor.render(converted);
+                markDirty();
+                scheduleUndoSnapshot();
+            } catch (error) {
+                console.warn('[Wiki] Markdown math conversion skipped:', error);
+            } finally {
+                isConvertingMarkdownMath = false;
+            }
+        }, 650);
+    };
 
     const serializeEditorData = (data) => JSON.stringify(normalizeEditorData(data));
     const formatDate = (value) => {
@@ -543,6 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onChange: () => {
                 // Proactively enable save button if disabled
                 if (saveWikiBtn) saveWikiBtn.disabled = false;
+                scheduleMarkdownMathConversion();
                 scheduleUndoSnapshot();
             }
         });
