@@ -466,6 +466,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- STATE & FIRESTORE BINDINGS ---
+    if (!db || typeof firebase === 'undefined' || !firebase.auth) {
+        return;
+    }
+
     firebase.auth().onAuthStateChanged(user => {
         if (user) {
             currentUser = user;
