@@ -463,6 +463,18 @@ const I18N = {
         toggleTheme: '테마 전환', toggleNavigation: '내비게이션 열기', attachment: '첨부파일',
         katexNotLoaded: 'KaTeX를 불러오지 못했습니다.', syntaxError: '문법 오류',
         closeProjectView: '프로젝트 보기 닫기', wikiProjectSelect: '위키 프로젝트',
+        wikiPageTree: '페이지', documentTools: '문서 도구', documentInfo: '문서 정보', recentlyUpdated: '최근 수정',
+        widgets: '위젯', collapsePageTree: '페이지 목록 접기', expandPageTree: '페이지 목록 펼치기',
+        collapseWidgets: '위젯 접기', expandWidgets: '위젯 펼치기', saved: '저장됨', unsavedChanges: '저장 안 됨',
+        noRecentUpdate: '최근 수정 없음', noSubpagesYet: '하위 페이지가 없습니다', noTodayWikiTasks: '오늘 표시할 작업이 없습니다',
+        untitledTask: '제목 없는 작업', untitledEvent: '제목 없는 일정', calendar: '캘린더', googleCalendarConnect: 'Google 연결',
+        calendarNotConnected: '연결 전입니다.', calendarConnected: 'Google Calendar 연결됨',
+        noCalendarEvents: '다가오는 일정이 없습니다', calendarTokenMissing: 'Calendar 권한 토큰을 받지 못했습니다',
+        calendarConnectFailed: '캘린더 연결 실패', calendarEventCreated: '일정을 만들었습니다',
+        calendarEventCreateFailed: '일정 생성 실패', createCalendarFromPage: '문서 제목으로 일정 만들기',
+        pageIconPrompt: '페이지 아이콘으로 쓸 이모지를 입력하세요.',
+        coverImagePrompt: '커버 이미지 URL을 붙여넣거나, 비워두고 확인을 누르면 파일을 업로드합니다.',
+        changeCover: '커버 변경',
         onboardingStepsLabel: '가이드 단계', koreanLanguage: '한국어', englishLanguage: 'English',
         close: '닫기'
     },
@@ -666,6 +678,18 @@ const I18N = {
         toggleTheme: 'Toggle theme', toggleNavigation: 'Toggle navigation', attachment: 'Attachment',
         katexNotLoaded: 'KaTeX not loaded.', syntaxError: 'Syntax Error',
         closeProjectView: 'Close project view', wikiProjectSelect: 'Wiki project',
+        wikiPageTree: 'Pages', documentTools: 'Document tools', documentInfo: 'Document info', recentlyUpdated: 'Recently updated',
+        widgets: 'Widgets', collapsePageTree: 'Collapse page tree', expandPageTree: 'Expand page tree',
+        collapseWidgets: 'Collapse widgets', expandWidgets: 'Expand widgets', saved: 'Saved', unsavedChanges: 'Unsaved',
+        noRecentUpdate: 'No recent update', noSubpagesYet: 'No subpages yet', noTodayWikiTasks: 'No tasks to show today',
+        untitledTask: 'Untitled task', untitledEvent: 'Untitled event', calendar: 'Calendar', googleCalendarConnect: 'Connect Google',
+        calendarNotConnected: 'Not connected.', calendarConnected: 'Google Calendar connected',
+        noCalendarEvents: 'No upcoming events', calendarTokenMissing: 'Could not get Calendar permission token',
+        calendarConnectFailed: 'Calendar connection failed', calendarEventCreated: 'Calendar event created',
+        calendarEventCreateFailed: 'Event creation failed', createCalendarFromPage: 'Create event from page title',
+        pageIconPrompt: 'Enter an emoji for this page icon.',
+        coverImagePrompt: 'Paste a cover image URL, or leave blank and press OK to upload a file.',
+        changeCover: 'Change cover',
         onboardingStepsLabel: 'Guide steps', koreanLanguage: 'Korean', englishLanguage: 'English',
         close: 'Close'
     }
@@ -873,6 +897,22 @@ function applyLanguage(lang = currentLanguage) {
     setText('#wiki-empty-view h2', t('wikiEmptyTitle'));
     setHtml('#wiki-empty-view p', t('wikiEmptyBody'));
     setText('#wiki-empty-create-btn span', t('createNewPage'));
+    setText('#wiki-tree-title', t('wikiPageTree'));
+    setText('#wiki-widget-title', t('documentTools'));
+    setText('#wiki-info-title', t('documentInfo'));
+    setText('#wiki-info-project-label', t('projectLabel'));
+    setText('#wiki-info-updated-label', t('recentlyUpdated'));
+    setText('#wiki-info-subpages-label', t('subpages'));
+    setText('#wiki-widget-subpages-title', t('subpages'));
+    setText('#wiki-widget-new-subpage-btn', t('newSubpage'));
+    setText('#wiki-widget-tasks-title', t('todayFocusTitle'));
+    setText('#wiki-widget-calendar-title', t('calendar'));
+    setText('#wiki-calendar-connect-btn', t('googleCalendarConnect'));
+    setText('#wiki-calendar-create-btn', t('createCalendarFromPage'));
+    setText('#wiki-cover-btn', t('changeCover'));
+    setTitle('#wiki-tree-toggle-btn', t('collapsePageTree'));
+    setTitle('#wiki-widget-toggle-btn', t('collapseWidgets'));
+    setTitle('#wiki-widget-close-btn', t('collapseWidgets'));
     const wikiStepList = getEl('onboarding-step-list');
     if (wikiStepList) wikiStepList.setAttribute('aria-label', t('onboardingStepsLabel'));
     setText('#page-archive .main-header h1', t('archiveTitle'));

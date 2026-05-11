@@ -503,6 +503,12 @@
                 <div class="wiki-layout">
                     <!-- Wiki Page List -->
                     <div class="wiki-sidebar">
+                        <div class="wiki-sidebar-top">
+                            <button id="wiki-tree-toggle-btn" class="wiki-control-btn" type="button" aria-expanded="true" title="페이지 목록 접기">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                            </button>
+                            <span id="wiki-tree-title">페이지</span>
+                        </div>
                         <div class="search-box">
                             <input type="text" id="wiki-search-input" placeholder="페이지 검색...">
                         </div>
@@ -513,21 +519,32 @@
 
                     <!-- Editor UI -->
                     <div class="wiki-editor-container" id="wiki-editor-view" style="display: none;">
+                        <div class="wiki-cover" id="wiki-cover">
+                            <button id="wiki-cover-btn" class="wiki-cover-action" type="button">커버 변경</button>
+                        </div>
                         <div class="wiki-editor-header">
                             <button id="wiki-back-btn" class="wiki-icon-btn mobile-only" title="목록으로 돌아가기">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                             </button>
+                            <button id="wiki-icon-btn" class="wiki-page-icon-btn" type="button" title="페이지 아이콘 변경">📄</button>
                             <div class="wiki-title-wrap">
-                                <div class="wiki-title-row">
-                                    <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="제목 없는 문서">
-                                </div>
                                 <div class="wiki-project-control">
                                     <label for="wiki-project-select">프로젝트</label>
                                 <select id="wiki-project-select" class="wiki-project-select" aria-label="위키 프로젝트">
                                     <option value="">프로젝트 없음</option>
                                 </select>
                                 </div>
+                                <div class="wiki-title-row">
+                                    <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="제목 없는 문서">
+                                </div>
+                                <div class="wiki-meta-row">
+                                    <span id="wiki-save-state">저장됨</span>
+                                    <span id="wiki-updated-at">최근 수정 없음</span>
+                                </div>
                             </div>
+                            <button id="wiki-widget-toggle-btn" class="wiki-control-btn" type="button" aria-expanded="true" title="위젯 접기">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                            </button>
                         </div>
                         <div id="wiki-upload-progress" class="upload-progress-container" style="display: none;">
                             <div class="progress-bar-bg">
@@ -569,6 +586,43 @@
                             </button>
                         </div>
                     </div>
+
+                    <aside class="wiki-widget-panel" id="wiki-widget-panel" aria-label="위키 위젯">
+                        <div class="wiki-widget-panel-header">
+                            <strong id="wiki-widget-title">문서 도구</strong>
+                            <button id="wiki-widget-close-btn" class="wiki-icon-btn" type="button" title="위젯 접기">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                            </button>
+                        </div>
+                        <section class="wiki-widget-card">
+                            <h3 id="wiki-info-title">문서 정보</h3>
+                            <div class="wiki-info-list">
+                                <div><span id="wiki-info-project-label">프로젝트</span><strong id="wiki-info-project">-</strong></div>
+                                <div><span id="wiki-info-updated-label">최근 수정</span><strong id="wiki-info-updated">-</strong></div>
+                                <div><span id="wiki-info-subpages-label">하위 페이지</span><strong id="wiki-info-subpages">0</strong></div>
+                            </div>
+                        </section>
+                        <section class="wiki-widget-card">
+                            <div class="wiki-widget-card-head">
+                                <h3 id="wiki-widget-subpages-title">하위 페이지</h3>
+                                <button id="wiki-widget-new-subpage-btn" class="text-link-btn" type="button">추가</button>
+                            </div>
+                            <div id="wiki-widget-subpages-list" class="wiki-widget-list"></div>
+                        </section>
+                        <section class="wiki-widget-card">
+                            <h3 id="wiki-widget-tasks-title">오늘 작업</h3>
+                            <div id="wiki-widget-tasks-list" class="wiki-widget-list"></div>
+                        </section>
+                        <section class="wiki-widget-card">
+                            <div class="wiki-widget-card-head">
+                                <h3 id="wiki-widget-calendar-title">캘린더</h3>
+                                <button id="wiki-calendar-connect-btn" class="text-link-btn" type="button">Google 연결</button>
+                            </div>
+                            <div id="wiki-calendar-status" class="wiki-widget-muted">연결 전입니다.</div>
+                            <div id="wiki-calendar-list" class="wiki-widget-list"></div>
+                            <button id="wiki-calendar-create-btn" class="wiki-small-action" type="button">문서 제목으로 일정 만들기</button>
+                        </section>
+                    </aside>
                 </div>
             </section>
 
@@ -890,8 +944,8 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v22"></script>
-    <script src="wiki.js?v=v11"></script>
+    <script src="app.js?v=v23"></script>
+    <script src="wiki.js?v=v12"></script>
 </body>
 
 </html>
