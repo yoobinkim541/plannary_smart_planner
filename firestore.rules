@@ -162,7 +162,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, create, update: if isOwner(userId) &&
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
         request.resource.data.uid == userId &&
         hasOnlyKeys([
           'uid', 'email', 'displayName', 'onboardingCompleted',
