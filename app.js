@@ -1082,6 +1082,7 @@ function applyLanguage(lang = currentLanguage) {
     if (supportedSchool) supportedSchool.textContent = t('eclassSupportedSeoultech');
     setText('#profile-eclass-request-text', t('eclassRequestText'));
     setText('#profile-eclass-request-link', t('eclassRequestSchool'));
+    placeEclassPanelNearProfileTop();
     updateEclassStatusBadge();
     setText('.profile-guide-panel h3', t('guideTitle'));
     setText('.profile-guide-panel p', t('guideDescription'));
@@ -1168,6 +1169,14 @@ function updateEclassStatusBadge() {
     const connected = !!eclassStatus?.connected;
     badge.textContent = connected ? t('eclassConnected') : t('eclassDisconnected');
     badge.classList.toggle('connected', connected);
+}
+
+function placeEclassPanelNearProfileTop() {
+    const panel = getEl('profile-eclass-panel');
+    const languagePanel = document.querySelector('.profile-language-panel');
+    if (panel && languagePanel && panel.previousElementSibling !== languagePanel.previousElementSibling) {
+        languagePanel.parentNode.insertBefore(panel, languagePanel);
+    }
 }
 
 async function getAuthHeaders() {
@@ -3257,6 +3266,7 @@ try {
 } catch (e) { console.error("Firebase Init Error", e); }
 
 document.addEventListener('DOMContentLoaded', () => {
+    placeEclassPanelNearProfileTop();
     // Auth State Listener
     if (auth) {
         auth.onAuthStateChanged(user => {
