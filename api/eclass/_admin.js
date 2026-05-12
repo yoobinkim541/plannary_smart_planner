@@ -1,12 +1,48 @@
 const admin = require('firebase-admin');
 
+function parseServiceAccount(raw) {
+  if (!raw) return null;
+  const value = String(raw).trim();
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    try {
+      return JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
+    } catch (decodeError) {
+      throw new Error('Invalid Firebase service account JSON');
+    }
+  }
+}
+
+function getServiceAccountFromEnv() {
+  const parsed = parseServiceAccount(
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
+    process.env.FIREBASE_SERVICE_ACCOUNT ||
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  );
+  if (parsed) return parsed;
+
+  if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    return {
+      project_id: process.env.FIREBASE_PROJECT_ID || 'planary-a2f6b',
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+    };
+  }
+
+  return null;
+}
+
 function getAdmin() {
   if (admin.apps.length) return admin;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (raw) {
-    const credentials = JSON.parse(raw);
+  const credentials = getServiceAccountFromEnv();
+  if (credentials) {
     admin.initializeApp({ credential: admin.credential.cert(credentials) });
   } else {
+    if (process.env.VERCEL) {
+      throw new Error('Missing Firebase Admin credentials. Set FIREBASE_SERVICE_ACCOUNT_KEY in Vercel environment variables.');
+    }
     admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'planary-a2f6b' });
   }
   return admin;

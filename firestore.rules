@@ -141,10 +141,10 @@ service cloud.firestore {
       (!request.resource.data.keys().hasAny(['projectId']) || isStringOrNull(request.resource.data.projectId)) &&
       (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
       (!request.resource.data.keys().hasAny(['coverUrl']) || isStringOrNull(request.resource.data.coverUrl)) &&
-      (!request.resource.data.keys().hasAny(['coverPosition']) || request.resource.data.coverPosition is number) &&
-      (!request.resource.data.keys().hasAny(['coverPositionX']) || request.resource.data.coverPositionX is number) &&
-      (!request.resource.data.keys().hasAny(['coverHeight']) || request.resource.data.coverHeight is number) &&
-      (!request.resource.data.keys().hasAny(['coverZoom']) || request.resource.data.coverZoom is number) &&
+      (!request.resource.data.keys().hasAny(['coverPosition']) || isNumberOrNull(request.resource.data.coverPosition)) &&
+      (!request.resource.data.keys().hasAny(['coverPositionX']) || isNumberOrNull(request.resource.data.coverPositionX)) &&
+      (!request.resource.data.keys().hasAny(['coverHeight']) || isNumberOrNull(request.resource.data.coverHeight)) &&
+      (!request.resource.data.keys().hasAny(['coverZoom']) || isNumberOrNull(request.resource.data.coverZoom)) &&
       (!request.resource.data.keys().hasAny(['coverCropMode']) || isStringOrNull(request.resource.data.coverCropMode)) &&
       request.resource.data.content is map &&
       isTimestampOrNull(request.resource.data.createdAt) &&
