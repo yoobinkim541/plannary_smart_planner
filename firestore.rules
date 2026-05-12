@@ -68,7 +68,7 @@ service cloud.firestore {
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
         'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
         'dueTime', 'calendarReminderMinutes', 'syncCalendar', 'calendarEventId',
-        'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'syncedAt'
+        'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt'
       ]) &&
       request.resource.data.text is string &&
       request.resource.data.text.size() > 0 &&
@@ -84,6 +84,7 @@ service cloud.firestore {
       (!request.resource.data.keys().hasAny(['sourceItemId']) || isStringOrNull(request.resource.data.sourceItemId)) &&
       (!request.resource.data.keys().hasAny(['sourceUrl']) || isStringOrNull(request.resource.data.sourceUrl)) &&
       (!request.resource.data.keys().hasAny(['courseTitle']) || isStringOrNull(request.resource.data.courseTitle)) &&
+      (!request.resource.data.keys().hasAny(['ddayText']) || isStringOrNull(request.resource.data.ddayText)) &&
       (!request.resource.data.keys().hasAny(['syncedAt']) || isTimestampOrNull(request.resource.data.syncedAt)) &&
       request.resource.data.priority is string &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&

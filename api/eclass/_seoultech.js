@@ -27,6 +27,17 @@ function parseDate(text) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function parseDday(text) {
+  const source = String(text || '').replace(/\s+/g, ' ');
+  const match = source.match(/D\s*[-+]\s*(\d+)|D\s*day\s*[:：]?\s*(\d+)/i);
+  if (!match) return null;
+  const days = Number(match[1] || match[2]);
+  if (!Number.isFinite(days)) return null;
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function classify(text, href) {
   const value = `${text} ${href}`.toLowerCase();
   if (/assign|과제|homework|report/.test(value)) return 'assignment';
@@ -72,7 +83,7 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie }
       const type = classify(title, href);
       if (!type || title.length < 2) return;
       const containerText = link.closest('li, tr, .card, .activity, .coursebox, div').text().replace(/\s+/g, ' ').trim();
-      const dueDate = parseDate(containerText);
+      const dueDate = parseDate(containerText) || parseDday(containerText);
       const url = toAbsoluteUrl(page.url, href);
       const key = `${type}:${url}`;
       items.set(key, {
@@ -81,6 +92,7 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie }
         title,
         courseTitle: containerText.slice(0, 120) || 'SeoulTech e-Class',
         dueDate,
+        ddayText: (containerText.match(/D\s*[-+]\s*\d+|D\s*day\s*[:：]?\s*\d+/i) || [null])[0],
         url
       });
     });

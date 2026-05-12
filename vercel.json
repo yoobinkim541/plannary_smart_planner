@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/eclass/sync",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ],
   "headers": [

@@ -16,7 +16,7 @@ async function mirrorItemToTodo(db, admin, uid, item) {
   const payload = {
     uid,
     text: item.title,
-    memo: item.courseTitle || null,
+    memo: [item.courseTitle, item.ddayText].filter(Boolean).join(' · ') || null,
     dueDate: item.dueDate || null,
     dueTime: item.dueDate ? dueTimeFor(item.type) : null,
     calendarReminderMinutes: item.type === 'assignment' ? 1440 : 60,
@@ -29,6 +29,7 @@ async function mirrorItemToTodo(db, admin, uid, item) {
     sourceItemId: item.externalId,
     sourceUrl: item.url,
     courseTitle: item.courseTitle || null,
+    ddayText: item.ddayText || null,
     syncedAt: admin.firestore.FieldValue.serverTimestamp()
   };
   if (todoQuery.empty) {

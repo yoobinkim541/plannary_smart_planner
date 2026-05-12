@@ -79,6 +79,7 @@ let onboardingSuppressTimer = null;
 let onboardingLastReposition = 0;
 let onboardingRepositionThrottleMs = 160;
 let eclassStatus = null;
+let eclassForegroundSyncTimer = null;
 let taskCalendarAccessToken = null;
 const reminderNotificationTimers = new Map();
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -555,7 +556,7 @@ const I18N = {
         blockMoveFailed: '블록 이동 실패',
         eclassTitle: 'E-class 연동', eclassDescription: '서울과기대 e-Class 강의와 과제를 작업에 연결합니다.',
         eclassDisconnected: '연결 전', eclassConnected: '연결됨', eclassUrl: 'E-class URL', eclassCookie: '세션 쿠키',
-        eclassHelp: '로그인된 브라우저의 e-Class 세션 쿠키를 저장하면 서버가 5분마다 온라인 강의와 과제를 가져옵니다.',
+        eclassHelp: '로그인된 브라우저의 e-Class 세션 쿠키를 저장하면 앱 사용 중 5분마다, 서버에서는 하루 1회 강의와 과제를 가져옵니다.',
         eclassSave: '연결 저장', eclassSyncNow: '지금 동기화', eclassSaving: '연결 저장 중...',
         eclassSaved: 'E-class 연결이 저장되었습니다.', eclassSyncing: '동기화 중...', eclassSynced: '{count}개 항목을 동기화했습니다.',
         eclassFailed: 'E-class 처리 실패', eclassCookieRequired: '세션 쿠키를 입력해주세요.',
@@ -800,7 +801,7 @@ const I18N = {
         coverZoom: 'Zoom', resetCover: 'Reset', dragBlock: 'Move block', blockMoveFailed: 'Block move failed',
         eclassTitle: 'E-class sync', eclassDescription: 'Connect SeoulTech e-Class lectures and assignments to tasks.',
         eclassDisconnected: 'Not connected', eclassConnected: 'Connected', eclassUrl: 'E-class URL', eclassCookie: 'Session cookie',
-        eclassHelp: 'Save the session cookie from your logged-in e-Class browser so the server can fetch lectures and assignments every 5 minutes.',
+        eclassHelp: 'Save the session cookie from your logged-in e-Class browser. The app syncs every 5 minutes while open, and the server syncs once daily.',
         eclassSave: 'Save connection', eclassSyncNow: 'Sync now', eclassSaving: 'Saving connection...',
         eclassSaved: 'E-class connection saved.', eclassSyncing: 'Syncing...', eclassSynced: 'Synced {count} items.',
         eclassFailed: 'E-class request failed', eclassCookieRequired: 'Enter a session cookie.',
@@ -1248,6 +1249,22 @@ async function syncEclassNow() {
     } finally {
         if (button) button.textContent = t('eclassSyncNow');
     }
+}
+
+function startEclassForegroundSync() {
+    clearInterval(eclassForegroundSyncTimer);
+    eclassForegroundSyncTimer = setInterval(async () => {
+        if (!currentUser || !eclassStatus?.connected || document.hidden) return;
+        try {
+            await fetch('/api/eclass/sync', {
+                method: 'POST',
+                headers: await getAuthHeaders(),
+                body: JSON.stringify({ uid: currentUser.uid })
+            });
+        } catch (error) {
+            console.warn('Foreground E-class sync failed:', error);
+        }
+    }, 5 * 60 * 1000);
 }
 
 function loadNotes() {
@@ -3244,6 +3261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isAuthPage) window.location.replace('/');
                 else { 
                     loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects(); loadEclassStatus();
+                    startEclassForegroundSync();
                     showOnboardingIfNeeded(user);
                 }
             }
