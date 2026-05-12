@@ -1,9 +1,11 @@
-const CACHE_NAME = 'todo-pwa-cache-v63';
+const CACHE_NAME = 'todo-pwa-cache-v64';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
   '/landing.html',
+  '/privacy.html',
+  '/terms.html',
   '/landing.css',
   '/style.css',
   '/app.js',
@@ -20,6 +22,8 @@ const APP_SHELL_ASSETS = new Set([
   '/',
   '/index.html',
   '/landing.html',
+  '/privacy.html',
+  '/terms.html',
   '/landing.css',
   '/style.css',
   '/app.js',

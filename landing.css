@@ -122,6 +122,32 @@ body.landing-page {
     gap: 12px;
 }
 
+.landing-footer {
+    width: min(var(--landing-content), calc(100% - (var(--landing-page-gutter) * 2)));
+    margin: 0 auto;
+    padding: 28px 0 36px;
+    border-top: 1px solid var(--landing-line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    color: var(--landing-muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.landing-footer nav {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.landing-footer a {
+    color: #334155;
+    text-decoration: none;
+}
+
 .landing-btn {
     min-height: 44px;
     padding: 0 24px;
@@ -774,6 +800,94 @@ body.landing-page {
     line-height: 1.8;
 }
 
+.legal-page {
+    background: #ffffff;
+}
+
+.legal-shell {
+    width: min(920px, calc(100% - (var(--landing-page-gutter) * 2)));
+    margin: 0 auto;
+    padding: clamp(34px, 6vw, 86px) 0 96px;
+}
+
+.legal-hero {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.legal-eyebrow {
+    margin: 0;
+    color: var(--landing-blue);
+    font-size: 0.82rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.legal-hero h1 {
+    margin: 0;
+    color: var(--landing-ink);
+    font-size: clamp(2.2rem, 5vw, 4rem);
+    line-height: 1.04;
+    letter-spacing: 0;
+}
+
+.legal-hero p {
+    margin: 0;
+    max-width: 680px;
+    color: #475569;
+    font-size: clamp(1rem, 2vw, 1.18rem);
+    line-height: 1.72;
+}
+
+.legal-hero span {
+    color: var(--landing-muted);
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.legal-card {
+    border: 1px solid var(--landing-line);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 16px 50px rgba(15, 23, 42, 0.06);
+    padding: clamp(24px, 4vw, 46px);
+}
+
+.legal-card section + section {
+    margin-top: 34px;
+}
+
+.legal-card h2 {
+    margin: 0 0 12px;
+    color: var(--landing-ink);
+    font-size: 1.2rem;
+    line-height: 1.35;
+    letter-spacing: 0;
+}
+
+.legal-card p,
+.legal-card li {
+    color: #475569;
+    font-size: 0.98rem;
+    line-height: 1.78;
+}
+
+.legal-card p {
+    margin: 0;
+}
+
+.legal-card ul {
+    margin: 10px 0 0;
+    padding-left: 20px;
+}
+
+.legal-card a {
+    color: var(--landing-blue);
+    font-weight: 800;
+}
+
 @media (max-width: 960px) {
     :root {
         --landing-page-gutter: 24px;
@@ -922,6 +1036,11 @@ body.landing-page {
         min-height: 38px;
         padding: 0 13px;
         font-size: 0.8rem;
+    }
+
+    .landing-footer {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .landing-hero,
