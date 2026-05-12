@@ -4516,9 +4516,85 @@ body.onboarding-spotlight-active #main-area {
     background: var(--bg);
 }
 
-.profile-notification-panel h3 {
+.profile-notification-panel h3,
+.profile-eclass-panel h3 {
     margin: 0 0 14px;
     color: var(--text-1);
+}
+
+.profile-eclass-panel {
+    margin-top: 20px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg);
+}
+
+.profile-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.profile-panel-head p {
+    margin: 4px 0 0;
+    color: var(--text-2);
+    font-size: 0.9rem;
+}
+
+.profile-status-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.profile-status-badge.connected {
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #059669;
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.profile-eclass-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.profile-eclass-support {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.profile-eclass-support summary {
+    cursor: pointer;
+    font-weight: 800;
+    color: var(--text-1);
+}
+
+.profile-eclass-support ul {
+    margin: 12px 0 8px;
+    padding-left: 18px;
+    color: var(--text-1);
+}
+
+.profile-eclass-support p {
+    margin: 8px 0;
+    color: var(--text-2);
+    font-size: 0.88rem;
 }
 
 .profile-toggle-row,
@@ -4599,8 +4675,9 @@ body.onboarding-spotlight-active #main-area {
 }
 
 .wiki-cover[data-cover-url] {
-    background-size: cover;
-    background-position: center var(--wiki-cover-position, 50%);
+    background-size: cover, var(--wiki-cover-zoom, 100%) auto;
+    background-position: center, var(--wiki-cover-position-x, 50%) var(--wiki-cover-position, 50%);
+    background-repeat: no-repeat;
 }
 
 .wiki-cover-actions {
@@ -4654,6 +4731,57 @@ body.onboarding-spotlight-active #main-area {
 .wiki-cover-panel input[type="range"] {
     width: 100%;
     accent-color: var(--blue);
+}
+
+.ce-block {
+    position: relative;
+}
+
+.wiki-block-drag-handle {
+    position: absolute;
+    left: -30px;
+    top: 9px;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-2);
+    opacity: 0;
+    cursor: grab;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.ce-block:hover .wiki-block-drag-handle,
+.wiki-block-drag-handle:focus-visible {
+    opacity: 1;
+    background: var(--bg);
+}
+
+.wiki-block-dragging {
+    opacity: 0.55;
+}
+
+.wiki-block-drop-before::before,
+.wiki-block-drop-after::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--blue);
+}
+
+.wiki-block-drop-before::before {
+    top: -3px;
+}
+
+.wiki-block-drop-after::after {
+    bottom: -3px;
 }
 
 .wiki-editor-container {
@@ -4859,6 +4987,23 @@ body.onboarding-spotlight-active #main-area {
         left: 12px;
         bottom: 52px;
         width: auto;
+    }
+
+    .wiki-block-drag-handle {
+        left: -8px;
+        top: 7px;
+        opacity: 1;
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+    }
+
+    .profile-panel-head {
+        flex-direction: column;
+    }
+
+    .profile-eclass-actions .confirm-btn,
+    .profile-eclass-actions .text-link-btn {
+        width: 100%;
+        justify-content: center;
     }
 
     .wiki-page-icon-btn {

@@ -78,6 +78,8 @@ let onboardingSuppressAutoScroll = false;
 let onboardingSuppressTimer = null;
 let onboardingLastReposition = 0;
 let onboardingRepositionThrottleMs = 160;
+let eclassStatus = null;
+let eclassForegroundSyncTimer = null;
 let taskCalendarAccessToken = null;
 const reminderNotificationTimers = new Map();
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -549,7 +551,17 @@ const I18N = {
         calendarEventCreateFailed: '일정 생성 실패', createCalendarFromPage: '문서 제목으로 일정 만들기',
         pageIconPrompt: '페이지 아이콘으로 쓸 이모지를 입력하세요.',
         coverImagePrompt: '커버 이미지 URL을 붙여넣거나, 비워두고 확인을 누르면 파일을 업로드합니다.',
-        adjustCover: '위치/면적', coverPosition: '이미지 위치', coverHeight: '보이는 면적', resetCover: '기본값',
+        adjustCover: '위치/면적', coverPosition: '이미지 위치', coverPositionX: '가로 위치', coverPositionY: '세로 위치',
+        coverHeight: '보이는 면적', coverZoom: '확대', resetCover: '기본값', dragBlock: '블록 이동',
+        blockMoveFailed: '블록 이동 실패',
+        eclassTitle: 'E-class 연동', eclassDescription: '서울과기대 e-Class 강의와 과제를 작업에 연결합니다.',
+        eclassDisconnected: '연결 전', eclassConnected: '연결됨', eclassUrl: 'E-class URL', eclassCookie: '세션 쿠키',
+        eclassHelp: '로그인된 브라우저의 e-Class 세션 쿠키를 저장하면 앱 사용 중 5분마다, 서버에서는 하루 1회 강의와 과제를 가져옵니다.',
+        eclassSave: '연결 저장', eclassSyncNow: '지금 동기화', eclassSaving: '연결 저장 중...',
+        eclassSaved: 'E-class 연결이 저장되었습니다.', eclassSyncing: '동기화 중...', eclassSynced: '{count}개 항목을 동기화했습니다.',
+        eclassFailed: 'E-class 처리 실패', eclassCookieRequired: '세션 쿠키를 입력해주세요.',
+        eclassSupportedSchools: '지원 학교 보기', eclassSupportedSeoultech: '서울과학기술대학교 e-Class',
+        eclassRequestText: '다른 학교 연동이 필요하면 이메일로 요청해주세요.', eclassRequestSchool: '학교 추가 요청',
         changeCover: '커버 변경',
         onboardingStepsLabel: '가이드 단계', koreanLanguage: '한국어', englishLanguage: 'English',
         close: '닫기'
@@ -786,7 +798,17 @@ const I18N = {
         calendarEventCreateFailed: 'Event creation failed', createCalendarFromPage: 'Create event from page title',
         pageIconPrompt: 'Enter an emoji for this page icon.',
         coverImagePrompt: 'Paste a cover image URL, or leave blank and press OK to upload a file.',
-        changeCover: 'Change cover', adjustCover: 'Position/size', coverPosition: 'Image position', coverHeight: 'Visible area', resetCover: 'Reset',
+        changeCover: 'Change cover', adjustCover: 'Position/size', coverPosition: 'Image position',
+        coverPositionX: 'Horizontal position', coverPositionY: 'Vertical position', coverHeight: 'Visible area',
+        coverZoom: 'Zoom', resetCover: 'Reset', dragBlock: 'Move block', blockMoveFailed: 'Block move failed',
+        eclassTitle: 'E-class sync', eclassDescription: 'Connect SeoulTech e-Class lectures and assignments to tasks.',
+        eclassDisconnected: 'Not connected', eclassConnected: 'Connected', eclassUrl: 'E-class URL', eclassCookie: 'Session cookie',
+        eclassHelp: 'Save the session cookie from your logged-in e-Class browser. The app syncs every 5 minutes while open, and the server syncs once daily.',
+        eclassSave: 'Save connection', eclassSyncNow: 'Sync now', eclassSaving: 'Saving connection...',
+        eclassSaved: 'E-class connection saved.', eclassSyncing: 'Syncing...', eclassSynced: 'Synced {count} items.',
+        eclassFailed: 'E-class request failed', eclassCookieRequired: 'Enter a session cookie.',
+        eclassSupportedSchools: 'View supported schools', eclassSupportedSeoultech: 'SeoulTech e-Class',
+        eclassRequestText: 'Need another school? Request support by email.', eclassRequestSchool: 'Request a school',
         onboardingStepsLabel: 'Guide steps', koreanLanguage: 'Korean', englishLanguage: 'English',
         close: 'Close'
     }
@@ -1048,6 +1070,20 @@ function applyLanguage(lang = currentLanguage) {
     setText('#notify-reminders-label', t('notifyReminderTime'));
     setText('#notification-permission-btn', t('allowBrowserNotifications'));
     syncNotificationSettingsUI();
+    setText('#profile-eclass-title', t('eclassTitle'));
+    setText('#profile-eclass-description', t('eclassDescription'));
+    setText('#profile-eclass-url-label', t('eclassUrl'));
+    setText('#profile-eclass-cookie-label', t('eclassCookie'));
+    setText('#profile-eclass-help', t('eclassHelp'));
+    setText('#profile-eclass-save-btn', t('eclassSave'));
+    setText('#profile-eclass-sync-btn', t('eclassSyncNow'));
+    setText('#profile-eclass-supported-summary', t('eclassSupportedSchools'));
+    const supportedSchool = document.querySelector('#profile-eclass-supported-list li');
+    if (supportedSchool) supportedSchool.textContent = t('eclassSupportedSeoultech');
+    setText('#profile-eclass-request-text', t('eclassRequestText'));
+    setText('#profile-eclass-request-link', t('eclassRequestSchool'));
+    placeEclassPanelNearProfileTop();
+    updateEclassStatusBadge();
     setText('.profile-guide-panel h3', t('guideTitle'));
     setText('.profile-guide-panel p', t('guideDescription'));
     setText('#profile-guide-btn', t('replayGuide'));
@@ -1125,6 +1161,128 @@ function loadTodos() {
         checkDueNotifications(); // Check for reminders when data updates
         scheduleReminderNotifications();
     });
+}
+
+function updateEclassStatusBadge() {
+    const badge = getEl('profile-eclass-status-badge');
+    if (!badge) return;
+    const connected = !!eclassStatus?.connected;
+    badge.textContent = connected ? t('eclassConnected') : t('eclassDisconnected');
+    badge.classList.toggle('connected', connected);
+}
+
+function placeEclassPanelNearProfileTop() {
+    const panel = getEl('profile-eclass-panel');
+    const languagePanel = document.querySelector('.profile-language-panel');
+    if (panel && languagePanel && panel.previousElementSibling !== languagePanel.previousElementSibling) {
+        languagePanel.parentNode.insertBefore(panel, languagePanel);
+    }
+}
+
+async function getAuthHeaders() {
+    if (!currentUser) throw new Error(t('loginFirst'));
+    const token = await currentUser.getIdToken();
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+async function loadEclassStatus() {
+    if (!currentUser) return;
+    try {
+        const response = await fetch('/api/eclass/connection', { headers: await getAuthHeaders() });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        eclassStatus = await response.json();
+        const urlInput = getEl('profile-eclass-url');
+        if (urlInput) urlInput.value = eclassStatus.baseUrl || 'https://eclass.seoultech.ac.kr';
+        updateEclassStatusBadge();
+    } catch (error) {
+        console.warn('E-class status unavailable:', error);
+        eclassStatus = { connected: false };
+        updateEclassStatusBadge();
+    }
+}
+
+async function saveEclassConnection() {
+    const urlInput = getEl('profile-eclass-url');
+    const cookieInput = getEl('profile-eclass-cookie');
+    const status = getEl('profile-eclass-status');
+    const button = getEl('profile-eclass-save-btn');
+    const sessionCookie = cookieInput?.value?.trim() || '';
+    if (!sessionCookie) {
+        if (status) status.textContent = t('eclassCookieRequired');
+        return;
+    }
+    try {
+        if (button) button.textContent = t('eclassSaving');
+        const response = await fetch('/api/eclass/connection', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({
+                baseUrl: urlInput?.value?.trim() || 'https://eclass.seoultech.ac.kr',
+                sessionCookie
+            })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        eclassStatus = data;
+        if (cookieInput) cookieInput.value = '';
+        updateEclassStatusBadge();
+        if (status) {
+            status.className = 'profile-status-text success';
+            status.textContent = t('eclassSaved');
+        }
+        showToast(t('eclassSaved'), 'success');
+    } catch (error) {
+        if (status) {
+            status.className = 'profile-status-text error';
+            status.textContent = `${t('eclassFailed')}: ${error.message || error}`;
+        }
+    } finally {
+        if (button) button.textContent = t('eclassSave');
+    }
+}
+
+async function syncEclassNow() {
+    const status = getEl('profile-eclass-status');
+    const button = getEl('profile-eclass-sync-btn');
+    try {
+        if (button) button.textContent = t('eclassSyncing');
+        const response = await fetch('/api/eclass/sync', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ uid: currentUser.uid })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        if (status) {
+            status.className = 'profile-status-text success';
+            status.textContent = window.PlanaryI18n?.format?.('eclassSynced', { count: data.count || 0 }) || t('eclassSynced');
+        }
+        showToast(status?.textContent || t('eclassSyncNow'), 'success');
+        await loadEclassStatus();
+    } catch (error) {
+        if (status) {
+            status.className = 'profile-status-text error';
+            status.textContent = `${t('eclassFailed')}: ${error.message || error}`;
+        }
+    } finally {
+        if (button) button.textContent = t('eclassSyncNow');
+    }
+}
+
+function startEclassForegroundSync() {
+    clearInterval(eclassForegroundSyncTimer);
+    eclassForegroundSyncTimer = setInterval(async () => {
+        if (!currentUser || !eclassStatus?.connected || document.hidden) return;
+        try {
+            await fetch('/api/eclass/sync', {
+                method: 'POST',
+                headers: await getAuthHeaders(),
+                body: JSON.stringify({ uid: currentUser.uid })
+            });
+        } catch (error) {
+            console.warn('Foreground E-class sync failed:', error);
+        }
+    }, 5 * 60 * 1000);
 }
 
 function loadNotes() {
@@ -1370,7 +1528,7 @@ async function connectEmailPasswordLogin() {
 }
 
 async function deleteCurrentUserData(uid) {
-    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages', 'eclass_items'];
     const storageUrls = new Set();
     for (const name of collections) {
         let snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
@@ -2145,7 +2303,7 @@ async function completeCurrentOnboardingStep() {
 
 async function userHasNoWork(uid) {
     if (!uid || !db) return false;
-    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages', 'eclass_items'];
     const checks = collections.map(name =>
         db.collection(name).where('uid', '==', uid).limit(1).get()
     );
@@ -3108,6 +3266,7 @@ try {
 } catch (e) { console.error("Firebase Init Error", e); }
 
 document.addEventListener('DOMContentLoaded', () => {
+    placeEclassPanelNearProfileTop();
     // Auth State Listener
     if (auth) {
         auth.onAuthStateChanged(user => {
@@ -3120,7 +3279,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateProfileUI(user);
                 if (isAuthPage) window.location.replace('/');
                 else { 
-                    loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects();
+                    loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects(); loadEclassStatus();
+                    startEclassForegroundSync();
                     showOnboardingIfNeeded(user);
                 }
             }
@@ -3501,4 +3661,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
     if (getEl('profile-delete-account-btn')) getEl('profile-delete-account-btn').onclick = deleteAccount;
+    if (getEl('profile-eclass-save-btn')) getEl('profile-eclass-save-btn').onclick = saveEclassConnection;
+    if (getEl('profile-eclass-sync-btn')) getEl('profile-eclass-sync-btn').onclick = syncEclassNow;
 });

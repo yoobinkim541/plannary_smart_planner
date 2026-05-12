@@ -1,0 +1,16 @@
+name: E-class Sync
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger E-class sync
+        run: |
+          curl --fail --show-error --silent \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.ECLASS_SYNC_URL || 'https://memo-omega-lyart.vercel.app/api/eclass/sync' }}"

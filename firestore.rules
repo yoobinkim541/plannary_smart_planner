@@ -67,7 +67,8 @@ service cloud.firestore {
       return hasOnlyKeys([
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
         'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
-        'dueTime', 'calendarReminderMinutes', 'syncCalendar', 'calendarEventId'
+        'dueTime', 'calendarReminderMinutes', 'syncCalendar', 'calendarEventId',
+        'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt'
       ]) &&
       request.resource.data.text is string &&
       request.resource.data.text.size() > 0 &&
@@ -79,6 +80,12 @@ service cloud.firestore {
       (!request.resource.data.keys().hasAny(['calendarEventId']) || isStringOrNull(request.resource.data.calendarEventId)) &&
       (!request.resource.data.keys().hasAny(['calendarReminderMinutes']) || isNumberOrNull(request.resource.data.calendarReminderMinutes)) &&
       (!request.resource.data.keys().hasAny(['syncCalendar']) || isBoolOrNull(request.resource.data.syncCalendar)) &&
+      (!request.resource.data.keys().hasAny(['source']) || isStringOrNull(request.resource.data.source)) &&
+      (!request.resource.data.keys().hasAny(['sourceItemId']) || isStringOrNull(request.resource.data.sourceItemId)) &&
+      (!request.resource.data.keys().hasAny(['sourceUrl']) || isStringOrNull(request.resource.data.sourceUrl)) &&
+      (!request.resource.data.keys().hasAny(['courseTitle']) || isStringOrNull(request.resource.data.courseTitle)) &&
+      (!request.resource.data.keys().hasAny(['ddayText']) || isStringOrNull(request.resource.data.ddayText)) &&
+      (!request.resource.data.keys().hasAny(['syncedAt']) || isTimestampOrNull(request.resource.data.syncedAt)) &&
       request.resource.data.priority is string &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&
       request.resource.data.completed is bool &&
@@ -126,7 +133,7 @@ service cloud.firestore {
     function validWikiPage() {
       return hasOnlyKeys([
         'uid', 'title', 'parentId', 'projectId', 'content', 'createdAt', 'updatedAt',
-        'icon', 'coverUrl', 'coverPosition', 'coverHeight'
+        'icon', 'coverUrl', 'coverPosition', 'coverPositionX', 'coverHeight', 'coverZoom', 'coverCropMode'
       ]) &&
       request.resource.data.title is string &&
       request.resource.data.title.size() > 0 &&
@@ -135,7 +142,10 @@ service cloud.firestore {
       (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
       (!request.resource.data.keys().hasAny(['coverUrl']) || isStringOrNull(request.resource.data.coverUrl)) &&
       (!request.resource.data.keys().hasAny(['coverPosition']) || request.resource.data.coverPosition is number) &&
+      (!request.resource.data.keys().hasAny(['coverPositionX']) || request.resource.data.coverPositionX is number) &&
       (!request.resource.data.keys().hasAny(['coverHeight']) || request.resource.data.coverHeight is number) &&
+      (!request.resource.data.keys().hasAny(['coverZoom']) || request.resource.data.coverZoom is number) &&
+      (!request.resource.data.keys().hasAny(['coverCropMode']) || isStringOrNull(request.resource.data.coverCropMode)) &&
       request.resource.data.content is map &&
       isTimestampOrNull(request.resource.data.createdAt) &&
       isTimestampOrNull(request.resource.data.updatedAt);
@@ -169,6 +179,16 @@ service cloud.firestore {
       allow read, delete: if existingOwner();
       allow create: if incomingOwner() && validWikiPage();
       allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validWikiPage();
+    }
+
+    match /eclass_items/{itemId} {
+      allow read: if existingOwner();
+      allow delete: if false;
+      allow create, update: if false;
+    }
+
+    match /eclass_connections/{connectionId} {
+      allow read, write: if false;
     }
 
     match /users/{userId} {

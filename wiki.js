@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let uploadedWikiStorageUrls = new Set();
     let allProjects = [];
     let currentPageId = null;
-    let currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverHeight: 180 };
+    let currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverPositionX: 50, coverHeight: 180, coverZoom: 100, coverCropMode: 'cover' };
+    let wikiDraggingBlockIndex = null;
 
     const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
     const storage = typeof firebase !== 'undefined' ? firebase.storage() : null;
@@ -51,7 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const coverAdjustBtn = document.getElementById('wiki-cover-adjust-btn');
     const coverPanel = document.getElementById('wiki-cover-panel');
     const coverPositionRange = document.getElementById('wiki-cover-position-range');
+    const coverPositionXRange = document.getElementById('wiki-cover-position-x-range');
     const coverHeightRange = document.getElementById('wiki-cover-height-range');
+    const coverZoomRange = document.getElementById('wiki-cover-zoom-range');
     const coverResetBtn = document.getElementById('wiki-cover-reset-btn');
     const saveStateEl = document.getElementById('wiki-save-state');
     const updatedAtEl = document.getElementById('wiki-updated-at');
@@ -773,7 +776,10 @@ document.addEventListener('DOMContentLoaded', () => {
         icon: currentPageMeta.icon || '📄',
         coverUrl: currentPageMeta.coverUrl || '',
         coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
-        coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360)
+        coverPositionX: toBoundedNumber(currentPageMeta.coverPositionX, 50, 0, 100),
+        coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360),
+        coverZoom: toBoundedNumber(currentPageMeta.coverZoom, 100, 100, 220),
+        coverCropMode: currentPageMeta.coverCropMode || 'cover'
     });
 
     const pushMetaUndoSnapshot = () => {
@@ -789,14 +795,20 @@ document.addEventListener('DOMContentLoaded', () => {
         pushMetaUndoSnapshot();
     };
 
-    const applyCover = (url, position = 50, height = 180) => {
+    const applyCover = (url, position = 50, height = 180, positionX = 50, zoom = 100) => {
         if (!coverEl) return;
         const safePosition = toBoundedNumber(position, 50, 0, 100);
+        const safePositionX = toBoundedNumber(positionX, 50, 0, 100);
         const safeHeight = toBoundedNumber(height, 180, 120, 360);
+        const safeZoom = toBoundedNumber(zoom, 100, 100, 220);
         coverEl.style.setProperty('--wiki-cover-position', `${safePosition}%`);
+        coverEl.style.setProperty('--wiki-cover-position-x', `${safePositionX}%`);
         coverEl.style.setProperty('--wiki-cover-height', `${safeHeight}px`);
+        coverEl.style.setProperty('--wiki-cover-zoom', `${safeZoom}%`);
         if (coverPositionRange) coverPositionRange.value = String(safePosition);
+        if (coverPositionXRange) coverPositionXRange.value = String(safePositionX);
         if (coverHeightRange) coverHeightRange.value = String(safeHeight);
+        if (coverZoomRange) coverZoomRange.value = String(safeZoom);
         if (url) {
             coverEl.dataset.coverUrl = url;
             coverEl.style.backgroundImage = `linear-gradient(rgba(15,23,42,0.04), rgba(15,23,42,0.14)), url("${url.replace(/"/g, '%22')}")`;
@@ -811,12 +823,15 @@ document.addEventListener('DOMContentLoaded', () => {
             icon: meta.icon || '📄',
             coverUrl: meta.coverUrl || '',
             coverPosition: toBoundedNumber(meta.coverPosition, 50, 0, 100),
-            coverHeight: toBoundedNumber(meta.coverHeight, 180, 120, 360)
+            coverPositionX: toBoundedNumber(meta.coverPositionX, 50, 0, 100),
+            coverHeight: toBoundedNumber(meta.coverHeight, 180, 120, 360),
+            coverZoom: toBoundedNumber(meta.coverZoom, 100, 100, 220),
+            coverCropMode: meta.coverCropMode || 'cover'
         };
         if (wikiTitleInput && meta.title != null) wikiTitleInput.value = meta.title;
         if (wikiProjectSelect && meta.projectId != null) wikiProjectSelect.value = meta.projectId;
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
-        applyCover(currentPageMeta.coverUrl, currentPageMeta.coverPosition, currentPageMeta.coverHeight);
+        applyCover(currentPageMeta.coverUrl, currentPageMeta.coverPosition, currentPageMeta.coverHeight, currentPageMeta.coverPositionX, currentPageMeta.coverZoom);
         if (shouldMarkDirty) markDirty();
         renderWidgets();
     };
@@ -871,12 +886,85 @@ document.addEventListener('DOMContentLoaded', () => {
             await editor.render(previous);
             lastUndoSnapshot = serializeEditorData(previous);
             markDirty();
+            setTimeout(installWikiBlockDragHandles, 0);
         } catch (error) {
             console.error('[Wiki] Undo failed:', error);
             window.showToast(tr('undoFailed') + ': ' + (error.message || error), 'error');
         } finally {
             setTimeout(() => { isRestoringUndo = false; }, 0);
         }
+    };
+
+    const clearWikiDropMarkers = () => {
+        document.querySelectorAll('#editorjs .wiki-block-drop-before, #editorjs .wiki-block-drop-after')
+            .forEach(block => block.classList.remove('wiki-block-drop-before', 'wiki-block-drop-after'));
+    };
+
+    const getEditorBlocks = () => [...document.querySelectorAll('#editorjs .ce-block')];
+
+    const moveEditorBlock = async (fromIndex, toIndex) => {
+        if (!editor || fromIndex == null || toIndex == null || fromIndex === toIndex) return;
+        try {
+            await captureUndoSnapshot();
+            const data = normalizeEditorData(await editor.save());
+            const blocks = [...(data.blocks || [])];
+            if (!blocks[fromIndex] || !blocks[toIndex]) return;
+            const [moved] = blocks.splice(fromIndex, 1);
+            blocks.splice(toIndex, 0, moved);
+            const nextData = { ...data, time: Date.now(), blocks };
+            isRestoringUndo = true;
+            await editor.render(nextData);
+            isRestoringUndo = false;
+            await captureUndoSnapshot();
+            markDirty();
+            setTimeout(installWikiBlockDragHandles, 0);
+        } catch (error) {
+            isRestoringUndo = false;
+            console.warn('[Wiki] Block move failed:', error);
+            window.showToast(tr('blockMoveFailed') + ': ' + (error.message || error), 'error');
+        }
+    };
+
+    const installWikiBlockDragHandles = () => {
+        const blocks = getEditorBlocks();
+        blocks.forEach((block, index) => {
+            block.dataset.wikiBlockIndex = String(index);
+            if (block.querySelector(':scope > .wiki-block-drag-handle')) return;
+            const handle = document.createElement('button');
+            handle.type = 'button';
+            handle.className = 'wiki-block-drag-handle';
+            handle.draggable = true;
+            handle.setAttribute('aria-label', tr('dragBlock'));
+            handle.innerHTML = '<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><circle cx="6" cy="5" r="1.5"/><circle cx="14" cy="5" r="1.5"/><circle cx="6" cy="10" r="1.5"/><circle cx="14" cy="10" r="1.5"/><circle cx="6" cy="15" r="1.5"/><circle cx="14" cy="15" r="1.5"/></svg>';
+            handle.addEventListener('dragstart', event => {
+                wikiDraggingBlockIndex = Number(block.dataset.wikiBlockIndex);
+                block.classList.add('wiki-block-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', String(wikiDraggingBlockIndex));
+            });
+            handle.addEventListener('dragend', () => {
+                block.classList.remove('wiki-block-dragging');
+                wikiDraggingBlockIndex = null;
+                clearWikiDropMarkers();
+            });
+            block.addEventListener('dragover', event => {
+                if (wikiDraggingBlockIndex == null) return;
+                event.preventDefault();
+                clearWikiDropMarkers();
+                const rect = block.getBoundingClientRect();
+                block.classList.add(event.clientY < rect.top + rect.height / 2 ? 'wiki-block-drop-before' : 'wiki-block-drop-after');
+            });
+            block.addEventListener('drop', event => {
+                if (wikiDraggingBlockIndex == null) return;
+                event.preventDefault();
+                const rect = block.getBoundingClientRect();
+                const targetIndex = Number(block.dataset.wikiBlockIndex) + (event.clientY < rect.top + rect.height / 2 ? 0 : 1);
+                const normalizedTarget = targetIndex > wikiDraggingBlockIndex ? targetIndex - 1 : targetIndex;
+                clearWikiDropMarkers();
+                moveEditorBlock(wikiDraggingBlockIndex, Math.max(0, Math.min(blocks.length - 1, normalizedTarget)));
+            });
+            block.prepend(handle);
+        });
     };
 
     // --- EDITOR INITIALIZATION ---
@@ -1048,12 +1136,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                     holder.addEventListener('keydown', editorKeydownHandler);
                 }
+                installWikiBlockDragHandles();
             },
             onChange: () => {
                 // Proactively enable save button if disabled
                 if (saveWikiBtn) saveWikiBtn.disabled = false;
                 scheduleMarkdownMathConversion();
                 scheduleUndoSnapshot();
+                setTimeout(installWikiBlockDragHandles, 0);
             }
         });
     }
@@ -1221,8 +1311,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('wiki-calendar-create-btn', tr('createCalendarFromPage'));
         setText('wiki-cover-btn', tr('changeCover'));
         setText('wiki-cover-adjust-btn', tr('adjustCover'));
-        setText('wiki-cover-position-label', tr('coverPosition'));
+        setText('wiki-cover-position-x-label', tr('coverPositionX'));
+        setText('wiki-cover-position-y-label', tr('coverPositionY'));
         setText('wiki-cover-height-label', tr('coverHeight'));
+        setText('wiki-cover-zoom-label', tr('coverZoom'));
         setText('wiki-cover-reset-btn', tr('resetCover'));
         setText('wiki-parent-btn span', tr('parentPage'));
         if (backBtn) {
@@ -1433,10 +1525,13 @@ document.addEventListener('DOMContentLoaded', () => {
             icon: page.icon || '📄',
             coverUrl: page.coverUrl || '',
             coverPosition: toBoundedNumber(page.coverPosition, 50, 0, 100),
-            coverHeight: toBoundedNumber(page.coverHeight, 180, 120, 360)
+            coverPositionX: toBoundedNumber(page.coverPositionX, 50, 0, 100),
+            coverHeight: toBoundedNumber(page.coverHeight, 180, 120, 360),
+            coverZoom: toBoundedNumber(page.coverZoom, 100, 100, 220),
+            coverCropMode: page.coverCropMode || 'cover'
         };
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
-        applyCover(currentPageMeta.coverUrl, currentPageMeta.coverPosition, currentPageMeta.coverHeight);
+        applyCover(currentPageMeta.coverUrl, currentPageMeta.coverPosition, currentPageMeta.coverHeight, currentPageMeta.coverPositionX, currentPageMeta.coverZoom);
         if (wikiProjectSelect) {
             wikiProjectSelect.value = getInheritedProjectId(page);
         }
@@ -1464,9 +1559,9 @@ document.addEventListener('DOMContentLoaded', () => {
         wikiEditorView.style.display = 'none';
         wikiEmptyView.style.display = 'flex';
         if (wikiProjectSelect) wikiProjectSelect.value = '';
-        currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverHeight: 180 };
+        currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverPositionX: 50, coverHeight: 180, coverZoom: 100, coverCropMode: 'cover' };
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
-        applyCover('', 50, 180);
+        applyCover('', 50, 180, 50, 100);
         renderSubpages(null);
         renderWidgets();
         renderPageList();
@@ -1488,7 +1583,10 @@ document.addEventListener('DOMContentLoaded', () => {
             icon: '📄',
             coverUrl: '',
             coverPosition: 50,
+            coverPositionX: 50,
             coverHeight: 180,
+            coverZoom: 100,
+            coverCropMode: 'cover',
             content: {},
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1622,27 +1720,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextMeta = {
             ...getMetaSnapshot(),
             coverPosition: toBoundedNumber(coverPositionRange?.value, 50, 0, 100),
-            coverHeight: toBoundedNumber(coverHeightRange?.value, 180, 120, 360)
+            coverPositionX: toBoundedNumber(coverPositionXRange?.value, 50, 0, 100),
+            coverHeight: toBoundedNumber(coverHeightRange?.value, 180, 120, 360),
+            coverZoom: toBoundedNumber(coverZoomRange?.value, 100, 100, 220),
+            coverCropMode: 'cover'
         };
         applyPageMeta(nextMeta);
     };
 
-    if (coverPositionRange) {
-        coverPositionRange.addEventListener('pointerdown', pushMetaUndoSnapshot);
-        coverPositionRange.addEventListener('input', updateCoverAdjustments);
-        coverPositionRange.addEventListener('change', pushMetaUndoSnapshot);
-    }
-
-    if (coverHeightRange) {
-        coverHeightRange.addEventListener('pointerdown', pushMetaUndoSnapshot);
-        coverHeightRange.addEventListener('input', updateCoverAdjustments);
-        coverHeightRange.addEventListener('change', pushMetaUndoSnapshot);
-    }
+    [coverPositionRange, coverPositionXRange, coverHeightRange, coverZoomRange].filter(Boolean).forEach(range => {
+        range.addEventListener('pointerdown', pushMetaUndoSnapshot);
+        range.addEventListener('input', updateCoverAdjustments);
+        range.addEventListener('change', pushMetaUndoSnapshot);
+    });
 
     if (coverResetBtn) {
         coverResetBtn.onclick = () => {
             pushMetaUndoSnapshot();
-            applyPageMeta({ ...getMetaSnapshot(), coverPosition: 50, coverHeight: 180 });
+            applyPageMeta({ ...getMetaSnapshot(), coverPosition: 50, coverPositionX: 50, coverHeight: 180, coverZoom: 100, coverCropMode: 'cover' });
             pushMetaUndoSnapshot();
         };
     }
@@ -1745,7 +1840,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon: currentPageMeta.icon || '📄',
                 coverUrl: currentPageMeta.coverUrl || '',
                 coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
+                coverPositionX: toBoundedNumber(currentPageMeta.coverPositionX, 50, 0, 100),
                 coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360),
+                coverZoom: toBoundedNumber(currentPageMeta.coverZoom, 100, 100, 220),
+                coverCropMode: currentPageMeta.coverCropMode || 'cover',
                 content: contentData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
