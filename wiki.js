@@ -886,6 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await editor.render(previous);
             lastUndoSnapshot = serializeEditorData(previous);
             markDirty();
+            setTimeout(installWikiBlockDragHandles, 0);
         } catch (error) {
             console.error('[Wiki] Undo failed:', error);
             window.showToast(tr('undoFailed') + ': ' + (error.message || error), 'error');

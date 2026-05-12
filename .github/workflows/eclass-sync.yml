@@ -13,4 +13,4 @@ jobs:
         run: |
           curl --fail --show-error --silent \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://memo-r3fewlxi7-yoobinkim541s-projects.vercel.app/api/eclass/sync"
+            "${{ vars.ECLASS_SYNC_URL || 'https://memo-r3fewlxi7-yoobinkim541s-projects.vercel.app/api/eclass/sync' }}"

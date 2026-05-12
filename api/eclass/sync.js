@@ -98,7 +98,7 @@ module.exports = async function handler(req, res) {
   try {
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = req.headers.authorization || '';
-    if (req.method === 'GET') {
+    if (authHeader === `Bearer ${cronSecret}`) {
       if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) return sendJson(res, 401, { error: 'Unauthorized cron' });
       const count = await syncAll();
       return sendJson(res, 200, { ok: true, count });
