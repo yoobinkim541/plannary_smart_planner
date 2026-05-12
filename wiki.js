@@ -1170,6 +1170,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    const pendingPageFetches = new Set();
+
+    const upsertLoadedPage = (page) => {
+        const index = allPages.findIndex(existing => existing.id === page.id);
+        if (index >= 0) allPages[index] = { ...allPages[index], ...page };
+        else allPages.unshift(page);
+    };
+
     const loadPages = () => {
         if (!db || !currentUser) return;
         db.collection('wiki_pages').where('uid', '==', currentUser.uid)
@@ -1188,6 +1196,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderPageList();
                         if (currentPageId) renderSubpages(currentPageId);
                         checkHash();
+                    }, fallbackError => {
+                        console.error('[Wiki] Fallback page load failed:', fallbackError);
+                        window.showToast(tr('loadFailed') + ': ' + (fallbackError.message || fallbackError), 'error');
                     });
             });
     };
@@ -1270,6 +1281,26 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         renderPages('');
+
+        filteredPages
+            .filter(page => !renderedIds.has(page.id))
+            .forEach(page => {
+                renderPages(page.parentId || '', 0, true);
+                if (renderedIds.has(page.id)) return;
+                const el = document.createElement('div');
+                el.className = `wiki-page-item wiki-page-orphan ${currentPageId === page.id ? 'active' : ''}`;
+                el.style.setProperty('--wiki-depth', 0);
+                el.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; opacity:0.6;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span>${escapeHtml(page.title || tr('untitledDocument'))}</span>
+                `;
+                el.onclick = () => navigateToPage(page.id);
+                wikiPageList.appendChild(el);
+                renderedIds.add(page.id);
+            });
 
         if (term) {
             filteredPages
@@ -1475,6 +1506,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const page = allPages.find(p => p.id === id);
             if (page) {
                 openPage(page);
+            } else if (db && currentUser && id && !pendingPageFetches.has(id)) {
+                pendingPageFetches.add(id);
+                db.collection('wiki_pages').doc(id).get()
+                    .then(doc => {
+                        if (!doc.exists) return;
+                        const loadedPage = { id: doc.id, ...doc.data() };
+                        if (loadedPage.uid !== currentUser.uid) return;
+                        upsertLoadedPage(loadedPage);
+                        renderPageList();
+                        openPage(loadedPage);
+                    })
+                    .catch(error => {
+                        console.error('[Wiki] Direct page load failed:', error);
+                        window.showToast(tr('loadFailed') + ': ' + (error.message || error), 'error');
+                    })
+                    .finally(() => pendingPageFetches.delete(id));
             }
         } else if (hash === '#page-wiki' || !hash) {
             closeEditor();
