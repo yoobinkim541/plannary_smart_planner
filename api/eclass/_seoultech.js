@@ -80,19 +80,20 @@ function getSetCookieHeaders(response) {
 
 async function loginSeoultech({ baseUrl = DEFAULT_BASE_URL, username, password }) {
   const normalizedBase = normalizeBaseUrl(baseUrl);
-  const loginUrl = toAbsoluteUrl(normalizedBase, '/login/index.php');
+  const loginUrl = toAbsoluteUrl(normalizedBase, '/ilos/index.acl');
   const loginPage = await fetch(loginUrl, {
     headers: {
       'User-Agent': 'PlanaryEclassSync/1.0',
       Accept: 'text/html,application/xhtml+xml'
     },
-    redirect: 'manual'
+    redirect: 'follow'
   });
   let cookie = mergeCookies('', getSetCookieHeaders(loginPage));
+  if (!loginPage.ok) throw new Error(`E-class login page HTTP ${loginPage.status}`);
   const html = await loginPage.text();
   const $ = cheerio.load(html);
-  const form = $('form[action*="login"]').first();
-  const action = form.attr('action') || '/login/index.php';
+  const form = $('form[action*="/ilos/lo/login"], form#myform, form[action*="login"]').first();
+  const action = form.attr('action') || '/ilos/lo/login.acl';
   const body = new URLSearchParams();
   form.find('input').each((_, element) => {
     const input = $(element);
@@ -100,8 +101,8 @@ async function loginSeoultech({ baseUrl = DEFAULT_BASE_URL, username, password }
     if (!name) return;
     body.set(name, input.attr('value') || '');
   });
-  body.set('username', username);
-  body.set('password', password);
+  body.set('usr_id', username);
+  body.set('usr_pwd', password);
 
   const response = await fetch(toAbsoluteUrl(loginUrl, action), {
     method: 'POST',
@@ -116,8 +117,13 @@ async function loginSeoultech({ baseUrl = DEFAULT_BASE_URL, username, password }
   });
   cookie = mergeCookies(cookie, getSetCookieHeaders(response));
   if (![200, 302, 303].includes(response.status)) throw new Error(`E-class login HTTP ${response.status}`);
-  const checkHtml = response.status >= 300 ? await fetchText(toAbsoluteUrl(normalizedBase, '/my/'), cookie) : await response.text();
-  if (/login|로그인/.test(cheerio.load(checkHtml)('body').text()) && !/과제|강의|lecture|assignment/i.test(checkHtml)) {
+  const location = response.headers.get('location');
+  const checkUrl = location ? toAbsoluteUrl(loginUrl, location) : toAbsoluteUrl(normalizedBase, '/ilos/main/main_form.acl');
+  const checkHtml = response.status >= 300 ? await fetchText(checkUrl, cookie) : await response.text();
+  const check = cheerio.load(checkHtml);
+  const stillLoginForm = check('input[name="usr_id"], input[name="usr_pwd"], form[action*="/ilos/lo/login"]').length > 0;
+  const bodyText = check('body').text().replace(/\s+/g, ' ');
+  if (stillLoginForm || (/아이디|비밀번호|로그인/.test(bodyText) && !/과제|강의|수강|lecture|assignment/i.test(bodyText))) {
     throw new Error('E-class login failed. 아이디 또는 비밀번호를 확인해주세요.');
   }
   return cookie;
@@ -126,7 +132,15 @@ async function loginSeoultech({ baseUrl = DEFAULT_BASE_URL, username, password }
 async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, username, password }) {
   const normalizedBase = normalizeBaseUrl(baseUrl);
   const cookie = sessionCookie || await loginSeoultech({ baseUrl: normalizedBase, username, password });
-  const candidatePaths = ['/my/', '/local/ubion/user/', '/course/'];
+  const candidatePaths = [
+    '/ilos/index.acl',
+    '/ilos/main/main_form.acl',
+    '/ilos/mp/todo_list_form.acl',
+    '/ilos/st/course/submain_form.acl',
+    '/ilos/st/course/eclass_list_form.acl',
+    '/my/',
+    '/course/'
+  ];
   const pages = [];
   for (const path of candidatePaths) {
     try {
@@ -141,7 +155,8 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     if (!page.html) return;
     const $ = cheerio.load(page.html);
     const bodyText = $('body').text();
-    if (/login|로그인/.test(bodyText) && !/과제|강의|lecture|assignment/i.test(bodyText)) return;
+    const isLoginForm = $('input[name="usr_id"], input[name="usr_pwd"], form[action*="/ilos/lo/login"]').length > 0;
+    if (isLoginForm || (/login|로그인/.test(bodyText) && !/과제|강의|수강|lecture|assignment/i.test(bodyText))) return;
     $('a').each((_, element) => {
       const link = $(element);
       const title = link.text().replace(/\s+/g, ' ').trim();
