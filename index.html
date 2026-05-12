@@ -542,12 +542,20 @@
                             </div>
                             <div class="wiki-cover-panel" id="wiki-cover-panel" hidden>
                                 <label>
-                                    <span id="wiki-cover-position-label">이미지 위치</span>
+                                    <span id="wiki-cover-position-x-label">가로 위치</span>
+                                    <input id="wiki-cover-position-x-range" type="range" min="0" max="100" value="50">
+                                </label>
+                                <label>
+                                    <span id="wiki-cover-position-y-label">세로 위치</span>
                                     <input id="wiki-cover-position-range" type="range" min="0" max="100" value="50">
                                 </label>
                                 <label>
                                     <span id="wiki-cover-height-label">보이는 면적</span>
                                     <input id="wiki-cover-height-range" type="range" min="120" max="360" value="180">
+                                </label>
+                                <label>
+                                    <span id="wiki-cover-zoom-label">확대</span>
+                                    <input id="wiki-cover-zoom-range" type="range" min="100" max="220" value="100">
                                 </label>
                                 <button id="wiki-cover-reset-btn" class="text-link-btn" type="button">기본값</button>
                             </div>
@@ -770,6 +778,32 @@
                         </label>
                         <button id="notification-permission-btn" class="confirm-btn" type="button">브라우저 알림 허용</button>
                         <p id="notification-status-text" class="profile-status-text"></p>
+                    </div>
+
+                    <div class="profile-eclass-panel">
+                        <div class="profile-panel-head">
+                            <div>
+                                <h3 id="profile-eclass-title">E-class 연동</h3>
+                                <p id="profile-eclass-description">서울과기대 e-Class 강의와 과제를 작업에 연결합니다.</p>
+                            </div>
+                            <span id="profile-eclass-status-badge" class="profile-status-badge">연결 전</span>
+                        </div>
+                        <div class="profile-password-grid">
+                            <label>
+                                <span id="profile-eclass-url-label">E-class URL</span>
+                                <input type="url" id="profile-eclass-url" class="auth-input" value="https://eclass.seoultech.ac.kr" placeholder="https://eclass.seoultech.ac.kr">
+                            </label>
+                            <label>
+                                <span id="profile-eclass-cookie-label">세션 쿠키</span>
+                                <input type="password" id="profile-eclass-cookie" class="auth-input" autocomplete="off" placeholder="MoodleSession=...">
+                            </label>
+                        </div>
+                        <p id="profile-eclass-help" class="profile-help-text">로그인된 브라우저의 e-Class 세션 쿠키를 저장하면 서버가 5분마다 온라인 강의와 과제를 가져옵니다.</p>
+                        <div class="profile-eclass-actions">
+                            <button id="profile-eclass-save-btn" class="confirm-btn" type="button">연결 저장</button>
+                            <button id="profile-eclass-sync-btn" class="text-link-btn" type="button">지금 동기화</button>
+                        </div>
+                        <p id="profile-eclass-status" class="profile-status-text" role="status"></p>
                     </div>
 
                     <div class="profile-guide-panel">
@@ -1020,8 +1054,8 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v25"></script>
-    <script src="wiki.js?v=v13"></script>
+    <script src="app.js?v=v26"></script>
+    <script src="wiki.js?v=v14"></script>
 </body>
 
 </html>
