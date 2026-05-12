@@ -2,11 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let editor = null;
     let headingShortcutHandler = null;
+    let editorKeydownHandler = null;
     let undoStack = [];
     let undoCaptureTimer = null;
     let markdownMathTimer = null;
     let isRestoringUndo = false;
     let isConvertingMarkdownMath = false;
+    let headingShortcutIndex = null;
     let lastUndoSnapshot = '';
     let pageMetaUndoStack = [];
     let calendarAccessToken = null;
@@ -38,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteWikiBtn = document.getElementById('wiki-delete-btn');
     const searchInput = document.getElementById('wiki-search-input');
     const backBtn = document.getElementById('wiki-back-btn');
+    const parentBtn = document.getElementById('wiki-parent-btn');
     const wikiLayout = document.querySelector('#page-wiki .wiki-layout');
     const treeToggleBtn = document.getElementById('wiki-tree-toggle-btn');
     const widgetToggleBtn = document.getElementById('wiki-widget-toggle-btn');
@@ -353,9 +356,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const removeHeadingShortcutHandler = () => {
         const holder = document.getElementById('editorjs');
-        if (holder && headingShortcutHandler) {
-            holder.removeEventListener('keydown', headingShortcutHandler);
+        if (holder && editorKeydownHandler) {
+            holder.removeEventListener('keydown', editorKeydownHandler);
         }
+        editorKeydownHandler = null;
         headingShortcutHandler = null;
     };
 
@@ -393,6 +397,101 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const focusEditorBlockAtStart = (index) => {
+        requestAnimationFrame(() => {
+            const block = document.querySelectorAll('#editorjs .ce-block')[index];
+            const editable = block?.querySelector('[contenteditable="true"]');
+            if (!editable) return;
+            editable.focus({ preventScroll: true });
+            const range = document.createRange();
+            range.selectNodeContents(editable);
+            range.collapse(true);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        });
+    };
+
+    const getFocusedEditorBlockIndex = () => {
+        const block = document.activeElement?.closest?.('#editorjs .ce-block');
+        if (!block) return editor?.blocks?.getCurrentBlockIndex?.() ?? -1;
+        return [...document.querySelectorAll('#editorjs .ce-block')].indexOf(block);
+    };
+
+    const getEditableText = (editable) => (editable?.innerText || editable?.textContent || '')
+        .replace(/\uFEFF/g, '')
+        .trim();
+
+    const isBlockVisuallyEmpty = (blockEl) => {
+        if (!blockEl) return false;
+        const editables = [...blockEl.querySelectorAll('[contenteditable="true"]')];
+        if (!editables.length) return true;
+        return editables.every(editable => getEditableText(editable) === '');
+    };
+
+    const insertParagraphAfter = async (index) => {
+        if (!editor || index < 0) return;
+        await captureUndoSnapshot();
+        editor.blocks.insert('paragraph', { text: '' }, {}, index + 1, false);
+        focusEditorBlockAtStart(index + 1);
+        markDirty();
+        scheduleUndoSnapshot();
+    };
+
+    const isCaretAtEnd = (editable) => {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0 || !editable || !editable.contains(selection.anchorNode)) return false;
+        const range = selection.getRangeAt(0).cloneRange();
+        const tailRange = range.cloneRange();
+        tailRange.selectNodeContents(editable);
+        tailRange.setStart(range.endContainer, range.endOffset);
+        return tailRange.toString().replace(/\uFEFF/g, '') === '';
+    };
+
+    const deleteEditorBlockAt = async (index) => {
+        if (!editor || index < 0) return;
+        const count = editor.blocks.getBlocksCount ? editor.blocks.getBlocksCount() : document.querySelectorAll('#editorjs .ce-block').length;
+        if (count <= 1) {
+            await captureUndoSnapshot();
+            editor.blocks.delete(index);
+            editor.blocks.insert('paragraph', { text: '' }, {}, 0, false);
+            focusEditorBlockAtEnd(0);
+        } else {
+            await captureUndoSnapshot();
+            editor.blocks.delete(index);
+            focusEditorBlockAtEnd(Math.max(0, Math.min(index, count - 2)));
+        }
+        markDirty();
+        scheduleUndoSnapshot();
+    };
+
+    const handleEditorStructuralKeys = (event) => {
+        if (!editor || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
+        const blockEl = event.target.closest?.('#editorjs .ce-block');
+        if (!blockEl) return false;
+        const index = getFocusedEditorBlockIndex();
+        if (index < 0) return false;
+        const block = editor.blocks.getBlockByIndex(index);
+
+        if (event.key === 'Enter' && block?.name === 'header') {
+            const editable = event.target.closest?.('[contenteditable="true"]');
+            if (!isCaretAtEnd(editable)) return false;
+            event.preventDefault();
+            headingShortcutIndex = null;
+            insertParagraphAfter(index);
+            focusEditorBlockAtStart(index + 1);
+            return true;
+        }
+
+        if (!['Backspace', 'Delete'].includes(event.key)) return false;
+        if (!isBlockVisuallyEmpty(blockEl)) return false;
+        if (block?.name === 'paragraph') return false;
+
+        event.preventDefault();
+        deleteEditorBlockAt(index);
+        return true;
+    };
+
     const createHeadingShortcutHandler = () => {
         return (event) => {
             if (event.key !== ' ' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
@@ -408,10 +507,13 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
 
             try {
+                captureUndoSnapshot();
                 editor.blocks.delete(currentIndex);
                 editor.blocks.insert('header', { text: '', level }, {}, currentIndex, false);
+                headingShortcutIndex = currentIndex;
                 focusEditorBlockAtEnd(currentIndex);
                 markDirty();
+                scheduleUndoSnapshot();
             } catch (error) {
                 console.error('[Wiki] Heading shortcut failed:', error);
                 window.showToast(tr('headingShortcutFailed') + ': ' + (error.message || error), 'error');
@@ -750,7 +852,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const undoEditorChange = async () => {
         clearTimeout(undoCaptureTimer);
-        await captureUndoSnapshot();
+        if (editor) {
+            const current = normalizeEditorData(await editor.save());
+            const serialized = serializeEditorData(current);
+            if (serialized !== lastUndoSnapshot) {
+                undoStack.push(current);
+                if (undoStack.length > 60) undoStack.shift();
+                lastUndoSnapshot = serialized;
+            }
+        }
         if (!editor || undoStack.length < 2) return;
 
         undoStack.pop();
@@ -760,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await editor.render(previous);
             lastUndoSnapshot = serializeEditorData(previous);
-            if (saveWikiBtn) saveWikiBtn.disabled = false;
+            markDirty();
         } catch (error) {
             console.error('[Wiki] Undo failed:', error);
             window.showToast(tr('undoFailed') + ': ' + (error.message || error), 'error');
@@ -931,7 +1041,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const holder = document.getElementById('editorjs');
                 removeHeadingShortcutHandler();
                 headingShortcutHandler = createHeadingShortcutHandler();
-                if (holder) holder.addEventListener('keydown', headingShortcutHandler);
+                if (holder) {
+                    editorKeydownHandler = (event) => {
+                        if (handleEditorStructuralKeys(event)) return;
+                        headingShortcutHandler(event);
+                    };
+                    holder.addEventListener('keydown', editorKeydownHandler);
+                }
             },
             onChange: () => {
                 // Proactively enable save button if disabled
@@ -1108,6 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('wiki-cover-position-label', tr('coverPosition'));
         setText('wiki-cover-height-label', tr('coverHeight'));
         setText('wiki-cover-reset-btn', tr('resetCover'));
+        setText('wiki-parent-btn span', tr('parentPage'));
         if (backBtn) {
             backBtn.title = tr('backToList');
             backBtn.setAttribute('aria-label', tr('backToList'));
@@ -1304,6 +1421,14 @@ document.addEventListener('DOMContentLoaded', () => {
         wikiEditorView.classList.add('fade-in');
 
         wikiTitleInput.value = page.title || '';
+        if (parentBtn) {
+            const parentPage = page.parentId ? getPageById(page.parentId) : null;
+            parentBtn.hidden = !parentPage;
+            parentBtn.title = parentPage ? `${tr('parentPage')}: ${parentPage.title || tr('untitledDocument')}` : tr('parentPage');
+            parentBtn.onclick = () => {
+                if (parentPage) navigateToPage(parentPage.id);
+            };
+        }
         currentPageMeta = {
             icon: page.icon || '📄',
             coverUrl: page.coverUrl || '',
@@ -1330,6 +1455,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeEditor = () => {
         cleanupPendingWikiUploads();
         currentPageId = null;
+        if (parentBtn) {
+            parentBtn.hidden = true;
+            parentBtn.onclick = null;
+            parentBtn.title = tr('parentPage');
+        }
         pageWiki.classList.remove('editor-active');
         wikiEditorView.style.display = 'none';
         wikiEmptyView.style.display = 'flex';

@@ -4565,6 +4565,28 @@ body.onboarding-spotlight-active #main-area {
     background: var(--bg);
 }
 
+.wiki-parent-btn {
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.wiki-parent-btn:hover {
+    color: var(--blue);
+    border-color: rgba(37, 99, 235, 0.35);
+}
+
 .wiki-cover {
     position: relative;
     height: var(--wiki-cover-height, 180px);
@@ -4843,6 +4865,11 @@ body.onboarding-spotlight-active #main-area {
         width: 46px;
         height: 46px;
         font-size: 24px;
+    }
+
+    .wiki-parent-btn {
+        order: 2;
+        max-width: 100%;
     }
 
     .wiki-title-input {
