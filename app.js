@@ -1534,7 +1534,19 @@ async function connectEmailPasswordLogin() {
 }
 
 async function deleteCurrentUserData(uid) {
-    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages', 'eclass_items'];
+    try {
+        const response = await fetch('/api/account/delete-data', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ uid })
+        });
+        if (response.ok) return;
+        console.warn('[Account] Server-side data deletion failed, falling back to client delete:', await response.text());
+    } catch (error) {
+        console.warn('[Account] Server-side data deletion unavailable, falling back to client delete:', error);
+    }
+
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
     const storageUrls = new Set();
     for (const name of collections) {
         let snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
@@ -2309,7 +2321,7 @@ async function completeCurrentOnboardingStep() {
 
 async function userHasNoWork(uid) {
     if (!uid || !db) return false;
-    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages', 'eclass_items'];
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
     const checks = collections.map(name =>
         db.collection(name).where('uid', '==', uid).limit(1).get()
     );
