@@ -555,11 +555,12 @@ const I18N = {
         coverHeight: '보이는 면적', coverZoom: '확대', resetCover: '기본값', dragBlock: '블록 이동',
         blockMoveFailed: '블록 이동 실패',
         eclassTitle: 'E-class 연동', eclassDescription: '서울과기대 e-Class 강의와 과제를 작업에 연결합니다.',
-        eclassDisconnected: '연결 전', eclassConnected: '연결됨', eclassUrl: 'E-class URL', eclassCookie: '세션 쿠키',
-        eclassHelp: '로그인된 브라우저의 e-Class 세션 쿠키를 저장하면 앱 사용 중 5분마다, 서버에서는 하루 1회 강의와 과제를 가져옵니다.',
+        eclassDisconnected: '연결 전', eclassConnected: '연결됨', eclassUrl: 'E-class URL',
+        eclassUsername: 'E-class 아이디', eclassPassword: 'E-class 비밀번호',
+        eclassHelp: 'E-class 아이디와 비밀번호를 저장하면 앱 사용 중 5분마다, 서버에서는 하루 1회 강의와 과제를 가져옵니다. 비밀번호는 암호화해 저장합니다.',
         eclassSave: '연결 저장', eclassSyncNow: '지금 동기화', eclassSaving: '연결 저장 중...',
         eclassSaved: 'E-class 연결이 저장되었습니다.', eclassSyncing: '동기화 중...', eclassSynced: '{count}개 항목을 동기화했습니다.',
-        eclassFailed: 'E-class 처리 실패', eclassCookieRequired: '세션 쿠키를 입력해주세요.',
+        eclassFailed: 'E-class 처리 실패', eclassCredentialsRequired: 'E-class 아이디와 비밀번호를 입력해주세요.',
         eclassSupportedSchools: '지원 학교 보기', eclassSupportedSeoultech: '서울과학기술대학교 e-Class',
         eclassRequestText: '다른 학교 연동이 필요하면 이메일로 요청해주세요.', eclassRequestSchool: '학교 추가 요청',
         changeCover: '커버 변경',
@@ -802,11 +803,12 @@ const I18N = {
         coverPositionX: 'Horizontal position', coverPositionY: 'Vertical position', coverHeight: 'Visible area',
         coverZoom: 'Zoom', resetCover: 'Reset', dragBlock: 'Move block', blockMoveFailed: 'Block move failed',
         eclassTitle: 'E-class sync', eclassDescription: 'Connect SeoulTech e-Class lectures and assignments to tasks.',
-        eclassDisconnected: 'Not connected', eclassConnected: 'Connected', eclassUrl: 'E-class URL', eclassCookie: 'Session cookie',
-        eclassHelp: 'Save the session cookie from your logged-in e-Class browser. The app syncs every 5 minutes while open, and the server syncs once daily.',
+        eclassDisconnected: 'Not connected', eclassConnected: 'Connected', eclassUrl: 'E-class URL',
+        eclassUsername: 'E-class ID', eclassPassword: 'E-class password',
+        eclassHelp: 'Save your E-class ID and password. The app syncs every 5 minutes while open, and the server syncs once daily. Your password is stored encrypted.',
         eclassSave: 'Save connection', eclassSyncNow: 'Sync now', eclassSaving: 'Saving connection...',
         eclassSaved: 'E-class connection saved.', eclassSyncing: 'Syncing...', eclassSynced: 'Synced {count} items.',
-        eclassFailed: 'E-class request failed', eclassCookieRequired: 'Enter a session cookie.',
+        eclassFailed: 'E-class request failed', eclassCredentialsRequired: 'Enter your E-class ID and password.',
         eclassSupportedSchools: 'View supported schools', eclassSupportedSeoultech: 'SeoulTech e-Class',
         eclassRequestText: 'Need another school? Request support by email.', eclassRequestSchool: 'Request a school',
         onboardingStepsLabel: 'Guide steps', koreanLanguage: 'Korean', englishLanguage: 'English',
@@ -1073,7 +1075,8 @@ function applyLanguage(lang = currentLanguage) {
     setText('#profile-eclass-title', t('eclassTitle'));
     setText('#profile-eclass-description', t('eclassDescription'));
     setText('#profile-eclass-url-label', t('eclassUrl'));
-    setText('#profile-eclass-cookie-label', t('eclassCookie'));
+    setText('#profile-eclass-username-label', t('eclassUsername'));
+    setText('#profile-eclass-password-label', t('eclassPassword'));
     setText('#profile-eclass-help', t('eclassHelp'));
     setText('#profile-eclass-save-btn', t('eclassSave'));
     setText('#profile-eclass-sync-btn', t('eclassSyncNow'));
@@ -1203,12 +1206,14 @@ async function loadEclassStatus() {
 
 async function saveEclassConnection() {
     const urlInput = getEl('profile-eclass-url');
-    const cookieInput = getEl('profile-eclass-cookie');
+    const usernameInput = getEl('profile-eclass-username');
+    const passwordInput = getEl('profile-eclass-password');
     const status = getEl('profile-eclass-status');
     const button = getEl('profile-eclass-save-btn');
-    const sessionCookie = cookieInput?.value?.trim() || '';
-    if (!sessionCookie) {
-        if (status) status.textContent = t('eclassCookieRequired');
+    const username = usernameInput?.value?.trim() || '';
+    const password = passwordInput?.value || '';
+    if (!username || !password) {
+        if (status) status.textContent = t('eclassCredentialsRequired');
         return;
     }
     try {
@@ -1218,13 +1223,14 @@ async function saveEclassConnection() {
             headers: await getAuthHeaders(),
             body: JSON.stringify({
                 baseUrl: urlInput?.value?.trim() || 'https://eclass.seoultech.ac.kr',
-                sessionCookie
+                username,
+                password
             })
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
         eclassStatus = data;
-        if (cookieInput) cookieInput.value = '';
+        if (passwordInput) passwordInput.value = '';
         updateEclassStatusBadge();
         if (status) {
             status.className = 'profile-status-text success';
@@ -3584,7 +3590,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: formatText('projectNotesTitle', { project: project.name }),
                     parentId: null,
                     projectId: project.id,
-                    content: { blocks: [] },
+                    content: { time: Date.now(), blocks: [], version: '2.28.2' },
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });

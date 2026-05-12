@@ -49,9 +49,11 @@ async function syncConnection(uid, connection) {
   const admin = getAdmin();
   const db = admin.firestore();
   const ref = db.collection('eclass_connections').doc(uid);
-  const sessionCookie = decrypt(connection.encryptedSessionCookie);
-  if (!sessionCookie) throw new Error('Missing saved session cookie');
-  const items = await fetchSeoultechItems({ baseUrl: connection.baseUrl, sessionCookie });
+  const sessionCookie = connection.encryptedSessionCookie ? decrypt(connection.encryptedSessionCookie) : '';
+  const username = connection.encryptedUsername ? decrypt(connection.encryptedUsername) : '';
+  const password = connection.encryptedPassword ? decrypt(connection.encryptedPassword) : '';
+  if (!sessionCookie && (!username || !password)) throw new Error('Missing saved E-class credentials');
+  const items = await fetchSeoultechItems({ baseUrl: connection.baseUrl, sessionCookie, username, password });
   const batch = db.batch();
   items.forEach(item => {
     const itemRef = db.collection('eclass_items').doc(`${uid}_${Buffer.from(item.externalId).toString('base64url').slice(0, 80)}`);

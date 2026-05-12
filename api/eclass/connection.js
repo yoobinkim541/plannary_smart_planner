@@ -1,6 +1,6 @@
 const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('./_admin');
 const { encrypt } = require('./_crypto');
-const { DEFAULT_BASE_URL, normalizeBaseUrl } = require('./_seoultech');
+const { DEFAULT_BASE_URL, loginSeoultech, normalizeBaseUrl } = require('./_seoultech');
 
 module.exports = async function handler(req, res) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -24,16 +24,20 @@ module.exports = async function handler(req, res) {
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const sessionCookie = String(body.sessionCookie || '').trim();
-    if (!sessionCookie) return sendJson(res, 400, { error: 'Session cookie is required' });
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (!username || !password) return sendJson(res, 400, { error: 'E-class ID and password are required' });
     const baseUrl = normalizeBaseUrl(body.baseUrl || DEFAULT_BASE_URL);
+    await loginSeoultech({ baseUrl, username, password });
 
     await ref.set({
       uid: user.uid,
       enabled: true,
       baseUrl,
       platform: 'seoultech-moodle',
-      encryptedSessionCookie: encrypt(sessionCookie),
+      encryptedUsername: encrypt(username),
+      encryptedPassword: encrypt(password),
+      encryptedSessionCookie: admin.firestore.FieldValue.delete(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });

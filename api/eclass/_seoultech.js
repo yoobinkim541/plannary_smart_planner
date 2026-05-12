@@ -58,13 +58,79 @@ async function fetchText(url, sessionCookie) {
   return response.text();
 }
 
-async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie }) {
+function mergeCookies(existing, setCookieHeaders) {
+  const jar = new Map();
+  String(existing || '').split(';').map(part => part.trim()).filter(Boolean).forEach(part => {
+    const [name, ...rest] = part.split('=');
+    if (name) jar.set(name, rest.join('='));
+  });
+  (setCookieHeaders || []).forEach(header => {
+    const cookie = String(header || '').split(';')[0];
+    const [name, ...rest] = cookie.split('=');
+    if (name && rest.length) jar.set(name.trim(), rest.join('='));
+  });
+  return [...jar.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
+}
+
+function getSetCookieHeaders(response) {
+  if (typeof response.headers.getSetCookie === 'function') return response.headers.getSetCookie();
+  const single = response.headers.get('set-cookie');
+  return single ? [single] : [];
+}
+
+async function loginSeoultech({ baseUrl = DEFAULT_BASE_URL, username, password }) {
   const normalizedBase = normalizeBaseUrl(baseUrl);
+  const loginUrl = toAbsoluteUrl(normalizedBase, '/login/index.php');
+  const loginPage = await fetch(loginUrl, {
+    headers: {
+      'User-Agent': 'PlanaryEclassSync/1.0',
+      Accept: 'text/html,application/xhtml+xml'
+    },
+    redirect: 'manual'
+  });
+  let cookie = mergeCookies('', getSetCookieHeaders(loginPage));
+  const html = await loginPage.text();
+  const $ = cheerio.load(html);
+  const form = $('form[action*="login"]').first();
+  const action = form.attr('action') || '/login/index.php';
+  const body = new URLSearchParams();
+  form.find('input').each((_, element) => {
+    const input = $(element);
+    const name = input.attr('name');
+    if (!name) return;
+    body.set(name, input.attr('value') || '');
+  });
+  body.set('username', username);
+  body.set('password', password);
+
+  const response = await fetch(toAbsoluteUrl(loginUrl, action), {
+    method: 'POST',
+    headers: {
+      Cookie: cookie,
+      'User-Agent': 'PlanaryEclassSync/1.0',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'text/html,application/xhtml+xml'
+    },
+    body,
+    redirect: 'manual'
+  });
+  cookie = mergeCookies(cookie, getSetCookieHeaders(response));
+  if (![200, 302, 303].includes(response.status)) throw new Error(`E-class login HTTP ${response.status}`);
+  const checkHtml = response.status >= 300 ? await fetchText(toAbsoluteUrl(normalizedBase, '/my/'), cookie) : await response.text();
+  if (/login|로그인/.test(cheerio.load(checkHtml)('body').text()) && !/과제|강의|lecture|assignment/i.test(checkHtml)) {
+    throw new Error('E-class login failed. 아이디 또는 비밀번호를 확인해주세요.');
+  }
+  return cookie;
+}
+
+async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, username, password }) {
+  const normalizedBase = normalizeBaseUrl(baseUrl);
+  const cookie = sessionCookie || await loginSeoultech({ baseUrl: normalizedBase, username, password });
   const candidatePaths = ['/my/', '/local/ubion/user/', '/course/'];
   const pages = [];
   for (const path of candidatePaths) {
     try {
-      pages.push({ url: toAbsoluteUrl(normalizedBase, path), html: await fetchText(toAbsoluteUrl(normalizedBase, path), sessionCookie) });
+      pages.push({ url: toAbsoluteUrl(normalizedBase, path), html: await fetchText(toAbsoluteUrl(normalizedBase, path), cookie) });
     } catch (error) {
       pages.push({ url: toAbsoluteUrl(normalizedBase, path), error: error.message });
     }
@@ -101,4 +167,4 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie }
   return [...items.values()].slice(0, 80);
 }
 
-module.exports = { DEFAULT_BASE_URL, fetchSeoultechItems, normalizeBaseUrl };
+module.exports = { DEFAULT_BASE_URL, fetchSeoultechItems, loginSeoultech, normalizeBaseUrl };

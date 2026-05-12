@@ -1587,7 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             coverHeight: 180,
             coverZoom: 100,
             coverCropMode: 'cover',
-            content: {},
+            content: { time: Date.now(), blocks: [], version: '2.28.2' },
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };

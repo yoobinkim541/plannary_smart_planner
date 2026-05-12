@@ -794,11 +794,15 @@
                                 <input type="url" id="profile-eclass-url" class="auth-input" value="https://eclass.seoultech.ac.kr" placeholder="https://eclass.seoultech.ac.kr">
                             </label>
                             <label>
-                                <span id="profile-eclass-cookie-label">세션 쿠키</span>
-                                <input type="password" id="profile-eclass-cookie" class="auth-input" autocomplete="off" placeholder="MoodleSession=...">
+                                <span id="profile-eclass-username-label">E-class 아이디</span>
+                                <input type="text" id="profile-eclass-username" class="auth-input" autocomplete="username" placeholder="학번 또는 아이디">
+                            </label>
+                            <label>
+                                <span id="profile-eclass-password-label">E-class 비밀번호</span>
+                                <input type="password" id="profile-eclass-password" class="auth-input" autocomplete="current-password" placeholder="비밀번호">
                             </label>
                         </div>
-                        <p id="profile-eclass-help" class="profile-help-text">로그인된 브라우저의 e-Class 세션 쿠키를 저장하면 앱 사용 중 5분마다, 서버에서는 하루 1회 강의와 과제를 가져옵니다.</p>
+                        <p id="profile-eclass-help" class="profile-help-text">E-class 아이디와 비밀번호를 저장하면 앱 사용 중 5분마다, 서버에서는 하루 1회 강의와 과제를 가져옵니다. 비밀번호는 암호화해 저장합니다.</p>
                         <details class="profile-eclass-support">
                             <summary id="profile-eclass-supported-summary">지원 학교 보기</summary>
                             <ul id="profile-eclass-supported-list">
@@ -1062,7 +1066,7 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v27"></script>
+    <script src="app.js?v=v28"></script>
     <script src="wiki.js?v=v14"></script>
 </body>
 
