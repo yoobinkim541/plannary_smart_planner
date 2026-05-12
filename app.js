@@ -560,6 +560,8 @@ const I18N = {
         eclassSave: '연결 저장', eclassSyncNow: '지금 동기화', eclassSaving: '연결 저장 중...',
         eclassSaved: 'E-class 연결이 저장되었습니다.', eclassSyncing: '동기화 중...', eclassSynced: '{count}개 항목을 동기화했습니다.',
         eclassFailed: 'E-class 처리 실패', eclassCookieRequired: '세션 쿠키를 입력해주세요.',
+        eclassSupportedSchools: '지원 학교 보기', eclassSupportedSeoultech: '서울과학기술대학교 e-Class',
+        eclassRequestText: '다른 학교 연동이 필요하면 이메일로 요청해주세요.', eclassRequestSchool: '학교 추가 요청',
         changeCover: '커버 변경',
         onboardingStepsLabel: '가이드 단계', koreanLanguage: '한국어', englishLanguage: 'English',
         close: '닫기'
@@ -805,6 +807,8 @@ const I18N = {
         eclassSave: 'Save connection', eclassSyncNow: 'Sync now', eclassSaving: 'Saving connection...',
         eclassSaved: 'E-class connection saved.', eclassSyncing: 'Syncing...', eclassSynced: 'Synced {count} items.',
         eclassFailed: 'E-class request failed', eclassCookieRequired: 'Enter a session cookie.',
+        eclassSupportedSchools: 'View supported schools', eclassSupportedSeoultech: 'SeoulTech e-Class',
+        eclassRequestText: 'Need another school? Request support by email.', eclassRequestSchool: 'Request a school',
         onboardingStepsLabel: 'Guide steps', koreanLanguage: 'Korean', englishLanguage: 'English',
         close: 'Close'
     }
@@ -1073,6 +1077,11 @@ function applyLanguage(lang = currentLanguage) {
     setText('#profile-eclass-help', t('eclassHelp'));
     setText('#profile-eclass-save-btn', t('eclassSave'));
     setText('#profile-eclass-sync-btn', t('eclassSyncNow'));
+    setText('#profile-eclass-supported-summary', t('eclassSupportedSchools'));
+    const supportedSchool = document.querySelector('#profile-eclass-supported-list li');
+    if (supportedSchool) supportedSchool.textContent = t('eclassSupportedSeoultech');
+    setText('#profile-eclass-request-text', t('eclassRequestText'));
+    setText('#profile-eclass-request-link', t('eclassRequestSchool'));
     updateEclassStatusBadge();
     setText('.profile-guide-panel h3', t('guideTitle'));
     setText('.profile-guide-panel p', t('guideDescription'));
