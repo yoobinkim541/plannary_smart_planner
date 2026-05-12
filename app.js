@@ -81,6 +81,7 @@ let onboardingRepositionThrottleMs = 160;
 let eclassStatus = null;
 let eclassForegroundSyncTimer = null;
 let taskCalendarAccessToken = null;
+let lastCalendarImportAt = null;
 const reminderNotificationTimers = new Map();
 const DEFAULT_NOTIFICATION_SETTINGS = {
     dailyTasks: false,
@@ -364,6 +365,8 @@ const I18N = {
         deleteTaskCancel: '유지하기', deleteTaskConfirm: '삭제하기', editTaskTitle: '작업 수정', taskNameLabel: '작업명',
         taskMemoLabel: '메모', dueDateLabel: '마감일', projectSelectLabel: '프로젝트', saveTaskChanges: '변경사항 저장',
         dueTimeLabel: '시간', calendarReminderLabel: '캘린더 알림', calendarConnectTask: 'Google Calendar 연결',
+        calendarImportTask: 'Google Calendar 가져오기', calendarImportDone: 'Google Calendar 일정을 task로 가져왔습니다',
+        calendarImportEmpty: '가져올 Google Calendar 일정이 없습니다',
         taskDetailsToggle: '세부 설정',
         notifyAtTime: '정시에 알림', notifyBefore10: '10분 전', notifyBefore30: '30분 전', notifyBefore60: '1시간 전',
         notifyBefore120: '2시간 전', notifyBefore1440: '1일 전', calendarSyncOn: '캘린더 연동됨',
@@ -612,6 +615,8 @@ const I18N = {
         deleteTaskCancel: 'Keep task', deleteTaskConfirm: 'Delete task', editTaskTitle: 'Edit task', taskNameLabel: 'Task name',
         taskMemoLabel: 'Note', dueDateLabel: 'Due date', projectSelectLabel: 'Project', saveTaskChanges: 'Save changes',
         dueTimeLabel: 'Time', calendarReminderLabel: 'Calendar alert', calendarConnectTask: 'Connect Google Calendar',
+        calendarImportTask: 'Import Google Calendar', calendarImportDone: 'Imported Google Calendar events as tasks',
+        calendarImportEmpty: 'No Google Calendar events to import',
         taskDetailsToggle: 'Details',
         notifyAtTime: 'At time', notifyBefore10: '10 min before', notifyBefore30: '30 min before', notifyBefore60: '1 hour before',
         notifyBefore120: '2 hours before', notifyBefore1440: '1 day before', calendarSyncOn: 'Calendar sync on',
@@ -974,6 +979,8 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#search-input', t('searchTasks'));
     setTitle('#task-img-upload-btn', t('uploadImageTitle'));
     setTitle('#task-calendar-connect-btn', t('calendarConnectTask'));
+    setTitle('#task-calendar-import-btn', t('calendarImportTask'));
+    setText('#task-calendar-import-btn', t('calendarImportTask'));
     setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
     setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
     const dueTimeInput = getEl('due-time');
@@ -3060,6 +3067,7 @@ async function confirmTaskDelete() {
     const id = pendingDeleteTaskId;
     const task = allTodos.find(item => item.id === id);
     closeTaskDeleteDialog();
+    await deleteTaskGoogleCalendarEvent(task);
     await db.collection('todos').doc(id).delete();
     if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
 }
@@ -3150,6 +3158,7 @@ async function ensureTaskCalendarAccess() {
     if (!user) throw new Error(t('loginFirst'));
     if (taskCalendarAccessToken) return taskCalendarAccessToken;
     const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
     provider.addScope('https://www.googleapis.com/auth/calendar.events');
     const result = await user.reauthenticateWithPopup(provider);
     const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
@@ -3157,7 +3166,21 @@ async function ensureTaskCalendarAccess() {
     taskCalendarAccessToken = credential.accessToken;
     const connectBtn = getEl('task-calendar-connect-btn');
     if (connectBtn) connectBtn.classList.add('active');
+    const importBtn = getEl('task-calendar-import-btn');
+    if (importBtn) importBtn.classList.add('active');
     return taskCalendarAccessToken;
+}
+
+function parseGoogleCalendarDate(value) {
+    if (!value) return { dueDate: null, dueTime: null };
+    if (value.date) return { dueDate: value.date, dueTime: null };
+    if (!value.dateTime) return { dueDate: null, dueTime: null };
+    const parsed = new Date(value.dateTime);
+    if (Number.isNaN(parsed.getTime())) return { dueDate: null, dueTime: null };
+    return {
+        dueDate: parsed.toISOString().slice(0, 10),
+        dueTime: parsed.toTimeString().slice(0, 5)
+    };
 }
 
 function buildTaskCalendarEvent(task) {
@@ -3184,8 +3207,12 @@ async function syncTaskToGoogleCalendar(task) {
     const token = await ensureTaskCalendarAccess();
     const body = buildTaskCalendarEvent(task);
     if (!body) return null;
-    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-        method: 'POST',
+    const eventId = task.calendarEventId ? encodeURIComponent(task.calendarEventId) : '';
+    const url = eventId
+        ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`
+        : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+    const response = await fetch(url, {
+        method: eventId ? 'PUT' : 'POST',
         headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -3194,6 +3221,68 @@ async function syncTaskToGoogleCalendar(task) {
     });
     if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
     return response.json();
+}
+
+async function deleteTaskGoogleCalendarEvent(task) {
+    if (!task?.calendarEventId) return;
+    if (task.source === 'google-calendar') return;
+    try {
+        const token = await ensureTaskCalendarAccess();
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(task.calendarEventId)}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`Google Calendar ${response.status}`);
+    } catch (error) {
+        console.warn('Calendar event delete failed:', error);
+    }
+}
+
+async function importGoogleCalendarTasks() {
+    if (!currentUser || !db) throw new Error(t('loginFirst'));
+    const token = await ensureTaskCalendarAccess();
+    const now = new Date();
+    const until = new Date(now);
+    until.setDate(until.getDate() + 30);
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(now.toISOString())}&timeMax=${encodeURIComponent(until.toISOString())}`;
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    const data = await response.json();
+    const events = (data.items || []).filter(event => event.status !== 'cancelled' && event.id && event.summary);
+    let imported = 0;
+    for (const event of events) {
+        const existing = await db.collection('todos')
+            .where('uid', '==', currentUser.uid)
+            .where('source', '==', 'google-calendar')
+            .where('sourceItemId', '==', event.id)
+            .limit(1)
+            .get();
+        if (!existing.empty) continue;
+        const start = parseGoogleCalendarDate(event.start || {});
+        await db.collection('todos').add({
+            uid: currentUser.uid,
+            text: event.summary || t('untitledEvent'),
+            memo: event.description || null,
+            dueDate: start.dueDate,
+            dueTime: start.dueTime,
+            calendarReminderMinutes: Number(event.reminders?.overrides?.[0]?.minutes ?? 30),
+            syncCalendar: true,
+            calendarEventId: event.id,
+            priority: 'medium',
+            projectId: null,
+            imageUrl: null,
+            completed: false,
+            archived: false,
+            source: 'google-calendar',
+            sourceItemId: event.id,
+            sourceUrl: event.htmlLink || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            orderIndex: Date.now() - imported
+        });
+        imported += 1;
+    }
+    lastCalendarImportAt = new Date();
+    return imported;
 }
 
 function toIcsDate(date) {
@@ -3251,15 +3340,27 @@ async function saveTaskEditDialog() {
         return;
     }
     const priority = getEl('task-edit-priority')?.value || 'medium';
-    await db.collection('todos').doc(editingTaskId).update({
+    const existing = allTodos.find(item => item.id === editingTaskId);
+    const payload = {
         text,
         memo: (getEl('task-edit-memo')?.value || '').trim() || null,
         dueDate: getEl('task-edit-due-date')?.value || null,
         dueTime: getEl('task-edit-due-time')?.value || null,
         calendarReminderMinutes: Number(getEl('task-edit-calendar-reminder')?.value || 30),
         priority: ['low', 'medium', 'high'].includes(priority) ? priority : 'medium',
-        projectId: getEl('task-edit-project')?.value || null
-    });
+        projectId: getEl('task-edit-project')?.value || null,
+        syncCalendar: !!(existing?.calendarEventId || taskCalendarAccessToken)
+    };
+    if (payload.syncCalendar && payload.dueDate) {
+        try {
+            const event = await syncTaskToGoogleCalendar({ ...existing, ...payload });
+            if (event?.id) payload.calendarEventId = event.id;
+        } catch (error) {
+            console.error('Calendar update failed:', error);
+            showToast(t('calendarSyncFailed') + ': ' + (error.message || error), 'error');
+        }
+    }
+    await db.collection('todos').doc(editingTaskId).update(payload);
     closeTaskEditDialog();
     showToast(t('taskUpdated'));
 }
@@ -3448,6 +3549,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(t('calendarConnected'), 'success');
             } catch (error) {
                 console.error('Calendar connect failed:', error);
+                showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            }
+        };
+    }
+
+    if (getEl('task-calendar-import-btn')) {
+        getEl('task-calendar-import-btn').onclick = async () => {
+            try {
+                const count = await importGoogleCalendarTasks();
+                showToast(count ? `${t('calendarImportDone')} (${count})` : t('calendarImportEmpty'), count ? 'success' : 'info');
+            } catch (error) {
+                console.error('Calendar import failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
             }
         };
