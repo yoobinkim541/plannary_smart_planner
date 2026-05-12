@@ -32,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="stylesheet" href="landing.css">
+    <link rel="stylesheet" href="landing.css?v=v2">
 </head>
 
 <body class="landing-page">
@@ -80,75 +80,103 @@
                         <span class="tablet-label">Tablet UI</span>
                         <span class="mobile-label">Mobile UI</span>
                     </div>
+                    <div class="landing-product-rail" aria-hidden="true">
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </span>
+                        <span class="active">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        </span>
+                    </div>
                     <aside class="landing-product-sidebar">
-                        <div class="landing-mini-brand">
-                            <span class="landing-brand-mark">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                        <div class="landing-sidebar-project">
+                            <span class="landing-sidebar-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                             </span>
-                            Planary
+                            <span>
+                                <strong>내 작업</strong>
+                                <small>작업 관리자 ↗</small>
+                            </span>
                         </div>
-                        <button class="landing-mini-new" type="button">New</button>
                         <div class="landing-product-nav">
+                            <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>홈</span>
                             <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Tasks</span>
-                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Wiki</span>
                             <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>Projects</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notes</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Wiki</span>
                             <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Bookmarks</span>
                         </div>
-                        <div class="landing-favorite">
-                            <span>Work system</span>
-                            <span>Study notes</span>
+                        <div class="landing-preview-profile">
+                            <span class="landing-avatar">U</span>
+                            <span>
+                                <strong>User</strong>
+                                <small>user@email.com</small>
+                            </span>
                         </div>
                     </aside>
                     <div class="landing-product-main">
                         <div class="landing-product-top">
                             <div>
-                                <h2>Today workspace</h2>
-                                <span>3 tasks · 2 wiki pages</span>
+                                <h2>작업</h2>
+                                <span>해야 할 일을 만들고 마감일과 프로젝트를 함께 관리하세요.</span>
                             </div>
-                            <span>Planary</span>
                         </div>
                         <div class="landing-tablet-tabs" aria-hidden="true">
                             <span class="active">Tasks</span>
                             <span>Wiki</span>
                             <span>Projects</span>
                         </div>
-                        <div class="landing-product-grid">
-                            <section class="landing-panel">
-                                <h3>Tasks</h3>
-                                <div class="landing-task-row">
-                                    <span class="landing-checkbox"></span><span>랜딩 페이지 QA</span><span class="landing-tag">Web</span><span class="landing-time">Today</span>
-                                </div>
-                                <div class="landing-task-row">
-                                    <span class="landing-checkbox"></span><span>프로젝트 위키 정리</span><span class="landing-tag">Docs</span><span class="landing-time">Fri</span>
-                                </div>
-                                <div class="landing-task-row">
-                                    <span class="landing-checkbox"></span><span>리마인더 확인</span><span class="landing-tag">Ops</span><span class="landing-time">Mon</span>
-                                </div>
-                            </section>
-                            <section class="landing-panel">
-                                <h3>Reminders</h3>
-                                <div class="landing-day">
-                                    <div class="landing-day-row"><strong>09:00</strong><span>작업 계획 확인</span></div>
-                                    <div class="landing-day-row"><strong>14:00</strong><span>프로젝트 문서 업데이트</span></div>
-                                    <div class="landing-day-row"><strong>18:00</strong><span>오늘 완료 항목 정리</span></div>
-                                </div>
-                            </section>
+                        <div class="landing-composer">
+                            <span>오늘 처리할 작업을 입력하세요...</span>
+                            <button type="button">추가</button>
                         </div>
-                        <div class="landing-wiki-strip">
-                            <article class="landing-wiki-card">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                                <strong>Project wiki</strong>
-                                <p>프로젝트별 문서와 서브페이지를 연결합니다.</p>
+                        <div class="landing-filter-row">
+                            <span class="active">전체</span>
+                            <span>진행 중</span>
+                            <span>중요</span>
+                            <span>리마인더</span>
+                        </div>
+                        <div class="landing-task-stack">
+                            <article class="landing-real-task">
+                                <button type="button" aria-label="완료"></button>
+                                <div>
+                                    <strong>랜딩 페이지 QA</strong>
+                                    <small>오늘 · Web project</small>
+                                    <p>실제 앱 화면과 랜딩 프리뷰의 레이아웃, 카드, 색상을 맞춥니다.</p>
+                                </div>
+                                <span class="blue"></span>
                             </article>
-                            <article class="landing-wiki-card">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                <strong>Task flow</strong>
-                                <p>우선순위와 마감일을 한 화면에서 봅니다.</p>
+                            <article class="landing-real-task">
+                                <button type="button" aria-label="완료"></button>
+                                <div>
+                                    <strong>프로젝트 위키 정리</strong>
+                                    <small>금요일 · Docs</small>
+                                    <p>회의록과 참고 링크를 위키 하위 페이지로 정리합니다.</p>
+                                </div>
+                                <span class="green"></span>
                             </article>
-                            <article class="landing-wiki-card">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                                <strong>Saved links</strong>
-                                <p>자주 쓰는 자료를 북마크로 보관합니다.</p>
+                            <article class="landing-real-task compact">
+                                <button type="button" aria-label="완료"></button>
+                                <div>
+                                    <strong>리마인더 확인</strong>
+                                    <small>월요일 · Ops</small>
+                                </div>
+                                <span class="red"></span>
                             </article>
                         </div>
                     </div>
@@ -260,6 +288,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-init.js?v=v1"></script>
     <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then((registration) => {
+                    registration.update();
+                }).catch(() => {});
+            });
+        }
+
         if (typeof firebase !== 'undefined') {
             firebase.auth().onAuthStateChanged((user) => {
                 if (user) window.location.replace('/');

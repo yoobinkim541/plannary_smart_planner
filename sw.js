@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-pwa-cache-v42';
+const CACHE_NAME = 'todo-pwa-cache-v43';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -15,6 +15,18 @@ const urlsToCache = [
   '/icons/apple-touch-icon.png'
 ];
 
+const APP_SHELL_ASSETS = new Set([
+  '/',
+  '/index.html',
+  '/landing.html',
+  '/landing.css',
+  '/style.css',
+  '/app.js',
+  '/wiki.js',
+  '/firebase-init.js',
+  '/manifest.json'
+]);
+
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
@@ -26,7 +38,6 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(clients.claim());
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -37,9 +48,22 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => clients.claim())
   );
 });
+
+async function networkFirst(request, fallbackUrl) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    if (response && response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    return (await caches.match(request)) || (fallbackUrl ? caches.match(fallbackUrl) : undefined);
+  }
+}
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') {
@@ -53,9 +77,12 @@ self.addEventListener('fetch', event => {
   }
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/index.html'))
-    );
+    event.respondWith(networkFirst(event.request, '/index.html'));
+    return;
+  }
+
+  if (requestUrl.origin === self.location.origin && APP_SHELL_ASSETS.has(requestUrl.pathname)) {
+    event.respondWith(networkFirst(event.request));
     return;
   }
 

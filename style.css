@@ -92,6 +92,7 @@ input::placeholder, textarea::placeholder {
     display: grid;
     grid-template-columns: 64px 260px 1fr;
     height: 100vh;
+    height: 100svh;
     overflow: hidden;
     transition: grid-template-columns 0.22s ease;
 }
@@ -2951,7 +2952,14 @@ body.onboarding-spotlight-active #main-area {
     #app-shell {
         grid-template-columns: 1fr; /* Single column */
         height: 100vh;
+        height: 100svh;
         overflow: hidden;
+    }
+
+    @supports (height: 100dvh) {
+        #app-shell {
+            height: 100dvh;
+        }
     }
 
     /* Mobile Header */
@@ -2996,9 +3004,16 @@ body.onboarding-spotlight-active #main-area {
         top: 0;
         left: 0;
         height: 100%;
+        height: 100svh;
         z-index: 2001;
         transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
         box-shadow: 20px 0 30px rgba(0,0,0,0.1);
+    }
+
+    @supports (height: 100dvh) {
+        #icon-rail, #sidebar {
+            height: 100dvh;
+        }
     }
 
     #icon-rail {
@@ -3048,12 +3063,20 @@ body.onboarding-spotlight-active #main-area {
         left: 0;
         width: 100%;
         height: 100%;
+        height: 100svh;
         background: rgba(0,0,0,0.4);
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
         z-index: 2000;
         opacity: 0;
         visibility: hidden;
         transition: all 0.4s ease;
+    }
+
+    @supports (height: 100dvh) {
+        #sidebar-overlay {
+            height: 100dvh;
+        }
     }
 
     .nav-open #sidebar-overlay {
@@ -3065,6 +3088,13 @@ body.onboarding-spotlight-active #main-area {
     #main-area {
         padding: 24px 20px;
         height: calc(100vh - 60px); 
+        height: calc(100svh - 60px);
+    }
+
+    @supports (height: 100dvh) {
+        #main-area {
+            height: calc(100dvh - 60px);
+        }
     }
 
     /* Composer Adjustments */

@@ -17,6 +17,40 @@ if ('serviceWorker' in navigator) {
 let db = null;
 let auth = null;
 
+function bindResilientMobileNav() {
+    const menuToggle = getEl('menu-toggle');
+    const overlay = getEl('sidebar-overlay');
+
+    if (menuToggle && !menuToggle.dataset.mobileNavBound) {
+        menuToggle.dataset.mobileNavBound = 'true';
+        menuToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = document.body.classList.toggle('nav-open');
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+    }
+
+    if (overlay && !overlay.dataset.mobileNavBound) {
+        overlay.dataset.mobileNavBound = 'true';
+        overlay.addEventListener('click', () => {
+            document.body.classList.remove('nav-open');
+            if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    document.querySelectorAll('[data-target]').forEach(link => {
+        if (link.dataset.mobileNavCloseBound) return;
+        link.dataset.mobileNavCloseBound = 'true';
+        link.addEventListener('click', () => {
+            document.body.classList.remove('nav-open');
+            if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bindResilientMobileNav);
+
 // Core App State (Global)
 let currentUser = null;
 let allTodos = [];
@@ -1740,6 +1774,16 @@ async function completeCurrentOnboardingStep() {
     renderOnboarding();
 }
 
+async function userHasNoWork(uid) {
+    if (!uid || !db) return false;
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    const checks = collections.map(name =>
+        db.collection(name).where('uid', '==', uid).limit(1).get()
+    );
+    const snapshots = await Promise.all(checks);
+    return snapshots.every(snapshot => snapshot.empty);
+}
+
 async function showOnboardingIfNeeded(user) {
     if (!user || !db) return;
     try {
@@ -1752,6 +1796,7 @@ async function showOnboardingIfNeeded(user) {
                 email: user.email || null,
                 displayName: user.displayName || null,
                 onboardingCompleted: false,
+                onboardingCompletedAt: null,
                 onboardingProgress: progress,
                 onboardingCurrentStep: GUIDE_STEP_IDS[0],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1764,7 +1809,8 @@ async function showOnboardingIfNeeded(user) {
         const data = snapshot.data();
         onboardingState = buildOnboardingState(data);
         const hasExpandedGuideProgress = data.onboardingProgress && GUIDE_STEP_IDS.every(id => GUIDE_STATUS.includes(data.onboardingProgress[id]));
-        if (!data.onboardingCompleted || !hasExpandedGuideProgress) openOnboarding();
+        const hasNoWork = await userHasNoWork(user.uid);
+        if (!data.onboardingCompleted || !hasExpandedGuideProgress || hasNoWork) openOnboarding();
     } catch (error) {
         console.warn('Onboarding state unavailable:', error);
     }
@@ -2573,8 +2619,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     if (fabTrigger) fabTrigger.onclick = (e) => { e.stopPropagation(); fabContainer.classList.toggle('active'); };
-    if (menuToggle) menuToggle.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('nav-open'); };
-    if (overlay) overlay.onclick = () => document.body.classList.remove('nav-open');
+    if (menuToggle && !menuToggle.dataset.mobileNavBound) {
+        menuToggle.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('nav-open'); };
+    }
+    if (overlay && !overlay.dataset.mobileNavBound) overlay.onclick = () => document.body.classList.remove('nav-open');
     document.addEventListener('click', (e) => { if (fabContainer && !fabContainer.contains(e.target)) fabContainer.classList.remove('active'); });
 
     // Task Add
