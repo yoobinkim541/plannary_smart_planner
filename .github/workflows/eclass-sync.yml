@@ -1,8 +1,10 @@
 name: E-class Sync
 
 on:
+  # Safety net only — the primary 5-minute sync runs on the self-hosted Ubuntu worker
+  # (see worker/README.md). This cron just covers worker outages.
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 jobs:

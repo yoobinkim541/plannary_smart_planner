@@ -9,6 +9,7 @@
   "dependencies": {
     "cheerio": "^1.2.0",
     "firebase-admin": "^13.9.0",
+    "pdf-parse": "^1.1.1",
     "puppeteer": "^24.40.0",
     "serve": "^14.2.0"
   }

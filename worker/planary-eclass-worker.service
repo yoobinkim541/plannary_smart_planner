@@ -1,0 +1,23 @@
+[Unit]
+Description=Planary e-class sync worker (5-minute interval)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=planary
+WorkingDirectory=/opt/planary/worker
+EnvironmentFile=/opt/planary/worker/.env
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

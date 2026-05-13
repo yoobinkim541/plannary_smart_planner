@@ -276,7 +276,7 @@ async function loginSeoultech({ baseUrl = DEFAULT_BASE_URL, username, password }
   return cookie;
 }
 
-async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, username, password }) {
+async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, username, password, returnPages = false }) {
   const normalizedBase = normalizeBaseUrl(baseUrl);
   const cookie = sessionCookie || await loginSeoultech({ baseUrl: normalizedBase, username, password });
   const candidatePaths = [
@@ -336,7 +336,11 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     });
   });
 
-  return [...items.values()].slice(0, 80);
+  const collected = [...items.values()].slice(0, 80);
+  if (returnPages) {
+    return { items: collected, pages, cookie };
+  }
+  return collected;
 }
 
-module.exports = { DEFAULT_BASE_URL, fetchSeoultechItems, loginSeoultech, normalizeBaseUrl };
+module.exports = { DEFAULT_BASE_URL, fetchSeoultechItems, loginSeoultech, normalizeBaseUrl, fetchText, toAbsoluteUrl, parseDate, parseKoreanDate };

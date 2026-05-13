@@ -1,0 +1,19 @@
+{
+  "name": "planary-eclass-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted background worker that syncs SeoulTech e-class every 5 minutes",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "once": "node index.js --once"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "firebase-admin": "^13.9.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
