@@ -3184,13 +3184,23 @@ function parseGoogleCalendarDate(value) {
     };
 }
 
+function resolveReminderMinutesList(task) {
+    if (!task) return [30];
+    const raw = Array.isArray(task.calendarReminderMinutesList) ? task.calendarReminderMinutesList : null;
+    const list = raw && raw.length
+        ? raw.map(value => Number(value)).filter(value => Number.isFinite(value) && value >= 0)
+        : (Number.isFinite(Number(task.calendarReminderMinutes)) ? [Number(task.calendarReminderMinutes)] : [30]);
+    const unique = [...new Set(list)].sort((a, b) => b - a);
+    return unique.length ? unique : [30];
+}
+
 function buildTaskCalendarEvent(task) {
     if (!task || !task.dueDate) return null;
     const start = new Date(`${task.dueDate}T${task.dueTime || '09:00'}:00`);
     if (Number.isNaN(start.getTime())) return null;
     const end = new Date(start);
     end.setMinutes(end.getMinutes() + 30);
-    const minutes = Number.isFinite(Number(task.calendarReminderMinutes)) ? Number(task.calendarReminderMinutes) : 30;
+    const minutesList = resolveReminderMinutesList(task);
     return {
         summary: task.text || t('untitledTask'),
         description: task.memo || '',
@@ -3198,7 +3208,7 @@ function buildTaskCalendarEvent(task) {
         end: { dateTime: end.toISOString() },
         reminders: {
             useDefault: false,
-            overrides: [{ method: 'popup', minutes }]
+            overrides: minutesList.map(minutes => ({ method: 'popup', minutes }))
         }
     };
 }
@@ -3267,6 +3277,12 @@ async function importGoogleCalendarTasks() {
             dueDate: start.dueDate,
             dueTime: start.dueTime,
             calendarReminderMinutes: Number(event.reminders?.overrides?.[0]?.minutes ?? 30),
+            calendarReminderMinutesList: (() => {
+                const list = (event.reminders?.overrides || [])
+                    .map(item => Number(item.minutes))
+                    .filter(value => Number.isFinite(value) && value >= 0);
+                return list.length ? list : [30];
+            })(),
             syncCalendar: true,
             calendarEventId: event.id,
             priority: 'medium',
@@ -3300,7 +3316,14 @@ function downloadAppleCalendarEvent(task) {
     const end = new Date(event.end.dateTime);
     const title = (event.summary || t('untitledTask')).replace(/([,;\\])/g, '\\$1');
     const description = (event.description || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
-    const minutes = Number(task.calendarReminderMinutes || 30);
+    const minutesList = resolveReminderMinutesList(task);
+    const alarms = minutesList.flatMap(minutes => [
+        'BEGIN:VALARM',
+        `TRIGGER:-PT${minutes}M`,
+        'ACTION:DISPLAY',
+        `DESCRIPTION:${title}`,
+        'END:VALARM'
+    ]);
     const ics = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
@@ -3312,11 +3335,7 @@ function downloadAppleCalendarEvent(task) {
         `DTEND:${toIcsDate(end)}`,
         `SUMMARY:${title}`,
         `DESCRIPTION:${description}`,
-        'BEGIN:VALARM',
-        `TRIGGER:-PT${minutes}M`,
-        'ACTION:DISPLAY',
-        `DESCRIPTION:${title}`,
-        'END:VALARM',
+        ...alarms,
         'END:VEVENT',
         'END:VCALENDAR'
     ].join('\r\n');
@@ -3342,12 +3361,14 @@ async function saveTaskEditDialog() {
     }
     const priority = getEl('task-edit-priority')?.value || 'medium';
     const existing = allTodos.find(item => item.id === editingTaskId);
+    const editMinutes = Number(getEl('task-edit-calendar-reminder')?.value || 30);
     const payload = {
         text,
         memo: (getEl('task-edit-memo')?.value || '').trim() || null,
         dueDate: getEl('task-edit-due-date')?.value || null,
         dueTime: getEl('task-edit-due-time')?.value || null,
-        calendarReminderMinutes: Number(getEl('task-edit-calendar-reminder')?.value || 30),
+        calendarReminderMinutes: editMinutes,
+        calendarReminderMinutesList: [editMinutes],
         priority: ['low', 'medium', 'high'].includes(priority) ? priority : 'medium',
         projectId: getEl('task-edit-project')?.value || null,
         syncCalendar: !!(existing?.calendarEventId || taskCalendarAccessToken)
@@ -3603,13 +3624,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedPriority = priorityInput && ['low', 'medium', 'high'].includes(priorityInput.value)
             ? priorityInput.value
             : 'medium';
+        const addMinutes = Number(reminderInput?.value || 30);
         const payload = {
             uid: currentUser.uid,
             text,
             memo: memoInput.value.trim() || null,
             dueDate: dateInput.value || null,
             dueTime: timeInput.value || null,
-            calendarReminderMinutes: Number(reminderInput?.value || 30),
+            calendarReminderMinutes: addMinutes,
+            calendarReminderMinutesList: [addMinutes],
             syncCalendar: !!dateInput.value && !!taskCalendarAccessToken,
             priority: selectedPriority,
             projectId: projectInput.value || null,
