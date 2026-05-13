@@ -18,7 +18,7 @@ async function mirrorItemToTodo(db, admin, uid, item) {
     text: item.title,
     memo: [item.courseTitle, item.ddayText].filter(Boolean).join(' · ') || null,
     dueDate: item.dueDate || null,
-    dueTime: item.dueDate ? dueTimeFor(item.type) : null,
+    dueTime: item.dueDate ? (item.dueTime || dueTimeFor(item.type)) : null,
     calendarReminderMinutes: item.type === 'assignment' ? 1440 : 60,
     syncCalendar: false,
     priority: item.type === 'assignment' ? 'high' : 'medium',
@@ -43,6 +43,25 @@ async function mirrorItemToTodo(db, admin, uid, item) {
   }
   const doc = todoQuery.docs[0];
   await doc.ref.set(payload, { merge: true });
+}
+
+async function pruneStaleEclassTodos(db, admin, uid, activeSourceItemIds) {
+  if (!activeSourceItemIds.size) return;
+  const snapshot = await db.collection('todos')
+    .where('uid', '==', uid)
+    .where('source', '==', 'eclass')
+    .get();
+  const staleDocs = snapshot.docs.filter(doc => !activeSourceItemIds.has(doc.data().sourceItemId));
+  for (let index = 0; index < staleDocs.length; index += 400) {
+    const batch = db.batch();
+    staleDocs.slice(index, index + 400).forEach(doc => {
+      batch.set(doc.ref, {
+        archived: true,
+        syncedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    });
+    await batch.commit();
+  }
 }
 
 async function syncConnection(uid, connection) {
@@ -71,9 +90,11 @@ async function syncConnection(uid, connection) {
     lastItemCount: items.length
   }, { merge: true });
   await batch.commit();
+  const activeSourceItemIds = new Set(items.map(item => item.externalId));
   for (const item of items) {
     await mirrorItemToTodo(db, admin, uid, item);
   }
+  await pruneStaleEclassTodos(db, admin, uid, activeSourceItemIds);
   return items.length;
 }
 

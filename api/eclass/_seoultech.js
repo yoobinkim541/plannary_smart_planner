@@ -27,35 +27,182 @@ function parseDate(text) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function parseKoreanDate(text) {
+  const source = String(text || '').replace(/\s+/g, ' ');
+  const matches = [...source.matchAll(/(?:(20\d{2})[.\-/년\s]+)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/g)];
+  if (!matches.length) return null;
+  const match = matches[matches.length - 1];
+  const now = new Date();
+  const year = match[1] || String(now.getFullYear());
+  return `${year}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`;
+}
+
 function parseDday(text) {
   const source = String(text || '').replace(/\s+/g, ' ');
-  const match = source.match(/D\s*[-+]\s*(\d+)|D\s*day\s*[:：]?\s*(\d+)/i);
+  const match = source.match(/D\s*([-+])\s*(\d+)|D\s*day\s*[:：]?\s*(\d+)/i);
   if (!match) return null;
-  const days = Number(match[1] || match[2]);
+  const sign = match[1] === '+' ? -1 : 1;
+  const days = Number(match[2] || match[3]);
   if (!Number.isFinite(days)) return null;
   const date = new Date();
-  date.setDate(date.getDate() + days);
+  date.setDate(date.getDate() + (days * sign));
   return date.toISOString().slice(0, 10);
+}
+
+function parseKoreanTime(text) {
+  const source = String(text || '').replace(/\s+/g, ' ');
+  const matches = [...source.matchAll(/(오전|오후)\s*(\d{1,2})\s*:\s*(\d{2})/g)];
+  if (!matches.length) return null;
+  const match = matches[matches.length - 1];
+  let hour = Number(match[2]);
+  const minute = Number(match[3]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  if (match[1] === '오후' && hour < 12) hour += 12;
+  if (match[1] === '오전' && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
 function classify(text, href) {
   const value = `${text} ${href}`.toLowerCase();
-  if (/assign|과제|homework|report/.test(value)) return 'assignment';
-  if (/vod|video|lecture|contents|동영상|온라인|강의|차시/.test(value)) return 'lecture';
+  if (/report|assign|과제|homework/.test(value)) return 'assignment';
+  if (/quiz|퀴즈/.test(value)) return 'quiz';
+  if (/lecture|weeks|vod|video|영상|contents|동영상|온라인/.test(value)) return 'lecture';
   return null;
 }
 
-async function fetchText(url, sessionCookie) {
+function cleanText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function extractTitle(text) {
+  const source = cleanText(text);
+  const typed = source.match(/\[(?:영상|과제|퀴즈)\]\s*/);
+  if (!typed) return '';
+  const afterType = source.slice(typed.index);
+  const courseIndex = afterType.search(/\s+[가-힣A-Za-z0-9][가-힣A-Za-z0-9\s&()._-]*\(\d{5,}-\d{4,}\)/);
+  const ddayIndex = afterType.search(/\s+D\s*[-+]\s*\d+/i);
+  const endCandidates = [courseIndex, ddayIndex].filter(index => index > 0);
+  const end = endCandidates.length ? Math.min(...endCandidates) : afterType.length;
+  return cleanText(afterType.slice(0, end));
+}
+
+function extractCourseTitle(text, title) {
+  const source = cleanText(text).replace(cleanText(title), ' ');
+  const beforeDday = source.split(/D\s*[-+]\s*\d+/)[0];
+  const candidates = beforeDday.match(/[가-힣A-Za-z0-9][가-힣A-Za-z0-9\s&()._-]*\(\d{5,}-\d{4,}\)/g);
+  if (candidates && candidates.length) return cleanText(candidates[candidates.length - 1]);
+  return null;
+}
+
+function normalizeTodoItem({ text, href, pageUrl, externalId }) {
+  const source = cleanText(text);
+  if (!/D\s*[-+]\s*\d+/i.test(source)) return null;
+  const type = classify(source, href);
+  if (!type) return null;
+  const title = extractTitle(source);
+  if (!title || title.length < 3 || !/\[(영상|과제|퀴즈)\]/.test(title)) return null;
+  const courseTitle = extractCourseTitle(source, title);
+  const dueDate = parseDate(source) || parseKoreanDate(source) || parseDday(source);
+  const dueTime = parseKoreanTime(source);
+  const url = href && !href.startsWith('javascript:') ? toAbsoluteUrl(pageUrl, href) : pageUrl;
+  const ddayText = (source.match(/D\s*[-+]\s*\d+/i) || [null])[0];
+  return {
+    externalId: externalId || `${type}:${courseTitle || 'course'}:${title}:${dueDate || ddayText || url}`,
+    type,
+    title,
+    courseTitle: courseTitle || 'SeoulTech e-Class',
+    dueDate,
+    dueTime,
+    ddayText,
+    url
+  };
+}
+
+function getGoLectureArgs(href) {
+  const match = String(href || '').match(/goLecture\(([^)]+)\)/);
+  if (!match) return [];
+  return [...match[1].matchAll(/'([^']*)'|"([^"]*)"/g)].map(arg => arg[1] || arg[2] || '');
+}
+
+function normalizeTodoWrap($, element, pageUrl) {
+  const todo = $(element);
+  const href = todo.attr('href') || '';
+  const lectureArgs = getGoLectureArgs(href);
+  const gubun = todo.attr('data-id') || lectureArgs[1] || '';
+  const kj = todo.attr('data-kj') || lectureArgs[0] || '';
+  const itemId = lectureArgs[2] || todo.find('input[id*="todo_list_gubun"]').val() || '';
+  const title = cleanText(todo.find('.todo_title').text());
+  const courseTitle = cleanText(todo.find('.todo_subjt').text());
+  const dateText = cleanText(todo.find('.todo_sub_wrap .todo_date').text() || todo.find('.todo_date').text());
+  const combinedText = cleanText(`${title} ${courseTitle} ${dateText}`);
+  const type = classify(`${title} ${gubun}`, href);
+  if (!type || !title || !/D\s*[-+]\s*\d+/i.test(dateText)) return null;
+  return {
+    externalId: [kj, gubun, itemId || title].filter(Boolean).join(':'),
+    type,
+    title,
+    courseTitle: courseTitle || 'SeoulTech e-Class',
+    dueDate: parseDate(dateText) || parseKoreanDate(dateText) || parseDday(dateText),
+    dueTime: parseKoreanTime(dateText),
+    ddayText: (dateText.match(/D\s*[-+]\s*\d+/i) || [null])[0],
+    url: href && !href.startsWith('javascript:') ? toAbsoluteUrl(pageUrl, href) : pageUrl,
+    rawText: combinedText
+  };
+}
+
+async function fetchText(url, sessionCookie, options = {}) {
+  const headers = {
+    Cookie: sessionCookie,
+    'User-Agent': 'PlanaryEclassSync/1.0',
+    Accept: 'text/html,application/xhtml+xml,*/*',
+    Referer: options.referer || url
+  };
+  if (options.ajax) headers['X-Requested-With'] = 'XMLHttpRequest';
+  if (options.method === 'POST') headers['Content-Type'] = 'application/x-www-form-urlencoded';
   const response = await fetch(url, {
-    headers: {
-      Cookie: sessionCookie,
-      'User-Agent': 'PlanaryEclassSync/1.0',
-      Accept: 'text/html,application/xhtml+xml'
-    },
+    method: options.method || 'GET',
+    headers,
+    body: options.body,
     redirect: 'follow'
   });
   if (!response.ok) throw new Error(`E-class HTTP ${response.status}`);
   return response.text();
+}
+
+async function fetchTodoPageVariants(baseUrl, path, cookie, referer) {
+  const url = toAbsoluteUrl(baseUrl, path);
+  const variants = [];
+  for (const options of [
+    { referer },
+    { referer, ajax: true },
+    { referer, ajax: true, method: 'POST', body: new URLSearchParams().toString() }
+  ]) {
+    try {
+      variants.push({ url, html: await fetchText(url, cookie, options) });
+    } catch (error) {
+      variants.push({ url, error: error.message });
+    }
+  }
+  return variants;
+}
+
+function discoverTodoPaths(html) {
+  const paths = new Set();
+  const source = String(html || '');
+  for (const match of source.matchAll(/['"]([^'"]*todo[^'"]*\.acl[^'"]*)['"]/gi)) {
+    const value = match[1].replace(/&amp;/g, '&');
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const parsed = new URL(value);
+        paths.add(`${parsed.pathname}${parsed.search}`);
+      } catch (error) {}
+    } else if (value.startsWith('/')) {
+      paths.add(value);
+    } else if (value.includes('/')) {
+      paths.add(`/${value.replace(/^\.?\//, '')}`);
+    }
+  }
+  return [...paths];
 }
 
 function mergeCookies(existing, setCookieHeaders) {
@@ -136,6 +283,10 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     '/ilos/index.acl',
     '/ilos/main/main_form.acl',
     '/ilos/mp/todo_list_form.acl',
+    '/ilos/mp/todo_list.acl',
+    '/ilos/mp/todo_list_view.acl',
+    '/ilos/main/todo_list_form.acl',
+    '/ilos/main/todo_list.acl',
     '/ilos/st/course/submain_form.acl',
     '/ilos/st/course/eclass_list_form.acl',
     '/my/',
@@ -149,6 +300,15 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
       pages.push({ url: toAbsoluteUrl(normalizedBase, path), error: error.message });
     }
   }
+  const discoveredPaths = new Set();
+  pages.forEach(page => {
+    if (!page.html) return;
+    discoverTodoPaths(page.html).forEach(path => discoveredPaths.add(path));
+  });
+  for (const path of discoveredPaths) {
+    const variants = await fetchTodoPageVariants(normalizedBase, path, cookie, toAbsoluteUrl(normalizedBase, '/ilos/main/main_form.acl'));
+    pages.push(...variants);
+  }
 
   const items = new Map();
   pages.forEach(page => {
@@ -157,25 +317,22 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     const bodyText = $('body').text();
     const isLoginForm = $('input[name="usr_id"], input[name="usr_pwd"], form[action*="/ilos/lo/login"]').length > 0;
     if (isLoginForm || (/login|로그인/.test(bodyText) && !/과제|강의|수강|lecture|assignment/i.test(bodyText))) return;
-    $('a').each((_, element) => {
-      const link = $(element);
-      const title = link.text().replace(/\s+/g, ' ').trim();
+    const todoWraps = $('.todo_wrap');
+    todoWraps.each((_, element) => {
+      const item = normalizeTodoWrap($, element, page.url);
+      if (!item) return;
+      items.set(item.externalId, item);
+    });
+    if (todoWraps.length) return;
+    $('li, tr, .todo, .card, .activity, .coursebox, div').each((_, element) => {
+      const container = $(element);
+      const containerText = cleanText(container.text());
+      if (containerText.length < 8 || containerText.length > 600) return;
+      const link = container.find('a').filter((__, linkEl) => classify($(linkEl).text(), $(linkEl).attr('href') || '')).first();
       const href = link.attr('href') || '';
-      const type = classify(title, href);
-      if (!type || title.length < 2) return;
-      const containerText = link.closest('li, tr, .card, .activity, .coursebox, div').text().replace(/\s+/g, ' ').trim();
-      const dueDate = parseDate(containerText) || parseDday(containerText);
-      const url = toAbsoluteUrl(page.url, href);
-      const key = `${type}:${url}`;
-      items.set(key, {
-        externalId: key,
-        type,
-        title,
-        courseTitle: containerText.slice(0, 120) || 'SeoulTech e-Class',
-        dueDate,
-        ddayText: (containerText.match(/D\s*[-+]\s*\d+|D\s*day\s*[:：]?\s*\d+/i) || [null])[0],
-        url
-      });
+      const item = normalizeTodoItem({ text: containerText, href, pageUrl: page.url });
+      if (!item) return;
+      items.set(item.externalId, item);
     });
   });
 
