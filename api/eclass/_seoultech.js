@@ -150,17 +150,59 @@ function normalizeTodoWrap($, element, pageUrl) {
   };
 }
 
-async function fetchText(url, sessionCookie) {
+async function fetchText(url, sessionCookie, options = {}) {
+  const headers = {
+    Cookie: sessionCookie,
+    'User-Agent': 'PlanaryEclassSync/1.0',
+    Accept: 'text/html,application/xhtml+xml,*/*',
+    Referer: options.referer || url
+  };
+  if (options.ajax) headers['X-Requested-With'] = 'XMLHttpRequest';
+  if (options.method === 'POST') headers['Content-Type'] = 'application/x-www-form-urlencoded';
   const response = await fetch(url, {
-    headers: {
-      Cookie: sessionCookie,
-      'User-Agent': 'PlanaryEclassSync/1.0',
-      Accept: 'text/html,application/xhtml+xml'
-    },
+    method: options.method || 'GET',
+    headers,
+    body: options.body,
     redirect: 'follow'
   });
   if (!response.ok) throw new Error(`E-class HTTP ${response.status}`);
   return response.text();
+}
+
+async function fetchTodoPageVariants(baseUrl, path, cookie, referer) {
+  const url = toAbsoluteUrl(baseUrl, path);
+  const variants = [];
+  for (const options of [
+    { referer },
+    { referer, ajax: true },
+    { referer, ajax: true, method: 'POST', body: new URLSearchParams().toString() }
+  ]) {
+    try {
+      variants.push({ url, html: await fetchText(url, cookie, options) });
+    } catch (error) {
+      variants.push({ url, error: error.message });
+    }
+  }
+  return variants;
+}
+
+function discoverTodoPaths(html) {
+  const paths = new Set();
+  const source = String(html || '');
+  for (const match of source.matchAll(/['"]([^'"]*todo[^'"]*\.acl[^'"]*)['"]/gi)) {
+    const value = match[1].replace(/&amp;/g, '&');
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const parsed = new URL(value);
+        paths.add(`${parsed.pathname}${parsed.search}`);
+      } catch (error) {}
+    } else if (value.startsWith('/')) {
+      paths.add(value);
+    } else if (value.includes('/')) {
+      paths.add(`/${value.replace(/^\.?\//, '')}`);
+    }
+  }
+  return [...paths];
 }
 
 function mergeCookies(existing, setCookieHeaders) {
@@ -241,6 +283,10 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     '/ilos/index.acl',
     '/ilos/main/main_form.acl',
     '/ilos/mp/todo_list_form.acl',
+    '/ilos/mp/todo_list.acl',
+    '/ilos/mp/todo_list_view.acl',
+    '/ilos/main/todo_list_form.acl',
+    '/ilos/main/todo_list.acl',
     '/ilos/st/course/submain_form.acl',
     '/ilos/st/course/eclass_list_form.acl',
     '/my/',
@@ -253,6 +299,15 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     } catch (error) {
       pages.push({ url: toAbsoluteUrl(normalizedBase, path), error: error.message });
     }
+  }
+  const discoveredPaths = new Set();
+  pages.forEach(page => {
+    if (!page.html) return;
+    discoverTodoPaths(page.html).forEach(path => discoveredPaths.add(path));
+  });
+  for (const path of discoveredPaths) {
+    const variants = await fetchTodoPageVariants(normalizedBase, path, cookie, toAbsoluteUrl(normalizedBase, '/ilos/main/main_form.acl'));
+    pages.push(...variants);
   }
 
   const items = new Map();
