@@ -1627,13 +1627,6 @@ document.addEventListener('DOMContentLoaded', () => {
             title: tr('untitledDocument'),
             parentId: parentId || null,
             projectId: inheritedProjectId,
-            icon: '📄',
-            coverUrl: '',
-            coverPosition: 50,
-            coverPositionX: 50,
-            coverHeight: 180,
-            coverZoom: 100,
-            coverCropMode: 'cover',
             content: { time: Date.now(), blocks: [], version: '2.28.2' },
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1884,13 +1877,6 @@ document.addEventListener('DOMContentLoaded', () => {
             await db.collection('wiki_pages').doc(currentPageId).update({
                 title: title,
                 projectId,
-                icon: currentPageMeta.icon || '📄',
-                coverUrl: currentPageMeta.coverUrl || '',
-                coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
-                coverPositionX: toBoundedNumber(currentPageMeta.coverPositionX, 50, 0, 100),
-                coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360),
-                coverZoom: toBoundedNumber(currentPageMeta.coverZoom, 100, 100, 220),
-                coverCropMode: currentPageMeta.coverCropMode || 'cover',
                 content: contentData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
