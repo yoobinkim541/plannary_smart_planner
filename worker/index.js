@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-// Honor a local .env without bringing in dotenv as a hard dep.
 (function loadEnv() {
   try {
     const fs = require('fs');
@@ -47,35 +46,56 @@ function initFirebase() {
 initFirebase();
 
 const { syncAll } = require('../api/eclass/sync-core');
+const { reminderTick } = require('./reminder-tick');
 
 const TICK_MS = Number(process.env.WORKER_INTERVAL_MS) || 5 * 60 * 1000;
+const REMINDER_TICK_MS = Number(process.env.REMINDER_INTERVAL_MS) || 60 * 1000;
 const ONCE = process.argv.includes('--once');
 
-let running = false;
+let syncRunning = false;
 async function tick() {
-  if (running) {
-    console.log('[worker] previous tick still running, skipping');
+  if (syncRunning) {
+    console.log('[worker] previous sync tick still running, skipping');
     return;
   }
-  running = true;
+  syncRunning = true;
   const startedAt = Date.now();
   try {
     const result = await syncAll();
-    console.log(`[worker] tick ok todos=${result.todoCount} exams=${result.examCount} in ${Date.now() - startedAt}ms`);
+    console.log(`[worker] sync ok todos=${result.todoCount} exams=${result.examCount} in ${Date.now() - startedAt}ms`);
   } catch (error) {
-    console.error('[worker] tick failed:', error.stack || error.message || error);
+    console.error('[worker] sync failed:', error.stack || error.message || error);
   } finally {
-    running = false;
+    syncRunning = false;
+  }
+}
+
+let reminderRunning = false;
+async function reminders() {
+  if (reminderRunning) return;
+  reminderRunning = true;
+  const startedAt = Date.now();
+  try {
+    const result = await reminderTick();
+    if (result.firedCount > 0) {
+      console.log(`[worker] reminder ok fired=${result.firedCount} in ${Date.now() - startedAt}ms`);
+    }
+  } catch (error) {
+    console.error('[worker] reminder failed:', error.stack || error.message || error);
+  } finally {
+    reminderRunning = false;
   }
 }
 
 (async () => {
   await tick();
+  await reminders();
   if (ONCE) {
     process.exit(0);
   }
   setInterval(tick, TICK_MS);
-  console.log(`[worker] scheduled every ${TICK_MS / 1000}s`);
+  setInterval(reminders, REMINDER_TICK_MS);
+  console.log(`[worker] scheduled sync=${TICK_MS / 1000}s reminders=${REMINDER_TICK_MS / 1000}s`);
 })();
 
 process.on('SIGTERM', () => process.exit(0));
