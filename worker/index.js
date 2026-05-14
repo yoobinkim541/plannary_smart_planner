@@ -1,50 +1,28 @@
 #!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
 
-// Honor a local .env without bringing in dotenv as a hard dep.
-(function loadEnv() {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const envPath = path.join(__dirname, '.env');
-    if (!fs.existsSync(envPath)) return;
-    const text = fs.readFileSync(envPath, 'utf8');
-    text.split(/\r?\n/).forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return;
-      const eq = trimmed.indexOf('=');
-      if (eq < 0) return;
-      const key = trimmed.slice(0, eq).trim();
-      let value = trimmed.slice(eq + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      if (!process.env[key]) process.env[key] = value;
-    });
-  } catch (error) {
-    console.error('[worker] failed to load .env:', error.message);
+// Load .env (key=value lines, # comments). No dotenv dep — keeps the worker self-contained.
+(() => {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i);
+    if (!m || line.trim().startsWith('#')) continue;
+    const value = m[2].replace(/^['"]|['"]$/g, '');
+    if (!process.env[m[1]]) process.env[m[1]] = value;
   }
 })();
 
-const path = require('path');
-const fs = require('fs');
-const admin = require('firebase-admin');
-
-function initFirebase() {
-  if (admin.apps.length) return;
-  const keyPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || path.join(__dirname, 'serviceAccount.json');
-  if (fs.existsSync(keyPath)) {
-    const credentials = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
-    admin.initializeApp({ credential: admin.credential.cert(credentials) });
-    return;
-  }
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  }
-  const { getAdmin } = require('../api/eclass/_admin');
-  getAdmin();
+// Funnel the on-disk service-account file into the env var that _admin.getAdmin() already
+// understands. One init path for both Vercel and the worker.
+const keyPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || path.join(__dirname, 'serviceAccount.json');
+if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY && fs.existsSync(keyPath)) {
+  process.env.FIREBASE_SERVICE_ACCOUNT_KEY = fs.readFileSync(keyPath, 'utf8');
 }
 
-initFirebase();
+const { getAdmin } = require('../api/eclass/_admin');
+getAdmin(); // throws early if credentials are missing — better than a cryptic Firestore error later
 
 const { syncAll } = require('../api/eclass/sync-core');
 
@@ -53,15 +31,12 @@ const ONCE = process.argv.includes('--once');
 
 let running = false;
 async function tick() {
-  if (running) {
-    console.log('[worker] previous tick still running, skipping');
-    return;
-  }
+  if (running) return console.log('[worker] previous tick still running, skipping');
   running = true;
   const startedAt = Date.now();
   try {
-    const result = await syncAll();
-    console.log(`[worker] tick ok todos=${result.todoCount} exams=${result.examCount} in ${Date.now() - startedAt}ms`);
+    const { todoCount, examCount } = await syncAll();
+    console.log(`[worker] tick ok todos=${todoCount} exams=${examCount} in ${Date.now() - startedAt}ms`);
   } catch (error) {
     console.error('[worker] tick failed:', error.stack || error.message || error);
   } finally {
@@ -69,14 +44,8 @@ async function tick() {
   }
 }
 
-(async () => {
-  await tick();
-  if (ONCE) {
-    process.exit(0);
-  }
+tick().then(() => {
+  if (ONCE) return process.exit(0);
   setInterval(tick, TICK_MS);
   console.log(`[worker] scheduled every ${TICK_MS / 1000}s`);
-})();
-
-process.on('SIGTERM', () => process.exit(0));
-process.on('SIGINT', () => process.exit(0));
+});

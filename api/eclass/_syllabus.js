@@ -1,6 +1,6 @@
 const cheerio = require('cheerio');
 const crypto = require('crypto');
-const { fetchText, toAbsoluteUrl, parseDate, parseKoreanDate, normalizeBaseUrl } = require('./_seoultech');
+const { toAbsoluteUrl, parseDate, parseKoreanDate, normalizeBaseUrl } = require('./_seoultech');
 
 const SEMESTER_STARTS = {
   '2026-1': '2026-03-02',
@@ -18,14 +18,14 @@ const KEYWORD_RULES = [
   { type: '퀴즈', pattern: /퀴즈|quiz/i, priority: 'medium', reminders: [4320, 1440] }
 ];
 
-function hashUrl(url) {
-  return crypto.createHash('sha1').update(String(url)).digest('hex');
-}
+const WEEK_RE = /(\d{1,2})\s*주차|week\s*(\d{1,2})/i;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_SYLLABUS_URLS = 30;
+
+const hashUrl = url => crypto.createHash('sha1').update(String(url)).digest('hex');
 
 function currentSemesterKey(now = new Date()) {
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  return month <= 7 ? `${year}-1` : `${year}-2`;
+  return `${now.getFullYear()}-${now.getMonth() + 1 <= 7 ? 1 : 2}`;
 }
 
 function semesterRange(startIso) {
@@ -38,83 +38,83 @@ function semesterRange(startIso) {
 
 function parseSemesterPeriod(text) {
   const source = String(text || '').replace(/\s+/g, ' ');
-  const match = source.match(/(20\d{2})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})\s*[~\-–]\s*(20\d{2})?[.\-/년\s]*(\d{1,2})[.\-/월\s]+(\d{1,2})/);
-  if (!match) return null;
-  const start = `${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`;
-  return start;
+  const m = source.match(/(20\d{2})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})\s*[~\-–]\s*(20\d{2})?[.\-/년\s]*(\d{1,2})[.\-/월\s]+(\d{1,2})/);
+  return m ? `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}` : null;
 }
 
 function discoverSyllabusUrls(pages, baseUrl) {
   const urls = new Set();
-  const normalizedBase = normalizeBaseUrl(baseUrl);
+  const base = normalizeBaseUrl(baseUrl);
   pages.forEach(page => {
     if (!page.html) return;
     const $ = cheerio.load(page.html);
     $('a').each((_, el) => {
       const a = $(el);
-      const text = String(a.text() || '').trim();
       const href = a.attr('href') || '';
       if (!href || href.startsWith('javascript:')) return;
+      const text = String(a.text() || '').trim();
       if (/강의\s*계획서|syllabus|lecture\s*plan|수업계획/i.test(text) || /syllabus|lecture_?plan|sylabus/i.test(href)) {
-        urls.add(toAbsoluteUrl(page.url || normalizedBase, href));
+        urls.add(toAbsoluteUrl(page.url || base, href));
       }
     });
-    const source = String(page.html);
-    for (const match of source.matchAll(/['"]([^'"]*(?:syllabus|lecture_?plan|sylabus)[^'"]*)['"]/gi)) {
-      const value = match[1].replace(/&amp;/g, '&');
+    for (const m of String(page.html).matchAll(/['"]([^'"]*(?:syllabus|lecture_?plan|sylabus)[^'"]*)['"]/gi)) {
+      const value = m[1].replace(/&amp;/g, '&');
       if (/^https?:\/\//i.test(value)) urls.add(value);
-      else if (value.startsWith('/')) urls.add(toAbsoluteUrl(normalizedBase, value));
+      else if (value.startsWith('/')) urls.add(toAbsoluteUrl(base, value));
     }
   });
-  return [...urls].slice(0, 30);
+  return [...urls].slice(0, MAX_SYLLABUS_URLS);
 }
 
 async function fetchSyllabusContent(url, cookie) {
-  const headers = {
-    Cookie: cookie,
-    'User-Agent': 'PlanaryEclassSync/1.0',
-    Accept: '*/*',
-    Referer: url
-  };
-  const response = await fetch(url, { headers, redirect: 'follow' });
+  const response = await fetch(url, {
+    headers: {
+      Cookie: cookie,
+      'User-Agent': 'PlanaryEclassSync/1.0',
+      Accept: '*/*',
+      Referer: url
+    },
+    redirect: 'follow'
+  });
   if (!response.ok) throw new Error(`Syllabus HTTP ${response.status}`);
-  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
   const buffer = Buffer.from(await response.arrayBuffer());
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
   const isPdf = contentType.includes('pdf') || buffer.slice(0, 5).toString() === '%PDF-';
   if (isPdf) {
-    let pdfParse;
     try {
-      // Import the inner module to avoid pdf-parse's index.js debug branch
-      pdfParse = require('pdf-parse/lib/pdf-parse.js');
+      const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+      const { text = '' } = await pdfParse(buffer);
+      return { text, isPdf: true, contentType };
     } catch (error) {
-      try {
-        pdfParse = require('pdf-parse');
-      } catch (innerError) {
-        return { text: '', isPdf: true, error: 'pdf-parse not installed' };
-      }
-    }
-    try {
-      const result = await pdfParse(buffer);
-      return { text: result.text || '', isPdf: true, contentType };
-    } catch (error) {
-      return { text: '', isPdf: true, error: error.message };
+      return { text: '', isPdf: true, error: error.message || 'pdf-parse failed' };
     }
   }
-  const text = buffer.toString('utf8');
-  const $ = cheerio.load(text);
-  return { text: $('body').text() || text, isPdf: false, contentType };
+  const html = buffer.toString('utf8');
+  return { text: cheerio.load(html)('body').text() || html, isPdf: false, contentType };
 }
 
 function extractCourseTitle(text) {
-  const source = String(text || '').slice(0, 4000);
-  const match = source.match(/(?:과목명|교과목명|Course\s*Title)\s*[:：]?\s*([^\n\r|]+)/i);
-  if (!match) return null;
-  return match[1].trim().split(/\s{2,}|담당|교수|학점/)[0].trim().slice(0, 80) || null;
+  const m = String(text || '').slice(0, 4000).match(/(?:과목명|교과목명|Course\s*Title)\s*[:：]?\s*([^\n\r|]+)/i);
+  if (!m) return null;
+  return m[1].trim().split(/\s{2,}|담당|교수|학점/)[0].trim().slice(0, 80) || null;
+}
+
+function findWeek(line) {
+  const m = line.match(WEEK_RE);
+  if (!m) return null;
+  const week = Number(m[1] || m[2]);
+  return Number.isFinite(week) && week >= 1 && week <= 18 ? week : null;
+}
+
+function dueFromWeek(semesterStart, week) {
+  const d = new Date(semesterStart);
+  d.setDate(d.getDate() + (week - 1) * 7);
+  return d.toISOString().slice(0, 10);
 }
 
 function extractExamDates(rawText, { courseTitle: fallbackCourseTitle, sourceUrl } = {}) {
   if (!rawText) return [];
-  const text = String(rawText).replace(/ /g, ' ');
+  const text = String(rawText);
   const lines = text.split(/\r?\n/);
   const courseTitle = extractCourseTitle(text) || fallbackCourseTitle || 'SeoulTech e-Class';
   const semesterStart = parseSemesterPeriod(text) || SEMESTER_STARTS[currentSemesterKey()];
@@ -123,63 +123,44 @@ function extractExamDates(rawText, { courseTitle: fallbackCourseTitle, sourceUrl
   const candidates = [];
   const seen = new Set();
 
-  function addCandidate({ type, priority, reminders, dueDate, dueTime, note, confidence }) {
+  function add(rule, dueDate, confidence, note) {
     if (!dueDate) return;
     if (range) {
       const d = new Date(dueDate);
       if (Number.isFinite(d.getTime()) && (d < range.start || d > range.end)) return;
     }
-    const key = `${type}:${dueDate}`;
+    const key = `${rule.type}:${dueDate}`;
     if (seen.has(key)) return;
     seen.add(key);
     candidates.push({
-      type, priority, reminderMinutes: reminders,
-      dueDate, dueTime: dueTime || null,
+      type: rule.type,
+      priority: rule.priority,
+      reminderMinutes: rule.reminders,
+      dueDate, dueTime: null,
       courseTitle, sourceUrl: sourceUrl || null,
       note: note || null,
-      confidence: confidence || 'low'
+      confidence
     });
   }
 
-  function findWeekOnSameLine(line) {
-    const match = line.match(/(\d{1,2})\s*주차|week\s*(\d{1,2})/i);
-    if (!match) return null;
-    const week = Number(match[1] || match[2]);
-    return Number.isFinite(week) && week >= 1 && week <= 18 ? week : null;
-  }
-
   lines.forEach((line, idx) => {
-    KEYWORD_RULES.forEach(rule => {
-      if (!rule.pattern.test(line)) return;
-      // Prefer a date on the SAME line as the keyword to avoid bleeding from neighbours.
-      const sameLineDate = parseDate(line) || parseKoreanDate(line);
+    // Find matching rules first so we can short-circuit shared work below.
+    const matching = KEYWORD_RULES.filter(rule => rule.pattern.test(line));
+    if (!matching.length) return;
+    // Compute the date candidates ONCE per line, not per rule.
+    const sameLineDate = parseDate(line) || parseKoreanDate(line);
+    const week = sameLineDate ? null : findWeek(line);
+    const next = (!sameLineDate && !week) ? (lines[idx + 1] || '') : '';
+    const nextDate = next ? (parseDate(next) || parseKoreanDate(next)) : null;
+    const trimmedLine = line.replace(/\s+/g, ' ').trim();
+
+    matching.forEach(rule => {
       if (sameLineDate) {
-        addCandidate({
-          ...rule,
-          dueDate: sameLineDate,
-          confidence: 'high',
-          note: line.replace(/\s+/g, ' ').trim().slice(0, 100)
-        });
-        return;
-      }
-      const week = findWeekOnSameLine(line);
-      if (week && semesterStart) {
-        const start = new Date(semesterStart);
-        start.setDate(start.getDate() + (week - 1) * 7);
-        const dueDate = start.toISOString().slice(0, 10);
-        addCandidate({ ...rule, dueDate, confidence: 'low', note: `${week}주차 (추정)` });
-        return;
-      }
-      // Last resort: a date on the next line (e.g. "중간고사\n2026.04.20" layout).
-      const next = lines[idx + 1] || '';
-      const nextDate = parseDate(next) || parseKoreanDate(next);
-      if (nextDate) {
-        addCandidate({
-          ...rule,
-          dueDate: nextDate,
-          confidence: 'high',
-          note: `${line.trim().slice(0, 60)} / ${next.trim().slice(0, 40)}`
-        });
+        add(rule, sameLineDate, 'high', trimmedLine.slice(0, 100));
+      } else if (week && semesterStart) {
+        add(rule, dueFromWeek(semesterStart, week), 'low', `${week}주차 (추정)`);
+      } else if (nextDate) {
+        add(rule, nextDate, 'high', `${trimmedLine.slice(0, 60)} / ${next.trim().slice(0, 40)}`);
       }
     });
   });
@@ -191,19 +172,28 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
   if (!sessionCookie) return [];
   const urls = discoverSyllabusUrls(pages || [], baseUrl);
   if (!urls.length) return [];
-  const out = [];
-  for (const url of urls) {
-    const docId = `${uid}_${hashUrl(url).slice(0, 32)}`;
-    const ref = db.collection('eclass_syllabi').doc(docId);
-    let cached = null;
-    try {
-      const snap = await ref.get();
-      if (snap.exists) cached = snap.data();
-    } catch (error) {}
 
-    const ageMs = cached?.parsedAt?.toMillis ? Date.now() - cached.parsedAt.toMillis() : Infinity;
-    let parsed = cached;
-    if (!cached || ageMs > 24 * 60 * 60 * 1000) {
+  const col = db.collection('eclass_syllabi');
+  const refs = urls.map(url => ({ url, ref: col.doc(`${uid}_${hashUrl(url).slice(0, 32)}`) }));
+
+  // Batch-load all cache docs in one round-trip.
+  let snapshots = [];
+  try {
+    snapshots = await db.getAll(...refs.map(r => r.ref));
+  } catch (error) {
+    snapshots = await Promise.all(refs.map(r => r.ref.get()));
+  }
+
+  const now = Date.now();
+  const out = [];
+  for (let i = 0; i < refs.length; i++) {
+    const { url, ref } = refs[i];
+    const snap = snapshots[i];
+    const cached = snap?.exists ? snap.data() : null;
+    const ageMs = cached?.parsedAt?.toMillis ? now - cached.parsedAt.toMillis() : Infinity;
+    let exams = cached?.examCandidates;
+
+    if (!cached || ageMs > CACHE_TTL_MS) {
       try {
         const content = await fetchSyllabusContent(url, sessionCookie);
         if (!content.text || content.text.length < 50) {
@@ -214,15 +204,12 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
           }, { merge: true });
           continue;
         }
-        const exams = extractExamDates(content.text, { sourceUrl: url });
-        parsed = {
+        exams = extractExamDates(content.text, { sourceUrl: url });
+        await ref.set({
           uid, sourceUrl: url,
           isPdf: content.isPdf,
           examCandidates: exams,
-          lastError: null
-        };
-        await ref.set({
-          ...parsed,
+          lastError: null,
           parsedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
       } catch (error) {
@@ -235,11 +222,8 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
       }
     }
 
-    const exams = (parsed && parsed.examCandidates) || [];
-    exams.forEach(exam => {
-      const courseId = hashUrl(url).slice(0, 12);
-      out.push({ ...exam, courseId, sourceUrl: exam.sourceUrl || url });
-    });
+    const courseId = hashUrl(url).slice(0, 12); // hoisted out of inner forEach
+    (exams || []).forEach(exam => out.push({ ...exam, courseId, sourceUrl: exam.sourceUrl || url }));
   }
   return out;
 }
