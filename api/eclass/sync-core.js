@@ -15,6 +15,21 @@ function defaultRemindersFor(type) {
   return [60];
 }
 
+function normalizeDueDate(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    return value.trim() || null;
+  }
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  }
+  if (typeof value.toDate === 'function') {
+    const dateValue = value.toDate();
+    return isNaN(dateValue.getTime()) ? null : dateValue.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 async function mirrorItemToTodo(db, admin, uid, item) {
   const todoQuery = await db.collection('todos')
     .where('uid', '==', uid)
@@ -23,12 +38,13 @@ async function mirrorItemToTodo(db, admin, uid, item) {
     .limit(1)
     .get();
   const reminderList = defaultRemindersFor(item.type);
+  const dueDate = normalizeDueDate(item.dueDate);
   const payload = {
     uid,
     text: item.title,
     memo: [item.courseTitle, item.ddayText].filter(Boolean).join(' · ') || null,
-    dueDate: item.dueDate || null,
-    dueTime: item.dueDate ? (item.dueTime || dueTimeFor(item.type)) : null,
+    dueDate,
+    dueTime: dueDate ? (item.dueTime || dueTimeFor(item.type)) : null,
     calendarReminderMinutes: reminderList[0],
     calendarReminderMinutesList: reminderList,
     syncCalendar: false,
@@ -36,6 +52,7 @@ async function mirrorItemToTodo(db, admin, uid, item) {
     projectId: null,
     imageUrl: null,
     archived: false,
+    completed: false,
     source: 'eclass',
     sourceItemId: item.externalId,
     sourceUrl: item.url,
@@ -67,12 +84,13 @@ async function mirrorExamToTodo(db, admin, uid, exam) {
   const reminderList = exam.reminderMinutes || [10080, 4320, 1440];
   const prefix = exam.confidence === 'high' ? '' : '[예상] ';
   const text = `${prefix}${exam.type} - ${exam.courseTitle}`;
+  const dueDate = normalizeDueDate(exam.dueDate);
   const payload = {
     uid,
     text,
     memo: [exam.courseTitle, exam.note].filter(Boolean).join(' · ') || null,
-    dueDate: exam.dueDate,
-    dueTime: exam.dueTime || '09:00',
+    dueDate,
+    dueTime: dueDate ? (exam.dueTime || '09:00') : null,
     calendarReminderMinutes: reminderList[0],
     calendarReminderMinutesList: reminderList,
     syncCalendar: false,
@@ -80,6 +98,7 @@ async function mirrorExamToTodo(db, admin, uid, exam) {
     projectId: null,
     imageUrl: null,
     archived: false,
+    completed: false,
     source: 'eclass-exam',
     sourceItemId: externalId,
     sourceUrl: exam.sourceUrl || null,
