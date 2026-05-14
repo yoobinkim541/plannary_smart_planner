@@ -1269,7 +1269,8 @@ async function syncEclassNow() {
         if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
         if (status) {
             status.className = 'profile-status-text success';
-            status.textContent = window.PlanaryI18n?.format?.('eclassSynced', { count: data.count || 0 }) || t('eclassSynced');
+            const syncedCount = (data.todoCount || 0) + (data.examCount || 0);
+            status.textContent = window.PlanaryI18n?.format?.('eclassSynced', { count: syncedCount }) || t('eclassSynced');
         }
         showToast(status?.textContent || t('eclassSyncNow'), 'success');
         await loadEclassStatus();
