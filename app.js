@@ -2730,12 +2730,22 @@ function notifyUser(title, body, tag) {
     }
 }
 
+const firedReminderKeys = new Set();
+
+function reminderSlotKey(id, dueDate, dueTime) {
+    return `${id}|${dueDate || ''}|${dueTime || ''}`;
+}
+
 function scheduleReminderNotifications() {
-    reminderNotificationTimers.forEach(timer => clearTimeout(timer));
-    reminderNotificationTimers.clear();
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+        reminderNotificationTimers.forEach(timer => clearTimeout(timer));
+        reminderNotificationTimers.clear();
+        return;
+    }
 
     const now = Date.now();
+    const desiredKeys = new Set();
+
     if (notificationSettings.dailyTasks) {
         const today = new Date();
         const [hour, minute] = (notificationSettings.dailyTime || '09:00').split(':').map(Number);
@@ -2743,11 +2753,17 @@ function scheduleReminderNotifications() {
         scheduled.setHours(hour || 9, minute || 0, 0, 0);
         const todayKey = today.toISOString().slice(0, 10);
         const activeToday = allTodos.filter(task => !task.completed && !task.archived && task.dueDate === todayKey);
-        if (activeToday.length && scheduled.getTime() > now) {
-            const timer = setTimeout(() => {
-                notifyUser('Planary', formatText('todayTaskNotificationBody', { count: activeToday.length }), 'daily-tasks');
-            }, scheduled.getTime() - now);
-            reminderNotificationTimers.set('daily-tasks', timer);
+        const dailyKey = `daily-tasks|${todayKey}|${notificationSettings.dailyTime || '09:00'}`;
+        if (activeToday.length && scheduled.getTime() > now && !firedReminderKeys.has(dailyKey)) {
+            desiredKeys.add(dailyKey);
+            if (!reminderNotificationTimers.has(dailyKey)) {
+                const timer = setTimeout(() => {
+                    firedReminderKeys.add(dailyKey);
+                    reminderNotificationTimers.delete(dailyKey);
+                    notifyUser('Planary', formatText('todayTaskNotificationBody', { count: activeToday.length }), 'daily-tasks');
+                }, scheduled.getTime() - now);
+                reminderNotificationTimers.set(dailyKey, timer);
+            }
         }
     }
 
@@ -2757,12 +2773,25 @@ function scheduleReminderNotifications() {
             .forEach(task => {
                 const trigger = new Date(`${task.dueDate}T${task.dueTime}:00`).getTime();
                 if (!Number.isFinite(trigger) || trigger <= now) return;
+                const key = reminderSlotKey(task.id, task.dueDate, task.dueTime);
+                if (firedReminderKeys.has(key)) return;
+                desiredKeys.add(key);
+                if (reminderNotificationTimers.has(key)) return;
                 const timer = setTimeout(() => {
+                    firedReminderKeys.add(key);
+                    reminderNotificationTimers.delete(key);
                     notifyUser(task.text || t('untitledTask'), formatText('reminderNotificationBody', { time: task.dueTime }), `task-${task.id}`);
                 }, trigger - now);
-                reminderNotificationTimers.set(`task-${task.id}`, timer);
+                reminderNotificationTimers.set(key, timer);
             });
     }
+
+    reminderNotificationTimers.forEach((timer, key) => {
+        if (!desiredKeys.has(key)) {
+            clearTimeout(timer);
+            reminderNotificationTimers.delete(key);
+        }
+    });
 }
 
 function renderArchive() {
