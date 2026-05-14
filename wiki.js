@@ -1517,7 +1517,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     .finally(() => pendingPageFetches.delete(id));
             }
         } else if (hash === '#page-wiki' || !hash) {
-            closeEditor();
+            const mostRecent = allPages[0];
+            if (mostRecent && !currentPageId) {
+                openPage(mostRecent);
+            } else if (!mostRecent) {
+                closeEditor();
+            }
         }
     };
 
