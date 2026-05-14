@@ -192,7 +192,8 @@ service cloud.firestore {
     }
 
     match /eclass_connections/{connectionId} {
-      allow read, write: if false;
+      allow read: if isOwner(connectionId);
+      allow write: if false;
     }
 
     match /eclass_syllabi/{docId} {
