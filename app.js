@@ -3243,14 +3243,20 @@ function parseGoogleCalendarDate(value) {
     };
 }
 
+function normalizeReminderMinutes(input, fallback = [30]) {
+    const arr = Array.isArray(input) ? input : (input == null ? [] : [input]);
+    const cleaned = arr.map(Number).filter(value => Number.isFinite(value) && value >= 0);
+    const unique = [...new Set(cleaned)].sort((a, b) => b - a);
+    return unique.length ? unique : fallback;
+}
+
 function resolveReminderMinutesList(task) {
     if (!task) return [30];
-    const raw = Array.isArray(task.calendarReminderMinutesList) ? task.calendarReminderMinutesList : null;
-    const list = raw && raw.length
-        ? raw.map(value => Number(value)).filter(value => Number.isFinite(value) && value >= 0)
-        : (Number.isFinite(Number(task.calendarReminderMinutes)) ? [Number(task.calendarReminderMinutes)] : [30]);
-    const unique = [...new Set(list)].sort((a, b) => b - a);
-    return unique.length ? unique : [30];
+    return normalizeReminderMinutes(
+        Array.isArray(task.calendarReminderMinutesList) && task.calendarReminderMinutesList.length
+            ? task.calendarReminderMinutesList
+            : task.calendarReminderMinutes
+    );
 }
 
 function buildTaskCalendarEvent(task) {
@@ -3336,12 +3342,9 @@ async function importGoogleCalendarTasks() {
             dueDate: start.dueDate,
             dueTime: start.dueTime,
             calendarReminderMinutes: Number(event.reminders?.overrides?.[0]?.minutes ?? 30),
-            calendarReminderMinutesList: (() => {
-                const list = (event.reminders?.overrides || [])
-                    .map(item => Number(item.minutes))
-                    .filter(value => Number.isFinite(value) && value >= 0);
-                return list.length ? list : [30];
-            })(),
+            calendarReminderMinutesList: normalizeReminderMinutes(
+                (event.reminders?.overrides || []).map(o => o.minutes)
+            ),
             syncCalendar: true,
             calendarEventId: event.id,
             priority: 'medium',
@@ -3421,13 +3424,14 @@ async function saveTaskEditDialog() {
     const priority = getEl('task-edit-priority')?.value || 'medium';
     const existing = allTodos.find(item => item.id === editingTaskId);
     const editMinutes = Number(getEl('task-edit-calendar-reminder')?.value || 30);
+    const editList = normalizeReminderMinutes(editMinutes);
     const payload = {
         text,
         memo: (getEl('task-edit-memo')?.value || '').trim() || null,
         dueDate: getEl('task-edit-due-date')?.value || null,
         dueTime: getEl('task-edit-due-time')?.value || null,
-        calendarReminderMinutes: editMinutes,
-        calendarReminderMinutesList: [editMinutes],
+        calendarReminderMinutes: editList[0],
+        calendarReminderMinutesList: editList,
         priority: ['low', 'medium', 'high'].includes(priority) ? priority : 'medium',
         projectId: getEl('task-edit-project')?.value || null,
         syncCalendar: !!(existing?.calendarEventId || taskCalendarAccessToken)
@@ -3683,15 +3687,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedPriority = priorityInput && ['low', 'medium', 'high'].includes(priorityInput.value)
             ? priorityInput.value
             : 'medium';
-        const addMinutes = Number(reminderInput?.value || 30);
+        const addList = normalizeReminderMinutes(Number(reminderInput?.value || 30));
         const payload = {
             uid: currentUser.uid,
             text,
             memo: memoInput.value.trim() || null,
             dueDate: dateInput.value || null,
             dueTime: timeInput.value || null,
-            calendarReminderMinutes: addMinutes,
-            calendarReminderMinutesList: [addMinutes],
+            calendarReminderMinutes: addList[0],
+            calendarReminderMinutesList: addList,
             syncCalendar: !!dateInput.value && !!taskCalendarAccessToken,
             priority: selectedPriority,
             projectId: projectInput.value || null,

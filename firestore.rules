@@ -82,7 +82,9 @@ service cloud.firestore {
       isStringOrNull(request.resource.data.imageUrl) &&
       (!request.resource.data.keys().hasAny(['calendarEventId']) || isStringOrNull(request.resource.data.calendarEventId)) &&
       (!request.resource.data.keys().hasAny(['calendarReminderMinutes']) || isNumberOrNull(request.resource.data.calendarReminderMinutes)) &&
-      (!request.resource.data.keys().hasAny(['calendarReminderMinutesList']) || request.resource.data.calendarReminderMinutesList is list) &&
+      (!request.resource.data.keys().hasAny(['calendarReminderMinutesList']) ||
+        (request.resource.data.calendarReminderMinutesList is list &&
+         request.resource.data.calendarReminderMinutesList.size() <= 8)) &&
       (!request.resource.data.keys().hasAny(['syncCalendar']) || isBoolOrNull(request.resource.data.syncCalendar)) &&
       (!request.resource.data.keys().hasAny(['source']) || isStringOrNull(request.resource.data.source)) &&
       (!request.resource.data.keys().hasAny(['sourceItemId']) || isStringOrNull(request.resource.data.sourceItemId)) &&
