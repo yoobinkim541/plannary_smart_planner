@@ -1633,6 +1633,7 @@ document.addEventListener('DOMContentLoaded', () => {
             coverZoom: 100,
             coverCropMode: 'cover',
             content: { time: Date.now(), blocks: [], version: '2.28.2' },
+            ogTried: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -1890,6 +1891,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 coverZoom: toBoundedNumber(currentPageMeta.coverZoom, 100, 100, 220),
                 coverCropMode: currentPageMeta.coverCropMode || 'cover',
                 content: contentData,
+                ogTried: false,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             const linkedUrls = getLinkedWikiStorageUrls(nextPage);

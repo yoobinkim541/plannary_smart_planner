@@ -1255,11 +1255,13 @@ async function saveEclassConnection() {
     }
 }
 
+let eclassSyncUnsub = null;
 async function syncEclassNow() {
     const status = getEl('profile-eclass-status');
     const button = getEl('profile-eclass-sync-btn');
     try {
         if (button) button.textContent = t('eclassSyncing');
+        const requestedAt = Date.now();
         const response = await fetch('/api/eclass/sync', {
             method: 'POST',
             headers: await getAuthHeaders(),
@@ -1268,17 +1270,45 @@ async function syncEclassNow() {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
         if (status) {
-            status.className = 'profile-status-text success';
-            status.textContent = window.PlanaryI18n?.format?.('eclassSynced', { count: data.count || 0 }) || t('eclassSynced');
+            status.className = 'profile-status-text';
+            status.textContent = t('eclassSyncing');
         }
-        showToast(status?.textContent || t('eclassSyncNow'), 'success');
-        await loadEclassStatus();
+        if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+        const timeout = setTimeout(() => {
+            if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+            if (button) button.textContent = t('eclassSyncNow');
+        }, 5 * 60 * 1000);
+        eclassSyncUnsub = db.collection('eclass_connections').doc(currentUser.uid)
+            .onSnapshot(snap => {
+                const d = snap.data() || {};
+                const syncedMs = d.lastSyncedAt && d.lastSyncedAt.toMillis ? d.lastSyncedAt.toMillis() : 0;
+                if (d.syncStatus === 'ok' && syncedMs >= requestedAt) {
+                    if (status) {
+                        status.className = 'profile-status-text success';
+                        status.textContent = window.PlanaryI18n?.format?.('eclassSynced', { count: d.lastTodoCount || 0 }) || t('eclassSynced');
+                    }
+                    showToast(status?.textContent || t('eclassSyncNow'), 'success');
+                    loadEclassStatus();
+                    if (button) button.textContent = t('eclassSyncNow');
+                    clearTimeout(timeout);
+                    if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+                } else if (d.syncStatus === 'error' && syncedMs >= requestedAt) {
+                    if (status) {
+                        status.className = 'profile-status-text error';
+                        status.textContent = `${t('eclassFailed')}: ${d.lastError || ''}`;
+                    }
+                    if (button) button.textContent = t('eclassSyncNow');
+                    clearTimeout(timeout);
+                    if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+                }
+            }, error => {
+                console.warn('[eclass] status subscription failed', error);
+            });
     } catch (error) {
         if (status) {
             status.className = 'profile-status-text error';
             status.textContent = `${t('eclassFailed')}: ${error.message || error}`;
         }
-    } finally {
         if (button) button.textContent = t('eclassSyncNow');
     }
 }

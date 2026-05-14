@@ -47,9 +47,13 @@ initFirebase();
 
 const { syncAll } = require('../api/eclass/sync-core');
 const { reminderTick } = require('./reminder-tick');
+const { requestTick } = require('./request-tick');
+const { wikiOgTick } = require('./wiki-og-tick');
 
 const TICK_MS = Number(process.env.WORKER_INTERVAL_MS) || 5 * 60 * 1000;
 const REMINDER_TICK_MS = Number(process.env.REMINDER_INTERVAL_MS) || 60 * 1000;
+const REQUEST_TICK_MS = Number(process.env.REQUEST_INTERVAL_MS) || 15 * 1000;
+const WIKI_OG_TICK_MS = Number(process.env.WIKI_OG_INTERVAL_MS) || 2 * 60 * 1000;
 const ONCE = process.argv.includes('--once');
 
 let syncRunning = false;
@@ -87,15 +91,53 @@ async function reminders() {
   }
 }
 
+let requestRunning = false;
+async function requests() {
+  if (requestRunning) return;
+  requestRunning = true;
+  const startedAt = Date.now();
+  try {
+    const result = await requestTick();
+    if (result.processed > 0) {
+      console.log(`[worker] requests ok processed=${result.processed} in ${Date.now() - startedAt}ms`);
+    }
+  } catch (error) {
+    console.error('[worker] requests failed:', error.stack || error.message || error);
+  } finally {
+    requestRunning = false;
+  }
+}
+
+let wikiOgRunning = false;
+async function wikiOg() {
+  if (wikiOgRunning) return;
+  wikiOgRunning = true;
+  const startedAt = Date.now();
+  try {
+    const result = await wikiOgTick();
+    if (result.processed > 0) {
+      console.log(`[worker] wiki-og ok processed=${result.processed} filled=${result.filled} in ${Date.now() - startedAt}ms`);
+    }
+  } catch (error) {
+    console.error('[worker] wiki-og failed:', error.stack || error.message || error);
+  } finally {
+    wikiOgRunning = false;
+  }
+}
+
 (async () => {
   await tick();
   await reminders();
+  await requests();
+  await wikiOg();
   if (ONCE) {
     process.exit(0);
   }
   setInterval(tick, TICK_MS);
   setInterval(reminders, REMINDER_TICK_MS);
-  console.log(`[worker] scheduled sync=${TICK_MS / 1000}s reminders=${REMINDER_TICK_MS / 1000}s`);
+  setInterval(requests, REQUEST_TICK_MS);
+  setInterval(wikiOg, WIKI_OG_TICK_MS);
+  console.log(`[worker] scheduled sync=${TICK_MS / 1000}s reminders=${REMINDER_TICK_MS / 1000}s requests=${REQUEST_TICK_MS / 1000}s wiki-og=${WIKI_OG_TICK_MS / 1000}s`);
 })();
 
 process.on('SIGTERM', () => process.exit(0));
