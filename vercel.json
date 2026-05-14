@@ -1,12 +1,6 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
-  "crons": [
-    {
-      "path": "/api/eclass/sync",
-      "schedule": "0 0 * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/manifest.json",

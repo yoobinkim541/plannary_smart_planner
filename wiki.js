@@ -1180,26 +1180,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadPages = () => {
         if (!db || !currentUser) return;
+        // Client-side sort: Firestore's orderBy('updatedAt') filters out docs
+        // whose serverTimestamp hasn't been confirmed yet, so newly created
+        // pages would briefly disappear from the tree.
         db.collection('wiki_pages').where('uid', '==', currentUser.uid)
-            .orderBy('updatedAt', 'desc')
             .onSnapshot(snap => {
                 allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allPages.sort((a, b) => (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0));
                 renderPageList();
                 if (currentPageId) renderSubpages(currentPageId);
-                checkHash(); // Check if we should open a page based on URL
+                checkHash();
             }, error => {
-                console.log("Index issue, falling back to client sort", error);
-                db.collection('wiki_pages').where('uid', '==', currentUser.uid)
-                    .onSnapshot(snap => {
-                        allPages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        allPages.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
-                        renderPageList();
-                        if (currentPageId) renderSubpages(currentPageId);
-                        checkHash();
-                    }, fallbackError => {
-                        console.error('[Wiki] Fallback page load failed:', fallbackError);
-                        window.showToast(tr('loadFailed') + ': ' + (fallbackError.message || fallbackError), 'error');
-                    });
+                console.error('[Wiki] Page load failed:', error);
+                window.showToast(tr('loadFailed') + ': ' + (error.message || error), 'error');
             });
     };
 
@@ -1524,7 +1517,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     .finally(() => pendingPageFetches.delete(id));
             }
         } else if (hash === '#page-wiki' || !hash) {
-            closeEditor();
+            const mostRecent = allPages[0];
+            if (mostRecent && !currentPageId) {
+                openPage(mostRecent);
+            } else if (!mostRecent) {
+                closeEditor();
+            }
         }
     };
 
@@ -1627,7 +1625,15 @@ document.addEventListener('DOMContentLoaded', () => {
             title: tr('untitledDocument'),
             parentId: parentId || null,
             projectId: inheritedProjectId,
+            icon: '📄',
+            coverUrl: '',
+            coverPosition: 50,
+            coverPositionX: 50,
+            coverHeight: 180,
+            coverZoom: 100,
+            coverCropMode: 'cover',
             content: { time: Date.now(), blocks: [], version: '2.28.2' },
+            ogTried: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -1877,7 +1883,15 @@ document.addEventListener('DOMContentLoaded', () => {
             await db.collection('wiki_pages').doc(currentPageId).update({
                 title: title,
                 projectId,
+                icon: currentPageMeta.icon || '📄',
+                coverUrl: currentPageMeta.coverUrl || '',
+                coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
+                coverPositionX: toBoundedNumber(currentPageMeta.coverPositionX, 50, 0, 100),
+                coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360),
+                coverZoom: toBoundedNumber(currentPageMeta.coverZoom, 100, 100, 220),
+                coverCropMode: currentPageMeta.coverCropMode || 'cover',
                 content: contentData,
+                ogTried: false,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             const linkedUrls = getLinkedWikiStorageUrls(nextPage);

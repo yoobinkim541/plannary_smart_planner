@@ -69,7 +69,9 @@ service cloud.firestore {
         'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
         'dueTime', 'calendarReminderMinutes', 'calendarReminderMinutesList',
         'syncCalendar', 'calendarEventId',
-        'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt'
+        'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt',
+        'remindersSent',
+        'remindersSent'
       ]) &&
       request.resource.data.text is string &&
       request.resource.data.text.size() > 0 &&
@@ -192,12 +194,47 @@ service cloud.firestore {
     }
 
     match /eclass_connections/{connectionId} {
-      allow read, write: if false;
+      allow read: if isOwner(connectionId);
+      allow write: if false;
     }
 
     match /eclass_syllabi/{docId} {
       allow read: if existingOwner();
       allow create, update, delete: if false;
+    }
+
+    match /fcm_tokens/{tokenId} {
+      allow read: if existingOwner();
+      allow create: if incomingOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0 &&
+        isStringOrNull(request.resource.data.platform) &&
+        isStringOrNull(request.resource.data.userAgent) &&
+        isTimestampOrNull(request.resource.data.createdAt) &&
+        isTimestampOrNull(request.resource.data.lastSeenAt);
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0;
+      allow delete: if existingOwner();
+    }
+
+    match /fcm_tokens/{tokenId} {
+      allow read: if existingOwner();
+      allow create: if incomingOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0 &&
+        isStringOrNull(request.resource.data.platform) &&
+        isStringOrNull(request.resource.data.userAgent) &&
+        isTimestampOrNull(request.resource.data.createdAt) &&
+        isTimestampOrNull(request.resource.data.lastSeenAt);
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0;
+      allow delete: if existingOwner();
     }
 
     match /users/{userId} {
