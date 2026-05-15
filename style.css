@@ -28,6 +28,11 @@
     --red:      #ef4444;
     --purple:   #8b5cf6;
 
+    --blue-soft:   rgba(37, 99, 235, 0.1);
+    --green-soft:  rgba(16, 185, 129, 0.1);
+    --red-soft:    rgba(239, 68, 68, 0.1);
+    --purple-soft: rgba(139, 92, 246, 0.1);
+
     --btn-bg:     #0f172a;
     --btn-text:   #ffffff;
     --btn-hover:  #1e293b;
@@ -46,6 +51,11 @@
     --text-3:   #6b7280;
 
     --black:    #ffffff;
+
+    --blue-soft:   rgba(96, 165, 250, 0.18);
+    --green-soft:  rgba(52, 211, 153, 0.18);
+    --red-soft:    rgba(248, 113, 113, 0.18);
+    --purple-soft: rgba(167, 139, 250, 0.18);
 
     --btn-bg:     #4f46e5;
     --btn-text:   #ffffff;
@@ -5544,4 +5554,118 @@ body.onboarding-spotlight-active #main-area {
     margin-right: 6px;
     font-weight: 600;
     border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+/* ================================================
+   Shared utility classes (theme-aware)
+   ================================================ */
+
+/* Page header description text under <h1> */
+.main-header p,
+.page-description {
+    color: var(--text-2);
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+/* Stat icon color tones (theme-aware soft tints) */
+.stat-icon.tone-blue,
+.archive-stat-icon.tone-blue {
+    background: var(--blue-soft);
+    color: var(--blue);
+}
+.stat-icon.tone-green,
+.archive-stat-icon.tone-green {
+    background: var(--green-soft);
+    color: var(--green);
+}
+.stat-icon.tone-red,
+.archive-stat-icon.tone-red {
+    background: var(--red-soft);
+    color: var(--red);
+}
+.stat-icon.tone-purple,
+.archive-stat-icon.tone-purple {
+    background: var(--purple-soft);
+    color: var(--purple);
+}
+
+/* Productivity (progress) stat-card layout */
+.stat-card .stat-info--progress {
+    width: 100%;
+}
+.stat-progress-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.stat-progress-percent {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* Sidebar profile action buttons (theme + logout) */
+.profile-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Empty-state hint message inside widgets */
+.empty-msg {
+    font-size: 0.85rem;
+    color: var(--text-3);
+}
+
+/* Note composer */
+#note-input {
+    resize: none;
+}
+.composer-details--note {
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+}
+.composer-submit-btn--note {
+    padding: 10px 24px;
+    font-size: 14px;
+}
+
+/* Confirm-btn size & shape variants */
+.confirm-btn.size-auto {
+    width: auto;
+}
+.confirm-btn.size-md {
+    width: auto;
+    padding: 10px 24px;
+}
+.confirm-btn.size-lg {
+    width: auto;
+    padding: 12px 32px;
+    border-radius: 14px;
+}
+
+/* Wiki empty-state "new page" button — icon + label alignment */
+.wiki-empty-create-btn-icon {
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.wiki-empty-create-btn-label {
+    vertical-align: middle;
+}
+
+/* Profile page action spacing */
+.profile-action {
+    margin-top: 14px;
+}
+.profile-action--logout {
+    margin-top: 20px;
+}
+
+/* Bookmark composer URL input row (icon + input) */
+.bm-url-row {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 10px;
 }
