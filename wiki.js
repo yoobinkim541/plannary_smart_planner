@@ -1304,7 +1304,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         }
         renderWidgets();
+        renderNoteSidebarTree();
     };
+
+    const renderNoteSidebarTree = () => {
+        const treeListEl = document.getElementById('sidebar-note-tree-list');
+        if (!treeListEl) return;
+        treeListEl.innerHTML = '';
+
+        const childrenByParent = allPages.reduce((groups, page) => {
+            const parentId = page.parentId || '';
+            if (!groups[parentId]) groups[parentId] = [];
+            groups[parentId].push(page);
+            return groups;
+        }, {});
+
+        const renderedIds = new Set();
+        const appendItem = (page, depth) => {
+            if (renderedIds.has(page.id)) return;
+            renderedIds.add(page.id);
+            const el = document.createElement('button');
+            el.type = 'button';
+            el.className = `sidebar-note-tree-item${currentPageId === page.id ? ' active' : ''}`;
+            el.style.setProperty('--note-depth', depth);
+            el.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="sidebar-note-tree-title">${escapeHtml(page.title || tr('untitledDocument'))}</span>
+            `;
+            el.onclick = () => navigateToPage(page.id);
+            treeListEl.appendChild(el);
+            (childrenByParent[page.id] || []).forEach(child => appendItem(child, depth + 1));
+        };
+
+        (childrenByParent[''] || []).forEach(page => appendItem(page, 0));
+        allPages.filter(page => !renderedIds.has(page.id)).forEach(page => appendItem(page, 0));
+
+        if (!allPages.length) {
+            const empty = document.createElement('div');
+            empty.className = 'sidebar-note-tree-empty';
+            empty.innerHTML = `
+                <p>${tr('noPagesFound')}</p>
+                <button type="button" id="sidebar-note-tree-create">+ ${tr('newWikiPage')}</button>
+            `;
+            treeListEl.appendChild(empty);
+            const btn = document.getElementById('sidebar-note-tree-create');
+            if (btn) btn.onclick = () => createNewPage();
+        }
+    };
+
+    window.renderNoteSidebarTree = renderNoteSidebarTree;
 
     if (searchInput) {
         searchInput.oninput = () => renderPageList();
