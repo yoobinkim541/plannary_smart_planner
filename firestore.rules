@@ -139,7 +139,8 @@ service cloud.firestore {
     function validWikiPage() {
       return hasOnlyKeys([
         'uid', 'title', 'parentId', 'projectId', 'content', 'createdAt', 'updatedAt',
-        'icon', 'coverUrl', 'coverPosition', 'coverPositionX', 'coverHeight', 'coverZoom', 'coverCropMode'
+        'icon', 'coverUrl', 'coverPosition', 'coverPositionX', 'coverHeight', 'coverZoom', 'coverCropMode',
+        'ogTried'
       ]) &&
       request.resource.data.title is string &&
       request.resource.data.title.size() > 0 &&
@@ -152,6 +153,7 @@ service cloud.firestore {
       (!request.resource.data.keys().hasAny(['coverHeight']) || isNumberOrNull(request.resource.data.coverHeight)) &&
       (!request.resource.data.keys().hasAny(['coverZoom']) || isNumberOrNull(request.resource.data.coverZoom)) &&
       (!request.resource.data.keys().hasAny(['coverCropMode']) || isStringOrNull(request.resource.data.coverCropMode)) &&
+      (!request.resource.data.keys().hasAny(['ogTried']) || isBoolOrNull(request.resource.data.ogTried)) &&
       request.resource.data.content is map &&
       isTimestampOrNull(request.resource.data.createdAt) &&
       isTimestampOrNull(request.resource.data.updatedAt);
