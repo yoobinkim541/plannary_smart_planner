@@ -1,7 +1,7 @@
 const { getAdmin } = require('./_admin');
 const { decrypt } = require('./_crypto');
 const { fetchSeoultechItems } = require('./_seoultech');
-const { fetchSyllabusExams } = require('./_syllabus');
+const { fetchSyllabusExams, discoverCourseKjs } = require('./_syllabus');
 
 const ECLASS_SOURCES = ['eclass', 'eclass-exam'];
 const BATCH_LIMIT = 400;
@@ -112,15 +112,19 @@ async function syncConnection(uid, connection, options = {}) {
   });
 
   let exams = [];
+  let syllabusMetrics = null;
   if (options.includeSyllabi !== false) {
     try {
-      exams = await fetchSyllabusExams({
+      const result = await fetchSyllabusExams({
         baseUrl: connection.baseUrl,
         sessionCookie: cookie || sessionCookie,
         pages, db, admin, uid
       });
+      exams = result.exams || [];
+      syllabusMetrics = result.metrics || null;
     } catch (error) {
       console.error('[syllabus]', uid, error.message);
+      syllabusMetrics = { lastError: error.message || String(error) };
     }
   }
 
@@ -170,11 +174,14 @@ async function syncConnection(uid, connection, options = {}) {
     }
   });
 
+  const lastCourseCount = discoverCourseKjs(pages || []).length;
   ops.push(batch => batch.set(connectionRef, {
     lastSyncedAt: ts,
     lastError: null,
     lastItemCount: items.length,
-    lastExamCount: exams.length
+    lastExamCount: exams.length,
+    lastCourseCount,
+    lastSyllabusMetrics: syllabusMetrics || null
   }, { merge: true }));
 
   await commitInChunks(db, ops);

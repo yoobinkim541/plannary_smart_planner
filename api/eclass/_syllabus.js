@@ -1,6 +1,6 @@
 const cheerio = require('cheerio');
 const crypto = require('crypto');
-const { toAbsoluteUrl, parseDate, parseKoreanDate, normalizeBaseUrl } = require('./_seoultech');
+const { toAbsoluteUrl, parseDate, parseKoreanDate, normalizeBaseUrl, fetchText } = require('./_seoultech');
 
 const SEMESTER_STARTS = {
   '2026-1': '2026-03-02',
@@ -42,6 +42,38 @@ function parseSemesterPeriod(text) {
   return m ? `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}` : null;
 }
 
+function discoverCourseKjs(pages) {
+  const codes = new Set();
+  pages.forEach(page => {
+    if (!page.html) return;
+    for (const m of String(page.html).matchAll(/goLecture\(\s*['"]([^'"]+)['"]/g)) {
+      const kj = m[1].trim();
+      if (kj && /^[A-Za-z0-9._-]+$/.test(kj) && kj.length < 64) codes.add(kj);
+    }
+    for (const m of String(page.html).matchAll(/data-kj\s*=\s*["']([^"']+)["']/g)) {
+      const kj = m[1].trim();
+      if (kj && kj.length < 64) codes.add(kj);
+    }
+  });
+  return [...codes];
+}
+
+function syllabusCandidatesForKj(baseUrl, kj) {
+  const base = normalizeBaseUrl(baseUrl);
+  // Probe order matters: cheapest / most-likely first. Empirically SeoulTech ilos
+  // uses several variants depending on the course template, so we try them all
+  // and let the parser decide which one carried real content.
+  const paths = [
+    `/ilos/st/course/lecture_plan_form.acl?KJKEY=${encodeURIComponent(kj)}`,
+    `/ilos/st/course/lecture_plan_form.acl?kj=${encodeURIComponent(kj)}`,
+    `/ilos/st/course/lecture_plan_view_form.acl?KJKEY=${encodeURIComponent(kj)}`,
+    `/ilos/st/course/lecture_plan_pdf_form.acl?KJKEY=${encodeURIComponent(kj)}`,
+    `/ilos/st/course/lecture_plan_pdf.acl?KJKEY=${encodeURIComponent(kj)}`,
+    `/ilos/st/course/submain_form.acl?KJKEY=${encodeURIComponent(kj)}`
+  ];
+  return paths.map(p => toAbsoluteUrl(base, p));
+}
+
 function discoverSyllabusUrls(pages, baseUrl) {
   const urls = new Set();
   const base = normalizeBaseUrl(baseUrl);
@@ -63,6 +95,9 @@ function discoverSyllabusUrls(pages, baseUrl) {
       else if (value.startsWith('/')) urls.add(toAbsoluteUrl(base, value));
     }
   });
+  // Per-course candidate URLs derived from goLecture(...) on top of any direct hits.
+  const kjs = discoverCourseKjs(pages);
+  kjs.forEach(kj => syllabusCandidatesForKj(baseUrl, kj).forEach(u => urls.add(u)));
   return [...urls].slice(0, MAX_SYLLABUS_URLS);
 }
 
@@ -169,14 +204,23 @@ function extractExamDates(rawText, { courseTitle: fallbackCourseTitle, sourceUrl
 }
 
 async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, uid }) {
-  if (!sessionCookie) return [];
+  const metrics = {
+    urlsDiscovered: 0,
+    urlsProbed: 0,
+    urlsWithText: 0,
+    urlsHttpErrors: 0,
+    urlsLoginRedirect: 0,
+    examsExtracted: 0,
+    lastError: null
+  };
+  if (!sessionCookie) return { exams: [], metrics };
   const urls = discoverSyllabusUrls(pages || [], baseUrl);
-  if (!urls.length) return [];
+  metrics.urlsDiscovered = urls.length;
+  if (!urls.length) return { exams: [], metrics };
 
   const col = db.collection('eclass_syllabi');
   const refs = urls.map(url => ({ url, ref: col.doc(`${uid}_${hashUrl(url).slice(0, 32)}`) }));
 
-  // Batch-load all cache docs in one round-trip.
   let snapshots = [];
   try {
     snapshots = await db.getAll(...refs.map(r => r.ref));
@@ -194,44 +238,65 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
     let exams = cached?.examCandidates;
 
     if (!cached || ageMs > CACHE_TTL_MS) {
+      metrics.urlsProbed += 1;
       try {
         const content = await fetchSyllabusContent(url, sessionCookie);
-        if (!content.text || content.text.length < 50) {
+        // Detect login-wall / empty pages early so we don't write garbage candidates.
+        const isLoginWall = /usr_id|usr_pwd|form[^>]*action=.{1,40}login/i.test(content.text || '');
+        if (isLoginWall) {
+          metrics.urlsLoginRedirect += 1;
           await ref.set({
             uid, sourceUrl: url,
-            lastError: content.error || 'syllabus_no_text',
+            lastError: 'syllabus_login_wall',
             parsedAt: admin.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
           continue;
         }
+        if (!content.text || content.text.length < 50) {
+          await ref.set({
+            uid, sourceUrl: url,
+            lastError: content.error || 'syllabus_no_text',
+            textLength: content.text?.length || 0,
+            parsedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          continue;
+        }
+        metrics.urlsWithText += 1;
         exams = extractExamDates(content.text, { sourceUrl: url });
         await ref.set({
           uid, sourceUrl: url,
           isPdf: content.isPdf,
+          textLength: content.text.length,
           examCandidates: exams,
           lastError: null,
           parsedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
       } catch (error) {
+        const msg = error.message || String(error);
+        metrics.urlsHttpErrors += 1;
+        metrics.lastError = msg;
         await ref.set({
           uid, sourceUrl: url,
-          lastError: error.message || String(error),
+          lastError: msg,
           parsedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
         continue;
       }
     }
 
-    const courseId = hashUrl(url).slice(0, 12); // hoisted out of inner forEach
+    const courseId = hashUrl(url).slice(0, 12);
     (exams || []).forEach(exam => out.push({ ...exam, courseId, sourceUrl: exam.sourceUrl || url }));
   }
-  return out;
+  metrics.examsExtracted = out.length;
+  return { exams: out, metrics };
 }
 
 module.exports = {
   fetchSyllabusExams,
   extractExamDates,
   discoverSyllabusUrls,
+  discoverCourseKjs,
+  syllabusCandidatesForKj,
   fetchSyllabusContent,
   SEMESTER_STARTS,
   KEYWORD_RULES
