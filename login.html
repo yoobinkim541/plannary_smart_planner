@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 
 <head>
     <meta charset="UTF-8">
@@ -14,7 +14,7 @@
     <meta property="og:title" content="Planary - Login">
     <meta property="og:description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#4b6bfb">
+    <meta name="theme-color" content="#2563eb">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Planary">
@@ -32,34 +32,34 @@
 
 <body class="auth-layout">
     <div class="auth-card">
-        <h2>Sign in</h2>
+        <h2>로그인</h2>
         <p class="auth-subtitle">할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 이어가세요.</p>
 
         <div class="auth-form-group">
-            <label for="user-email">Email Address</label>
-            <input type="email" id="user-email" class="auth-input" placeholder="Enter your email">
+            <label for="user-email">이메일</label>
+            <input type="email" id="user-email" class="auth-input" placeholder="이메일을 입력하세요">
         </div>
         <div class="auth-form-group">
-            <label for="user-pw">Password</label>
-            <input type="password" id="user-pw" class="auth-input" placeholder="Enter your password">
+            <label for="user-pw">비밀번호</label>
+            <input type="password" id="user-pw" class="auth-input" placeholder="비밀번호를 입력하세요">
         </div>
 
-        <button class="confirm-btn" id="login-btn">Sign in</button>
+        <button class="confirm-btn" id="login-btn">로그인</button>
 
-        <div class="divider">OR</div>
+        <div class="divider">또는</div>
 
         <button class="google-btn" id="google-login-btn">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google icon">
-            Sign in with Google
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google 아이콘">
+            Google로 로그인
         </button>
         <p class="auth-warning" id="secure-browser-warning" hidden>
-            Google sign-in is blocked inside some in-app browsers. Open this page in Chrome, Safari, or your default browser:
-            <a id="secure-browser-link" href="/" target="_blank" rel="noopener">Open app</a>
-            <button type="button" class="auth-copy-btn" id="secure-browser-copy-btn">Copy link</button>
+            일부 인앱 브라우저에서는 Google 로그인이 차단됩니다. Chrome, Safari 또는 기본 브라우저에서 열어주세요:
+            <a id="secure-browser-link" href="/" target="_blank" rel="noopener">앱 열기</a>
+            <button type="button" class="auth-copy-btn" id="secure-browser-copy-btn">링크 복사</button>
         </p>
 
         <div class="auth-links">
-            <p>Don't have an account? <a href="signup.html">Sign up</a></p>
+            <p>계정이 없으신가요? <a href="signup.html">회원가입</a></p>
         </div>
     </div>
 
@@ -135,10 +135,10 @@
         const copySecureBrowserUrl = async () => {
             try {
                 await navigator.clipboard.writeText(secureLoginUrl);
-                alert('Login link copied. Paste it into Chrome, Safari, or your default browser:\n' + secureLoginUrl);
+                alert('로그인 링크를 복사했어요. Chrome, Safari 또는 기본 브라우저에 붙여넣어 주세요:\n' + secureLoginUrl);
             } catch (error) {
                 if (secureBrowserLink) secureBrowserLink.focus();
-                alert('Copy this login link into Chrome, Safari, or your default browser:\n' + secureLoginUrl);
+                alert('아래 로그인 링크를 Chrome, Safari 또는 기본 브라우저에 복사해 주세요:\n' + secureLoginUrl);
             }
         };
 
@@ -146,35 +146,35 @@
 
         const getAuthErrorMessage = (error) => {
             if (error.code === 'auth/unauthorized-domain') {
-                return 'This domain is not authorized for Firebase Authentication. Add it in Firebase Console > Authentication > Settings > Authorized domains.';
+                return '이 도메인은 Firebase 인증에 등록되어 있지 않습니다. Firebase Console > Authentication > Settings > Authorized domains에서 추가해 주세요.';
             }
             if (error.code === 'auth/operation-not-allowed') {
-                return 'Email/Password login is disabled in Firebase Console. Enable Authentication > Sign-in method > Email/Password, then try again.';
+                return 'Firebase Console에서 이메일/비밀번호 로그인이 비활성화되어 있습니다. Authentication > Sign-in method > Email/Password를 켜고 다시 시도해 주세요.';
             }
             if (error.code === 'auth/operation-not-supported-in-this-environment') {
-                return 'Google login is not supported in this browser environment. Try opening this page in Safari, Chrome, or your default browser.';
+                return '현재 브라우저 환경에서는 Google 로그인이 지원되지 않습니다. Safari, Chrome 또는 기본 브라우저에서 열어주세요.';
             }
             if (error.code === 'auth/web-storage-unsupported' || /disallowed_useragent|embedded|webview/i.test(error.message || '')) {
-                return 'Instagram and other in-app browsers can block Google sign-in. Continue in Chrome, Safari, or your default browser.';
+                return 'Instagram 등 일부 인앱 브라우저는 Google 로그인을 차단합니다. Chrome, Safari 또는 기본 브라우저에서 계속해 주세요.';
             }
             if (error.code === 'auth/popup-blocked') {
-                return 'The browser blocked Google login. Please allow popups for this site or open it in Chrome/Safari.';
+                return '브라우저가 Google 로그인 팝업을 차단했습니다. 팝업을 허용하거나 Chrome/Safari에서 열어주세요.';
             }
             if (error.code === 'auth/popup-closed-by-user') {
-                return 'Google login was closed before it finished.';
+                return 'Google 로그인 창이 완료 전에 닫혔습니다.';
             }
             if (error.code === 'auth/account-exists-with-different-credential') {
-                return 'This email already has another login method. Sign in with email/password first, then connect Google from Profile.';
+                return '이 이메일은 다른 로그인 방식으로 이미 가입되어 있어요. 이메일/비밀번호로 먼저 로그인한 후 프로필에서 Google을 연결해 주세요.';
             }
             if ((error.message || '').includes('redirect_uri_mismatch')) {
-                return 'Google OAuth redirect URI is not registered. In Google Cloud Console, add this authorized redirect URI: https://planary-a2f6b.firebaseapp.com/__/auth/handler';
+                return 'Google OAuth 리디렉션 URI가 등록되어 있지 않습니다. Google Cloud Console에서 다음 URI를 승인된 리디렉션 URI로 추가하세요: https://planary-a2f6b.firebaseapp.com/__/auth/handler';
             }
             return error.message;
         };
 
         const setGoogleLoginLoading = (isLoading) => {
             googleLoginBtn.disabled = isLoading;
-            googleLoginBtn.lastChild.textContent = isLoading ? ' Opening Google...' : ` ${googleLoginDefaultText}`;
+            googleLoginBtn.lastChild.textContent = isLoading ? ' Google 여는 중...' : ` ${googleLoginDefaultText}`;
         };
 
         const signInWithGoogle = () => {
@@ -190,18 +190,18 @@
                     if (error.code === 'auth/operation-not-supported-in-this-environment' || error.code === 'auth/web-storage-unsupported' || /disallowed_useragent|embedded|webview/i.test(error.message || '')) {
                         openInSecureBrowser();
                     }
-                    alert('Google login failed: ' + getAuthErrorMessage(error));
+                    alert('Google 로그인에 실패했습니다: ' + getAuthErrorMessage(error));
                 });
         };
         // Email Login
         loginBtn.addEventListener('click', () => {
             const email = emailInput.value.trim();
             const password = pwInput.value;
-            if (!email || !password) return alert('Please enter both email and password.');
+            if (!email || !password) return alert('이메일과 비밀번호를 모두 입력해주세요.');
 
             auth.signInWithEmailAndPassword(email, password)
                 .then(goToApp)
-                .catch((error) => alert('Login failed: ' + getAuthErrorMessage(error)));
+                .catch((error) => alert('로그인에 실패했습니다: ' + getAuthErrorMessage(error)));
         });
 
         // Google Login
@@ -214,7 +214,7 @@
                 if (result && result.user) goToApp();
             })
             .catch((error) => {
-                alert('Google login failed: ' + getAuthErrorMessage(error));
+                alert('Google 로그인에 실패했습니다: ' + getAuthErrorMessage(error));
             });
 
         auth.onAuthStateChanged((user) => {
