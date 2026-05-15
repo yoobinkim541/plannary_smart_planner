@@ -334,11 +334,11 @@ const I18N = {
         memoPlaceholder: '메모 (선택)', noProject: '프로젝트 없음', searchTasks: '작업 검색...', projectsTitle: '프로젝트',
         projectsSubtitle: '작업을 프로젝트별로 정리하세요.', projectPlaceholder: '프로젝트 이름 (예: 업무, 공부)', createProject: '프로젝트 만들기',
         projectWorkspace: '프로젝트 작업 공간', projectSummary: '작업, 리마인더, 위키 페이지를 한 곳에서 봅니다.',
-        openTasks: '작업 열기', openReminders: '리마인더 열기', newWikiPage: '새 위키 페이지', stickyNotes: '스티키 메모',
+        openTasks: '작업 열기', openReminders: '리마인더 열기', newWikiPage: '새 노트', stickyNotes: '포스트잇',
         projectLabel: '프로젝트',
         notePlaceholder: '짧은 생각이나 아이디어를 적어보세요...', addNote: '+ 메모 추가', bookmarksTitle: '북마크',
-        bookmarksSubtitle: '중요한 링크를 태그와 함께 저장하세요.', saveBookmark: '북마크 저장', docsWiki: '문서 & 위키',
-        wikiSubtitle: '노션 스타일 문서 편집기', searchPages: '페이지 검색...', saveChanges: '변경사항 저장',
+        bookmarksSubtitle: '중요한 링크를 태그와 함께 저장하세요.', saveBookmark: '북마크 저장', docsWiki: '노트',
+        wikiSubtitle: '내 노트 문서', searchPages: '페이지 검색...', saveChanges: '변경사항 저장',
         archiveTitle: '보관함', archivedTasks: '보관된 작업', emptyArchive: '보관함 비우기', profileTitle: '마이페이지',
         nameLabel: '이름:', emailLabel: '이메일:', loginMethodsLabel: '로그인 방식:', languageLabel: 'UI 언어',
         appFontLabel: '전체 글꼴',
@@ -346,8 +346,8 @@ const I18N = {
         emailPasswordLogin: '이메일 비밀번호 로그인', newPassword: '새 비밀번호', confirmPassword: '비밀번호 확인',
         logout: '로그아웃', taskHeaderTitle: '내 작업', taskHeaderSubtitle: '작업 관리자', overviewHeader: '개요',
         overviewSubtitle: '대시보드 요약', projectHeader: '프로젝트 그룹', projectSubtitle: '분류 관리자',
-        notesHeader: '스티키 보드', notesSubtitle: '아이디어 메모', bookmarksHeader: '저장한 웹', bookmarksHeaderSubtitle: '참고 링크',
-        archiveHeader: '보관함', archiveSubtitle: '이전 기록', wikiHeader: '위키 & 문서', wikiHeaderSubtitle: '지식 베이스',
+        notesHeader: '포스트잇 보드', notesSubtitle: '아이디어 메모', bookmarksHeader: '저장한 웹', bookmarksHeaderSubtitle: '참고 링크',
+        archiveHeader: '보관함', archiveSubtitle: '이전 기록', wikiHeader: '노트', wikiHeaderSubtitle: '내 노트 문서',
         myPageSubtitle: '사용자 계정', googleProvider: '구글', emailPasswordProvider: '이메일 비밀번호',
         emailPasswordAlreadyEnabled: '이메일 비밀번호 로그인이 이미 활성화되어 있습니다. 새 비밀번호를 입력하면 변경됩니다.',
         setPasswordHelp: '이 이메일로 비밀번호 로그인도 할 수 있도록 비밀번호를 설정합니다.',
@@ -584,11 +584,11 @@ const I18N = {
         memoPlaceholder: 'Notes (optional)', noProject: 'No Project', searchTasks: 'Search tasks...', projectsTitle: 'Projects',
         projectsSubtitle: 'Organize your tasks into groups.', projectPlaceholder: 'Project name (e.g. Work, Study)', createProject: 'Create Project',
         projectWorkspace: 'Project workspace', projectSummary: 'Tasks, reminders, and wiki pages in one place.',
-        openTasks: 'Open tasks', openReminders: 'Open reminders', newWikiPage: 'New wiki page', stickyNotes: 'Sticky Notes',
+        openTasks: 'Open tasks', openReminders: 'Open reminders', newWikiPage: 'New note', stickyNotes: 'Post-it',
         projectLabel: 'Project',
         notePlaceholder: 'Jot down a quick thought or idea...', addNote: '+ Add Note', bookmarksTitle: 'Bookmarks',
-        bookmarksSubtitle: 'Save important links with tags.', saveBookmark: 'Save Bookmark', docsWiki: 'Docs & Wiki',
-        wikiSubtitle: 'Notion-like document editor', searchPages: 'Search pages...', saveChanges: 'Save Changes',
+        bookmarksSubtitle: 'Save important links with tags.', saveBookmark: 'Save Bookmark', docsWiki: 'Notes',
+        wikiSubtitle: 'My notes', searchPages: 'Search pages...', saveChanges: 'Save Changes',
         archiveTitle: 'Archive Vault', archivedTasks: 'Archived Tasks', emptyArchive: 'Empty Archive', profileTitle: 'My Page',
         nameLabel: 'Name:', emailLabel: 'Email:', loginMethodsLabel: 'Login methods:', languageLabel: 'UI language',
         appFontLabel: 'App font',
@@ -596,8 +596,8 @@ const I18N = {
         emailPasswordLogin: 'Email password login', newPassword: 'New password', confirmPassword: 'Confirm password',
         logout: 'Logout', taskHeaderTitle: 'My Tasks', taskHeaderSubtitle: 'Todo Manager', overviewHeader: 'Overview',
         overviewSubtitle: 'Dashboard Summary', projectHeader: 'Project Groups', projectSubtitle: 'Category Manager',
-        notesHeader: 'Sticky Board', notesSubtitle: 'Idea Notes', bookmarksHeader: 'Web Saved', bookmarksHeaderSubtitle: 'Reference Links',
-        archiveHeader: 'Vault', archiveSubtitle: 'Historical Records', wikiHeader: 'Wiki & Docs', wikiHeaderSubtitle: 'Knowledge Base',
+        notesHeader: 'Post-it Board', notesSubtitle: 'Idea Notes', bookmarksHeader: 'Web Saved', bookmarksHeaderSubtitle: 'Reference Links',
+        archiveHeader: 'Vault', archiveSubtitle: 'Historical Records', wikiHeader: 'Notes', wikiHeaderSubtitle: 'My notes',
         myPageSubtitle: 'User Account', googleProvider: 'Google', emailPasswordProvider: 'Email password',
         emailPasswordAlreadyEnabled: 'Email password login is already enabled. Enter a new password to update it.',
         setPasswordHelp: 'Set a password for this email so you can sign in with email and password too.',
@@ -1462,7 +1462,25 @@ function handleHash() {
     let pageId = hash.replace('#', '');
     if (pageId.startsWith('wiki/')) pageId = 'page-wiki';
     if (getEl(pageId)) switchPage(pageId);
+    updateSidebarMode(hash);
 }
+
+function updateSidebarMode(hash) {
+    const nav = document.querySelector('#sidebar .sidebar-nav');
+    const tree = document.getElementById('sidebar-note-tree');
+    if (!nav || !tree) return;
+    const inNote = (hash || '').startsWith('#wiki/');
+    nav.hidden = inNote;
+    tree.hidden = !inNote;
+    if (inNote && typeof window.renderNoteSidebarTree === 'function') {
+        window.renderNoteSidebarTree();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const backBtn = document.getElementById('sidebar-note-back');
+    if (backBtn) backBtn.onclick = () => { window.location.hash = 'page-wiki'; };
+});
 
 function updateProfileUI(user) {
     if (!user) return;
