@@ -991,7 +991,25 @@ function handleHash() {
     let pageId = hash.replace('#', '');
     if (pageId.startsWith('wiki/')) pageId = 'page-wiki';
     if (getEl(pageId)) switchPage(pageId);
+    updateSidebarMode(hash);
 }
+
+function updateSidebarMode(hash) {
+    const nav = document.querySelector('#sidebar .sidebar-nav');
+    const tree = document.getElementById('sidebar-note-tree');
+    if (!nav || !tree) return;
+    const inNote = (hash || '').startsWith('#wiki/');
+    nav.hidden = inNote;
+    tree.hidden = !inNote;
+    if (inNote && typeof window.renderNoteSidebarTree === 'function') {
+        window.renderNoteSidebarTree();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const backBtn = document.getElementById('sidebar-note-back');
+    if (backBtn) backBtn.onclick = () => { window.location.hash = 'page-wiki'; };
+});
 
 function updateProfileUI(user) {
     if (!user) return;
