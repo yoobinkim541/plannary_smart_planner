@@ -1,0 +1,24 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Planary">
+  <defs>
+    <linearGradient id="planary-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9b3ff7"></stop>
+      <stop offset="1" stop-color="#7f0df2"></stop>
+    </linearGradient>
+    <radialGradient id="planary-shine" cx="22%" cy="18%" r="80%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"></stop>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"></stop>
+    </radialGradient>
+  </defs>
+
+  
+  <rect x="0" y="0" width="512" height="512" rx="116" ry="116" fill="url(#planary-bg)"></rect>
+  <rect x="0" y="0" width="512" height="512" rx="116" ry="116" fill="url(#planary-shine)"></rect>
+
+  
+  <path d="M 174 388 L 174 158 A 30 30 0 0 1 204 128 L 296 128 A 88 88 0 0 1 296 304 L 174 304" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  
+  <circle cx="380" cy="396" r="32" fill="#ffffff"></circle>
+  <circle cx="380" cy="396" r="14" fill="#7f0df2"></circle>
+</svg>
