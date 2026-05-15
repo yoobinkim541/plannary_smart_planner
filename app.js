@@ -322,7 +322,7 @@ function appIconSvg(name, size = 20, extraAttrs = '') {
 const I18N = {
     ko: {
         home: '홈', tasks: '작업', allTasks: '전체 작업', completed: '완료됨', progress: '진행 중', important: '중요',
-        reminders: '리마인더', projects: '프로젝트', notes: '메모', wiki: '위키', bookmarks: '북마크',
+        reminders: '리마인더', projects: '프로젝트', notes: '포스트잇', wiki: '노트', bookmarks: '북마크',
         archive: '보관함', myPage: '마이페이지', dashboardTitle: '대시보드', dashboardSubtitle: '오늘의 작업 흐름을 확인하세요.',
         todayOverview: 'Today Overview', todayHubTitle: '오늘 해야 할 일을 한눈에 확인하세요',
         todayHubSummary: '오늘 마감 {due}개, 중요 작업 {important}개, 진행 중 프로젝트 {projects}개가 있습니다.',
@@ -572,7 +572,7 @@ const I18N = {
     },
     en: {
         home: 'Home', tasks: 'Tasks', allTasks: 'All tasks', completed: 'Completed', progress: 'Progress', important: 'Important',
-        reminders: 'Reminders', projects: 'Projects', notes: 'Notes', wiki: 'Wiki', bookmarks: 'Bookmarks',
+        reminders: 'Reminders', projects: 'Projects', notes: 'Post-it', wiki: 'Notes', bookmarks: 'Bookmarks',
         archive: 'Archive', myPage: 'My Page', dashboardTitle: 'Dashboard Overview', dashboardSubtitle: "Welcome back! Here's what's happening today.",
         todayOverview: 'Today Overview', todayHubTitle: "See today's work at a glance",
         todayHubSummary: '{due} due today, {important} important, {projects} active projects.',
