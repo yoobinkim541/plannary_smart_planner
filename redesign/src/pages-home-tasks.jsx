@@ -108,7 +108,7 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, setTasks
       <QuickCapture setTasks={setTasks} projects={projects} setPage={setPage} />
 
       {/* Focus card + week strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16, marginTop: 18 }}>
+      <div className="home-focus-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16, marginTop: 18 }}>
         {/* Now focus */}
         {focusTask ? (
           <div

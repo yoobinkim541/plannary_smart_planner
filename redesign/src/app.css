@@ -42,7 +42,8 @@
   .sidebar { display: none; }
 }
 
-/* Mobile — hide chrome entirely, use drawer + bottom tabs */
+/* Mobile — hide rail + sidebar; body-scroll handled near the bottom of
+   this file inside the main @media (max-width: 760px) block. */
 @media (max-width: 760px) {
   .app-shell, .app-shell[data-sidebar] {
     grid-template-columns: 1fr;
@@ -1389,8 +1390,40 @@
 
 /* ---------- MOBILE ---------- */
 @media (max-width: 760px) {
+  /* Mobile: let <body> scroll naturally instead of trapping scroll inside
+     .page. Avoids 100vh / address-bar quirks and the "empty content area
+     after scrolling" bug. mobile-bar sticks to top, mobile-tabs is fixed. */
+  html, body { overflow: visible; height: auto; min-height: 100%; }
+  body { overscroll-behavior-y: contain; }
+  .app-shell, .app-shell[data-sidebar] {
+    display: block;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .main {
+    display: block;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .main > .mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg-elev);
+  }
+  .page {
+    overflow: visible;
+    flex: none;
+    /* Bottom tab bar = 64px + safe area, plus breathing room */
+    padding: 14px 14px calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Hover-revealed tap targets need to be always visible on touch */
+  .task-right { opacity: 1 !important; }
+  .nav-section button { opacity: 1 !important; }
+
   .rail, .sidebar { display: none; }
-  .page { padding: 14px 14px 80px; }
   .topbar { display: none; }
   .hero-row { grid-template-columns: 1fr; gap: 14px; }
   .hero-stats { grid-template-columns: repeat(3, 1fr); min-width: 0; }
@@ -1401,6 +1434,7 @@
 
   /* Stack dash widget pairs */
   .dash, .archive-hero, .profile-grid { grid-template-columns: 1fr !important; }
+  .home-focus-grid { grid-template-columns: 1fr !important; }
 
   /* Tasks toolbar — let chips wrap nicely */
   .tasks-toolbar { gap: 6px; padding-bottom: 12px; }
