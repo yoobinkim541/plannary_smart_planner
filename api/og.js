@@ -3,105 +3,180 @@ import React from 'react';
 
 export const config = { runtime: 'edge' };
 
-const BG = '#F4F1EA';
-const BG_SOFT = '#EBE5D6';
-const INK = '#2D2A26';
-const INK_SOFT = '#6B6760';
-const CLAY = '#CC785C';
-const CLAY_SOFT = '#D4A27F';
-const HAIRLINE = 'rgba(45, 42, 38, 0.14)';
+// Planary design system — dark + violet accent
+const BG = '#0a070e';
+const BG_ELEV = '#100913';
+const SURFACE = '#181024';
+const SURFACE_2 = '#1f1430';
+const BORDER = '#2d1b40';
+const BORDER_SOFT = '#221635';
 
-const SERIF_URL =
-  'https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap';
-const INTER_URL =
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap';
+const ACCENT = '#7f0df2';
+const ACCENT_LIGHT = '#9b3ff7';
+const ACCENT_DARK = '#5a06b0';
+const ACCENT_SOFT = 'rgba(127, 13, 242, 0.18)';
 
-async function loadGoogleFont(cssUrl) {
+const TEXT_HI = '#f1f5f9';
+const TEXT_MD = '#cbd5e1';
+const TEXT_LO = '#94a3b8';
+const TEXT_FAINT = '#475569';
+
+const JAKARTA_URL =
+  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap';
+
+async function loadGoogleFont(cssUrl, weight) {
   const css = await fetch(cssUrl, {
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
     },
   }).then((r) => r.text());
-  const match = css.match(/src:\s*url\((https:[^)]+)\)\s*format\('(opentype|truetype)'\)/);
-  if (!match) throw new Error('font url not found');
-  const buf = await fetch(match[1]).then((r) => r.arrayBuffer());
-  return buf;
+  // Find each weight block and pull its TTF/OTF URL.
+  const blocks = css.split('@font-face').slice(1);
+  for (const block of blocks) {
+    if (!block.includes(`font-weight: ${weight}`)) continue;
+    const m = block.match(/src:\s*url\((https:[^)]+)\)\s*format\('(opentype|truetype)'\)/);
+    if (m) return fetch(m[1]).then((r) => r.arrayBuffer());
+  }
+  // Fallback: first available font URL.
+  const m = css.match(/src:\s*url\((https:[^)]+)\)\s*format\('(opentype|truetype)'\)/);
+  if (!m) throw new Error('font url not found');
+  return fetch(m[1]).then((r) => r.arrayBuffer());
 }
 
 const h = React.createElement;
 
-function Sparkle({ size = 28, color = CLAY }) {
+function BrandMark({ size = 36 }) {
   return h(
-    'svg',
-    { width: size, height: size, viewBox: '0 0 24 24' },
-    h('path', {
-      d: 'M12 1 L13.6 9.2 L22 12 L13.6 14.8 L12 23 L10.4 14.8 L2 12 L10.4 9.2 Z',
-      fill: color,
-    })
+    'div',
+    {
+      style: {
+        width: size,
+        height: size,
+        borderRadius: Math.round(size * 0.3),
+        background: ACCENT,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontFamily: 'Jakarta',
+        fontWeight: 800,
+        fontSize: Math.round(size * 0.55),
+        letterSpacing: -1,
+        boxShadow: `0 0 0 1px ${ACCENT_DARK}, 0 0 28px ${ACCENT_SOFT}`,
+      },
+    },
+    'P'
   );
 }
 
-function ChromeBar() {
+function TaskRow({ width = 220, accent = false, done = false }) {
   return h(
     'div',
     {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        padding: '14px 18px',
-        borderBottom: `1px solid ${HAIRLINE}`,
+        gap: 14,
+        marginBottom: 12,
       },
     },
-    h('div', { style: { width: 10, height: 10, borderRadius: 999, background: '#E6B3A6' } }),
-    h('div', { style: { width: 10, height: 10, borderRadius: 999, background: '#E8D5A6' } }),
-    h('div', { style: { width: 10, height: 10, borderRadius: 999, background: '#C9C2B0' } })
+    h('div', {
+      style: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        border: `1.5px solid ${done ? ACCENT : BORDER}`,
+        background: done ? ACCENT : 'transparent',
+        display: 'flex',
+      },
+    }),
+    h('div', {
+      style: {
+        width,
+        height: 10,
+        borderRadius: 999,
+        background: accent
+          ? `linear-gradient(90deg, ${ACCENT}, ${ACCENT_LIGHT})`
+          : SURFACE_2,
+      },
+    }),
+    accent && h('div', {
+      style: {
+        width: 4,
+        height: 18,
+        marginLeft: 'auto',
+        borderRadius: 2,
+        background: ACCENT,
+      },
+    })
   );
 }
 
 function HomeIllustration() {
-  const row = (w, accent) =>
-    h(
-      'div',
-      { style: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 } },
-      h('div', {
-        style: {
-          width: 18,
-          height: 18,
-          borderRadius: 6,
-          border: `1.5px solid ${accent ? CLAY : INK_SOFT}`,
-          background: accent ? CLAY : 'transparent',
-        },
-      }),
-      h('div', {
-        style: { width: w, height: 10, borderRadius: 999, background: BG_SOFT },
-      })
-    );
   return h(
     'div',
     {
       style: {
         display: 'flex',
         flexDirection: 'column',
-        width: 360,
-        height: 360,
-        background: '#FBF8F1',
-        border: `1px solid ${HAIRLINE}`,
+        width: 380,
+        height: 380,
+        background: SURFACE,
+        border: `1px solid ${BORDER}`,
         borderRadius: 24,
-        boxShadow: '0 30px 60px -30px rgba(45,42,38,0.25)',
+        boxShadow: `0 30px 60px -20px rgba(0,0,0,0.6), 0 10px 30px -10px ${ACCENT_SOFT}`,
         overflow: 'hidden',
       },
     },
-    ChromeBar(),
+    // mock chrome bar
     h(
       'div',
-      { style: { display: 'flex', flexDirection: 'column', padding: '22px 24px' } },
-      row(220, true),
-      row(180, true),
-      row(240, false),
-      row(150, false),
-      row(200, false)
+      {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '14px 18px',
+          borderBottom: `1px solid ${BORDER_SOFT}`,
+        },
+      },
+      h('div', { style: { width: 8, height: 8, borderRadius: 999, background: '#3a2451' } }),
+      h('div', { style: { width: 8, height: 8, borderRadius: 999, background: '#3a2451' } }),
+      h('div', { style: { width: 8, height: 8, borderRadius: 999, background: '#3a2451' } }),
+      h('div', { style: { flex: 1, display: 'flex' } }),
+      h('div', {
+        style: {
+          padding: '3px 10px',
+          fontSize: 9,
+          fontFamily: 'Jakarta',
+          fontWeight: 700,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: ACCENT_LIGHT,
+          background: ACCENT_SOFT,
+          borderRadius: 999,
+          display: 'flex',
+        },
+      }, 'TODAY')
+    ),
+    // body
+    h(
+      'div',
+      {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '22px 24px',
+          background: BG_ELEV,
+          flex: 1,
+        },
+      },
+      TaskRow({ width: 230, accent: true, done: true }),
+      TaskRow({ width: 190, accent: true, done: false }),
+      TaskRow({ width: 260, accent: false, done: false }),
+      TaskRow({ width: 160, accent: false, done: false }),
+      TaskRow({ width: 210, accent: false, done: false })
     )
   );
 }
@@ -113,18 +188,18 @@ function WikiIllustration({ cover }) {
       {
         style: {
           display: 'flex',
-          width: 360,
-          height: 360,
+          width: 380,
+          height: 380,
           borderRadius: 24,
           overflow: 'hidden',
-          border: `1px solid ${HAIRLINE}`,
-          boxShadow: '0 30px 60px -30px rgba(45,42,38,0.25)',
+          border: `1px solid ${BORDER}`,
+          boxShadow: `0 30px 60px -20px rgba(0,0,0,0.7), 0 10px 30px -10px ${ACCENT_SOFT}`,
         },
       },
       h('img', {
         src: cover,
-        width: 360,
-        height: 360,
+        width: 380,
+        height: 380,
         style: { objectFit: 'cover' },
       })
     );
@@ -146,9 +221,10 @@ export default async function handler(req) {
         : '생각을 정리하는 워크스페이스');
     const cover = url.searchParams.get('cover');
 
-    const [serif, inter] = await Promise.all([
-      loadGoogleFont(SERIF_URL),
-      loadGoogleFont(INTER_URL),
+    const [jakarta500, jakarta700, jakarta800] = await Promise.all([
+      loadGoogleFont(JAKARTA_URL, 500),
+      loadGoogleFont(JAKARTA_URL, 700),
+      loadGoogleFont(JAKARTA_URL, 800),
     ]);
 
     return new ImageResponse(
@@ -160,22 +236,24 @@ export default async function handler(req) {
             height: '100%',
             display: 'flex',
             background: BG,
-            fontFamily: 'Inter',
-            color: INK,
+            fontFamily: 'Jakarta',
+            color: TEXT_HI,
             padding: 72,
             position: 'relative',
           },
         },
-        // subtle background grain via radial gradients
+        // radial glow background
         h('div', {
           style: {
             position: 'absolute',
             inset: 0,
             background:
-              'radial-gradient(1200px 600px at -10% 110%, rgba(204,120,92,0.10), transparent 60%), radial-gradient(800px 500px at 110% -10%, rgba(212,162,127,0.18), transparent 60%)',
+              `radial-gradient(900px 500px at -10% -10%, ${ACCENT_SOFT}, transparent 60%),` +
+              ` radial-gradient(700px 400px at 110% 110%, rgba(155,63,247,0.12), transparent 60%)`,
             display: 'flex',
           },
         }),
+        // left content column
         h(
           'div',
           {
@@ -190,17 +268,18 @@ export default async function handler(req) {
           // top label
           h(
             'div',
-            { style: { display: 'flex', alignItems: 'center', gap: 12 } },
-            Sparkle({ size: 22 }),
+            { style: { display: 'flex', alignItems: 'center', gap: 14 } },
+            BrandMark({ size: 36 }),
             h(
               'div',
               {
                 style: {
                   fontSize: 22,
-                  fontWeight: 500,
-                  letterSpacing: 1.5,
+                  fontWeight: 700,
+                  letterSpacing: 1.6,
                   textTransform: 'uppercase',
-                  color: INK_SOFT,
+                  color: TEXT_LO,
+                  display: 'flex',
                 },
               },
               kind === 'wiki' ? 'Planary · Wiki' : 'Planary'
@@ -209,18 +288,23 @@ export default async function handler(req) {
           // title + description
           h(
             'div',
-            { style: { display: 'flex', flexDirection: 'column', maxWidth: 620 } },
+            { style: { display: 'flex', flexDirection: 'column', maxWidth: 640 } },
             h(
               'div',
               {
                 style: {
-                  fontFamily: 'SourceSerif',
-                  fontSize: title.length > 28 ? 60 : 72,
-                  lineHeight: 1.05,
-                  fontWeight: 600,
-                  color: INK,
-                  letterSpacing: -1,
+                  fontSize: title.length > 28 ? 60 : 76,
+                  lineHeight: 1.02,
+                  fontWeight: 800,
+                  color: TEXT_HI,
+                  letterSpacing: -2,
                   marginBottom: 22,
+                  display: 'flex',
+                  background:
+                    `linear-gradient(180deg, ${TEXT_HI} 0%, ${ACCENT_LIGHT} 200%)`,
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
                 },
               },
               title
@@ -231,8 +315,9 @@ export default async function handler(req) {
                 style: {
                   fontSize: 26,
                   lineHeight: 1.4,
-                  color: INK_SOFT,
-                  fontWeight: 400,
+                  color: TEXT_MD,
+                  fontWeight: 500,
+                  display: 'flex',
                 },
               },
               description
@@ -246,28 +331,22 @@ export default async function handler(req) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 14,
-                paddingTop: 24,
-                borderTop: `1px solid ${HAIRLINE}`,
+                paddingTop: 22,
+                borderTop: `1px solid ${BORDER}`,
               },
             },
-            h('div', {
-              style: {
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: CLAY,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: BG,
-                fontFamily: 'SourceSerif',
-                fontWeight: 600,
-                fontSize: 18,
-              },
-            }, 'P'),
+            BrandMark({ size: 28 }),
             h(
               'div',
-              { style: { fontSize: 22, color: INK_SOFT, fontWeight: 500 } },
+              {
+                style: {
+                  fontSize: 22,
+                  color: TEXT_LO,
+                  fontWeight: 600,
+                  letterSpacing: -0.3,
+                  display: 'flex',
+                },
+              },
               'yourplanary.vercel.app'
             )
           )
@@ -280,8 +359,8 @@ export default async function handler(req) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 360,
-              marginLeft: 48,
+              width: 380,
+              marginLeft: 56,
               zIndex: 1,
             },
           },
@@ -292,8 +371,9 @@ export default async function handler(req) {
         width: 1200,
         height: 630,
         fonts: [
-          { name: 'SourceSerif', data: serif, style: 'normal', weight: 600 },
-          { name: 'Inter', data: inter, style: 'normal', weight: 400 },
+          { name: 'Jakarta', data: jakarta500, style: 'normal', weight: 500 },
+          { name: 'Jakarta', data: jakarta700, style: 'normal', weight: 700 },
+          { name: 'Jakarta', data: jakarta800, style: 'normal', weight: 800 },
         ],
         headers: {
           'Cache-Control':
