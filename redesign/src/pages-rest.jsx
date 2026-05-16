@@ -567,7 +567,8 @@ function NotesPage() {
 function WikiPage() {
   const { WIKI_TREE } = window.Planary;
   const [activeId, setActiveId] = useStateO("w3"); // "컬러 토큰"
-  const [showAside, setShowAside] = useStateO(true);
+  // Default TOC open on desktop; closed on narrow widths so it doesn't cover content.
+  const [showAside, setShowAside] = useStateO(() => typeof window !== "undefined" ? window.innerWidth > 1280 : true);
   const [expanded, setExpanded] = useStateO({ w1: true, w2: true, w5: false, w7: false }); // tree open state
   const [search, setSearch] = useStateO("");
   const [shareOpen, setShareOpen] = useStateO(false);
@@ -854,6 +855,14 @@ function WikiPage() {
             <span style={{ color: "var(--text-hi)" }}>{active.title}</span>
             <div style={{ flex: 1 }} />
             <span className="chip"><Icon name="clock" size={10} />12분 전</span>
+            <button
+              className={`btn btn-sm ${showAside ? "btn-ghost" : ""}`}
+              onClick={() => setShowAside(v => !v)}
+              title={showAside ? "목차 접기" : "목차 열기"}
+              aria-pressed={showAside}
+            >
+              <Icon name="list" size={12} />목차
+            </button>
             <div style={{ position: "relative" }}>
               <button
                 className="btn btn-sm btn-ghost"
@@ -966,7 +975,7 @@ function WikiPage() {
         </div>
 
         {showAside ?
-        <aside className="wiki-aside">
+        <aside className="wiki-aside wiki-aside--force">
             <div className="wiki-aside-card">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div className="kicker">목차</div>

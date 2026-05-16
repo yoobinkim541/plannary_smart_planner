@@ -950,17 +950,13 @@
   position: relative;
   min-height: 600px;
   border-radius: var(--r-xl);
-  border: 1px dashed var(--border);
-  background:
-    radial-gradient(var(--border-soft) 1px, transparent 1px) 0 0 / 24px 24px,
-    var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
   background-clip: padding-box;
   overflow: hidden;
 }
 [data-theme="light"] .board {
-  background:
-    radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px) 0 0 / 24px 24px,
-    var(--bg-elev);
+  background: var(--surface);
 }
 .note {
   position: absolute;
@@ -1043,7 +1039,7 @@
   align-items: start;
 }
 @media (max-width: 1280px) { .wiki-shell { grid-template-columns: 220px 1fr; } .wiki-aside { display: none; } }
-@media (max-width: 900px)  { .wiki-shell { grid-template-columns: 1fr; } .wiki-tree { display: none; } }
+@media (max-width: 1024px) { .wiki-shell { grid-template-columns: 1fr; } .wiki-tree { display: none; } }
 
 .wiki-tree {
   position: sticky; top: 0;
@@ -1108,6 +1104,52 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: inherit;
+}
+
+/* Force TOC aside to slide in as a fixed drawer at narrow widths.
+   When the user toggles 목차 open at <=1280px, .wiki-aside--force
+   ignores the responsive display:none and floats above content. */
+@media (max-width: 1280px) {
+  .wiki-aside.wiki-aside--force {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: min(300px, 84vw);
+    overflow-y: auto;
+    z-index: 60;
+    padding: 14px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+  }
+}
+@media (max-width: 760px) {
+  .wiki-aside.wiki-aside--force {
+    top: 70px;
+    bottom: 80px;
+    right: 8px;
+    width: min(280px, 78vw);
+  }
+  /* Keep wiki content inside the viewport */
+  .wiki-doc {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  /* Reduce cover bleed so it doesn't push content past the shell */
+  .wiki-cover { margin-left: -14px; margin-right: -14px; }
+  /* Tables inside wiki should scroll horizontally rather than push doc width */
+  .wiki-doc table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    max-width: 100%;
+  }
 }
 
 .wiki-doc {
@@ -1481,9 +1523,9 @@
     scroll-snap-align: start;
   }
 
-  /* Wiki — single column */
+  /* Wiki — single column, tree hidden on phone (use ⌘K or back nav) */
   .wiki-shell { grid-template-columns: 1fr !important; }
-  .wiki-tree { position: static; max-height: 240px; }
+  .wiki-tree { display: none !important; }
   .wiki-cover { margin: -14px -14px 24px; height: 130px; padding: 14px 18px; }
   .wiki-doc { padding: 0 4px; }
   .wiki-doc-title { font-size: 28px; }
@@ -1508,7 +1550,8 @@
   .hero-row { grid-template-columns: 1fr; gap: 14px; }
   .hero-stats { min-width: 0; }
   .dash { grid-template-columns: 1.2fr 1fr; }
-  .wiki-shell { grid-template-columns: 220px 1fr; }
+  .wiki-shell { grid-template-columns: 1fr; }
+  .wiki-tree { display: none; }
   .wiki-aside { display: none; }
   .page { padding: 18px 22px 60px; }
 }
