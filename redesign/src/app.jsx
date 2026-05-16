@@ -46,6 +46,37 @@ function App() {
   const [focusModeTask, setFocusModeTask] = useState(null);
   const [tabletSidebarOpen, setTabletSidebarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authedUser, setAuthedUser] = useState(null);
+
+  // Auth gate — listen for bridge events. If Firebase isn't loaded the
+  // bridge stays silent and the prototype keeps running on mock data.
+  useEffect(() => {
+    let alive = true;
+    const onAuth = (e) => {
+      if (!alive) return;
+      setAuthedUser(e.detail);
+      setAuthChecked(true);
+      if (!e.detail) {
+        // Not signed in — bounce to landing/login so the user can authenticate.
+        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          window.location.replace("/landing.html");
+        }
+      }
+    };
+    window.addEventListener("planary:auth-changed", onAuth);
+    // If the bridge never fires (SDK missing or local prototype), still
+    // mark auth checked so we render the prototype as before.
+    const fallback = setTimeout(() => { if (alive && !authChecked) setAuthChecked(true); }, 1500);
+    return () => { alive = false; window.removeEventListener("planary:auth-changed", onAuth); clearTimeout(fallback); };
+  }, []);
+
+  // Firestore data → state
+  useEffect(() => {
+    const onTasks = (e) => setTasks(e.detail || []);
+    window.addEventListener("planary:tasks-loaded", onTasks);
+    return () => window.removeEventListener("planary:tasks-loaded", onTasks);
+  }, []);
 
   // Apply tweaks to root
   useEffect(() => {
@@ -109,11 +140,13 @@ function App() {
   const saveTask = (draft) => {
     setTasks(prev => prev.map(t => t.id === draft.id ? draft : t));
     setEditingTask(null);
+    window.dispatchEvent(new CustomEvent("planary:save-task", { detail: draft }));
     window.Planary.toast({ type: "ok", title: "변경사항이 저장됐어요" });
   };
   const deleteTask = (id) => {
     setTasks(prev => prev.filter(t => t.id !== id));
     setEditingTask(null);
+    window.dispatchEvent(new CustomEvent("planary:delete-task", { detail: id }));
     window.Planary.toast({ type: "ok", title: "작업이 삭제됐어요" });
   };
 

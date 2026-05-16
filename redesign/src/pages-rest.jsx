@@ -6,11 +6,23 @@ const { useState: useStateO, useRef: useRefO, useEffect: useEffectO, useMemo: us
    PROJECTS
    =========================================================== */
 function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
-  const { PROJECTS, ECLASS_COURSES } = window.Planary;
-  const [projects, setProjects] = useStateO(PROJECTS);
-  const [selected, setSelected] = useStateO(PROJECTS[0].id);
+  const { ECLASS_COURSES } = window.Planary;
+  const initialProjects = Array.isArray(window.Planary.PROJECTS) ? window.Planary.PROJECTS : [];
+  const [projects, setProjects] = useStateO(initialProjects);
+  const [selected, setSelected] = useStateO(initialProjects[0]?.id || null);
   const [syncing, setSyncing] = useStateO(false);
   const [createOpen, setCreateOpen] = useStateO(false);
+
+  useEffectO(() => {
+    const onLoaded = (e) => {
+      if (Array.isArray(e.detail)) {
+        setProjects(e.detail);
+        if (!e.detail.find(p => p.id === selected) && e.detail.length) setSelected(e.detail[0].id);
+      }
+    };
+    window.addEventListener("planary:projects-loaded", onLoaded);
+    return () => window.removeEventListener("planary:projects-loaded", onLoaded);
+  }, [selected]);
   const proj = projects.find((p) => p.id === selected);
   const projTasks = tasks.filter((t) => t.project === selected);
   const open = projTasks.filter((t) => !t.done);
@@ -19,23 +31,29 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
   const toggleTask = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
 
   const handleCreate = (draft) => {
-    const id = `p${Date.now()}`;
+    const tempId = `p${Date.now()}`;
     const newProj = {
-      id,
+      id: tempId,
       name: draft.name,
       color: draft.color,
       icon: draft.icon,
       progress: 0,
-      members: [window.Planary.USER.initials],
+      members: [window.Planary.USER?.initials || "U"],
       deadline: draft.deadline || null,
       description: draft.description || "",
     };
     const next = [...projects, newProj];
     setProjects(next);
-    window.Planary.PROJECTS = next; // reflect globally
-    setSelected(id);
+    window.Planary.PROJECTS = next; // optimistic
+    setSelected(tempId);
     setCreateOpen(false);
     window.Planary.toast({ type: "ok", title: "프로젝트가 만들어졌어요", sub: draft.name });
+    if (window.Planary?.api?.uid) {
+      window.Planary.api.createProject(draft.name, draft.color).catch(err => {
+        console.error("createProject failed:", err);
+        window.Planary?.toast?.({ type: "err", title: "프로젝트 저장 실패", sub: err.message });
+      });
+    }
   };
 
   const triggerSync = () => {
@@ -399,6 +417,19 @@ function NotesPage() {
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
 
+  // Sync with Firestore via bridge (planary:notes-loaded / -changed)
+  useEffectO(() => {
+    const onLoaded = (e) => {
+      if (Array.isArray(e.detail)) setNotes(e.detail);
+    };
+    window.addEventListener("planary:notes-loaded", onLoaded);
+    window.addEventListener("planary:notes-changed", onLoaded);
+    return () => {
+      window.removeEventListener("planary:notes-loaded", onLoaded);
+      window.removeEventListener("planary:notes-changed", onLoaded);
+    };
+  }, []);
+
   // Track board width so notes can clamp to its bounds on every render & resize
   useEffectO(() => {
     if (!boardRef.current) return;
@@ -444,7 +475,17 @@ function NotesPage() {
     const onUp = () => {
       const d = dragRef.current;
       if (d) {
-        setNotes((prev) => prev.map((n) => n.id === d.id ? { ...n, dragging: false } : n));
+        let final = null;
+        setNotes((prev) => prev.map((n) => {
+          if (n.id !== d.id) return n;
+          final = { ...n, dragging: false };
+          return final;
+        }));
+        // Persist new position if we actually moved + signed in
+        if (d.moved && final && window.Planary?.api?.uid) {
+          window.Planary.api.updateNote(final.id, { x: final.x, y: final.y })
+            .catch(err => console.error("updateNote failed:", err));
+        }
         dragRef.current = null;
       }
     };
@@ -465,11 +506,12 @@ function NotesPage() {
   const addNote = () => {
     if (!draft.trim()) return;
     const id = "n" + Date.now();
-    setNotes((prev) => [
-    { id, x: 60 + Math.random() * 200, y: 60 + Math.random() * 100, color: draftColor, text: draft.trim(), date: "방금", rot: (Math.random() - 0.5) * 4, dragging: false },
-    ...prev]
-    );
+    const draftNote = { id, x: 60 + Math.random() * 200, y: 60 + Math.random() * 100, color: draftColor, text: draft.trim(), date: "방금", rot: (Math.random() - 0.5) * 4, dragging: false };
+    setNotes((prev) => [draftNote, ...prev]);
     setDraft("");
+    if (window.Planary?.api?.uid) {
+      window.Planary.api.createNote(draftNote).catch(err => console.error("createNote failed:", err));
+    }
   };
 
   const colors = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
@@ -566,7 +608,7 @@ function NotesPage() {
                 <span>{n.date}</span>
                 <button
               style={{ color: "rgba(0,0,0,0.4)", background: "none", border: 0, cursor: "pointer", padding: 2 }}
-              onClick={() => setNotes((prev) => prev.filter((x) => x.id !== n.id))}
+              onClick={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); if (window.Planary?.api?.uid) window.Planary.api.deleteNote(n.id).catch(err => console.error("deleteNote failed:", err)); }}
               title="삭제">
               
                   <Icon name="x" size={12} />
@@ -595,7 +637,7 @@ function NotesPage() {
                 <span>{n.date}</span>
                 <button
               style={{ color: "rgba(0,0,0,0.4)", background: "none", border: 0, cursor: "pointer", padding: 2 }}
-              onClick={() => setNotes((prev) => prev.filter((x) => x.id !== n.id))}
+              onClick={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); if (window.Planary?.api?.uid) window.Planary.api.deleteNote(n.id).catch(err => console.error("deleteNote failed:", err)); }}
               title="삭제">
               
                   <Icon name="x" size={12} />
@@ -1133,11 +1175,43 @@ function WikiPage() {
    BOOKMARKS
    =========================================================== */
 function BookmarksPage() {
-  const { BOOKMARKS } = window.Planary;
+  const [bookmarks, setBookmarks] = useStateO(Array.isArray(window.Planary.BOOKMARKS) ? window.Planary.BOOKMARKS : []);
   const [query, setQuery] = useStateO("");
   const [active, setActive] = useStateO("전체");
-  const allTags = ["전체", ...new Set(BOOKMARKS.flatMap((b) => b.tags))];
-  const filtered = BOOKMARKS.filter((b) =>
+  const [urlDraft, setUrlDraft] = useStateO("");
+  const composerInputRef = useRefO(null);
+
+  useEffectO(() => {
+    const onLoaded = (e) => { if (Array.isArray(e.detail)) setBookmarks(e.detail); };
+    window.addEventListener("planary:bookmarks-loaded", onLoaded);
+    return () => window.removeEventListener("planary:bookmarks-loaded", onLoaded);
+  }, []);
+
+  const saveBookmark = () => {
+    const raw = urlDraft.trim();
+    if (!raw) return;
+    let url = raw;
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+    let host = url;
+    try { host = new URL(url).hostname.replace(/^www\./, ""); } catch (_) {}
+    const title = host.split(".")[0].replace(/^./, c => c.toUpperCase());
+    const id = "bk" + Date.now();
+    const palette = ["#7f0df2","#2563eb","#10b981","#f59e0b","#e11d48","#0ea5e9"];
+    const letter = title.slice(0,1).toUpperCase();
+    const optimistic = { id, title, url, color: palette[(letter.charCodeAt(0)||0) % palette.length], letter, tags: [] };
+    setBookmarks(prev => [optimistic, ...prev]);
+    setUrlDraft("");
+    if (window.Planary?.api?.uid) {
+      window.Planary.api.createBookmark({ url, title, tags: [] }).catch(err => {
+        console.error("createBookmark failed:", err);
+        window.Planary?.toast?.({ type: "err", title: "북마크 저장 실패", sub: err.message });
+      });
+    }
+    window.Planary?.toast?.({ type: "ok", title: "북마크 추가됨", sub: host });
+  };
+
+  const allTags = ["전체", ...new Set(bookmarks.flatMap((b) => b.tags))];
+  const filtered = bookmarks.filter((b) =>
   (active === "전체" || b.tags.includes(active)) && (
   !query || b.title.toLowerCase().includes(query.toLowerCase()) || b.url.toLowerCase().includes(query.toLowerCase()))
   );
@@ -1148,16 +1222,23 @@ function BookmarksPage() {
         <div>
           <div className="hero-greet">WORKSPACE · 북마크</div>
           <div className="page-title">북마크</div>
-          <div className="page-sub">{BOOKMARKS.length}개 · 태그로 정리된 링크 모음</div>
+          <div className="page-sub">{bookmarks.length}개 · 태그로 정리된 링크 모음</div>
         </div>
-        <button className="btn btn-primary"><Icon name="plus" size={14} />새 북마크</button>
+        <button className="btn btn-primary" onClick={() => composerInputRef.current?.focus()}><Icon name="plus" size={14} />새 북마크</button>
       </div>
 
       <div className="composer">
         <div className="composer-row">
           <Icon name="link" size={16} style={{ color: "var(--accent)" }} />
-          <input className="composer-input" placeholder="URL 붙여넣기 — https://..." />
-          <button className="btn btn-sm btn-primary">저장</button>
+          <input
+            ref={composerInputRef}
+            className="composer-input"
+            placeholder="URL 붙여넣기 — https://..."
+            value={urlDraft}
+            onChange={e => setUrlDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") saveBookmark(); }}
+          />
+          <button className="btn btn-sm btn-primary" onClick={saveBookmark} disabled={!urlDraft.trim()}>저장</button>
         </div>
       </div>
 
@@ -1184,7 +1265,7 @@ function BookmarksPage() {
             
               <span className="tag-chip-hash">{t === "전체" ? "" : "#"}</span>
               <span>{t}</span>
-              <span className="tag-chip-count">{t === "전체" ? BOOKMARKS.length : BOOKMARKS.filter((b) => b.tags.includes(t)).length}</span>
+              <span className="tag-chip-count">{t === "전체" ? bookmarks.length : bookmarks.filter((b) => b.tags.includes(t)).length}</span>
             </button>
           )}
         </div>
@@ -1192,7 +1273,12 @@ function BookmarksPage() {
 
       <div className="bookmarks-grid">
         {filtered.map((b) =>
-        <div key={b.id} className="bookmark">
+        <div
+          key={b.id}
+          className="bookmark"
+          style={{ cursor: "pointer" }}
+          onClick={() => window.open(b.url, "_blank", "noopener")}
+        >
             <div className="bookmark-favicon" style={{ background: b.color }}>{b.letter}</div>
             <div className="bookmark-main">
               <div className="bookmark-title">{b.title}</div>
@@ -1201,9 +1287,21 @@ function BookmarksPage() {
                 {b.tags.map((t) => <span key={t} className="tag">#{t}</span>)}
               </div>
             </div>
-            <button className="icon-btn" style={{ alignSelf: "start" }}>
+            <button
+              className="icon-btn"
+              style={{ alignSelf: "start" }}
+              onClick={(e) => { e.stopPropagation(); window.open(b.url, "_blank", "noopener"); }}
+              aria-label="새 탭에서 열기"
+            >
               <Icon name="arrowUpRight" size={14} />
             </button>
+          </div>
+        )}
+        {filtered.length === 0 && (
+          <div className="empty card" style={{ gridColumn: "1 / -1" }}>
+            <div className="empty-icon"><Icon name="link" size={24} /></div>
+            <div style={{ fontWeight: 600, marginTop: 8 }}>북마크가 없어요</div>
+            <div style={{ fontSize: 12, color: "var(--text-lo)" }}>위 입력칸에 URL을 붙여넣어 추가하세요</div>
           </div>
         )}
       </div>
