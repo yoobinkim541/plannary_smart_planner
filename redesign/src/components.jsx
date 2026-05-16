@@ -215,12 +215,39 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
 }
 
 /* ---------- Top Bar ---------- */
-function Topbar({ page, crumbs, right, onCommandPalette, theme, setTheme, pageActions }) {
+function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setTheme, pageActions, onTabletSidebarToggle }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!window.PlanaryI18n) return;
+    return window.PlanaryI18n.subscribe(() => setTick(n => n + 1));
+  }, []);
+  const LANGS = [
+    { id: "ko", label: "한국어", flag: "🇰🇷" },
+    { id: "en", label: "English", flag: "🇺🇸" },
+    { id: "ja", label: "日本語", flag: "🇯🇵" },
+    { id: "zh", label: "中文", flag: "🇨🇳" },
+    { id: "es", label: "Español", flag: "🇪🇸" },
+  ];
+  const lang = window.PlanaryI18n?.getLang?.() || "ko";
+  const currentLang = LANGS.find(l => l.id === lang) || LANGS[0];
 
   return (
     <div className="topbar" onClick={() => { setNotifOpen(false); setUserOpen(false); }}>
+      {onTabletSidebarToggle && (
+        <button
+          className="btn btn-sm tablet-toggle"
+          onClick={(e) => { e.stopPropagation(); onTabletSidebarToggle(); }}
+          title="사이드바 토글"
+          style={{ width: 32, padding: 0, justifyContent: "center", marginRight: 4 }}
+        >
+          <Icon name="menu" size={16} />
+        </button>
+      )}
       <div className="crumb">
         {crumbs.map((c, i) => (
           <React.Fragment key={i}>
@@ -257,7 +284,12 @@ function Topbar({ page, crumbs, right, onCommandPalette, theme, setTheme, pageAc
             <span className="bell-dot" />
           </button>
           {notifOpen && (
-            <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, width: 320 }} onClick={(e) => e.stopPropagation()}>
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                onClick={(e) => { e.stopPropagation(); setNotifOpen(false); }}
+              />
+              <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, width: 320, zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ padding: "8px 12px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>알림</div>
                 <button style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>모두 읽음으로</button>
@@ -280,7 +312,48 @@ function Topbar({ page, crumbs, right, onCommandPalette, theme, setTheme, pageAc
                   {n.unread && <span style={{ width: 6, height: 6, background: "var(--accent)", borderRadius: "50%", flexShrink: 0, marginTop: 9 }} />}
                 </div>
               ))}
-            </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setLangOpen(!langOpen); setNotifOpen(false); setUserOpen(false); }}
+            className="btn btn-sm"
+            title="언어 / Language"
+            style={{ width: 36, padding: 0, justifyContent: "center", fontSize: 16 }}
+          >
+            <span aria-hidden="true">{currentLang.flag}</span>
+          </button>
+          {langOpen && (
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                onClick={(e) => { e.stopPropagation(); setLangOpen(false); }}
+              />
+              <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, minWidth: 180, zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ padding: "8px 12px 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-faint)" }}>
+                Language
+              </div>
+              {LANGS.map(l => (
+                <button
+                  key={l.id}
+                  className={`popover-item ${lang === l.id ? "is-active" : ""}`}
+                  onClick={() => {
+                    window.PlanaryI18n?.setLang(l.id);
+                    setLangOpen(false);
+                    window.Planary.toast?.({ type: "ok", title: window.PlanaryI18n?.t("toast.langChanged") || "Language changed" });
+                  }}
+                  style={lang === l.id ? { background: "var(--accent-softer)", color: "var(--accent)" } : undefined}
+                >
+                  <span style={{ fontSize: 18 }}>{l.flag}</span>
+                  <span style={{ flex: 1 }}>{l.label}</span>
+                  {lang === l.id && <Icon name="check" size={12} stroke={3} />}
+                </button>
+              ))}
+              </div>
+            </>
           )}
         </div>
 
@@ -301,7 +374,12 @@ function Topbar({ page, crumbs, right, onCommandPalette, theme, setTheme, pageAc
             <div className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>{window.Planary.USER.initials}</div>
           </button>
           {userOpen && (
-            <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, minWidth: 220 }} onClick={(e) => e.stopPropagation()}>
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                onClick={(e) => { e.stopPropagation(); setUserOpen(false); }}
+              />
+              <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, minWidth: 220, zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
                 <div className="avatar" style={{ width: 34, height: 34 }}>{window.Planary.USER.initials}</div>
                 <div>
@@ -310,17 +388,229 @@ function Topbar({ page, crumbs, right, onCommandPalette, theme, setTheme, pageAc
                 </div>
               </div>
               <div className="popover-sep" />
-              <div className="popover-item"><Icon name="user" size={14} />프로필</div>
-              <div className="popover-item"><Icon name="settings" size={14} />설정</div>
-              <div className="popover-item"><Icon name="bell" size={14} />알림 설정</div>
+              <div className="popover-item" onClick={() => { setPage && setPage("profile"); setUserOpen(false); }}>
+                <Icon name="user" size={14} />프로필
+              </div>
+              <div className="popover-item" onClick={() => { setPage && setPage("profile"); setUserOpen(false); window.Planary.toast?.({ type: "info", title: "설정 페이지로 이동했어요" }); }}>
+                <Icon name="settings" size={14} />설정
+              </div>
+              <div className="popover-item" onClick={() => { setPage && setPage("profile"); setUserOpen(false); setTimeout(() => { document.querySelector(".card h3")?.closest(".card")?.scrollIntoView?.({ behavior: "smooth" }); window.Planary.toast?.({ type: "info", title: "알림 설정으로 이동했어요" }); }, 100); }}>
+                <Icon name="bell" size={14} />알림 설정
+              </div>
               <div className="popover-sep" />
-              <div className="popover-item"><Icon name="command" size={14} />단축키<span style={{ marginLeft: "auto" }} className="kbd">⌘/</span></div>
-              <div className="popover-item is-danger"><Icon name="logout" size={14} />로그아웃</div>
-            </div>
+              <div className="popover-item" onClick={() => { setShortcutsOpen(true); setUserOpen(false); }}>
+                <Icon name="command" size={14} />단축키<span style={{ marginLeft: "auto" }} className="kbd">⌘/</span>
+              </div>
+              <div className="popover-sep" />
+              <div className="popover-item" onClick={() => { setSwitchOpen(true); setUserOpen(false); }}>
+                <Icon name="refresh" size={14} />계정 변경
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-faint)" }}>2</span>
+              </div>
+              <div className="popover-item is-danger" onClick={() => { setUserOpen(false); if (window.confirm("로그아웃 하시겠어요?")) window.Planary.toast?.({ type: "info", title: "곧 로그아웃됩니다…" }); }}>
+                <Icon name="logout" size={14} />로그아웃
+              </div>
+              </div>
+            </>
           )}
         </div>
 
         {right}
+      </div>
+
+      {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
+      {switchOpen && <AccountSwitcherDialog onClose={() => setSwitchOpen(false)} />}
+    </div>
+  );
+}
+
+/* ---------- Account Switcher Dialog ---------- */
+function AccountSwitcherDialog({ onClose }) {
+  const me = window.Planary.USER;
+  const [accounts, setAccounts] = useState([
+    { id: "me", name: me.name, email: me.email, initials: me.initials, workspace: "개인 워크스페이스", active: true },
+    { id: "team", name: "Planary Team", email: "team@planary.app", initials: "TM", workspace: "팀 워크스페이스", active: false, badge: "팀" },
+  ]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const switchTo = (id) => {
+    const target = accounts.find(a => a.id === id);
+    if (!target || target.active) { onClose(); return; }
+    setAccounts(prev => prev.map(a => ({ ...a, active: a.id === id })));
+    window.Planary.toast?.({ type: "ok", title: `${target.name}로 전환됐어요`, sub: target.workspace });
+    setTimeout(onClose, 500);
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(460px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>계정 변경</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>다른 계정으로 전환하거나 새 계정을 추가합니다</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+
+        <div style={{ padding: "10px 14px 14px" }}>
+          {accounts.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => switchTo(a.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                width: "100%", padding: "10px 12px",
+                background: a.active ? "var(--accent-softer)" : "transparent",
+                border: a.active ? "1px solid var(--accent-ring)" : "1px solid transparent",
+                borderRadius: "var(--r-md)",
+                cursor: "pointer",
+                transition: "all var(--dur-fast)",
+                marginBottom: 4,
+              }}
+              onMouseEnter={(e) => { if (!a.active) e.currentTarget.style.background = "var(--hover)"; }}
+              onMouseLeave={(e) => { if (!a.active) e.currentTarget.style.background = "transparent"; }}
+            >
+              <div className="avatar" style={{ width: 36, height: 36 }}>{a.initials}</div>
+              <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</span>
+                  {a.badge && <span className="chip" style={{ height: 18, fontSize: 9, padding: "0 6px" }}>{a.badge}</span>}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{a.email}</div>
+                <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 1 }}>{a.workspace}</div>
+              </div>
+              {a.active ? (
+                <Icon name="check" size={14} stroke={3} style={{ color: "var(--accent)" }} />
+              ) : (
+                <Icon name="arrowRight" size={14} style={{ color: "var(--text-faint)" }} />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="dialog-divider" />
+
+        <div style={{ padding: "10px 14px 14px" }}>
+          <button
+            type="button"
+            onClick={() => { onClose(); window.Planary.toast?.({ type: "info", title: "다른 계정으로 로그인", sub: "로그인 화면으로 이동합니다" }); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 12,
+              width: "100%", padding: "10px 12px",
+              borderRadius: "var(--r-md)",
+              cursor: "pointer",
+              background: "transparent",
+              border: "1px dashed var(--border)",
+              color: "var(--text-md)",
+              transition: "all var(--dur-fast)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-ring)"; e.currentTarget.style.color = "var(--accent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-md)"; }}
+          >
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--surface-2)", display: "grid", placeItems: "center" }}>
+              <Icon name="plus" size={14} />
+            </div>
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>다른 계정 추가</div>
+              <div style={{ fontSize: 11, color: "var(--text-faint)" }}>이메일·Google·Apple로 로그인</div>
+            </div>
+          </button>
+        </div>
+
+        <div className="dialog-foot">
+          <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>계정을 전환해도 다른 기기에는 영향이 없어요</span>
+          <button className="btn btn-sm" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.Planary.AccountSwitcherDialog = AccountSwitcherDialog;
+
+/* ---------- Shortcuts Help Dialog ---------- */
+function ShortcutsDialog({ onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  const groups = [
+    {
+      label: "탐색",
+      items: [
+        { keys: ["⌘", "K"], desc: "명령어 / 검색 열기" },
+        { keys: ["G", "→", "H"], desc: "홈으로 이동" },
+        { keys: ["G", "→", "T"], desc: "작업으로 이동" },
+        { keys: ["G", "→", "W"], desc: "노트로 이동" },
+      ],
+    },
+    {
+      label: "작업",
+      items: [
+        { keys: ["N"], desc: "새 작업" },
+        { keys: ["E"], desc: "선택한 작업 편집" },
+        { keys: ["␣"], desc: "완료 / 미완료 토글" },
+        { keys: ["⌫"], desc: "삭제" },
+      ],
+    },
+    {
+      label: "에디터",
+      items: [
+        { keys: ["/"], desc: "블록 메뉴 열기" },
+        { keys: ["⌘", "B"], desc: "굵게" },
+        { keys: ["⌘", "I"], desc: "기울임" },
+        { keys: ["⌘", "↵"], desc: "변경사항 저장" },
+      ],
+    },
+    {
+      label: "전체",
+      items: [
+        { keys: ["⌘", "/"], desc: "단축키 안내 (이 창)" },
+        { keys: ["⌘", "."], desc: "다크/라이트 전환" },
+        { keys: ["Esc"], desc: "닫기" },
+      ],
+    },
+  ];
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(560px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>키보드 단축키</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>빠르게 작업하기 위한 단축키 모음</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: "10px 22px 18px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+          {groups.map((g, gi) => (
+            <div key={gi}>
+              <div className="kicker" style={{ marginBottom: 8 }}>{g.label}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {g.items.map((it, ii) => (
+                  <div key={ii} style={{ display: "flex", alignItems: "center", padding: "5px 0", borderBottom: "1px solid var(--border-soft)" }}>
+                    <span style={{ flex: 1, fontSize: 12, color: "var(--text-md)" }}>{it.desc}</span>
+                    <span style={{ display: "inline-flex", gap: 3 }}>
+                      {it.keys.map((k, ki) => (
+                        <span key={ki} className="kbd" style={{ fontSize: 10, minWidth: 18, textAlign: "center" }}>{k}</span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="dialog-foot">
+          <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>⌘ + / 로 언제든 열 수 있어요</span>
+          <button className="btn btn-sm btn-primary" onClick={onClose}>확인</button>
+        </div>
       </div>
     </div>
   );
@@ -604,7 +894,9 @@ const EMOJI_PICKS = [
 
 function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, anchor = "bottom-start" }) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState("emoji"); // emoji | upload
+  const [tab, setTab] = useState("emoji"); // emoji | upload | url
+  const [urlDraft, setUrlDraft] = useState("");
+  const [urlPreviewError, setUrlPreviewError] = useState(false);
   const fileRef = useRef(null);
   const isImage = value && typeof value === "string" && value.startsWith("url(");
 
@@ -621,6 +913,14 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
 
   const handlePickEmoji = (emoji) => {
     onChange && onChange(emoji);
+    setOpen(false);
+  };
+
+  const handleApplyUrl = () => {
+    const u = urlDraft.trim();
+    if (!u) return;
+    onChange && onChange(`url("${u.replace(/"/g, '\\"')}")`);
+    setUrlDraft("");
     setOpen(false);
   };
 
@@ -774,6 +1074,78 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
                     <Icon name="trash" size={11} />이미지 제거
                   </button>
                 )}
+              </div>
+            )}
+
+            {tab === "url" && (
+              <div style={{ padding: "4px 4px 8px" }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
+                  이미지 URL
+                </label>
+                <input
+                  type="url"
+                  autoFocus
+                  value={urlDraft}
+                  onChange={(e) => { setUrlDraft(e.target.value); setUrlPreviewError(false); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleApplyUrl(); }}
+                  placeholder="https://example.com/icon.png"
+                  className="form-input"
+                  style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}
+                />
+                {urlDraft.trim() && (
+                  <div style={{
+                    marginTop: 10,
+                    padding: 12,
+                    background: "var(--bg-elev)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: "var(--r-sm)",
+                    display: "flex", alignItems: "center", gap: 12,
+                  }}>
+                    <div style={{
+                      width: 40, height: 40,
+                      borderRadius: 8,
+                      background: urlPreviewError ? "var(--surface-2)" : `url("${urlDraft.trim().replace(/"/g, '\\"')}") center/cover no-repeat, var(--surface-2)`,
+                      border: "1px solid var(--border)",
+                      flexShrink: 0,
+                      display: "grid", placeItems: "center",
+                    }}>
+                      {urlPreviewError && <Icon name="x" size={14} style={{ color: "var(--err)" }} />}
+                      {/* Hidden img to detect load errors */}
+                      <img
+                        src={urlDraft.trim()}
+                        alt=""
+                        onError={() => setUrlPreviewError(true)}
+                        onLoad={() => setUrlPreviewError(false)}
+                        style={{ width: 0, height: 0, position: "absolute", opacity: 0 }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: urlPreviewError ? "var(--err)" : "var(--text-md)" }}>
+                        {urlPreviewError ? "이미지를 불러올 수 없어요" : "미리보기"}
+                      </div>
+                      <div className="mono" style={{ fontSize: 10, color: "var(--text-faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {urlDraft.trim()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>
+                  외부 이미지 URL을 직접 붙여넣어 아이콘으로 사용합니다. <code style={{ fontSize: 9 }}>https://</code>로 시작하는 직접 링크여야 해요.
+                </p>
+                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                  <button type="button" className="btn btn-sm" style={{ flex: 1, justifyContent: "center" }} onClick={() => { setUrlDraft(""); setUrlPreviewError(false); }}>
+                    지우기
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={handleApplyUrl}
+                    disabled={!urlDraft.trim() || urlPreviewError}
+                  >
+                    <Icon name="check" size={11} stroke={3} />적용
+                  </button>
+                </div>
               </div>
             )}
           </div>

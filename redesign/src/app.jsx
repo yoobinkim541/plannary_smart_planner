@@ -42,6 +42,9 @@ function App() {
   const [taskFilter, setTaskFilter] = useState("all");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [focusModeTask, setFocusModeTask] = useState(null);
+  const [tabletSidebarOpen, setTabletSidebarOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
 
   // Apply tweaks to root
@@ -59,6 +62,14 @@ function App() {
         e.preventDefault();
         setPaletteOpen(true);
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("planary:open-shortcuts"));
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === ".") {
+        e.preventDefault();
+        setTweak("theme", t.theme === "dark" ? "light" : "dark");
+      }
       if (e.key === "Escape") setPaletteOpen(false);
     };
     window.addEventListener("keydown", onKey);
@@ -69,11 +80,29 @@ function App() {
   useEffect(() => {
     const onEdit = (e) => setEditingTask(e.detail);
     const onToggle = (e) => setTasks(prev => prev.map(t => t.id === e.detail ? { ...t, done: !t.done } : t));
+    const onShortcuts = () => setShortcutsOpen(true);
+    const onPostpone = (e) => {
+      const { id, time } = e.detail || {};
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, time } : t));
+    };
+    const onDeleteTask = (e) => setTasks(prev => prev.filter(t => t.id !== e.detail));
+    const onEnterFocus = (e) => setFocusModeTask(e.detail);
+    const onCreateTask = (e) => setTasks(prev => [e.detail, ...prev]);
     window.addEventListener("planary:edit-task", onEdit);
     window.addEventListener("planary:toggle-task", onToggle);
+    window.addEventListener("planary:open-shortcuts", onShortcuts);
+    window.addEventListener("planary:postpone-task", onPostpone);
+    window.addEventListener("planary:delete-task", onDeleteTask);
+    window.addEventListener("planary:enter-focus-mode", onEnterFocus);
+    window.addEventListener("planary:create-task", onCreateTask);
     return () => {
       window.removeEventListener("planary:edit-task", onEdit);
       window.removeEventListener("planary:toggle-task", onToggle);
+      window.removeEventListener("planary:open-shortcuts", onShortcuts);
+      window.removeEventListener("planary:postpone-task", onPostpone);
+      window.removeEventListener("planary:delete-task", onDeleteTask);
+      window.removeEventListener("planary:enter-focus-mode", onEnterFocus);
+      window.removeEventListener("planary:create-task", onCreateTask);
     };
   }, []);
 
@@ -104,17 +133,20 @@ function App() {
 
   return (
     <div
-      className="app-shell"
+      className={`app-shell ${tabletSidebarOpen ? "tablet-sidebar-open" : ""}`}
       data-sidebar={t.sidebar}
       data-density={t.density}
     >
       <window.Planary.Rail page={page} setPage={setPage}
         onToggleSidebar={() => setTweak("sidebar", t.sidebar === "full" ? "icons" : "full")} />
       <window.Planary.Sidebar
-        page={page} setPage={setPage}
-        taskFilter={taskFilter} setTaskFilter={setTaskFilter}
+        page={page} setPage={(p) => { setPage(p); setTabletSidebarOpen(false); }}
+        taskFilter={taskFilter} setTaskFilter={(f) => { setTaskFilter(f); setTabletSidebarOpen(false); }}
         tasks={tasks}
       />
+      {tabletSidebarOpen && (
+        <div className="tablet-sidebar-scrim" onClick={() => setTabletSidebarOpen(false)} />
+      )}
       <div className="main">
         <window.Planary.MobileBar
           page={page}
@@ -123,10 +155,12 @@ function App() {
         />
         <window.Planary.Topbar
           page={page}
+          setPage={setPage}
           crumbs={PAGE_CRUMBS[page] || []}
           onCommandPalette={() => setPaletteOpen(true)}
           theme={t.theme}
           setTheme={(v) => setTweak("theme", v)}
+          onTabletSidebarToggle={() => setTabletSidebarOpen(o => !o)}
         />
         <div className="page">{renderPage()}</div>
       </div>
@@ -310,22 +344,57 @@ function CommandPalette({ onClose, setPage }) {
   );
 }
 
+/* ---------- Error Boundary ---------- */
 class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { err: null }; }
-  static getDerivedStateFromError(err) { return { err }; }
-  componentDidCatch(err, info) {
-    console.error("[Planary] render error:", err?.message, err?.stack, info?.componentStack);
-    window.__planaryError = { msg: err?.message, stack: err?.stack, info: info?.componentStack };
+  constructor(props) {
+    super(props);
+    this.state = { error: null, info: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    this.setState({ info });
+    console.error("[Planary ErrorBoundary]", error, info);
   }
   render() {
-    if (this.state.err) {
+    if (this.state.error) {
       return (
-        <div style={{ padding: 24, fontFamily: "var(--font-display)", color: "var(--text-hi)" }}>
-          <h2 style={{ color: "var(--err)" }}>렌더 오류</h2>
-          <pre style={{ whiteSpace: "pre-wrap", background: "var(--surface)", padding: 16, borderRadius: 8, fontSize: 12, maxWidth: 900 }}>
-            {String(this.state.err && (this.state.err.stack || this.state.err.message || this.state.err))}
-          </pre>
-          <button className="btn btn-primary" onClick={() => this.setState({ err: null })}>다시 시도</button>
+        <div style={{
+          padding: 24,
+          minHeight: "100vh",
+          background: "var(--bg, #0a070e)",
+          color: "var(--text-hi, #f1f5f9)",
+          fontFamily: "ui-monospace, monospace",
+          fontSize: 12,
+          lineHeight: 1.5,
+        }}>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#f87171", fontFamily: "system-ui, sans-serif" }}>
+            ⚠ 렌더 오류가 발생했습니다
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(241,245,249,0.7)", marginBottom: 18, fontFamily: "system-ui, sans-serif" }}>
+            아래 오류 정보를 복사해서 알려주시면 즉시 수정할 수 있어요.
+          </div>
+          <div style={{ background: "rgba(0,0,0,0.3)", padding: 14, borderRadius: 8, marginBottom: 12 }}>
+            <strong style={{ color: "#fbbf24" }}>Error:</strong> {String(this.state.error?.message || this.state.error)}
+          </div>
+          {this.state.error?.stack && (
+            <pre style={{ background: "rgba(0,0,0,0.3)", padding: 14, borderRadius: 8, overflow: "auto", whiteSpace: "pre-wrap" }}>
+              {this.state.error.stack}
+            </pre>
+          )}
+          {this.state.info?.componentStack && (
+            <pre style={{ background: "rgba(0,0,0,0.3)", padding: 14, borderRadius: 8, overflow: "auto", whiteSpace: "pre-wrap", marginTop: 12 }}>
+              <strong style={{ color: "#a78bfa" }}>Component stack:</strong>
+              {this.state.info.componentStack}
+            </pre>
+          )}
+          <button
+            style={{ marginTop: 14, padding: "8px 16px", borderRadius: 6, background: "#7f0df2", color: "white", border: 0, cursor: "pointer", fontFamily: "system-ui, sans-serif" }}
+            onClick={() => window.location.reload()}
+          >
+            새로고침
+          </button>
         </div>
       );
     }
@@ -334,5 +403,7 @@ class ErrorBoundary extends React.Component {
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <ErrorBoundary><App /></ErrorBoundary>
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
 );

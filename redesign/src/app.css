@@ -36,15 +36,53 @@
 @media (max-width: 1100px) {
   .app-shell,
   .app-shell[data-sidebar="full"],
-  .app-shell[data-sidebar="compact"] {
-    grid-template-columns: 56px 0 1fr;
+  .app-shell[data-sidebar="compact"],
+  .app-shell[data-sidebar="icons"] {
+    grid-template-columns: 56px 1fr;
   }
-  .sidebar { display: none; }
+  .sidebar { display: none !important; }
+
+  /* When manually toggled open on tablet, slide in as overlay */
+  .app-shell.tablet-sidebar-open .sidebar {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 56px;
+    bottom: 0;
+    width: 280px;
+    z-index: 80;
+    box-shadow: var(--shadow-lg);
+    animation: slideInFromLeft 220ms var(--ease-out);
+  }
+  .app-shell.tablet-sidebar-open .tablet-sidebar-scrim {
+    display: block;
+  }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-12px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
 }
 
-/* Mobile — hide rail + sidebar; body-scroll handled near the bottom of
-   this file inside the main @media (max-width: 760px) block. */
-@media (max-width: 760px) {
+/* Tablet sidebar scrim */
+.tablet-sidebar-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,15,0.4);
+  backdrop-filter: blur(2px);
+  z-index: 70;
+  animation: fadeIn 200ms var(--ease-out);
+}
+
+/* Tablet sidebar toggle button — visible only in tablet zone (641-1100px) */
+.btn.tablet-toggle { display: none; }
+@media (max-width: 1100px) and (min-width: 641px) {
+  .btn.tablet-toggle { display: inline-flex; }
+}
+
+/* Mobile — only below 640px, hide rail + sidebar. Body-scroll
+   override lives at the end of this file so it wins the cascade. */
+@media (max-width: 640px) {
   .app-shell, .app-shell[data-sidebar] {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
@@ -469,6 +507,8 @@
   letter-spacing: -0.025em;
   color: var(--text-hi);
   line-height: 1.1;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .page-sub {
   margin-top: 6px;
@@ -950,13 +990,9 @@
   position: relative;
   min-height: 600px;
   border-radius: var(--r-xl);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--border);
   background: var(--surface);
-  background-clip: padding-box;
   overflow: hidden;
-}
-[data-theme="light"] .board {
-  background: var(--surface);
 }
 .note {
   position: absolute;
@@ -966,10 +1002,10 @@
   border-radius: 2px;
   background: #fef3c7;
   color: #1f1d14;
-  font-family: "Gaegu", "Caveat", "Plus Jakarta Sans", system-ui, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.35;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.5;
   letter-spacing: -0.005em;
   box-shadow:
     0 1px 1px rgba(0,0,0,0.06),
@@ -994,7 +1030,6 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(120% 60% at 50% 0%, rgba(255,255,255,0.4), transparent 70%),
     radial-gradient(120% 60% at 50% 100%, rgba(0,0,0,0.04), transparent 70%);
   pointer-events: none;
 }
@@ -1004,7 +1039,15 @@
     0 2px 0 rgba(0,0,0,0.04),
     0 18px 34px -10px rgba(0,0,0,0.5);
 }
-.note.dragging { cursor: grabbing; transform: scale(1.04) rotate(2deg); z-index: 10; }
+.note.dragging {
+  cursor: grabbing;
+  z-index: 10;
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.06),
+    0 2px 0 rgba(0,0,0,0.04),
+    0 24px 50px -12px rgba(0,0,0,0.6);
+  transition: none;
+}
 .note .note-text {
   white-space: pre-wrap;
   word-break: break-word;
@@ -1034,12 +1077,128 @@
 /* ---------- WIKI ---------- */
 .wiki-shell {
   display: grid;
-  grid-template-columns: 240px 1fr 260px;
+  grid-template-columns: 240px minmax(0, 1fr) 260px;
   gap: 18px;
   align-items: start;
+  position: relative;
 }
-@media (max-width: 1280px) { .wiki-shell { grid-template-columns: 220px 1fr; } .wiki-aside { display: none; } }
-@media (max-width: 1024px) { .wiki-shell { grid-template-columns: 1fr; } .wiki-tree { display: none; } }
+/* Desktop: columns adapt to which panels are open */
+.wiki-shell[data-tree="closed"][data-aside="closed"]  { grid-template-columns: minmax(0, 1fr); }
+.wiki-shell[data-tree="open"][data-aside="closed"]   { grid-template-columns: 240px minmax(0, 1fr); }
+.wiki-shell[data-tree="closed"][data-aside="open"]   { grid-template-columns: minmax(0, 1fr) 260px; }
+.wiki-shell[data-tree="open"][data-aside="open"]     { grid-template-columns: 240px minmax(0, 1fr) 260px; }
+
+/* Below 1280: aside is always a drawer (column collapses to tree+doc) */
+@media (max-width: 1280px) {
+  .wiki-shell[data-aside="open"],
+  .wiki-shell[data-aside="closed"] {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .wiki-shell[data-tree="closed"][data-aside="open"],
+  .wiki-shell[data-tree="closed"][data-aside="closed"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wiki-aside {
+    position: fixed !important;
+    top: 64px;
+    right: 14px;
+    width: 300px;
+    max-height: calc(100vh - 84px);
+    overflow-y: auto;
+    z-index: 80;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 12px;
+    box-shadow: var(--shadow-lg);
+  }
+}
+/* Tablet & smaller — full-width doc, tree becomes a drawer */
+@media (max-width: 1024px) {
+  .wiki-shell,
+  .wiki-shell[data-tree="open"],
+  .wiki-shell[data-tree="closed"] { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Mobile-friendly wiki drawers — full-height side sheets with scrim */
+@media (max-width: 1024px) {
+  .wiki-tree,
+  .wiki-aside {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    z-index: 200 !important;
+    width: 86vw !important;
+    max-width: 360px !important;
+    max-height: none !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    border-right: 1px solid var(--border) !important;
+    padding: 60px 14px 20px !important;
+    box-shadow: var(--shadow-lg);
+    background: var(--bg-elev);
+    overflow-y: auto;
+    animation: slideInFromLeft 240ms var(--ease-out);
+  }
+  .wiki-tree { left: 0 !important; }
+  .wiki-aside {
+    right: 0 !important;
+    left: auto !important;
+    border-right: 0 !important;
+    border-left: 1px solid var(--border) !important;
+    animation: slideInFromRight 240ms var(--ease-out);
+  }
+}
+@keyframes slideInFromRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+/* Drawer scrim — appears when wiki-tree or wiki-aside is open at ≤1024px */
+.wiki-drawer-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,15,0.55);
+  backdrop-filter: blur(4px);
+  z-index: 190;
+  animation: fadeIn 200ms var(--ease-out);
+}
+@media (max-width: 1024px) {
+  .wiki-drawer-scrim.is-open { display: block; }
+}
+
+/* Drawer close button */
+.wiki-drawer-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px; height: 32px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-md);
+  border: 1px solid var(--border);
+  z-index: 10;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.wiki-drawer-close:hover { background: var(--surface-2); color: var(--text-hi); }
+@media (max-width: 1024px) {
+  .wiki-drawer-close { display: flex; }
+}
+
+/* Wiki doc itself needs min-width: 0 for tables/code to be shrinkable */
+.wiki-doc { min-width: 0; }
+.wiki-block table { table-layout: fixed; word-break: break-word; }
+.wiki-block pre, .codeblock pre { max-width: 100%; overflow-x: auto; }
+@media (max-width: 640px) {
+  .wiki-doc { overflow-x: hidden; }
+}
 
 .wiki-tree {
   position: sticky; top: 0;
@@ -1082,12 +1241,11 @@
 .wiki-tree-children.is-closed { max-height: 0 !important; opacity: 0; }
 .wiki-tree-children.is-open { opacity: 1; }
 
-/* TOC restore handle — vertical strip on right edge */
+/* TOC restore handle — vertical strip floating on the right edge */
 .wiki-toc-restore {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  margin-top: 0;
+  position: fixed;
+  top: 80px;
+  right: 14px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -1095,6 +1253,7 @@
   display: flex; flex-direction: column; gap: 6px; align-items: center;
   cursor: pointer;
   transition: all var(--dur-fast);
+  z-index: 40;
 }
 .wiki-toc-restore:hover { border-color: var(--accent-ring); color: var(--accent); }
 .wiki-toc-restore-label {
@@ -1104,52 +1263,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: inherit;
-}
-
-/* Force TOC aside to slide in as a fixed drawer at narrow widths.
-   When the user toggles 목차 open at <=1280px, .wiki-aside--force
-   ignores the responsive display:none and floats above content. */
-@media (max-width: 1280px) {
-  .wiki-aside.wiki-aside--force {
-    display: flex !important;
-    flex-direction: column;
-    gap: 12px;
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    bottom: 12px;
-    width: min(300px, 84vw);
-    overflow-y: auto;
-    z-index: 60;
-    padding: 14px;
-    background: var(--bg-elev);
-    border: 1px solid var(--border);
-    border-radius: var(--r-xl);
-    box-shadow: var(--shadow-lg);
-  }
-}
-@media (max-width: 760px) {
-  .wiki-aside.wiki-aside--force {
-    top: 70px;
-    bottom: 80px;
-    right: 8px;
-    width: min(280px, 78vw);
-  }
-  /* Keep wiki content inside the viewport */
-  .wiki-doc {
-    min-width: 0;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-  /* Reduce cover bleed so it doesn't push content past the shell */
-  .wiki-cover { margin-left: -14px; margin-right: -14px; }
-  /* Tables inside wiki should scroll horizontally rather than push doc width */
-  .wiki-doc table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    max-width: 100%;
-  }
 }
 
 .wiki-doc {
@@ -1163,6 +1276,20 @@
   background: var(--surface-2);
   display: grid; place-items: end start;
   padding: 22px 28px;
+}
+.wiki-icon-host {
+  position: absolute;
+  bottom: -22px;
+  left: 28px;
+  z-index: 4;
+}
+.wiki-icon-host > button {
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+@media (max-width: 640px) {
+  .wiki-icon-host { left: 14px; bottom: -18px; }
+  .wiki-icon-host > button { width: 52px !important; height: 52px !important; font-size: 26px !important; }
 }
 .wiki-icon {
   width: 64px; height: 64px;
@@ -1179,8 +1306,17 @@
 .wiki-doc-meta {
   margin-top: 30px;
   display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+  row-gap: 8px;
   font-size: var(--text-xs);
   color: var(--text-lo);
+}
+.wiki-doc-meta > span,
+.wiki-doc-meta .chip,
+.wiki-doc-meta .btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  word-break: keep-all;
 }
 .wiki-doc-title {
   margin-top: 14px;
@@ -1201,7 +1337,34 @@
 .wiki-block ul { padding-left: 22px; margin: 8px 0; }
 .wiki-block li { margin: 4px 0; }
 .wiki-block code { font-family: var(--font-mono); font-size: 13px; padding: 1px 5px; background: var(--surface-2); border-radius: 4px; color: var(--accent); }
-.wiki-block blockquote { border-left: 3px solid var(--accent); padding: 4px 14px; margin: 12px 0; color: var(--text-md); background: var(--accent-softer); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.wiki-block blockquote {
+  position: relative;
+  border-left: 3px solid var(--accent);
+  padding: 14px 18px 14px 52px;
+  margin: 16px 0;
+  color: var(--text-md);
+  background: var(--accent-softer);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+}
+.wiki-block blockquote::before {
+  content: "\201C";
+  position: absolute;
+  left: 16px;
+  top: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 48px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.6;
+  font-style: normal;
+  font-weight: 700;
+  pointer-events: none;
+  user-select: none;
+}
 .callout {
   display: flex; gap: 12px;
   padding: 12px 14px;
@@ -1250,6 +1413,111 @@
   color: var(--text-lo);
   font-size: var(--text-xs);
   cursor: text;
+}
+
+/* ---------- BOOKMARKS TAG FILTER BAR ---------- */
+.tag-filter-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 16px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.tag-filter-label {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-lo);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+.tag-filter-chips {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 10px;
+  min-width: 0;
+}
+.tag-filter-action {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-lo);
+  background: transparent;
+  border: 0;
+  border-left: 1px dashed var(--border-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur-fast);
+  flex-shrink: 0;
+}
+.tag-filter-action:hover { color: var(--accent); }
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-md);
+  background: transparent;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.tag-chip:hover { background: var(--hover); color: var(--text-hi); }
+.tag-chip.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tag-chip-hash {
+  font-weight: 700;
+  color: color-mix(in oklab, var(--text-faint) 80%, transparent);
+  font-size: 11px;
+}
+.tag-chip.is-active .tag-chip-hash {
+  color: color-mix(in oklab, var(--accent) 60%, transparent);
+}
+.tag-chip-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 2px;
+  min-width: 18px;
+  text-align: center;
+}
+.tag-chip.is-active .tag-chip-count {
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+@media (max-width: 640px) {
+  .tag-filter-bar { flex-direction: column; align-items: stretch; }
+  .tag-filter-label {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-soft);
+    justify-content: flex-start;
+  }
+  .tag-filter-action {
+    border-left: 0;
+    border-top: 1px dashed var(--border-soft);
+    padding: 9px 14px;
+    justify-content: center;
+  }
 }
 
 /* ---------- BOOKMARKS ---------- */
@@ -1430,66 +1698,49 @@
 .field-label { font-size: var(--text-sm); color: var(--text-md); }
 .field-value { font-size: var(--text-sm); color: var(--text-lo); }
 
-/* ---------- TABLET / NARROW DESKTOP ---------- */
-/* Apply at the same range where rail-only chrome kicks in (<1100px) but
-   target the dashboard content. Two-column home grids collapsed to a
-   single column avoid the "focus card squeezed to one Korean character
-   per line" problem when the sidebar is hidden but the viewport is
-   still tablet-sized. */
-@media (max-width: 1024px) {
-  .home-focus-grid { grid-template-columns: 1fr !important; }
-  /* Korean — keep word/eojeol intact so text doesn't break inside a word. */
-  .page h1,
-  .page-title,
-  .hero-title,
-  .widget-title,
-  .focus-text,
-  .card .kicker + div,
-  .card div[style*="font-weight: 700"],
-  .card div[style*="font-weight: 800"] {
-    word-break: keep-all;
-    overflow-wrap: anywhere;
-  }
-  /* Hero greeting: 40px is too aggressive in tablet/narrow viewports. */
-  .page h1[style*="font-size: 40px"] { font-size: clamp(26px, 5.6vw, 40px) !important; }
+/* ---------- TABLET (640-1100px) ---------- */
+@media (max-width: 1100px) and (min-width: 641px) {
+  /* Topbar search compacts */
+  .topbar-search { flex: 0 1 260px; }
+  /* Hero stacks */
+  .hero-row { grid-template-columns: 1fr; gap: 14px; }
+  .hero-stats { min-width: 0; }
+  /* Dash widgets get tighter */
+  .dash { grid-template-columns: 1fr 1fr; gap: 12px; }
+  /* Home page inline-grid layouts collapse to single column at tablet */
+  .page-wide > div[style*="1.5fr 1fr"] { grid-template-columns: 1fr !important; }
+  .widget-body[style*="1fr 1fr 1fr"] { grid-template-columns: repeat(3, 1fr) !important; }
+  /* Big home headline */
+  .page-wide h1[style*="font-size: 40px"] { font-size: 30px !important; line-height: 1.15 !important; }
+  .page-wide h1[style*="font-size: 44px"] { font-size: 32px !important; line-height: 1.15 !important; }
+  /* Focus task card title (inline 22px) */
+  .card div[style*="font-size: 22px"] { font-size: 18px !important; }
+  /* Headers w/ space-between wrap (e.g. home header with ring) */
+  header[style*="space-between"] { flex-wrap: wrap; }
+  /* Profile: stack columns vertically */
+  .profile-grid { grid-template-columns: 1fr; gap: 14px; }
+  /* Page padding a bit smaller */
+  .page { padding: 18px 20px 60px; }
+  /* Page title slightly smaller */
+  .page-title { font-size: 26px; }
+  /* Touch-friendly: bigger nav/buttons */
+  .rail-btn { width: 42px; height: 42px; }
+  .btn { height: 36px; }
+  .btn-sm { height: 32px; }
+  /* Tasks toolbar wraps */
+  .tasks-toolbar { gap: 6px; }
+  /* Kanban: 2 columns at this size */
+  .kanban { grid-template-columns: repeat(2, 1fr); }
+  /* Project detail grid stacks */
+  .project-detail-grid { grid-template-columns: 1fr !important; }
+  /* Bookmark grid: 2 columns */
+  .bookmarks-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* ---------- MOBILE ---------- */
-@media (max-width: 760px) {
-  /* Mobile: let <body> scroll naturally instead of trapping scroll inside
-     .page. Avoids 100vh / address-bar quirks and the "empty content area
-     after scrolling" bug. mobile-bar sticks to top, mobile-tabs is fixed. */
-  html, body { overflow: visible; height: auto; min-height: 100%; }
-  body { overscroll-behavior-y: contain; }
-  .app-shell, .app-shell[data-sidebar] {
-    display: block;
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
-  }
-  .main {
-    display: block;
-    height: auto;
-    min-height: 100dvh;
-    overflow: visible;
-  }
-  .main > .mobile-bar {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: var(--bg-elev);
-  }
-  .page {
-    overflow: visible;
-    flex: none;
-    /* Bottom tab bar = 64px + safe area, plus breathing room */
-    padding: 14px 14px calc(96px + env(safe-area-inset-bottom, 0px));
-  }
-  /* Hover-revealed tap targets need to be always visible on touch */
-  .task-right { opacity: 1 !important; }
-  .nav-section button { opacity: 1 !important; }
-
+@media (max-width: 640px) {
   .rail, .sidebar { display: none; }
+  .page { padding: 14px 14px 80px; }
   .topbar { display: none; }
   .hero-row { grid-template-columns: 1fr; gap: 14px; }
   .hero-stats { grid-template-columns: repeat(3, 1fr); min-width: 0; }
@@ -1501,12 +1752,41 @@
   /* Stack dash widget pairs */
   .dash, .archive-hero, .profile-grid { grid-template-columns: 1fr !important; }
 
+  /* Home page inline-grid layouts collapse to single column */
+  .page-wide > div[style*="1.5fr 1fr"] { grid-template-columns: 1fr !important; }
+  .widget-body[style*="1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  .page-wide > div[style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Home headline — kill the 40px / 44px h1 from inline style */
+  .page-wide h1[style*="font-size: 40px"] { font-size: 24px !important; line-height: 1.2 !important; }
+  .page-wide h1[style*="font-size: 44px"] { font-size: 24px !important; line-height: 1.2 !important; }
+  .hero div[style*="font-size: 44px"] { font-size: 24px !important; line-height: 1.2 !important; }
+  /* "지금 집중할 일" card title 22px → 17 */
+  .card div[style*="font-size: 22px"] { font-size: 17px !important; line-height: 1.3 !important; }
+  /* Inline 24/24px stat numbers in cards */
+  .card div[style*="font-size: 24px"] { font-size: 19px !important; }
+  /* Project hero name 24 too */
+  div[style*="font-size: 24px"] { font-size: 19px !important; }
+  /* Big stat numbers from inline 32/48/56px */
+  div[style*="font-size: 32px"] { font-size: 22px !important; }
+  div[style*="font-size: 48px"] { font-size: 32px !important; }
+  div[style*="font-size: 56px"] { font-size: 36px !important; }
+
+  /* Headers with end-justified split layouts wrap */
+  header[style*="space-between"] { flex-wrap: wrap; }
+
+  /* Completion ring on home header — shrink */
+  header[style*="space-between"] .ring { --size: 52px !important; --stroke: 5px !important; }
+  header[style*="space-between"] .ring-text { font-size: 11px !important; }
+
+  /* Composer toolbar wraps; smaller chips */
+  .composer { padding: 10px; }
+  .composer-tools { flex-wrap: wrap; gap: 4px; }
+  .composer-tools .tool-btn { height: 26px; padding: 0 8px; font-size: 11px; }
+  .composer-tools .btn-sm { height: 28px; }
+
   /* Tasks toolbar — let chips wrap nicely */
   .tasks-toolbar { gap: 6px; padding-bottom: 12px; }
-
-  /* Composer — smaller paddings */
-  .composer { padding: 10px; }
-  .composer-tools { flex-wrap: wrap; }
 
   /* Kanban — horizontal scroll on mobile */
   .kanban {
@@ -1523,12 +1803,10 @@
     scroll-snap-align: start;
   }
 
-  /* Wiki — single column, tree hidden on phone (use ⌘K or back nav) */
-  .wiki-shell { grid-template-columns: 1fr !important; }
-  .wiki-tree { display: none !important; }
+  /* Wiki — single column */
   .wiki-cover { margin: -14px -14px 24px; height: 130px; padding: 14px 18px; }
   .wiki-doc { padding: 0 4px; }
-  .wiki-doc-title { font-size: 28px; }
+  .wiki-doc-title { font-size: 24px; }
   .wiki-doc-meta { flex-wrap: wrap; row-gap: 6px; }
 
   /* Bookmarks */
@@ -1542,6 +1820,13 @@
 
   /* Topbar search hidden on mobile (use command palette via search icon) */
   .topbar-search { display: none; }
+
+  /* Dialog padding */
+  .dialog-head, .dialog-foot { padding: 14px 16px; }
+  .dialog { width: calc(100vw - 28px) !important; }
+
+  /* Project detail single column on mobile */
+  .project-detail-grid { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 1100px) and (min-width: 761px) {
@@ -1550,9 +1835,6 @@
   .hero-row { grid-template-columns: 1fr; gap: 14px; }
   .hero-stats { min-width: 0; }
   .dash { grid-template-columns: 1.2fr 1fr; }
-  .wiki-shell { grid-template-columns: 1fr; }
-  .wiki-tree { display: none; }
-  .wiki-aside { display: none; }
   .page { padding: 18px 22px 60px; }
 }
 
@@ -1567,7 +1849,7 @@
   z-index: 10;
   position: relative;
 }
-@media (max-width: 760px) { .mobile-bar { display: flex; } }
+@media (max-width: 640px) { .mobile-bar { display: flex; } }
 .mobile-bar-title {
   flex: 1;
   font-size: 16px;
@@ -1589,7 +1871,7 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
-@media (max-width: 760px) { .mobile-tabs { display: flex; } }
+@media (max-width: 640px) { .mobile-tabs { display: flex; } }
 .mobile-tab {
   flex: 1;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1635,6 +1917,487 @@
   --shadow-sm: 0 1px 2px rgba(20,15,30,0.06);
   --shadow-md: 0 6px 16px -4px rgba(20,15,30,0.08);
   --shadow-lg: 0 24px 50px -16px rgba(20,15,30,0.16);
+}
+
+/* Korean-aware wrapping for inline-styled headlines and prominent card titles */
+.page-wide h1,
+.page-wide h2,
+.card h3,
+.card div[style*="font-size: 22px"],
+.card div[style*="font-size: 24px"],
+.tl-card-title,
+.task-title,
+.wiki-doc-title {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* "Add block" trailing area at the end of doc — Notion-style */
+.wiki-block-trail {
+  min-height: 60px;
+  margin-top: 4px;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 14px 4px;
+  border-radius: var(--r-sm);
+  cursor: text;
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+  transition: opacity var(--dur-fast), background var(--dur-fast);
+}
+.wiki-block-trail:hover {
+  background: var(--hover);
+  opacity: 1;
+}
+.wiki-block-trail-hint {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.wiki-block-trail-hint kbd {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+/* "Add block" button kept for backward compat (now hidden) */
+.wiki-block-add-end {
+  display: none;
+}
+
+/* ---------- SLASH COMMAND MENU ---------- */
+.slash-menu {
+  width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: fadeIn 120ms var(--ease-out);
+}
+.slash-menu-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  font-size: 11px;
+  color: var(--text-lo);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-elev);
+}
+.slash-menu-list {
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.slash-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-md);
+  transition: background var(--dur-fast);
+}
+.slash-menu-item.is-highlight {
+  background: var(--accent-softer);
+  color: var(--text-hi);
+}
+.slash-menu-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  color: var(--text-lo);
+}
+.slash-menu-item.is-highlight .slash-menu-icon {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+.slash-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-hi);
+}
+.slash-menu-desc {
+  font-size: 11px;
+  color: var(--text-lo);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slash-menu-foot {
+  display: flex; gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--bg-elev);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* ---------- PROJECT CREATE DIALOG GRIDS ---------- */
+.proj-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+.proj-icon-cell {
+  height: 32px;
+  display: grid; place-items: center;
+  font-size: 18px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.proj-icon-cell:hover { border-color: var(--border-strong); }
+.proj-icon-cell.is-active {
+  border-color: var(--accent);
+  background: var(--accent-softer);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.proj-color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+.proj-color-cell {
+  height: 28px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  display: grid; place-items: center;
+}
+.proj-color-cell:hover { transform: scale(1.06); }
+.proj-color-cell.is-active {
+  border-color: var(--text-hi);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* ---------- ARCHIVE QUOTE ---------- */
+.archive-quote-text {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 6px;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+  color: var(--text-hi);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  animation: archiveQuoteIn 360ms var(--ease-out);
+}
+@keyframes archiveQuoteIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- SEGMENTED CONTROL ---------- */
+.seg-control {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  gap: 1px;
+}
+.seg-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 11px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-lo);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--dur-fast);
+}
+.seg-btn:hover { color: var(--text-md); }
+.seg-btn.is-active {
+  background: var(--surface);
+  color: var(--text-hi);
+  box-shadow: var(--shadow-sm);
+}
+.seg-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint);
+  margin-left: 2px;
+}
+.seg-btn.is-active .seg-count {
+  color: var(--accent);
+}
+
+/* ---------- WIKI BLOCK EDITOR ---------- */
+.wiki-block-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  margin: 0 -28px;
+  padding: 2px 28px;
+  transition: background var(--dur-fast);
+}
+.wiki-block-row:hover { background: transparent; }
+.wiki-block-row.is-active { background: transparent; }
+.wiki-block-row.is-dragging { opacity: 0.4; }
+.wiki-block-row.drop-before::before,
+.wiki-block-row.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.wiki-block-row.drop-before::before { top: 0; }
+.wiki-block-row.drop-after::after { bottom: 0; }
+@media (max-width: 640px) {
+  .wiki-block-row { margin: 0 -14px; padding: 2px 14px; }
+  .wiki-block-row.drop-before::before,
+  .wiki-block-row.drop-after::after { left: 14px; right: 14px; }
+}
+.wiki-block-handles {
+  position: absolute;
+  left: 2px;
+  top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+.wiki-block-row:hover .wiki-block-handles,
+.wiki-block-row.is-active .wiki-block-handles {
+  opacity: 1;
+}
+.wiki-block-handle {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: 5px;
+  color: var(--text-faint);
+  cursor: grab;
+  background: transparent;
+  transition: all var(--dur-fast);
+}
+.wiki-block-handle:hover { background: var(--hover); color: var(--text-md); }
+.wiki-block-handle:active { cursor: grabbing; }
+@media (max-width: 640px) {
+  .wiki-block-handles { left: -2px; opacity: 1; }
+  .wiki-block-handle { width: 26px; height: 26px; }
+}
+.wiki-block-menu {
+  position: absolute;
+  left: 28px;
+  top: 0;
+  z-index: 80;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 6px;
+  min-width: 220px;
+  max-height: 380px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 140ms var(--ease-out);
+}
+.wiki-block-body {
+  flex: 1;
+  min-width: 0;
+  padding-left: 2px;
+}
+.wiki-block-body p[contenteditable],
+.wiki-block-body h2[contenteditable],
+.wiki-block-body h3[contenteditable],
+.wiki-block-body blockquote[contenteditable],
+.wiki-block-body [contenteditable] strong,
+.wiki-block-body [contenteditable] span,
+.wiki-block-body strong[contenteditable],
+.wiki-block-body span[contenteditable] {
+  outline: none;
+  border-radius: 4px;
+  padding: 2px 0;
+  caret-color: var(--accent);
+}
+.wiki-block-body [contenteditable]:focus,
+.wiki-block-body p[contenteditable]:focus,
+.wiki-block-body h2[contenteditable]:focus,
+.wiki-block-body h3[contenteditable]:focus,
+.wiki-block-body blockquote[contenteditable]:focus,
+.wiki-block-body strong[contenteditable]:focus,
+.wiki-block-body span[contenteditable]:focus {
+  outline: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent;
+}
+.wiki-block-body p[contenteditable]:empty::before,
+.wiki-block-body h2[contenteditable]:empty::before,
+.wiki-block-body h3[contenteditable]:empty::before,
+.wiki-block-body blockquote[contenteditable]:empty::before {
+  content: "내용을 입력하세요…";
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+/* "Add block" button at the very end */
+.wiki-block-add-end {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 18px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-lo);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.wiki-block-add-end:hover {
+  border-color: var(--accent-ring);
+  color: var(--accent);
+  border-style: solid;
+}
+
+/* Breadcrumb buttons in wiki doc header */
+.wiki-crumb {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 7px;
+  margin: 0 -3px;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--text-lo);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  white-space: nowrap;
+}
+.wiki-crumb:hover {
+  background: var(--hover);
+  color: var(--text-hi);
+}
+.wiki-crumb-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* ---------- VERSION HISTORY ---------- */
+.version-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+}
+.version-thread::before {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 18px;
+  bottom: 18px;
+  width: 1px;
+  background: var(--border-soft);
+}
+.version-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 10px;
+  border-radius: var(--r-md);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--dur-fast);
+  position: relative;
+  z-index: 1;
+}
+.version-item:hover { background: var(--hover); }
+.version-item.is-active {
+  background: var(--accent-softer);
+  border-color: var(--accent-ring);
+}
+.version-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  margin-top: 4px;
+  flex-shrink: 0;
+  transition: all var(--dur-fast);
+}
+.version-item.is-active .version-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+.version-item.is-current .version-dot {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.version-meta { flex: 1; min-width: 0; }
+.version-row { display: flex; align-items: center; gap: 6px; }
+.version-time {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-hi);
+  letter-spacing: -0.01em;
+}
+.version-now {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--ok) 14%, transparent);
+  color: var(--ok);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.version-author {
+  font-size: 11px;
+  color: var(--text-lo);
+  font-weight: 500;
+}
+.version-summary {
+  font-size: 11.5px;
+  color: var(--text-md);
+  margin-top: 5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.version-diff {
+  display: flex; gap: 6px;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.diff-add { color: var(--ok); }
+.diff-rem { color: var(--err); }
+.version-preview {
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  min-height: 100px;
+}
+@media (max-width: 760px) {
+  .dialog [style*="grid-template-columns: 280px 1fr"] {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 200px 1fr !important;
+  }
 }
 
 /* Section divider */
@@ -2281,30 +3044,40 @@ select.form-input { cursor: pointer; }
 [data-density="compact"] .card { padding: 14px; }
 [data-density="comfortable"] .card { padding: 24px; }
 
-/* QuickCapture pop menu */
-.qc-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 30;
-  min-width: 140px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+
+/* =========================================================================
+   MOBILE BODY-SCROLL OVERRIDE — at the end so it beats all base rules.
+   Lets <body> scroll naturally on phones so dynamic viewport (address-bar
+   show/hide) and 100vh quirks dont trap content inside .page.
+   ========================================================================= */
+@media (max-width: 640px) {
+  html, body { overflow: visible !important; height: auto !important; min-height: 100% !important; }
+  body { overscroll-behavior-y: contain; }
+  .app-shell,
+  .app-shell[data-sidebar] {
+    display: block !important;
+    height: auto !important;
+    min-height: 100dvh;
+    overflow: visible !important;
+  }
+  .main {
+    display: block !important;
+    height: auto !important;
+    min-height: 100dvh;
+    overflow: visible !important;
+  }
+  .main > .mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg-elev);
+  }
+  .page {
+    overflow: visible !important;
+    flex: none !important;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .task-right { opacity: 1 !important; }
+  .nav-section button { opacity: 1 !important; }
 }
-.qc-menu-item {
-  padding: 7px 10px;
-  border-radius: var(--r-sm);
-  font-size: 12px;
-  color: var(--text-md);
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.qc-menu-item:hover { background: var(--hover); color: var(--text-hi); }
-.qc-menu-item.is-active { background: var(--accent-soft); color: var(--accent-light); font-weight: 600; }
+

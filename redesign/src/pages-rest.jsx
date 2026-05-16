@@ -1,20 +1,42 @@
 /* Planary — Other pages: Projects, Notes, Wiki, Bookmarks, Archive, Profile */
 
-const { useState: useStateO, useRef: useRefO, useEffect: useEffectO } = React;
+const { useState: useStateO, useRef: useRefO, useEffect: useEffectO, useMemo: useMemoO } = React;
 
 /* ===========================================================
    PROJECTS
    =========================================================== */
 function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
   const { PROJECTS, ECLASS_COURSES } = window.Planary;
+  const [projects, setProjects] = useStateO(PROJECTS);
   const [selected, setSelected] = useStateO(PROJECTS[0].id);
   const [syncing, setSyncing] = useStateO(false);
-  const proj = PROJECTS.find((p) => p.id === selected);
+  const [createOpen, setCreateOpen] = useStateO(false);
+  const proj = projects.find((p) => p.id === selected);
   const projTasks = tasks.filter((t) => t.project === selected);
   const open = projTasks.filter((t) => !t.done);
   const done = projTasks.filter((t) => t.done);
 
-  const toggleTask = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const toggleTask = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
+
+  const handleCreate = (draft) => {
+    const id = `p${Date.now()}`;
+    const newProj = {
+      id,
+      name: draft.name,
+      color: draft.color,
+      icon: draft.icon,
+      progress: 0,
+      members: [window.Planary.USER.initials],
+      deadline: draft.deadline || null,
+      description: draft.description || "",
+    };
+    const next = [...projects, newProj];
+    setProjects(next);
+    window.Planary.PROJECTS = next; // reflect globally
+    setSelected(id);
+    setCreateOpen(false);
+    window.Planary.toast({ type: "ok", title: "프로젝트가 만들어졌어요", sub: draft.name });
+  };
 
   const triggerSync = () => {
     setSyncing(true);
@@ -26,14 +48,14 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
         window.Planary.toast({
           type: "ok",
           title: "동기화 완료",
-          sub: `${ECLASS_COURSES.length}개 강의에서 ${projTasks.length}개 항목 확인`,
+          sub: `${ECLASS_COURSES.length}개 강의에서 ${projTasks.length}개 항목 확인`
         });
       } else {
         window.Planary.toast({
           type: "err",
           title: "동기화 실패",
           sub: "e-Class 응답이 늦어요. 잠시 후 다시 시도해주세요.",
-          ttl: 4200,
+          ttl: 4200
         });
       }
     }, 1400);
@@ -47,11 +69,13 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
           <div className="page-title">프로젝트</div>
           <div className="page-sub">작업·위키·리마인더가 함께 사는 작업 공간</div>
         </div>
-        <button className="btn btn-primary" onClick={() => window.Planary?.toast?.({ type: "info", title: "새 프로젝트 만들기", sub: "곧 추가됩니다" })}><Icon name="plus" size={14} />새 프로젝트</button>
+        <button className="btn btn-primary" onClick={() => setCreateOpen(true)}>
+          <Icon name="plus" size={14} />새 프로젝트
+        </button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12, marginBottom: 24 }}>
-        {PROJECTS.map((p) => {
+        {projects.map((p) => {
           const ct = tasks.filter((t) => t.project === p.id);
           const active = p.id === selected;
           return (
@@ -181,13 +205,14 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
 }
 
 /* ---------- e-Class detail view ---------- */
+/* ---------- e-Class detail view ---------- */
+/* ---------- e-Class detail view ---------- */
 function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPage }) {
-  const [eclassFilter, setEclassFilter] = useStateO("all"); // all | exam | done
   const { ECLASS_COURSES, USER } = window.Planary;
   const [filter, setFilter] = useStateO("open"); // open | exam | done
   const [icon, setIcon] = useStateO(proj.icon);
 
-  const filteredTasks = projTasks.filter(t => {
+  const filteredTasks = projTasks.filter((t) => {
     if (filter === "open") return !t.done;
     if (filter === "exam") return !t.done && t.source === "eclass-exam";
     if (filter === "done") return t.done;
@@ -204,12 +229,12 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
               value={icon}
               onChange={setIcon}
               color={proj.color}
-              size={56}
-            />
+              size={56} />
+            
             <span
               className="status-dot is-live"
-              style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, background: "var(--ok)", border: "2px solid var(--surface)", boxShadow: "none", animation: "none", pointerEvents: "none", borderRadius: "50%" }}
-            />
+              style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, background: "var(--ok)", border: "2px solid var(--surface)", boxShadow: "none", animation: "none", pointerEvents: "none", borderRadius: "50%" }} />
+            
           </div>
           <div style={{ flex: 1 }}>
             <div className="kicker" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -309,21 +334,34 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
 
       {/* Tasks grouped by course */}
       <section style={{ padding: 22 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" }}>동기화된 작업</h3>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button className={`chip-btn ${eclassFilter==="all"?"is-active":""}`} onClick={() => setEclassFilter("all")}><Icon name="list" size={11} />전체</button>
-            <button className={`chip-btn ${eclassFilter==="exam"?"is-active":""}`} onClick={() => setEclassFilter("exam")}><Icon name="flag" size={11} />시험·발표</button>
-            <button className={`chip-btn ${eclassFilter==="done"?"is-active":""}`} onClick={() => setEclassFilter("done")}><Icon name="check" size={11} />완료</button>
+          <div className="seg-control">
+            {[
+              { id: "open", label: "전체", icon: "list", count: projTasks.filter(t => !t.done).length },
+              { id: "exam", label: "시험·발표", icon: "flag", count: projTasks.filter(t => !t.done && t.source === "eclass-exam").length },
+              { id: "done", label: "완료", icon: "check", count: projTasks.filter(t => t.done).length },
+            ].map(f => (
+              <button
+                key={f.id}
+                className={`seg-btn ${filter === f.id ? "is-active" : ""}`}
+                onClick={() => setFilter(f.id)}
+                type="button"
+              >
+                <Icon name={f.icon} size={11} />
+                <span>{f.label}</span>
+                <span className="seg-count">{f.count}</span>
+              </button>
+            ))}
           </div>
         </div>
         {ECLASS_COURSES.map((c) => {
           const ct = projTasks.filter((t) => {
             if (t.course !== c.id) return false;
-            if (eclassFilter === "all") return !t.done;
-            if (eclassFilter === "exam") return !t.done && t.source === "eclass-exam";
-            if (eclassFilter === "done") return t.done;
-            return false;
+            if (filter === "open") return !t.done;
+            if (filter === "exam") return !t.done && t.source === "eclass-exam";
+            if (filter === "done") return t.done;
+            return true;
           });
           if (ct.length === 0) return null;
           return (
@@ -352,57 +390,75 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
    NOTES (drag-and-drop sticky board)
    =========================================================== */
 function NotesPage() {
-  const [notes, setNotes] = useStateO(window.Planary.NOTES);
+  const initialNotes = Array.isArray(window.Planary.NOTES) ? window.Planary.NOTES : [];
+  const [notes, setNotes] = useStateO(initialNotes);
   const [draftColor, setDraftColor] = useStateO("yellow");
   const [draft, setDraft] = useStateO("");
   const [view, setView] = useStateO("board"); // board | grid
+  const [boardW, setBoardW] = useStateO(0);
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
 
-  // Keep global NOTES in sync + react to external additions (e.g. QuickCapture).
+  // Track board width so notes can clamp to its bounds on every render & resize
   useEffectO(() => {
-    if (window.Planary) window.Planary.NOTES = notes;
-  }, [notes]);
-  useEffectO(() => {
-    const onExt = () => {
-      if (window.Planary && Array.isArray(window.Planary.NOTES)) {
-        setNotes(window.Planary.NOTES);
-      }
-    };
-    window.addEventListener("planary:notes-changed", onExt);
-    return () => window.removeEventListener("planary:notes-changed", onExt);
-  }, []);
+    if (!boardRef.current) return;
+    const update = () => setBoardW(boardRef.current.getBoundingClientRect().width);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(boardRef.current);
+    return () => ro.disconnect();
+  }, [view]);
 
-  const onMouseDown = (e, note) => {
+  const onPointerDown = (e, note) => {
     if (e.target.closest(".note-foot") || e.target.tagName === "BUTTON") return;
+    // Left click only (pointer button === 0). Touch and pen also report 0.
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
     const rect = boardRef.current.getBoundingClientRect();
     dragRef.current = {
       id: note.id,
       offX: e.clientX - rect.left - note.x,
-      offY: e.clientY - rect.top - note.y
+      offY: e.clientY - rect.top - note.y,
+      moved: false,
+      startX: e.clientX,
+      startY: e.clientY
     };
     setNotes((prev) => prev.map((n) => n.id === note.id ? { ...n, dragging: true } : n));
+    // Capture pointer so we still get move/up if cursor leaves the element
+    try { e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
   };
 
   useEffectO(() => {
     const onMove = (e) => {
-      if (!dragRef.current) return;
+      const d = dragRef.current;
+      if (!d || !boardRef.current) return;
+      // Track whether the pointer actually moved enough to be a drag
+      if (!d.moved && (Math.abs(e.clientX - d.startX) > 3 || Math.abs(e.clientY - d.startY) > 3)) {
+        d.moved = true;
+      }
       const rect = boardRef.current.getBoundingClientRect();
-      const x = Math.max(0, Math.min(rect.width - 200, e.clientX - rect.left - dragRef.current.offX));
-      const y = Math.max(0, Math.min(rect.height - 100, e.clientY - rect.top - dragRef.current.offY));
-      setNotes((prev) => prev.map((n) => n.id === dragRef.current.id ? { ...n, x, y } : n));
+      const x = Math.max(0, Math.min(rect.width - 200, e.clientX - rect.left - d.offX));
+      const y = Math.max(0, Math.min(rect.height - 144, e.clientY - rect.top - d.offY));
+      setNotes((prev) => prev.map((n) => n.id === d.id ? { ...n, x, y } : n));
     };
     const onUp = () => {
-      if (dragRef.current) {
-        setNotes((prev) => prev.map((n) => n.id === dragRef.current.id ? { ...n, dragging: false } : n));
+      const d = dragRef.current;
+      if (d) {
+        setNotes((prev) => prev.map((n) => n.id === d.id ? { ...n, dragging: false } : n));
         dragRef.current = null;
       }
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    // Use pointer events so we survive touch + mouse leaving window
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    // Cancel any in-flight drag if user releases off-window
+    window.addEventListener("blur", onUp);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("blur", onUp);
     };
   }, []);
 
@@ -423,15 +479,15 @@ function NotesPage() {
       <div className="page-head" style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
           <div className="kicker">WORKSPACE · 포스트잇 보드</div>
-          <div className="page-title">포스트잇</div>
+          <div className="page-title">포스트잇
+</div>
           <div className="page-sub">{notes.length}개 · 드래그해 자유롭게 배치하거나 그리드로 정렬하세요</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-md)", gap: 2 }}>
-            <button
-              onClick={() => setView("board")}
-              className="btn btn-sm"
-              style={{ height: 28, background: view === "board" ? "var(--surface)" : "transparent", color: view === "board" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "board" ? "var(--shadow-sm)" : "none" }}>
+            <button onClick={() => setView("board")}
+            className="btn btn-sm"
+            style={{ height: 28, background: view === "board" ? "var(--surface)" : "transparent", color: view === "board" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "board" ? "var(--shadow-sm)" : "none" }}>
               
               <Icon name="layers" size={13} />보드
             </button>
@@ -443,21 +499,7 @@ function NotesPage() {
               <Icon name="grid" size={13} />그리드
             </button>
           </div>
-          <button
-            className="btn btn-ghost"
-            onClick={() => {
-              const csv = "id,color,text,date\n" + notes.map(n => `${n.id},${n.color},"${(n.text||"").replace(/"/g,'""').replace(/\n/g," ")}",${n.date}`).join("\n");
-              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url; a.download = `planary-postits-${Date.now()}.csv`;
-              document.body.appendChild(a); a.click(); a.remove();
-              URL.revokeObjectURL(url);
-              window.Planary?.toast?.({ type: "ok", title: "포스트잇을 CSV로 내보냈어요", sub: `${notes.length}개 항목` });
-            }}
-          >
-            <Icon name="download" size={14} />내보내기
-          </button>
+          <button className="btn btn-ghost"><Icon name="download" size={14} />내보내기</button>
         </div>
       </div>
 
@@ -502,16 +544,22 @@ function NotesPage() {
       </div>
 
       {view === "board" ?
-      <div className="board" ref={boardRef} style={{ height: 620 }}>
-          {notes.map((n) =>
+      <div className="board" ref={boardRef} style={{ height: 620, touchAction: "none" }}>
+          {notes.map((n) => {
+        const NOTE_W = 200, NOTE_H = 144, PAD = 8;
+        const maxX = Math.max(0, boardW - NOTE_W - PAD);
+        const safeX = boardW > 0 ? Math.min(n.x, maxX) : n.x;
+        return (
         <div
           key={n.id}
           className={`note note-${n.color} ${n.dragging ? "dragging" : ""}`}
           style={{
-            left: n.x, top: n.y,
-            transform: n.dragging ? undefined : `rotate(${n.rot}deg)`
+            left: safeX, top: n.y,
+            transform: `rotate(${n.dragging ? 0 : n.rot}deg)${n.dragging ? " scale(1.04)" : ""}`,
+            zIndex: n.dragging ? 10 : "auto",
+            touchAction: "none"
           }}
-          onMouseDown={(e) => onMouseDown(e, n)}>
+          onPointerDown={(e) => onPointerDown(e, n)}>
           
               <div className="note-text">{n.text}</div>
               <div className="note-foot">
@@ -524,8 +572,8 @@ function NotesPage() {
                   <Icon name="x" size={12} />
                 </button>
               </div>
-            </div>
-        )}
+            </div>);
+        })}
         </div> :
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
@@ -567,8 +615,9 @@ function NotesPage() {
 function WikiPage() {
   const { WIKI_TREE } = window.Planary;
   const [activeId, setActiveId] = useStateO("w3"); // "컬러 토큰"
-  // Default TOC open on desktop; closed on narrow widths so it doesn't cover content.
-  const [showAside, setShowAside] = useStateO(() => typeof window !== "undefined" ? window.innerWidth > 1280 : true);
+  const [showAside, setShowAside] = useStateO(() => typeof window !== 'undefined' && window.innerWidth > 1280);
+  const [showTree, setShowTree] = useStateO(() => typeof window !== 'undefined' && window.innerWidth > 1024);
+  const [pageIcons, setPageIcons] = useStateO({});
   const [expanded, setExpanded] = useStateO({ w1: true, w2: true, w5: false, w7: false }); // tree open state
   const [search, setSearch] = useStateO("");
   const [shareOpen, setShareOpen] = useStateO(false);
@@ -580,16 +629,24 @@ function WikiPage() {
   const [coverHeight, setCoverHeight] = useStateO(180); // 120-360
   const [coverZoom, setCoverZoom] = useStateO(100); // 100-220
   const fileInputRef = useRefO(null);
+  const [favorite, setFavorite] = useStateO(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useStateO(false);
+  const [historyOpen, setHistoryOpen] = useStateO(false);
+  const [infoOpen, setInfoOpen] = useStateO(false);
+  const [favorites, setFavorites] = useStateO(() => new Set());
+  const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
   const active = WIKI_TREE.find((w) => w.id === activeId) || WIKI_TREE[0];
+  const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
+  const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
 
   const COVER_GALLERY = [
-    { id: "g1", label: "Violet wash", style: { background: "linear-gradient(135deg, #7f0df2, #9b3ff7)" } },
-    { id: "g2", label: "Indigo dawn",  style: { background: "linear-gradient(135deg, #3b82f6, #7f0df2)" } },
-    { id: "g3", label: "Emerald calm", style: { background: "linear-gradient(135deg, #047857, #10b981)" } },
-    { id: "g4", label: "Sunset",       style: { background: "linear-gradient(135deg, #f59e0b, #e11d48)" } },
-    { id: "g5", label: "Slate",        style: { background: "linear-gradient(135deg, #1e293b, #475569)" } },
-    { id: "g6", label: "Sky",          style: { background: "linear-gradient(135deg, #60a5fa, #34d399)" } },
-  ];
+  { id: "g1", label: "Violet wash", style: { background: "linear-gradient(135deg, #7f0df2, #9b3ff7)" } },
+  { id: "g2", label: "Indigo dawn", style: { background: "linear-gradient(135deg, #3b82f6, #7f0df2)" } },
+  { id: "g3", label: "Emerald calm", style: { background: "linear-gradient(135deg, #047857, #10b981)" } },
+  { id: "g4", label: "Sunset", style: { background: "linear-gradient(135deg, #f59e0b, #e11d48)" } },
+  { id: "g5", label: "Slate", style: { background: "linear-gradient(135deg, #1e293b, #475569)" } },
+  { id: "g6", label: "Sky", style: { background: "linear-gradient(135deg, #60a5fa, #34d399)" } }];
+
 
   const handleFilePick = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -678,8 +735,17 @@ function WikiPage() {
 
   return (
     <div className="page-wide">
-      <div className="wiki-shell" style={!showAside ? { gridTemplateColumns: "240px 1fr 40px" } : undefined}>
-        <aside className="wiki-tree">
+      <div className="wiki-shell" data-tree={showTree ? "open" : "closed"} data-aside={showAside ? "open" : "closed"}>
+        {(showTree || showAside) && (
+          <div
+            className={`wiki-drawer-scrim ${(showTree || showAside) ? "is-open" : ""}`}
+            onClick={() => { setShowTree(false); setShowAside(false); }}
+          />
+        )}
+        {showTree && <aside className="wiki-tree">
+          <button className="wiki-drawer-close" onClick={() => setShowTree(false)} aria-label="페이지 목록 닫기">
+            <Icon name="x" size={16} />
+          </button>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px 10px", borderBottom: "1px solid var(--border-soft)", marginBottom: 6 }}>
             <Icon name="search" size={12} style={{ color: "var(--text-lo)" }} />
             <input
@@ -704,75 +770,75 @@ function WikiPage() {
             <Icon name="plus" size={12} />
             <span>새 페이지</span>
           </div>
-        </aside>
+        </aside>}
 
         <div className="wiki-doc">
           <div
             className={`wiki-cover ${coverPanelOpen ? "is-editing" : ""}`}
-            style={{ height: coverHeight, "--cover-pos-x": `${coverPosX}%`, "--cover-pos-y": `${coverPosY}%`, "--cover-zoom": `${coverZoom}%` }}
-          >
-            {coverImage ? (
-              <div
-                className="wiki-cover-canvas"
-                style={{ background: coverImage, backgroundSize: `${coverZoom}% auto`, backgroundPosition: `${coverPosX}% ${coverPosY}%`, backgroundRepeat: "no-repeat" }}
-              />
-            ) : (
-              <div className="wiki-cover-canvas" style={{ background: "var(--surface-2)", backgroundImage: "none" }} />
-            )}
+            style={{ height: coverHeight, "--cover-pos-x": `${coverPosX}%`, "--cover-pos-y": `${coverPosY}%`, "--cover-zoom": `${coverZoom}%` }}>
+            
+            {coverImage ?
+            <div
+              className="wiki-cover-canvas"
+              style={{ background: coverImage, backgroundSize: `${coverZoom}% auto`, backgroundPosition: `${coverPosX}% ${coverPosY}%`, backgroundRepeat: "no-repeat" }} /> :
+
+
+            <div className="wiki-cover-canvas" style={{ background: "var(--surface-2)", backgroundImage: "none" }} />
+            }
 
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               style={{ display: "none" }}
-              onChange={handleFilePick}
-            />
+              onChange={handleFilePick} />
+            
 
             <div className="wiki-cover-controls">
-              {coverImage ? (
-                <>
+              {coverImage ?
+              <>
                   <button
-                    className={`wiki-cover-pill ${coverMenuOpen ? "is-active" : ""}`}
-                    onClick={() => { setCoverMenuOpen(!coverMenuOpen); setCoverPanelOpen(false); }}
-                    type="button"
-                  >
+                  className={`wiki-cover-pill ${coverMenuOpen ? "is-active" : ""}`}
+                  onClick={() => {setCoverMenuOpen(!coverMenuOpen);setCoverPanelOpen(false);}}
+                  type="button">
+                  
                     <Icon name="image" size={11} />커버 변경
                   </button>
                   <button
-                    className={`wiki-cover-pill ${coverPanelOpen ? "is-active" : ""}`}
-                    onClick={() => { setCoverPanelOpen(!coverPanelOpen); setCoverMenuOpen(false); }}
-                    type="button"
-                  >
+                  className={`wiki-cover-pill ${coverPanelOpen ? "is-active" : ""}`}
+                  onClick={() => {setCoverPanelOpen(!coverPanelOpen);setCoverMenuOpen(false);}}
+                  type="button">
+                  
                     <Icon name="settings" size={11} />위치 / 크기
                   </button>
                   <button
-                    className="wiki-cover-pill"
-                    onClick={handleRemoveCover}
-                    type="button"
-                  >
+                  className="wiki-cover-pill"
+                  onClick={handleRemoveCover}
+                  type="button">
+                  
                     <Icon name="x" size={11} />제거
                   </button>
-                </>
-              ) : (
-                <button
-                  className={`wiki-cover-pill ${coverMenuOpen ? "is-active" : ""}`}
-                  onClick={() => setCoverMenuOpen(!coverMenuOpen)}
-                  type="button"
-                >
+                </> :
+
+              <button
+                className={`wiki-cover-pill ${coverMenuOpen ? "is-active" : ""}`}
+                onClick={() => setCoverMenuOpen(!coverMenuOpen)}
+                type="button">
+                
                   <Icon name="plus" size={11} />커버 추가
                 </button>
-              )}
+              }
             </div>
 
-            {coverMenuOpen && (
-              <div className="wiki-cover-panel" style={{ width: 280, top: 50 }}>
+            {coverMenuOpen &&
+            <div className="wiki-cover-panel" style={{ width: 280, top: 50 }}>
                 <div className="kicker" style={{ marginBottom: 10 }}>커버 이미지</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
                   <button
-                    className="popover-item"
-                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                    type="button"
-                  >
+                  className="popover-item"
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  type="button">
+                  
                     <Icon name="image" size={14} />
                     <div style={{ flex: 1 }}>
                       <div>로컬 파일 업로드</div>
@@ -789,37 +855,37 @@ function WikiPage() {
                 </div>
                 <div className="kicker" style={{ marginBottom: 8 }}>갤러리</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
-                  {COVER_GALLERY.map(g => (
-                    <button
-                      key={g.id}
-                      onClick={() => handlePickGallery(g)}
-                      type="button"
-                      title={g.label}
-                      style={{
-                        height: 48,
-                        borderRadius: "var(--r-sm)",
-                        border: "1px solid var(--border-soft)",
-                        cursor: "pointer",
-                        ...g.style,
-                        transition: "transform var(--dur-fast)",
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.04)"}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                    />
-                  ))}
+                  {COVER_GALLERY.map((g) =>
+                <button
+                  key={g.id}
+                  onClick={() => handlePickGallery(g)}
+                  type="button"
+                  title={g.label}
+                  style={{
+                    height: 48,
+                    borderRadius: "var(--r-sm)",
+                    border: "1px solid var(--border-soft)",
+                    cursor: "pointer",
+                    ...g.style,
+                    transition: "transform var(--dur-fast)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.04)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"} />
+
+                )}
                 </div>
               </div>
-            )}
+            }
 
-            {coverPanelOpen && coverImage && (
-              <div className="wiki-cover-panel">
+            {coverPanelOpen && coverImage &&
+            <div className="wiki-cover-panel">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <div className="kicker">위치 & 크기</div>
                   <button
-                    className="icon-btn"
-                    onClick={() => { setCoverPosX(50); setCoverPosY(50); setCoverHeight(180); setCoverZoom(100); }}
-                    title="기본값으로 되돌리기"
-                  >
+                  className="icon-btn"
+                  onClick={() => {setCoverPosX(50);setCoverPosY(50);setCoverHeight(180);setCoverZoom(100);}}
+                  title="기본값으로 되돌리기">
+                  
                     <Icon name="refresh" size={12} />
                   </button>
                 </div>
@@ -843,139 +909,184 @@ function WikiPage() {
                   완료
                 </button>
               </div>
-            )}
+            }
 
-            <div className="wiki-icon">{active.icon}</div>
+            <div className="wiki-icon-host">
+              <window.Planary.IconPicker
+                value={activeIcon}
+                onChange={setActiveIcon}
+                size={64}
+                color="var(--surface)"
+              />
+            </div>
           </div>
           <div className="wiki-doc-meta">
-            <span>Planary 핸드북</span>
-            <Icon name="chevronRight" size={11} />
-            <span>디자인 시스템</span>
-            <Icon name="chevronRight" size={11} />
-            <span style={{ color: "var(--text-hi)" }}>{active.title}</span>
+            <button
+              className="btn btn-sm"
+              onClick={() => setShowTree(s => !s)}
+              title="페이지 목록"
+              style={{ marginRight: 4 }}
+            >
+              <Icon name="menu" size={12} />페이지
+            </button>
+            {(() => {
+              // Build ancestry chain from root to current page
+              const chain = [];
+              let cur = active;
+              while (cur) {
+                chain.unshift(cur);
+                cur = cur.parent ? WIKI_TREE.find(w => w.id === cur.parent) : null;
+              }
+              return chain.map((node, i) => {
+                const isLast = i === chain.length - 1;
+                return (
+                  <React.Fragment key={node.id}>
+                    {i > 0 && <Icon name="chevronRight" size={11} />}
+                    {isLast ? (
+                      <span style={{ color: "var(--text-hi)", fontWeight: 600 }}>{node.title}</span>
+                    ) : (
+                      <button
+                        className="wiki-crumb"
+                        onClick={() => setActiveId(node.id)}
+                        title={`${node.title}(으)로 이동`}
+                      >
+                        <span className="wiki-crumb-icon">{node.icon}</span>
+                        {node.title}
+                      </button>
+                    )}
+                  </React.Fragment>
+                );
+              });
+            })()}
             <div style={{ flex: 1 }} />
-            <span className="chip"><Icon name="clock" size={10} />12분 전</span>
             <button
               className={`btn btn-sm ${showAside ? "btn-ghost" : ""}`}
-              onClick={() => setShowAside(v => !v)}
-              title={showAside ? "목차 접기" : "목차 열기"}
-              aria-pressed={showAside}
+              onClick={() => setShowAside(s => !s)}
+              title="목차"
+              style={{ background: showAside ? "var(--accent-soft)" : undefined, color: showAside ? "var(--accent)" : undefined }}
             >
               <Icon name="list" size={12} />목차
             </button>
+            <span className="chip"><Icon name="clock" size={10} />12분 전</span>
             <div style={{ position: "relative" }}>
               <button
                 className="btn btn-sm btn-ghost"
                 data-comment-anchor="03bfe54937-button-603-13"
-                onClick={() => setShareOpen(true)}
-              >
+                onClick={() => setShareOpen(true)}>
+                
                 <Icon name="share" size={12} />공유
               </button>
             </div>
-            <button
-              className="btn btn-sm"
-              style={{ width: 28, padding: 0, justifyContent: "center" }}
-              onClick={() => window.Planary?.toast?.({ type: "info", title: "옵션", sub: "복제 · 보관 · 삭제는 곧 추가됩니다" })}
-              aria-label="더 보기"
-            >
-              <Icon name="more" size={14} />
-            </button>
+            <div style={{ position: "relative" }}>
+              <button
+                className="btn btn-sm"
+                style={{ width: 28, padding: 0, justifyContent: "center" }}
+                onClick={() => setMoreMenuOpen(o => !o)}
+                title="페이지 작업"
+              >
+                <Icon name="more" size={14} />
+              </button>
+              {moreMenuOpen && (
+                <>
+                  <div
+                    style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                    onClick={() => setMoreMenuOpen(false)}
+                  />
+                  <div
+                    className="popover"
+                    style={{ top: "calc(100% + 6px)", right: 0, minWidth: 220, zIndex: 100 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ padding: "10px 12px 6px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 6, background: "var(--bg-elev)", display: "grid", placeItems: "center", fontSize: 16 }}>
+                        {activeIcon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{active.title}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-faint)" }}>마지막 수정 · 12분 전</div>
+                      </div>
+                    </div>
+                    <div className="popover-sep" />
+                    <div
+                      className="popover-item"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        const next = new Set(favorites);
+                        const isFav = favorites.has(activeId);
+                        if (isFav) next.delete(activeId); else next.add(activeId);
+                        setFavorites(next);
+                        window.Planary.toast?.({
+                          type: "ok",
+                          title: isFav ? "즐겨찾기에서 제거됨" : "즐겨찾기에 추가됨",
+                          sub: active.title,
+                        });
+                      }}
+                    >
+                      <Icon name="star" size={14} style={favorites.has(activeId) ? { color: "var(--warn)", fill: "var(--warn)" } : undefined} />
+                      <span style={{ flex: 1 }}>{favorites.has(activeId) ? "즐겨찾기에서 제거" : "즐겨찾기에 추가"}</span>
+                    </div>
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); window.Planary.toast?.({ type: "ok", title: "복제됨", sub: `"${active.title}의 사본"이 만들어졌어요` }); }}>
+                      <Icon name="copy" size={14} />페이지 복제
+                    </div>
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); navigator.clipboard?.writeText(`https://planary.app/w/${active.id}`); window.Planary.toast?.({ type: "ok", title: "링크가 복사됐어요" }); }}>
+                      <Icon name="link" size={14} />링크 복사
+                    </div>
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); window.Planary.toast?.({ type: "info", title: "이동 패널을 열었어요" }); }}>
+                      <Icon name="folder" size={14} />이동
+                      <Icon name="chevronRight" size={11} style={{ marginLeft: "auto", color: "var(--text-faint)" }} />
+                    </div>
+                    <div className="popover-sep" />
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); setInfoOpen(true); }}>
+                      <Icon name="document" size={14} />페이지 정보
+                    </div>
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); setHistoryOpen(true); }}>
+                      <Icon name="clock" size={14} />수정 이력
+                      <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-faint)" }}>12</span>
+                    </div>
+                    <div
+                      className="popover-item"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        setExportMenuOpen(true);
+                      }}
+                    >
+                      <Icon name="download" size={14} />내보내기
+                      <Icon name="chevronRight" size={11} style={{ marginLeft: "auto", color: "var(--text-faint)" }} />
+                    </div>
+                    <div className="popover-sep" />
+                    <div
+                      className="popover-item is-danger"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        if (window.confirm(`"${active.title}" 페이지를 삭제할까요?`)) {
+                          window.Planary.toast?.({ type: "err", title: "페이지가 삭제됐어요", sub: "30일 후 영구 삭제됩니다" });
+                        }
+                      }}
+                    >
+                      <Icon name="trash" size={14} />페이지 삭제
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <span className="chip chip-accent"><Icon name="book" size={10} />디자인 시스템</span>
             <span className="tag">tokens</span>
             <span className="tag">color</span>
             <span className="tag">v3</span>
-            <button
-              className="chip"
-              style={{ borderStyle: "dashed", color: "var(--text-faint)", cursor: "pointer" }}
-              onClick={() => {
-                const t = window.prompt("새 태그를 입력하세요");
-                if (t && t.trim()) window.Planary?.toast?.({ type: "ok", title: `'${t.trim()}' 태그를 추가했어요` });
-              }}
-            >
-              <Icon name="plus" size={10} />태그
-            </button>
+            <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }}><Icon name="plus" size={10} />태그</button>
           </div>
           <h1 className="wiki-doc-title">{active.title}</h1>
 
-          <div className="wiki-block">
-            <p style={{ fontSize: 17, color: "var(--text-md)", lineHeight: 1.65 }}>
-              Planary는 <strong style={{ color: "var(--text-hi)" }}>단일 악센트 컬러</strong> 위에 풍부한 중성색 스택을 쌓아 정보 위계를 만듭니다. 다크 모드를 기본으로 하고, 라이트 모드는 동일한 위계를 반전 톤으로 유지합니다.
-            </p>
-
-            <div className="callout callout-ok">
-              <Icon name="sparkles" size={18} style={{ color: "var(--ok)", flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <strong style={{ color: "var(--text-hi)" }}>설계 원칙.</strong> 새로운 hex를 추가하지 마세요. 악센트의 투명도 단계(<code>--accent-soft</code>, <code>--accent-softer</code>)와 <code>color-mix(in oklab, ...)</code>로 충분히 표현 가능합니다.
-              </div>
-            </div>
-
-            <h2 id="h-tokens">코어 토큰</h2>
-            <p>모든 컬러는 <code>var(--*)</code>로만 접근합니다. 가공이 필요할 때는 <code>color-mix</code>로 표현해 다크/라이트 자동 호환을 보장합니다.</p>
-
-            <table>
-              <thead>
-                <tr><th>토큰</th><th>다크</th><th>라이트</th><th>용도</th></tr>
-              </thead>
-              <tbody>
-                <tr><td><code>--accent</code></td><td className="mono">#7f0df2</td><td className="mono">#7f0df2</td><td>활성 상태, 주요 CTA</td></tr>
-                <tr><td><code>--bg</code></td><td className="mono">#0a070e</td><td className="mono">#f7f6fb</td><td>앱 캔버스</td></tr>
-                <tr><td><code>--surface</code></td><td className="mono">#181024</td><td className="mono">#ffffff</td><td>카드, 입력 필드</td></tr>
-                <tr><td><code>--text-hi</code></td><td className="mono">#f1f5f9</td><td className="mono">#15131c</td><td>헤딩, 본문</td></tr>
-                <tr><td><code>--border-soft</code></td><td className="mono">#221635</td><td className="mono">#efebf6</td><td>구분선, 약한 경계</td></tr>
-              </tbody>
-            </table>
-
-            <h3 id="h-accent">악센트 팔레트</h3>
-            <p>사용자는 6가지 악센트 중 자신의 워크스페이스 톤을 선택할 수 있습니다. 모두 같은 시각적 무게를 가지도록 조정되어 있습니다.</p>
-
-            <div className="wiki-img">
-              <Icon name="image" size={28} />
-              <div style={{ position: "absolute", bottom: 12, left: 14, fontSize: 11, textTransform: "none", letterSpacing: 0 }}>
-                Figma · <em>palette-swatches.fig</em>
-              </div>
-            </div>
-
-            <h3 id="h-css">CSS 변수 사용</h3>
-            <CodeBlock anchor="0f614c02b9-pre-654-13" />
-
-            <h3 id="h-text">텍스트 스택</h3>
-            <p>슬레이트 5단계로 위계를 만듭니다. 본문 안에 <code>--text-md</code>, 헤딩에 <code>--text-hi</code>, 메타에 <code>--text-lo</code>, 빈 상태와 힌트에 <code>--text-mute</code>, 입력 placeholder에 <code>--text-faint</code>.</p>
-
-            <blockquote>"좋은 위계는 무엇이 중요한지 말해주지 않습니다. 그저 보이게 만들 뿐이에요."</blockquote>
-
-            <div className="callout callout-warn">
-              <Icon name="flag" size={18} style={{ color: "var(--warn)", flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <strong style={{ color: "var(--text-hi)" }}>주의.</strong> 본문 안에 <code>--text-hi</code>를 쓰면 위계가 망가집니다. 본문은 무조건 <code>--text-md</code>.
-              </div>
-            </div>
-
-            <h2 id="h-shadow">그림자 & 글로우</h2>
-            <p>물리적 그림자 3단계 + 악센트 글로우 1종. 활성 CTA·로고·진행중 카드 아래에만 <code>--glow</code>를 깔아 브랜드 시그니처로 사용합니다.</p>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 14 }}>
-              {[
-              { label: "sm", style: { boxShadow: "var(--shadow-sm)" } },
-              { label: "md", style: { boxShadow: "var(--shadow-md)" } },
-              { label: "lg", style: { boxShadow: "var(--shadow-lg)" } }].
-              map((s) =>
-              <div key={s.label} className="card" style={{ ...s.style, textAlign: "center", padding: 28 }}>
-                  <div className="mono" style={{ fontSize: 11, color: "var(--text-lo)" }}>--shadow-{s.label}</div>
-                </div>
-              )}
-            </div>
-
-            <div className="slash-hint" style={{ marginTop: 28 }}>
-              <Icon name="plus" size={11} />
-              <span>여기에서 <span className="kbd">/</span> 입력해 블록 추가</span>
-            </div>
-          </div>
+          <WikiBlocks activeId={activeId} />
         </div>
 
-        {showAside ?
-        <aside className="wiki-aside wiki-aside--force">
+        {showAside &&
+        <aside className="wiki-aside">
+            <button className="wiki-drawer-close" onClick={() => setShowAside(false)} aria-label="목차 닫기">
+              <Icon name="x" size={16} />
+            </button>
             <div className="wiki-aside-card">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div className="kicker">목차</div>
@@ -1008,19 +1119,12 @@ function WikiPage() {
               <div className="toc-link">← 디자인 시스템</div>
               <div className="toc-link">← 주간 회고 #42</div>
             </div>
-          </aside> :
-
-        <button
-          className="wiki-toc-restore"
-          onClick={() => setShowAside(true)}
-          title="목차 다시 열기">
-          
-            <Icon name="chevronLeft" size={14} />
-            <span className="wiki-toc-restore-label">목차</span>
-          </button>
-        }
+          </aside>}
       </div>
       {shareOpen && <ShareDialog onClose={() => setShareOpen(false)} title={active.title} />}
+      {historyOpen && <VersionHistoryDialog onClose={() => setHistoryOpen(false)} page={active} />}
+      {infoOpen && <PageInfoDialog onClose={() => setInfoOpen(false)} page={active} favorites={favorites} />}
+      {exportMenuOpen && <ExportDialog onClose={() => setExportMenuOpen(false)} page={active} />}
     </div>);
 
 }
@@ -1029,36 +1133,14 @@ function WikiPage() {
    BOOKMARKS
    =========================================================== */
 function BookmarksPage() {
-  const [bookmarks, setBookmarks] = useStateO(window.Planary.BOOKMARKS);
+  const { BOOKMARKS } = window.Planary;
   const [query, setQuery] = useStateO("");
   const [active, setActive] = useStateO("전체");
-  const [urlDraft, setUrlDraft] = useStateO("");
-  const composerRef = useRefO(null);
-  const allTags = ["전체", ...new Set(bookmarks.flatMap((b) => b.tags))];
-  const filtered = bookmarks.filter((b) =>
+  const allTags = ["전체", ...new Set(BOOKMARKS.flatMap((b) => b.tags))];
+  const filtered = BOOKMARKS.filter((b) =>
   (active === "전체" || b.tags.includes(active)) && (
   !query || b.title.toLowerCase().includes(query.toLowerCase()) || b.url.toLowerCase().includes(query.toLowerCase()))
   );
-
-  const colors = ["#2563eb","#10b981","#f59e0b","#e11d48","#7f0df2","#0ea5e9","#84cc16"];
-  const saveBookmark = () => {
-    const raw = urlDraft.trim();
-    if (!raw) return;
-    let url = raw;
-    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
-    let host = url;
-    try { host = new URL(url).hostname.replace(/^www\./,""); } catch (_) {}
-    const title = host.split(".")[0].replace(/^./, c => c.toUpperCase());
-    const letter = title.slice(0,1).toUpperCase();
-    const id = "bk" + Date.now();
-    setBookmarks(prev => [{ id, title, url, color: colors[Math.floor(Math.random()*colors.length)], letter, tags: ["새로 추가"] }, ...prev]);
-    window.Planary.BOOKMARKS = [{ id, title, url, color: colors[Math.floor(Math.random()*colors.length)], letter, tags: ["새로 추가"] }, ...window.Planary.BOOKMARKS];
-    setUrlDraft("");
-    window.Planary?.toast?.({ type: "ok", title: "북마크가 추가됐어요", sub: host });
-  };
-  const openBookmark = (b) => {
-    window.open(b.url, "_blank", "noopener");
-  };
 
   return (
     <div className="page-wide">
@@ -1066,23 +1148,16 @@ function BookmarksPage() {
         <div>
           <div className="hero-greet">WORKSPACE · 북마크</div>
           <div className="page-title">북마크</div>
-          <div className="page-sub">{bookmarks.length}개 · 태그로 정리된 링크 모음</div>
+          <div className="page-sub">{BOOKMARKS.length}개 · 태그로 정리된 링크 모음</div>
         </div>
-        <button className="btn btn-primary" onClick={() => composerRef.current?.focus()}><Icon name="plus" size={14} />새 북마크</button>
+        <button className="btn btn-primary"><Icon name="plus" size={14} />새 북마크</button>
       </div>
 
       <div className="composer">
         <div className="composer-row">
           <Icon name="link" size={16} style={{ color: "var(--accent)" }} />
-          <input
-            ref={composerRef}
-            className="composer-input"
-            placeholder="URL 붙여넣기 — https://..."
-            value={urlDraft}
-            onChange={e => setUrlDraft(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") saveBookmark(); }}
-          />
-          <button className="btn btn-sm btn-primary" onClick={saveBookmark} disabled={!urlDraft.trim()}>저장</button>
+          <input className="composer-input" placeholder="URL 붙여넣기 — https://..." />
+          <button className="btn btn-sm btn-primary">저장</button>
         </div>
       </div>
 
@@ -1095,28 +1170,29 @@ function BookmarksPage() {
         
       </div>
 
-      <div className="tasks-toolbar">
-        {allTags.map((t) =>
-        <button
-          key={t}
-          className={`chip-btn ${active === t ? "is-active" : ""}`}
-          onClick={() => setActive(t)}>
-          
-            {t === "전체" ? <Icon name="hash" size={12} /> : <Icon name="hash" size={12} />}
-            {t}
-            <span className="chip-btn-count">{t === "전체" ? BOOKMARKS.length : BOOKMARKS.filter((b) => b.tags.includes(t)).length}</span>
-          </button>
-        )}
+      <div className="tag-filter-bar">
+        <div className="tag-filter-label">
+          <Icon name="filter" size={12} />
+          <span>태그</span>
+        </div>
+        <div className="tag-filter-chips">
+          {allTags.map((t) =>
+          <button
+            key={t}
+            className={`tag-chip ${active === t ? "is-active" : ""}`}
+            onClick={() => setActive(t)}>
+            
+              <span className="tag-chip-hash">{t === "전체" ? "" : "#"}</span>
+              <span>{t}</span>
+              <span className="tag-chip-count">{t === "전체" ? BOOKMARKS.length : BOOKMARKS.filter((b) => b.tags.includes(t)).length}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bookmarks-grid">
         {filtered.map((b) =>
-        <div
-          key={b.id}
-          className="bookmark"
-          onClick={() => openBookmark(b)}
-          style={{ cursor: "pointer" }}
-        >
+        <div key={b.id} className="bookmark">
             <div className="bookmark-favicon" style={{ background: b.color }}>{b.letter}</div>
             <div className="bookmark-main">
               <div className="bookmark-title">{b.title}</div>
@@ -1125,27 +1201,28 @@ function BookmarksPage() {
                 {b.tags.map((t) => <span key={t} className="tag">#{t}</span>)}
               </div>
             </div>
-            <button
-              className="icon-btn"
-              style={{ alignSelf: "start" }}
-              onClick={e => { e.stopPropagation(); openBookmark(b); }}
-              aria-label={`${b.title} 열기`}
-            >
+            <button className="icon-btn" style={{ alignSelf: "start" }}>
               <Icon name="arrowUpRight" size={14} />
             </button>
-          </div>
-        )}
-        {filtered.length === 0 && (
-          <div className="empty card" style={{ gridColumn: "1 / -1" }}>
-            <div className="empty-icon"><Icon name="link" size={24} /></div>
-            <div style={{ fontWeight: 600, marginTop: 8 }}>북마크가 없어요</div>
-            <div style={{ fontSize: 12, color: "var(--text-lo)" }}>위 입력칸에 URL을 붙여넣어 추가하세요</div>
           </div>
         )}
       </div>
     </div>);
 
 }
+
+const ARCHIVE_QUOTES = [
+  { text: "기록은 기억을 지배합니다. 오늘 적어둔 한 줄이 다음 달의 결정을 바꿉니다.", date: "2025. 09. 14 메모에서" },
+  { text: "큰 변화는 작은 습관의 누적입니다. 매일 한 가지만, 꾸준히.", date: "2025. 07. 22 메모에서" },
+  { text: "할 일 목록은 결심이 아니라 약속입니다. 미래의 나에게 보내는 편지.", date: "2025. 06. 03 메모에서" },
+  { text: "완벽하게 시작하려고 기다리지 마세요. 시작하면 점점 더 잘하게 됩니다.", date: "2025. 05. 18 메모에서" },
+  { text: "오늘 10분, 내일 10분. 한 주가 모이면 한 시간, 한 달이면 다섯 시간입니다.", date: "2025. 04. 02 메모에서" },
+  { text: "계획은 길을 보여주지만, 실천은 길을 만들어요.", date: "2025. 02. 27 메모에서" },
+  { text: "느린 발걸음도 멈추지만 않으면 결국 도착합니다.", date: "2025. 01. 11 메모에서" },
+  { text: "쉬는 것도 일의 일부입니다. 좋은 결정은 충분히 회복된 마음에서 나와요.", date: "2024. 12. 14 메모에서" },
+  { text: "어제의 나보다 1%만 더. 그게 1년이면 38배의 성장입니다.", date: "2024. 11. 03 메모에서" },
+  { text: "지금 한 작업은 미래의 자유 시간입니다.", date: "2024. 09. 22 메모에서" },
+];
 
 /* ===========================================================
    ARCHIVE
@@ -1155,6 +1232,20 @@ function ArchivePage({ tasks }) {
   const heat = window.Planary.WEEKLY_HEATMAP;
   const [range, setRange] = useStateO("month"); // week | month | quarter | year | all
   const [archiveSearch, setArchiveSearch] = useStateO("");
+  const [quoteIdx, setQuoteIdx] = useStateO(() => {
+    // start with quote based on day-of-year so daily users see fresh quote
+    const d = new Date();
+    const day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+    return day % ARCHIVE_QUOTES.length;
+  });
+
+  useEffectO(() => {
+    // Auto-rotate every 8s
+    const t = setInterval(() => setQuoteIdx(i => (i + 1) % ARCHIVE_QUOTES.length), 8000);
+    return () => clearInterval(t);
+  }, []);
+
+  const quote = ARCHIVE_QUOTES[quoteIdx];
 
   // Compute month positions for label row based on starting from "1 year ago"
   const today = new Date();
@@ -1171,7 +1262,7 @@ function ArchivePage({ tasks }) {
     }
   }
 
-  const filtered = completed.filter(t => archiveSearch === "" || t.title.toLowerCase().includes(archiveSearch.toLowerCase()));
+  const filtered = completed.filter((t) => archiveSearch === "" || t.title.toLowerCase().includes(archiveSearch.toLowerCase()));
 
   const handleExport = () => {
     window.Planary.toast({ type: "ok", title: "보관함 내보내기 시작", sub: `${filtered.length}개 항목 · CSV로 다운로드 중…` });
@@ -1219,12 +1310,12 @@ function ArchivePage({ tasks }) {
         <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", marginBottom: 18, gap: 14 }}>
           <div>
             <div className="kicker">활동 히트맵</div>
-            <h3 style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.015em", marginTop: 4 }}>지난 1년 · {heat.filter(v => v > 0).length}일 활동</h3>
+            <h3 style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.015em", marginTop: 4 }}>지난 1년 · {heat.filter((v) => v > 0).length}일 활동</h3>
             <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 4 }}>매일 작업 1개 이상 완료한 날의 강도</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--text-faint)" }}>
             적게
-            {[0,1,2,3,4].map(l => <div key={l} className={`heat-cell ${l ? `l${l}` : ""}`} style={{ width: 11, height: 11, borderRadius: 3 }} />)}
+            {[0, 1, 2, 3, 4].map((l) => <div key={l} className={`heat-cell ${l ? `l${l}` : ""}`} style={{ width: 11, height: 11, borderRadius: 3 }} />)}
             많이
           </div>
         </div>
@@ -1237,37 +1328,73 @@ function ArchivePage({ tasks }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="heat-year-months">
                 {Array.from({ length: 12 }).map((_, i) => {
-                  const d = new Date(); d.setMonth(d.getMonth() - 11 + i);
-                  return <div key={i}>{(d.getMonth() + 1)}월</div>;
+                  const d = new Date();d.setMonth(d.getMonth() - 11 + i);
+                  return <div key={i}>{d.getMonth() + 1}월</div>;
                 })}
               </div>
               <div className="heat-year">
-                {heat.map((v, i) => (
-                  <div
-                    key={i}
-                    className={`heat-cell ${v ? `l${v}` : ""}`}
-                    title={v ? `${v}개 완료` : "활동 없음"}
-                  />
-                ))}
+                {heat.map((v, i) =>
+                <div
+                  key={i}
+                  className={`heat-cell ${v ? `l${v}` : ""}`}
+                  title={v ? `${v}개 완료` : "활동 없음"} />
+
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 18, padding: 22, borderColor: "var(--accent-ring)" }}>
+      <div className="card" style={{ marginBottom: 18, padding: 22, borderColor: "var(--accent-ring)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "start", gap: 16 }}>
           <Icon name="sparkles" size={22} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 2 }} />
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="kicker">과거의 나로부터</div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6, letterSpacing: "-0.01em" }}>
-              "기록은 기억을 지배합니다. 오늘 적어둔 한 줄이 다음 달의 결정을 바꿉니다."
+            <div key={quoteIdx} className="archive-quote-text">
+              "{quote.text}"
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 8 }}>2025. 09. 14 메모에서</div>
+            <div style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}>
+              <span>{quote.date}</span>
+              <span style={{ color: "var(--text-faint)" }}>·</span>
+              <span style={{ color: "var(--text-faint)" }}>{quoteIdx + 1} / {ARCHIVE_QUOTES.length}</span>
+            </div>
+            {/* Dot indicators */}
+            <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
+              {ARCHIVE_QUOTES.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setQuoteIdx(i)}
+                  aria-label={`인용 ${i + 1}`}
+                  style={{
+                    width: i === quoteIdx ? 18 : 6, height: 6,
+                    borderRadius: 999,
+                    background: i === quoteIdx ? "var(--accent)" : "var(--surface-2)",
+                    border: 0,
+                    cursor: "pointer",
+                    transition: "all var(--dur-base) var(--ease-out)",
+                    padding: 0,
+                  }}
+                />
+              ))}
+            </div>
           </div>
-          <button className="icon-btn" onClick={() => window.Planary.toast({ type: "info", title: "새로운 영감을 가져왔어요" })}>
-            <Icon name="refresh" size={14} />
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+            <button
+              className="icon-btn"
+              title="이전"
+              onClick={() => setQuoteIdx(i => (i - 1 + ARCHIVE_QUOTES.length) % ARCHIVE_QUOTES.length)}
+            >
+              <Icon name="chevronLeft" size={14} />
+            </button>
+            <button
+              className="icon-btn"
+              title="다음"
+              onClick={() => setQuoteIdx(i => (i + 1) % ARCHIVE_QUOTES.length)}
+            >
+              <Icon name="chevronRight" size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1278,29 +1405,29 @@ function ArchivePage({ tasks }) {
         <div style={{ flex: 1 }} />
         <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-md)", gap: 1, border: "1px solid var(--border-soft)" }}>
           {[
-            { id: "week",   label: "이번 주" },
-            { id: "month",  label: "이번 달" },
-            { id: "quarter", label: "분기" },
-            { id: "year",   label: "올해" },
-            { id: "all",    label: "전체" },
-          ].map(r => (
-            <button
-              key={r.id}
-              onClick={() => setRange(r.id)}
-              type="button"
-              style={{
-                height: 26, padding: "0 10px",
-                borderRadius: 4,
-                fontSize: 11, fontWeight: 600,
-                background: range === r.id ? "var(--surface)" : "transparent",
-                color: range === r.id ? "var(--text-hi)" : "var(--text-lo)",
-                boxShadow: range === r.id ? "var(--shadow-sm)" : "none",
-                transition: "all var(--dur-fast)",
-              }}
-            >
+          { id: "week", label: "이번 주" },
+          { id: "month", label: "이번 달" },
+          { id: "quarter", label: "분기" },
+          { id: "year", label: "올해" },
+          { id: "all", label: "전체" }].
+          map((r) =>
+          <button
+            key={r.id}
+            onClick={() => setRange(r.id)}
+            type="button"
+            style={{
+              height: 26, padding: "0 10px",
+              borderRadius: 4,
+              fontSize: 11, fontWeight: 600,
+              background: range === r.id ? "var(--surface)" : "transparent",
+              color: range === r.id ? "var(--text-hi)" : "var(--text-lo)",
+              boxShadow: range === r.id ? "var(--shadow-sm)" : "none",
+              transition: "all var(--dur-fast)"
+            }}>
+            
               {r.label}
             </button>
-          ))}
+          )}
         </div>
         <div className="search-bar" style={{ width: 200, marginBottom: 0, padding: "6px 10px" }}>
           <Icon name="search" size={13} />
@@ -1308,8 +1435,8 @@ function ArchivePage({ tasks }) {
             placeholder="검색"
             value={archiveSearch}
             onChange={(e) => setArchiveSearch(e.target.value)}
-            style={{ fontSize: 12 }}
-          />
+            style={{ fontSize: 12 }} />
+          
         </div>
         <button className="btn btn-sm btn-ghost" onClick={handleExport}>
           <Icon name="download" size={13} />CSV
@@ -1317,12 +1444,12 @@ function ArchivePage({ tasks }) {
       </div>
 
       <div className="task-list">
-        {filtered.length === 0 && (
-          <div className="empty card">
+        {filtered.length === 0 &&
+        <div className="empty card">
             <div className="empty-icon"><Icon name="archive" size={24} /></div>
             {archiveSearch ? "검색 결과가 없어요." : "아직 완료된 작업이 없어요."}
           </div>
-        )}
+        }
         {filtered.map((t) =>
         <window.Planary.TaskCard key={t.id} task={t} onToggle={(id) => window.dispatchEvent(new CustomEvent('planary:toggle-task', { detail: id }))} projects={window.Planary.PROJECTS} />
         )}
@@ -1339,8 +1466,10 @@ function ProfilePage({ tasks, t, setTweak }) {
   const [user, setUser] = useStateO(USER);
   const [editOpen, setEditOpen] = useStateO(false);
   const [signOutOpen, setSignOutOpen] = useStateO(false);
+  const [switchOpen, setSwitchOpen] = useStateO(false);
   const [plan, setPlan] = useStateO("pro");
-  const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | null
+  const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | "lang" | null
+  const [lang, setLangState] = useStateO(() => window.PlanaryI18n?.getLang?.() || "ko");
   const [notifs, setNotifs] = useStateO({ email: true, push: true, gcal: true, apple: false, slack: false });
   const done = tasks.filter((x) => x.done).length;
   const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
@@ -1350,12 +1479,19 @@ function ProfilePage({ tasks, t, setTweak }) {
   const fontOpts = [{ id: "jakarta", label: "Plus Jakarta Sans" }, { id: "pretendard", label: "Pretendard" }, { id: "inter", label: "Inter" }];
   const sidebarOpts = [{ id: "full", label: "풀 너비" }, { id: "compact", label: "컴팩트" }, { id: "icons", label: "아이콘만" }];
   const densityOpts = [{ id: "compact", label: "촘촘하게" }, { id: "regular", label: "보통" }, { id: "comfortable", label: "여유롭게" }];
-  const fontLabel = (fontOpts.find(o => o.id === (t && t.font)) || fontOpts[0]).label;
-  const sidebarLabel = (sidebarOpts.find(o => o.id === (t && t.sidebar)) || sidebarOpts[0]).label;
-  const densityLabel = (densityOpts.find(o => o.id === (t && t.density)) || densityOpts[1]).label;
-  const planMeta = plan === "pro"
-    ? { chip: "Pro 플랜", chipClass: "chip-accent", price: "월 5,900원", features: ["무제한 프로젝트", "e-Class 자동 동기화", "1년 활동 히트맵", "팀 협업 (베타)"] }
-    : { chip: "Basic 플랜", chipClass: "chip",       price: "무료",       features: ["프로젝트 3개", "수동 동기화", "30일 히트맵", "개인 사용 전용"] };
+  const langOpts = [
+    { id: "ko", label: "한국어", flag: "🇰🇷" },
+    { id: "en", label: "English", flag: "🇺🇸" },
+    { id: "ja", label: "日本語", flag: "🇯🇵" },
+    { id: "zh", label: "中文", flag: "🇨🇳" },
+    { id: "es", label: "Español", flag: "🇪🇸" },
+  ];
+  const fontLabel = (fontOpts.find((o) => o.id === (t && t.font)) || fontOpts[0]).label;
+  const sidebarLabel = (sidebarOpts.find((o) => o.id === (t && t.sidebar)) || sidebarOpts[0]).label;
+  const densityLabel = (densityOpts.find((o) => o.id === (t && t.density)) || densityOpts[1]).label;
+  const planMeta = plan === "pro" ?
+  { chip: "Pro 플랜", chipClass: "chip-accent", price: "월 5,900원", features: ["무제한 프로젝트", "e-Class 자동 동기화", "1년 활동 히트맵", "팀 협업 (베타)"] } :
+  { chip: "Basic 플랜", chipClass: "chip", price: "무료", features: ["프로젝트 3개", "수동 동기화", "30일 히트맵", "개인 사용 전용"] };
   const saveProfile = (draft) => {
     setUser(draft);
     window.Planary.USER = { ...window.Planary.USER, ...draft };
@@ -1379,9 +1515,9 @@ function ProfilePage({ tasks, t, setTweak }) {
               style={{
                 background: isImage ? `${user.avatar} center/cover no-repeat` : "var(--accent-soft)",
                 color: "var(--accent)",
-                boxShadow: "none",
-              }}
-            >
+                boxShadow: "none"
+              }}>
+              
               {!isImage && user.initials}
             </div>
             <div className="profile-name-big">{user.name}</div>
@@ -1400,19 +1536,19 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 10 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>플랜</h3>
               <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-sm)", gap: 1 }}>
-                {["basic", "pro"].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPlan(p)}
-                    style={{
-                      height: 22, padding: "0 9px", borderRadius: 4,
-                      fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
-                      background: plan === p ? "var(--surface)" : "transparent",
-                      color: plan === p ? "var(--text-hi)" : "var(--text-lo)",
-                      boxShadow: plan === p ? "var(--shadow-sm)" : "none",
-                    }}
-                  >{p}</button>
-                ))}
+                {["basic", "pro"].map((p) =>
+                <button
+                  key={p}
+                  onClick={() => setPlan(p)}
+                  style={{
+                    height: 22, padding: "0 9px", borderRadius: 4,
+                    fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
+                    background: plan === p ? "var(--surface)" : "transparent",
+                    color: plan === p ? "var(--text-hi)" : "var(--text-lo)",
+                    boxShadow: plan === p ? "var(--shadow-sm)" : "none"
+                  }}>
+                  {p}</button>
+                )}
               </div>
             </div>
             <div style={{ padding: "14px 18px 18px" }}>
@@ -1421,18 +1557,18 @@ function ProfilePage({ tasks, t, setTweak }) {
                 <span style={{ fontSize: 13, color: "var(--text-md)", fontWeight: 600 }}>{planMeta.price}</span>
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                {planMeta.features.map((f, i) => (
-                  <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-md)" }}>
+                {planMeta.features.map((f, i) =>
+                <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-md)" }}>
                     <Icon name="check" size={11} stroke={3} style={{ color: plan === "pro" ? "var(--accent)" : "var(--text-mute)" }} />
                     {f}
                   </li>
-                ))}
+                )}
               </ul>
-              {plan === "basic" && (
-                <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 14 }}>
+              {plan === "basic" &&
+              <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 14 }}>
                   <Icon name="sparkles" size={12} />Pro로 업그레이드
                 </button>
-              )}
+              }
             </div>
           </div>
 
@@ -1448,12 +1584,12 @@ function ProfilePage({ tasks, t, setTweak }) {
               </div>
             </div>
             {[
-              { label: "포스트잇", val: window.Planary.NOTES.length, icon: "note" },
-              { label: "노트 페이지", val: window.Planary.WIKI_TREE.length, icon: "book" },
-              { label: "북마크", val: window.Planary.BOOKMARKS.length, icon: "bookmark" },
-              { label: "활성 프로젝트", val: PROJECTS.length, icon: "layers" },
-            ].map(s =>
-              <div key={s.label} className="field-row">
+            { label: "포스트잇", val: window.Planary.NOTES.length, icon: "note" },
+            { label: "노트 페이지", val: window.Planary.WIKI_TREE.length, icon: "book" },
+            { label: "북마크", val: window.Planary.BOOKMARKS.length, icon: "bookmark" },
+            { label: "활성 프로젝트", val: PROJECTS.length, icon: "layers" }].
+            map((s) =>
+            <div key={s.label} className="field-row">
                 <span className="field-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Icon name={s.icon} size={14} style={{ color: "var(--text-lo)" }} />{s.label}
                 </span>
@@ -1478,19 +1614,35 @@ function ProfilePage({ tasks, t, setTweak }) {
                 </button>
               </ProfileRow>
               <ProfileDropdownRow label="글꼴" value={fontLabel} options={fontOpts} selected={t && t.font}
-                onSelect={(v) => setTweak("font", v)} open={openMenu === "font"}
-                onOpen={() => setOpenMenu("font")} onClose={() => setOpenMenu(null)} />
+              onSelect={(v) => setTweak("font", v)} open={openMenu === "font"}
+              onOpen={() => setOpenMenu("font")} onClose={() => setOpenMenu(null)} />
               <ProfileDropdownRow label="사이드바" value={sidebarLabel} options={sidebarOpts} selected={t && t.sidebar}
-                onSelect={(v) => setTweak("sidebar", v)} open={openMenu === "sidebar"}
-                onOpen={() => setOpenMenu("sidebar")} onClose={() => setOpenMenu(null)} />
+              onSelect={(v) => setTweak("sidebar", v)} open={openMenu === "sidebar"}
+              onOpen={() => setOpenMenu("sidebar")} onClose={() => setOpenMenu(null)} />
               <ProfileDropdownRow label="정보 밀도" value={densityLabel} options={densityOpts} selected={t && t.density}
-                onSelect={(v) => setTweak("density", v)} open={openMenu === "density"}
-                onOpen={() => setOpenMenu("density")} onClose={() => setOpenMenu(null)} />
+              onSelect={(v) => setTweak("density", v)} open={openMenu === "density"}
+              onOpen={() => setOpenMenu("density")} onClose={() => setOpenMenu(null)} />
+              <ProfileDropdownRow
+                label="언어 / Language"
+                value={(langOpts.find(o => o.id === lang) || langOpts[0]).flag + " " + (langOpts.find(o => o.id === lang) || langOpts[0]).label}
+                options={langOpts.map(o => ({ id: o.id, label: `${o.flag}  ${o.label}` }))}
+                selected={lang}
+                onSelect={(v) => {
+                  setLangState(v);
+                  window.PlanaryI18n?.setLang?.(v);
+                  const msg = window.PlanaryI18n?.t?.("toast.langChanged") || "Language changed";
+                  window.Planary.toast({ type: "ok", title: msg });
+                }}
+                open={openMenu === "lang"}
+                onOpen={() => setOpenMenu("lang")}
+                onClose={() => setOpenMenu(null)} />
               <ProfileRow label="키보드 단축키" sub="⌘K · ⌘N · / 등">
                 <span className="chip chip-ok"><Icon name="check" size={9} stroke={3} />활성</span>
               </ProfileRow>
             </div>
           </div>
+
+          <PasswordCard />
 
           <div className="card" style={{ marginTop: 12, padding: 0 }}>
             <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-soft)" }}>
@@ -1498,42 +1650,272 @@ function ProfilePage({ tasks, t, setTweak }) {
             </div>
             <div style={{ padding: "4px 22px 22px" }}>
               {[
-                { id: "email", label: "이메일 알림", sub: notifs.email ? "주간 요약 발송" : "발송 안 함" },
-                { id: "push", label: "데스크톱 푸시", sub: notifs.push ? "리마인더만" : "꺼짐" },
-                { id: "gcal", label: "Google Calendar", sub: notifs.gcal ? "연결됨 · 양방향 동기화" : "연결 안 됨" },
-                { id: "apple", label: "Apple Calendar", sub: notifs.apple ? "연결됨" : "연결 안 됨" },
-                { id: "slack", label: "Slack 통합", sub: notifs.slack ? "연결됨" : "연결 안 됨" },
-              ].map(r => (
-                <ProfileRow key={r.id} label={r.label} sub={r.sub}>
+              { id: "email", label: "이메일 알림", sub: notifs.email ? "주간 요약 발송" : "발송 안 함" },
+              { id: "push", label: "데스크톱 푸시", sub: notifs.push ? "리마인더만" : "꺼짐" },
+              { id: "gcal", label: "Google Calendar", sub: notifs.gcal ? "연결됨 · 양방향 동기화" : "연결 안 됨" },
+              { id: "apple", label: "Apple Calendar", sub: notifs.apple ? "연결됨" : "연결 안 됨" },
+              { id: "slack", label: "Slack 통합", sub: notifs.slack ? "연결됨" : "연결 안 됨" }].
+              map((r) =>
+              <ProfileRow key={r.id} label={r.label} sub={r.sub}>
                   <div
-                    className={`switch ${notifs[r.id] ? "is-on" : ""}`}
-                    onClick={() => {
-                      const next = !notifs[r.id];
-                      setNotifs(prev => ({ ...prev, [r.id]: next }));
-                      window.Planary.toast({ type: "ok", title: `${r.label} ${next ? "켜짐" : "꺼짐"}` });
-                    }}
-                  />
+                  className={`switch ${notifs[r.id] ? "is-on" : ""}`}
+                  onClick={() => {
+                    const next = !notifs[r.id];
+                    setNotifs((prev) => ({ ...prev, [r.id]: next }));
+                    window.Planary.toast({ type: "ok", title: `${r.label} ${next ? "켜짐" : "꺼짐"}` });
+                  }} />
+                
                 </ProfileRow>
-              ))}
+              )}
             </div>
           </div>
 
-          <div className="card" style={{ marginTop: 12, padding: 22, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="card" style={{ marginTop: 12, padding: 0 }}>
+            <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-soft)" }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>2단계 인증 & 세션</h3>
+              <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>로그인 보안과 활성 기기를 관리합니다</p>
+            </div>
+            <div style={{ padding: "4px 22px 22px" }}>
+              <div className="field-row">
+                <div>
+                  <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>2단계 인증</div>
+                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>로그인 시 추가 인증을 요청합니다</div>
+                </div>
+                <span className="chip">설정 안 됨</span>
+              </div>
+              <div className="field-row" style={{ borderBottom: 0 }}>
+                <div>
+                  <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>활성 세션</div>
+                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>현재 이 기기 포함 2개 기기에서 로그인됨</div>
+                </div>
+                <button className="btn btn-sm">전체 보기</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: 12, padding: 22, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700 }}>로그아웃 / 계정 관리</div>
-              <div style={{ fontSize: 12, color: "var(--text-lo)" }}>이 기기에서 세션을 종료하거나 계정을 삭제합니다</div>
+              <div style={{ fontSize: 12, color: "var(--text-lo)" }}>이 기기에서 세션을 종료하거나 계정을 전환합니다</div>
             </div>
-            <button className="btn btn-ghost" style={{ color: "var(--err)" }} onClick={() => setSignOutOpen(true)}>
-              <Icon name="logout" size={14} />로그아웃
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setSwitchOpen(true)}>
+                <Icon name="refresh" size={14} />계정 변경
+              </button>
+              <button className="btn btn-ghost" style={{ color: "var(--err)" }} onClick={() => setSignOutOpen(true)}>
+                <Icon name="logout" size={14} />로그아웃
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {editOpen && <ProfileEditDialog user={user} onClose={() => setEditOpen(false)} onSave={saveProfile} />}
       {signOutOpen && <SignOutDialog onClose={() => setSignOutOpen(false)} user={user} />}
+      {switchOpen && <window.Planary.AccountSwitcherDialog onClose={() => setSwitchOpen(false)} />}
     </div>);
 
+}
+
+/* ===========================================================
+   PASSWORD CHANGE CARD
+   =========================================================== */
+function PasswordCard() {
+  const [current, setCurrent] = useStateO("");
+  const [next, setNext] = useStateO("");
+  const [confirm, setConfirm] = useStateO("");
+  const [showCurrent, setShowCurrent] = useStateO(false);
+  const [showNext, setShowNext] = useStateO(false);
+  const [submitting, setSubmitting] = useStateO(false);
+
+  // Validation
+  const hasLength = next.length >= 8;
+  const hasLetter = /[a-zA-Z]/.test(next);
+  const hasNumber = /[0-9]/.test(next);
+  const hasSymbol = /[^a-zA-Z0-9]/.test(next);
+  const score = [hasLength, hasLetter, hasNumber, hasSymbol].filter(Boolean).length;
+  const matches = next.length > 0 && next === confirm;
+  const canSubmit = current.length >= 1 && hasLength && (hasLetter && hasNumber) && matches && !submitting;
+
+  const strengthLabel = ["", "매우 약함", "약함", "보통", "강함", "매우 강함"][score];
+  const strengthColor =
+    score <= 1 ? "var(--err)" :
+    score === 2 ? "var(--warn)" :
+    score === 3 ? "var(--info)" :
+    "var(--ok)";
+
+  const submit = (e) => {
+    e?.preventDefault();
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setTimeout(() => {
+      setSubmitting(false);
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      window.Planary.toast?.({ type: "ok", title: "비밀번호가 변경됐어요", sub: "다음 로그인부터 새 비밀번호를 사용하세요" });
+    }, 900);
+  };
+
+  const inputWrap = {
+    position: "relative",
+  };
+  const eyeBtn = {
+    position: "absolute",
+    right: 8, top: "50%", transform: "translateY(-50%)",
+    width: 26, height: 26,
+    display: "grid", placeItems: "center",
+    color: "var(--text-lo)",
+    background: "transparent", border: 0,
+    borderRadius: 6, cursor: "pointer",
+  };
+
+  return (
+    <div className="card" style={{ marginTop: 12, padding: 0 }}>
+      <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-soft)" }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700 }}>비밀번호</h3>
+        <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>
+          정기적으로 변경하면 더 안전해요
+        </p>
+      </div>
+      <form onSubmit={submit} style={{ padding: "16px 22px 18px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Current */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
+              현재 비밀번호
+            </label>
+            <div style={inputWrap}>
+              <input
+                type={showCurrent ? "text" : "password"}
+                value={current}
+                onChange={e => setCurrent(e.target.value)}
+                placeholder="현재 비밀번호 입력"
+                autoComplete="current-password"
+                className="form-input"
+                style={{ paddingRight: 38 }}
+              />
+              <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={eyeBtn} title={showCurrent ? "감추기" : "보이기"} tabIndex={-1}>
+                <Icon name={showCurrent ? "lock" : "eye"} size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* New */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
+              새 비밀번호
+            </label>
+            <div style={inputWrap}>
+              <input
+                type={showNext ? "text" : "password"}
+                value={next}
+                onChange={e => setNext(e.target.value)}
+                placeholder="8자 이상, 영문 + 숫자 조합"
+                autoComplete="new-password"
+                className="form-input"
+                style={{ paddingRight: 38 }}
+              />
+              <button type="button" onClick={() => setShowNext(!showNext)} style={eyeBtn} title={showNext ? "감추기" : "보이기"} tabIndex={-1}>
+                <Icon name={showNext ? "lock" : "eye"} size={13} />
+              </button>
+            </div>
+            {next.length > 0 && (
+              <>
+                <div style={{ display: "flex", gap: 3, marginTop: 8 }}>
+                  {[1, 2, 3, 4].map(i => (
+                    <div
+                      key={i}
+                      style={{
+                        flex: 1,
+                        height: 3,
+                        borderRadius: 999,
+                        background: i <= score ? strengthColor : "var(--surface-2)",
+                        transition: "all var(--dur-fast)",
+                      }}
+                    />
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11 }}>
+                  <span style={{ color: strengthColor, fontWeight: 600 }}>{strengthLabel}</span>
+                  <span style={{ color: "var(--text-faint)" }}>{next.length}자</span>
+                </div>
+                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {[
+                    { ok: hasLength, label: "8자 이상" },
+                    { ok: hasLetter, label: "영문 포함" },
+                    { ok: hasNumber, label: "숫자 포함" },
+                    { ok: hasSymbol, label: "특수문자 (권장)", optional: true },
+                  ].map((req, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        fontSize: 10, fontWeight: 600,
+                        color: req.ok ? "var(--ok)" : req.optional ? "var(--text-faint)" : "var(--text-lo)",
+                      }}
+                    >
+                      <Icon name={req.ok ? "check" : "x"} size={10} stroke={3} />
+                      {req.label}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Confirm */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 5 }}>
+              새 비밀번호 확인
+            </label>
+            <input
+              type={showNext ? "text" : "password"}
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="새 비밀번호를 다시 입력"
+              autoComplete="new-password"
+              className="form-input"
+              style={confirm.length > 0 ? {
+                borderColor: matches ? "color-mix(in oklab, var(--ok) 40%, var(--border))" : "color-mix(in oklab, var(--err) 40%, var(--border))",
+              } : undefined}
+            />
+            {confirm.length > 0 && !matches && (
+              <div style={{ fontSize: 11, color: "var(--err)", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>
+                <Icon name="x" size={10} stroke={3} />비밀번호가 일치하지 않아요
+              </div>
+            )}
+            {confirm.length > 0 && matches && (
+              <div style={{ fontSize: 11, color: "var(--ok)", marginTop: 5, display: "flex", alignItems: "center", gap: 4 }}>
+                <Icon name="check" size={10} stroke={3} />일치합니다
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border-soft)" }}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{ color: "var(--text-lo)" }}
+            onClick={() => window.Planary.toast?.({ type: "info", title: "비밀번호 재설정 메일을 발송했어요", sub: "받은편지함을 확인하세요" })}
+          >
+            <Icon name="send" size={12} />이메일로 재설정
+          </button>
+          <div style={{ flex: 1 }} />
+          <button
+            type="submit"
+            className="btn btn-sm btn-primary"
+            disabled={!canSubmit}
+            style={{ opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" }}
+          >
+            <Icon name={submitting ? "refresh" : "lock"} size={12} style={{ animation: submitting ? "spin 1s linear infinite" : "none" }} />
+            {submitting ? "변경 중…" : "비밀번호 변경"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
 
 function ProfileRow({ label, sub, children }) {
@@ -1544,8 +1926,8 @@ function ProfileRow({ label, sub, children }) {
         <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{sub}</div>
       </div>
       {children}
-    </div>
-  );
+    </div>);
+
 }
 
 function ProfileDropdownRow({ label, value, options, selected, onSelect, open, onOpen, onClose }) {
@@ -1561,10 +1943,10 @@ function ProfileDropdownRow({ label, value, options, selected, onSelect, open, o
           <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={onClose} />
           <div
             className="tool-popover"
-            style={{ position: "absolute", top: "100%", right: 0, left: "auto", bottom: "auto", minWidth: 200, zIndex: 50, marginTop: -4 }}
+            style={{ position: "absolute", top: "100%", right: 0, left: "auto", bottom: "auto", minWidth: 220, zIndex: 50, marginTop: -4 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {options.map(o => (
+            {options.map((o) => (
               <button
                 key={o.id}
                 className={`tool-popover-item ${selected === o.id ? "is-active" : ""}`}
@@ -1669,11 +2051,7 @@ function EclassConnectionCard() {
             <div className="kicker" style={{ marginBottom: 10 }}>지원 학교</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               <span className="chip">서울과학기술대학교</span>
-              <button
-                className="chip"
-                style={{ borderStyle: "dashed", color: "var(--text-faint)", cursor: "pointer" }}
-                onClick={() => window.Planary?.toast?.({ type: "ok", title: "학교 추가 요청을 보냈어요", sub: "검토 후 이메일로 안내드릴게요" })}
-              >
+              <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)", cursor: "pointer" }}>
                 <Icon name="plus" size={10} />학교 추가 요청
               </button>
             </div>
@@ -1763,109 +2141,109 @@ function EclassConnectionCard() {
    =========================================================== */
 const CODE_SAMPLES = {
   css: [
-    { type: "com", text: "/* 항상 토큰을 통해 접근 — 직접 hex 금지 */" },
-    { type: "code", text: "" },
-    [
-      { type: "key", text: ".card" },
-      { type: "code", text: " { " },
-    ],
-    [
-      { type: "code", text: "  background: " },
-      { type: "str", text: "var(--surface)" },
-      { type: "code", text: ";" },
-    ],
-    [
-      { type: "code", text: "  border: " },
-      { type: "num", text: "1" },
-      { type: "code", text: "px solid " },
-      { type: "str", text: "var(--border)" },
-      { type: "code", text: ";" },
-    ],
-    [
-      { type: "code", text: "  border-radius: " },
-      { type: "str", text: "var(--r-xl)" },
-      { type: "code", text: ";" },
-    ],
-    [
-      { type: "code", text: "  color: " },
-      { type: "str", text: "var(--text-hi)" },
-      { type: "code", text: ";" },
-    ],
-    { type: "code", text: "}" },
-    { type: "code", text: "" },
-    { type: "com", text: "/* 투명도 변형은 color-mix로 — 자동 다크/라이트 호환 */" },
-    [
-      { type: "key", text: ".btn-soft" },
-      { type: "code", text: " {" },
-    ],
-    [
-      { type: "code", text: "  background: color-mix(" },
-      { type: "str", text: "in oklab" },
-      { type: "code", text: ", " },
-      { type: "str", text: "var(--accent)" },
-      { type: "code", text: " " },
-      { type: "num", text: "14" },
-      { type: "code", text: "%, transparent);" },
-    ],
-    { type: "code", text: "}" },
-  ],
+  { type: "com", text: "/* 항상 토큰을 통해 접근 — 직접 hex 금지 */" },
+  { type: "code", text: "" },
+  [
+  { type: "key", text: ".card" },
+  { type: "code", text: " { " }],
+
+  [
+  { type: "code", text: "  background: " },
+  { type: "str", text: "var(--surface)" },
+  { type: "code", text: ";" }],
+
+  [
+  { type: "code", text: "  border: " },
+  { type: "num", text: "1" },
+  { type: "code", text: "px solid " },
+  { type: "str", text: "var(--border)" },
+  { type: "code", text: ";" }],
+
+  [
+  { type: "code", text: "  border-radius: " },
+  { type: "str", text: "var(--r-xl)" },
+  { type: "code", text: ";" }],
+
+  [
+  { type: "code", text: "  color: " },
+  { type: "str", text: "var(--text-hi)" },
+  { type: "code", text: ";" }],
+
+  { type: "code", text: "}" },
+  { type: "code", text: "" },
+  { type: "com", text: "/* 투명도 변형은 color-mix로 — 자동 다크/라이트 호환 */" },
+  [
+  { type: "key", text: ".btn-soft" },
+  { type: "code", text: " {" }],
+
+  [
+  { type: "code", text: "  background: color-mix(" },
+  { type: "str", text: "in oklab" },
+  { type: "code", text: ", " },
+  { type: "str", text: "var(--accent)" },
+  { type: "code", text: " " },
+  { type: "num", text: "14" },
+  { type: "code", text: "%, transparent);" }],
+
+  { type: "code", text: "}" }],
+
   tsx: [
-    { type: "com", text: "// 디자인 시스템 토큰을 React에서 쓰기" },
-    [
-      { type: "key", text: "import" },
-      { type: "code", text: " " },
-      { type: "str", text: "\"./tokens.css\"" },
-      { type: "code", text: ";" },
-    ],
-    { type: "code", text: "" },
-    [
-      { type: "key", text: "export function" },
-      { type: "code", text: " Card({ children }) {" },
-    ],
-    [
-      { type: "code", text: "  " },
-      { type: "key", text: "return" },
-      { type: "code", text: " <div className=" },
-      { type: "str", text: "\"card\"" },
-      { type: "code", text: ">{children}</div>;" },
-    ],
-    { type: "code", text: "}" },
-  ],
+  { type: "com", text: "// 디자인 시스템 토큰을 React에서 쓰기" },
+  [
+  { type: "key", text: "import" },
+  { type: "code", text: " " },
+  { type: "str", text: "\"./tokens.css\"" },
+  { type: "code", text: ";" }],
+
+  { type: "code", text: "" },
+  [
+  { type: "key", text: "export function" },
+  { type: "code", text: " Card({ children }) {" }],
+
+  [
+  { type: "code", text: "  " },
+  { type: "key", text: "return" },
+  { type: "code", text: " <div className=" },
+  { type: "str", text: "\"card\"" },
+  { type: "code", text: ">{children}</div>;" }],
+
+  { type: "code", text: "}" }],
+
   js: [
-    { type: "com", text: "// 토큰 값을 JS에서 읽기" },
-    [
-      { type: "key", text: "const" },
-      { type: "code", text: " accent = " },
-      { type: "str", text: "getComputedStyle(document.documentElement)" },
-    ],
-    [
-      { type: "code", text: "  .getPropertyValue(" },
-      { type: "str", text: "\"--accent\"" },
-      { type: "code", text: ").trim();" },
-    ],
-    { type: "code", text: "" },
-    { type: "com", text: "// → \"#7f0df2\"" },
-  ],
+  { type: "com", text: "// 토큰 값을 JS에서 읽기" },
+  [
+  { type: "key", text: "const" },
+  { type: "code", text: " accent = " },
+  { type: "str", text: "getComputedStyle(document.documentElement)" }],
+
+  [
+  { type: "code", text: "  .getPropertyValue(" },
+  { type: "str", text: "\"--accent\"" },
+  { type: "code", text: ").trim();" }],
+
+  { type: "code", text: "" },
+  { type: "com", text: "// → \"#7f0df2\"" }],
+
   html: [
-    [
-      { type: "code", text: "<" },
-      { type: "key", text: "link" },
-      { type: "code", text: " rel=" },
-      { type: "str", text: "\"stylesheet\"" },
-      { type: "code", text: " href=" },
-      { type: "str", text: "\"tokens.css\"" },
-      { type: "code", text: " />" },
-    ],
-    [
-      { type: "code", text: "<" },
-      { type: "key", text: "div" },
-      { type: "code", text: " class=" },
-      { type: "str", text: "\"card\"" },
-      { type: "code", text: ">Hello</" },
-      { type: "key", text: "div" },
-      { type: "code", text: ">" },
-    ],
-  ],
+  [
+  { type: "code", text: "<" },
+  { type: "key", text: "link" },
+  { type: "code", text: " rel=" },
+  { type: "str", text: "\"stylesheet\"" },
+  { type: "code", text: " href=" },
+  { type: "str", text: "\"tokens.css\"" },
+  { type: "code", text: " />" }],
+
+  [
+  { type: "code", text: "<" },
+  { type: "key", text: "div" },
+  { type: "code", text: " class=" },
+  { type: "str", text: "\"card\"" },
+  { type: "code", text: ">Hello</" },
+  { type: "key", text: "div" },
+  { type: "code", text: ">" }]]
+
+
 };
 
 function CodeBlock({ anchor }) {
@@ -1874,8 +2252,8 @@ function CodeBlock({ anchor }) {
   const lines = CODE_SAMPLES[lang];
 
   const handleCopy = () => {
-    const text = lines.map(line => {
-      if (Array.isArray(line)) return line.map(t => t.text).join("");
+    const text = lines.map((line) => {
+      if (Array.isArray(line)) return line.map((t) => t.text).join("");
       return line.text;
     }).join("\n");
     if (navigator.clipboard) {
@@ -1892,26 +2270,26 @@ function CodeBlock({ anchor }) {
   };
 
   const langs = [
-    { id: "css",  label: "CSS" },
-    { id: "tsx",  label: "TSX" },
-    { id: "js",   label: "JS" },
-    { id: "html", label: "HTML" },
-  ];
+  { id: "css", label: "CSS" },
+  { id: "tsx", label: "TSX" },
+  { id: "js", label: "JS" },
+  { id: "html", label: "HTML" }];
+
 
   return (
     <div className="codeblock" data-comment-anchor={anchor}>
       <div className="codeblock-bar">
         <div className="codeblock-langs">
-          {langs.map(l => (
-            <button
-              key={l.id}
-              className={`codeblock-lang ${lang === l.id ? "is-active" : ""}`}
-              onClick={() => setLang(l.id)}
-              type="button"
-            >
+          {langs.map((l) =>
+          <button
+            key={l.id}
+            className={`codeblock-lang ${lang === l.id ? "is-active" : ""}`}
+            onClick={() => setLang(l.id)}
+            type="button">
+            
               {l.label}
             </button>
-          ))}
+          )}
         </div>
         <button className="codeblock-copy" onClick={handleCopy} type="button" title="복사">
           <Icon name={copied ? "check" : "copy"} size={12} />
@@ -1919,29 +2297,940 @@ function CodeBlock({ anchor }) {
         </button>
       </div>
       <pre><code>
-        {lines.map((line, i) => (
+        {lines.map((line, i) =>
           <React.Fragment key={i}>
-            {Array.isArray(line)
-              ? line.map(renderToken)
-              : renderToken(line, 0)}
+            {Array.isArray(line) ?
+            line.map(renderToken) :
+            renderToken(line, 0)}
             {"\n"}
           </React.Fragment>
-        ))}
+          )}
       </code></pre>
-    </div>
-  );
+    </div>);
+
 }
 
 /* ===========================================================
    SHARE DIALOG
    =========================================================== */
+/* ===========================================================
+   VERSION HISTORY DIALOG — wiki page revisions with restore
+   =========================================================== */
+function VersionHistoryDialog({ onClose, page }) {
+  // Synthetic history. In production this would come from Firestore.
+  const VERSIONS = useMemoO(() => [
+    { id: "v12", ago: "방금", author: "도하 김", initials: "DK", current: true,
+      changes: [{ kind: "add", count: 8 }, { kind: "remove", count: 2 }],
+      summary: "악센트 팔레트 섹션 보강 + 코드 예시 추가",
+      preview: [
+        { type: "h3", text: "악센트 팔레트" },
+        { type: "p", text: "사용자는 6가지 악센트 중 자신의 워크스페이스 톤을 선택할 수 있습니다. 모두 같은 시각적 무게를 가지도록 조정되어 있습니다." },
+        { type: "code", text: ".btn-soft { background: color-mix(in oklab, var(--accent) 14%, transparent); }" },
+      ],
+    },
+    { id: "v11", ago: "12분 전", author: "도하 김", initials: "DK",
+      changes: [{ kind: "add", count: 3 }, { kind: "remove", count: 0 }],
+      summary: "텍스트 스택 5단계 설명 추가",
+      preview: [
+        { type: "h3", text: "텍스트 스택" },
+        { type: "p", text: "슬레이트 5단계로 위계를 만듭니다. 본문 안에 --text-md, 헤딩에 --text-hi." },
+      ],
+    },
+    { id: "v10", ago: "1시간 전", author: "박서연", initials: "SY",
+      changes: [{ kind: "add", count: 12 }, { kind: "remove", count: 1 }],
+      summary: "코어 토큰 표 형식으로 정리",
+      preview: [
+        { type: "h2", text: "코어 토큰" },
+        { type: "table", text: "토큰 / 다크 / 라이트 / 용도" },
+      ],
+    },
+    { id: "v9", ago: "오늘 09:14", author: "도하 김", initials: "DK",
+      changes: [{ kind: "add", count: 0 }, { kind: "remove", count: 4 }],
+      summary: "중복 문장 정리",
+      preview: [
+        { type: "p", text: "Planary는 단일 악센트 컬러 위에 풍부한 중성색 스택을 쌓아 정보 위계를 만듭니다." },
+      ],
+    },
+    { id: "v8", ago: "어제", author: "정민재", initials: "JM",
+      changes: [{ kind: "add", count: 24 }, { kind: "remove", count: 0 }],
+      summary: "그림자 & 글로우 섹션 신규 작성",
+      preview: [
+        { type: "h2", text: "그림자 & 글로우" },
+        { type: "p", text: "물리적 그림자 3단계 + 악센트 글로우 1종. 활성 CTA·로고에만 사용해 브랜드 시그니처로 살립니다." },
+      ],
+    },
+    { id: "v7", ago: "어제", author: "박서연", initials: "SY",
+      changes: [{ kind: "add", count: 6 }, { kind: "remove", count: 2 }],
+      summary: "설계 원칙 콜아웃 추가",
+      preview: [
+        { type: "callout", text: "새로운 hex를 추가하지 마세요. 악센트의 투명도 단계로 충분히 표현 가능합니다." },
+      ],
+    },
+    { id: "v6", ago: "3일 전", author: "도하 김", initials: "DK",
+      changes: [{ kind: "add", count: 1 }, { kind: "remove", count: 0 }],
+      summary: "페이지 아이콘 변경: 🎨 → 🟣",
+      preview: [{ type: "meta", text: "아이콘 변경" }],
+    },
+    { id: "v5", ago: "1주 전", author: "도하 김", initials: "DK",
+      changes: [{ kind: "add", count: 42 }, { kind: "remove", count: 0 }],
+      summary: "초기 작성",
+      preview: [
+        { type: "h2", text: "코어 토큰" },
+        { type: "p", text: "모든 컬러는 var(--*)로만 접근합니다." },
+      ],
+    },
+  ], []);
+
+  const [selectedId, setSelectedId] = useStateO(VERSIONS[0].id);
+  const selected = VERSIONS.find(v => v.id === selectedId) || VERSIONS[0];
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const restore = () => {
+    if (selected.current) return;
+    if (window.confirm(`${selected.ago} 버전으로 되돌릴까요? 현재 변경 사항은 새 버전으로 보존됩니다.`)) {
+      window.Planary.toast({
+        type: "ok",
+        title: `${selected.ago} 버전으로 되돌렸어요`,
+        sub: `${selected.author}님의 편집 · ${selected.summary}`,
+      });
+      onClose();
+    }
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(820px, 96vw)", maxHeight: "82vh", padding: 0, display: "flex", flexDirection: "column" }}>
+        <div className="dialog-head" style={{ flexShrink: 0 }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em", display: "flex", alignItems: "center", gap: 8 }}>
+              <Icon name="clock" size={16} style={{ color: "var(--accent)" }} />
+              수정 이력
+            </h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>
+              <span style={{ color: "var(--text-md)", fontWeight: 600 }}>{page.title}</span> · {VERSIONS.length}개 버전
+            </p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          {/* Left: version list */}
+          <div style={{ borderRight: "1px solid var(--border-soft)", overflowY: "auto", padding: "10px 8px" }}>
+            <div className="version-thread">
+              {VERSIONS.map((v, i) => {
+                const active = v.id === selectedId;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    className={`version-item ${active ? "is-active" : ""} ${v.current ? "is-current" : ""}`}
+                    onClick={() => setSelectedId(v.id)}
+                  >
+                    <span className="version-dot" />
+                    <div className="version-meta">
+                      <div className="version-row">
+                        <span className="version-time">{v.ago}</span>
+                        {v.current && <span className="version-now">현재</span>}
+                      </div>
+                      <div className="version-row" style={{ marginTop: 4 }}>
+                        <div className="avatar avatar-xs" style={{ width: 16, height: 16, fontSize: 9 }}>{v.initials}</div>
+                        <span className="version-author">{v.author}</span>
+                      </div>
+                      <div className="version-summary">{v.summary}</div>
+                      <div className="version-diff">
+                        {v.changes[0]?.count > 0 && <span className="diff-add">+{v.changes[0].count}</span>}
+                        {v.changes[1]?.count > 0 && <span className="diff-rem">−{v.changes[1].count}</span>}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right: preview */}
+          <div style={{ overflowY: "auto", padding: "18px 22px 8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <div className="avatar" style={{ width: 30, height: 30, fontSize: 11 }}>{selected.initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{selected.author}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{selected.ago} · 버전 {selected.id.replace("v", "#")}</div>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {selected.changes[0]?.count > 0 && <span className="chip" style={{ background: "color-mix(in oklab, var(--ok) 14%, transparent)", color: "var(--ok)", borderColor: "transparent" }}>+{selected.changes[0].count}줄</span>}
+                {selected.changes[1]?.count > 0 && <span className="chip" style={{ background: "color-mix(in oklab, var(--err) 14%, transparent)", color: "var(--err)", borderColor: "transparent" }}>−{selected.changes[1].count}줄</span>}
+              </div>
+            </div>
+
+            <div style={{ padding: "12px 14px", background: "var(--accent-softer)", border: "1px solid var(--accent-ring)", borderRadius: "var(--r-md)", marginBottom: 16 }}>
+              <div className="kicker" style={{ marginBottom: 4 }}>요약</div>
+              <div style={{ fontSize: 13, color: "var(--text-hi)" }}>{selected.summary}</div>
+            </div>
+
+            <div className="kicker" style={{ marginBottom: 8 }}>변경 내용 미리보기</div>
+            <div className="version-preview">
+              {selected.preview.map((b, i) => {
+                if (b.type === "h2") return <h2 key={i} style={{ fontSize: 17, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 6px" }}>{b.text}</h2>;
+                if (b.type === "h3") return <h3 key={i} style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 4px" }}>{b.text}</h3>;
+                if (b.type === "p")  return <p key={i} style={{ fontSize: 13, color: "var(--text-md)", lineHeight: 1.6, margin: "4px 0" }}>{b.text}</p>;
+                if (b.type === "code") return <pre key={i} className="mono" style={{ fontSize: 11.5, padding: 10, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", margin: "6px 0", overflowX: "auto" }}>{b.text}</pre>;
+                if (b.type === "table") return <div key={i} style={{ padding: 10, background: "var(--surface-2)", borderRadius: "var(--r-sm)", fontSize: 12, color: "var(--text-md)", marginTop: 6 }}><Icon name="grid" size={11} style={{ marginRight: 6, verticalAlign: -2 }} />{b.text}</div>;
+                if (b.type === "callout") return <div key={i} className="callout callout-ok" style={{ fontSize: 13 }}><Icon name="sparkles" size={16} style={{ color: "var(--ok)", flexShrink: 0, marginTop: 2 }} />{b.text}</div>;
+                if (b.type === "meta") return <div key={i} style={{ fontSize: 12, color: "var(--text-lo)", fontStyle: "italic" }}><Icon name="edit" size={11} style={{ marginRight: 6, verticalAlign: -2 }} />{b.text}</div>;
+                return null;
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="dialog-foot" style={{ flexShrink: 0 }}>
+          {selected.current ? (
+            <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
+              현재 버전입니다. 다른 버전을 선택하면 되돌릴 수 있어요.
+            </span>
+          ) : (
+            <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
+              되돌리기 전 현재 변경 사항은 새 버전으로 자동 보존돼요.
+            </span>
+          )}
+          <button className="btn btn-sm" onClick={onClose}>닫기</button>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={restore}
+            disabled={selected.current}
+            style={selected.current ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+          >
+            <Icon name="refresh" size={12} />이 버전으로 되돌리기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.Planary.VersionHistoryDialog = VersionHistoryDialog;
+
+/* ===========================================================
+   PAGE INFO DIALOG — metadata + stats card
+   =========================================================== */
+function PageInfoDialog({ onClose, page, favorites }) {
+  const { WIKI_TREE } = window.Planary;
+  const parent = page.parent ? WIKI_TREE.find(w => w.id === page.parent) : null;
+  const children = WIKI_TREE.filter(w => w.parent === page.id);
+  const isFav = favorites && favorites.has(page.id);
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Stats — synthetic but realistic
+  const stats = {
+    blocks: 18,
+    words: 412,
+    chars: 1247,
+    reading: 3, // minutes
+    images: 2,
+    codeBlocks: 1,
+    tables: 1,
+    links: 6,
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(540px, 92vw)" }}>
+        <div className="dialog-head">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--bg-elev)", display: "grid", placeItems: "center", fontSize: 20, border: "1px solid var(--border)" }}>
+              {page.icon}
+            </div>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em", display: "flex", alignItems: "center", gap: 8 }}>
+                {page.title}
+                {isFav && <Icon name="star" size={13} style={{ color: "var(--warn)", fill: "var(--warn)" }} />}
+              </h3>
+              <p style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2, fontFamily: "var(--font-mono)" }}>
+                ID · {page.id}
+              </p>
+            </div>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+
+        <div style={{ padding: "10px 22px 14px" }}>
+          {/* Top stats row */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 16 }}>
+            {[
+              { label: "블록", val: stats.blocks, icon: "list" },
+              { label: "단어", val: stats.words, icon: "edit" },
+              { label: "글자", val: stats.chars.toLocaleString(), icon: "hash" },
+              { label: "읽기", val: `${stats.reading}분`, icon: "clock" },
+            ].map(s => (
+              <div key={s.label} style={{
+                padding: "10px 12px",
+                background: "var(--bg-elev)",
+                border: "1px solid var(--border-soft)",
+                borderRadius: "var(--r-md)",
+                textAlign: "center",
+              }}>
+                <Icon name={s.icon} size={12} style={{ color: "var(--text-faint)", marginBottom: 4 }} />
+                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text-hi)" }}>{s.val}</div>
+                <div style={{ fontSize: 10, color: "var(--text-lo)", letterSpacing: "0.04em", marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Detail rows */}
+          <div style={{ background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-md)", overflow: "hidden" }}>
+            <InfoRow icon="folder" label="상위 페이지" value={parent ? `${parent.icon}  ${parent.title}` : "최상위"} />
+            <InfoRow icon="layers" label="하위 페이지" value={`${children.length}개`} />
+            <InfoRow icon="clock" label="생성일" value="2025년 9월 14일 14:32" sub="62일 전" />
+            <InfoRow icon="edit" label="마지막 수정" value="방금" sub="도하 김 · 1247자 → 1289자" />
+            <InfoRow icon="user" label="작성자" value={(
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <div className="avatar" style={{ width: 18, height: 18, fontSize: 9 }}>DK</div>
+                도하 김
+              </span>
+            )} />
+            <InfoRow icon="globe" label="공개 범위" value="비공개" sub="초대된 사람만 볼 수 있음" />
+            <InfoRow icon="link" label="링크" value={(
+              <button
+                className="mono"
+                style={{ fontSize: 11, color: "var(--accent)", background: "transparent", border: 0, padding: 0, cursor: "pointer" }}
+                onClick={() => { navigator.clipboard?.writeText(`https://planary.app/w/${page.id}`); window.Planary.toast?.({ type: "ok", title: "링크가 복사됐어요" }); }}
+              >
+                planary.app/w/{page.id} <Icon name="copy" size={10} style={{ verticalAlign: -1, marginLeft: 4 }} />
+              </button>
+            )} last />
+          </div>
+
+          {/* Content composition */}
+          <div className="kicker" style={{ marginTop: 18, marginBottom: 8 }}>구성</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <span className="chip"><Icon name="image" size={10} />이미지 {stats.images}</span>
+            <span className="chip"><Icon name="hash" size={10} />코드 블록 {stats.codeBlocks}</span>
+            <span className="chip"><Icon name="grid" size={10} />표 {stats.tables}</span>
+            <span className="chip"><Icon name="link" size={10} />링크 {stats.links}</span>
+          </div>
+
+          {/* Tags */}
+          <div className="kicker" style={{ marginTop: 18, marginBottom: 8 }}>태그</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <span className="tag">tokens</span>
+            <span className="tag">color</span>
+            <span className="tag">v3</span>
+          </div>
+        </div>
+
+        <div className="dialog-foot">
+          <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>실시간 정보</span>
+          <button className="btn btn-sm btn-primary" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value, sub, last }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12,
+      padding: "10px 14px",
+      borderBottom: last ? 0 : "1px solid var(--border-soft)",
+    }}>
+      <div style={{ width: 22, color: "var(--text-lo)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name={icon} size={13} />
+      </div>
+      <div style={{ flex: 1, fontSize: 12, color: "var(--text-lo)", fontWeight: 600 }}>{label}</div>
+      <div style={{ textAlign: "right" }}>
+        <div style={{ fontSize: 12.5, color: "var(--text-hi)", fontWeight: 600 }}>{value}</div>
+        {sub && <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 1 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
+   EXPORT DIALOG — choose format
+   =========================================================== */
+function ExportDialog({ onClose, page }) {
+  const [selected, setSelected] = useStateO("pdf");
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const formats = [
+    { id: "pdf", label: "PDF", icon: "document", desc: "인쇄에 적합한 단일 파일", size: "~ 240 KB" },
+    { id: "md", label: "Markdown", icon: "hash", desc: "다른 도구로 옮기기 좋음", size: "~ 8 KB" },
+    { id: "html", label: "HTML", icon: "globe", desc: "스타일 포함, 웹에 게시", size: "~ 32 KB" },
+    { id: "docx", label: "Word (.docx)", icon: "edit", desc: "Microsoft Word 호환", size: "~ 56 KB" },
+  ];
+
+  const handleExport = () => {
+    const f = formats.find(x => x.id === selected);
+    window.Planary.toast?.({
+      type: "ok",
+      title: `${f.label}(으)로 내보내는 중…`,
+      sub: `${page.title} · ${f.size}`,
+    });
+    setTimeout(() => {
+      window.Planary.toast?.({
+        type: "ok",
+        title: "다운로드 완료",
+        sub: `${page.title}.${selected === "docx" ? "docx" : selected}`,
+      });
+    }, 1000);
+    onClose();
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>내보내기</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}><strong style={{ color: "var(--text-md)" }}>{page.title}</strong>을(를) 어떤 형식으로 저장할까요?</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: 14 }}>
+          {formats.map(f => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setSelected(f.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                width: "100%", padding: "12px",
+                background: selected === f.id ? "var(--accent-softer)" : "transparent",
+                border: selected === f.id ? "1px solid var(--accent-ring)" : "1px solid transparent",
+                borderRadius: "var(--r-md)",
+                cursor: "pointer", textAlign: "left",
+                transition: "all var(--dur-fast)",
+                marginBottom: 4,
+              }}
+              onMouseEnter={(e) => { if (selected !== f.id) e.currentTarget.style.background = "var(--hover)"; }}
+              onMouseLeave={(e) => { if (selected !== f.id) e.currentTarget.style.background = "transparent"; }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: 8,
+                background: selected === f.id ? "var(--accent-soft)" : "var(--surface-2)",
+                color: selected === f.id ? "var(--accent)" : "var(--text-lo)",
+                display: "grid", placeItems: "center", flexShrink: 0,
+              }}>
+                <Icon name={f.icon} size={16} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)" }}>{f.label}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 1 }}>{f.desc}</div>
+              </div>
+              <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{f.size}</span>
+              {selected === f.id && <Icon name="check" size={14} stroke={3} style={{ color: "var(--accent)" }} />}
+            </button>
+          ))}
+        </div>
+        <div className="dialog-foot">
+          <div style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>로컬에 다운로드됩니다</div>
+          <button className="btn btn-sm" onClick={onClose}>취소</button>
+          <button className="btn btn-sm btn-primary" onClick={handleExport}>
+            <Icon name="download" size={12} />내보내기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.Planary.PageInfoDialog = PageInfoDialog;
+window.Planary.ExportDialog = ExportDialog;
+
+/* ===========================================================
+   SLASH COMMAND MENU — Notion-style block type picker
+   =========================================================== */
+function SlashCommandMenu({ slashMenu, onClose, onPick }) {
+  const [query, setQuery] = useStateO("");
+  const [highlight, setHighlight] = useStateO(0);
+
+  const commands = [
+    // Basic
+    { group: "기본",     id: "p",        label: "본문",        desc: "기본 텍스트 블록",         icon: "edit",     keywords: "text para 본문 글" },
+    { group: "기본",     id: "h1",       label: "헤딩 1",      desc: "큰 제목",               icon: "hash",     keywords: "heading h1 대제목 큰제목" },
+    { group: "기본",     id: "h2",       label: "헤딩 2",      desc: "중간 크기 제목",          icon: "hash",     keywords: "heading h2 중제목 제목" },
+    { group: "기본",     id: "h3",       label: "헤딩 3",      desc: "작은 제목",              icon: "hash",     keywords: "heading h3 소제목 제목" },
+    // Lists
+    { group: "리스트",   id: "ul",       label: "글머리 기호",   desc: "• 항목 · 자유 순서",       icon: "list",     keywords: "list unordered bullet 글머리" },
+    { group: "리스트",   id: "ol",       label: "번호 매기기",   desc: "1. 항목 · 순서 있음",      icon: "list",     keywords: "list ordered 번호" },
+    { group: "리스트",   id: "todo",     label: "체크리스트",    desc: "☑ 완료 체크",            icon: "check",    keywords: "todo checklist 체크 할일" },
+    // Rich
+    { group: "리치",     id: "quote",    label: "인용",        desc: "강조된 한 줄",           icon: "edit",     keywords: "quote 인용 blockquote" },
+    { group: "리치",     id: "callout",  label: "콜아웃",      desc: "강조 박스 + 아이콘",      icon: "sparkles", keywords: "callout 콜아웃 강조 박스" },
+    { group: "리치",     id: "divider",  label: "구분선",      desc: "섹션 사이 구분",          icon: "list",     keywords: "divider 구분 hr line" },
+    // Code & data
+    { group: "코드·데이터", id: "code",     label: "코드 블록",   desc: "언어별 코드 + 복사",      icon: "command",  keywords: "code 코드 syntax" },
+    { group: "코드·데이터", id: "math",     label: "수식",        desc: "KaTeX LaTeX 수식",       icon: "hash",     keywords: "math 수식 katex latex" },
+    { group: "코드·데이터", id: "table",    label: "표",          desc: "행과 열 데이터",         icon: "grid",     keywords: "table 표 데이터" },
+    // Media
+    { group: "미디어",   id: "image",    label: "이미지",      desc: "PNG · JPG · 업로드/URL",  icon: "image",    keywords: "image 이미지 사진 그림" },
+    { group: "미디어",   id: "attach",   label: "파일 첨부",    desc: "어떤 파일이든 첨부",      icon: "paperclip", keywords: "file attach 첨부 파일" },
+    { group: "미디어",   id: "link",     label: "북마크/임베드", desc: "URL 미리보기 카드",       icon: "link",     keywords: "link bookmark embed 북마크" },
+  ];
+
+  const filtered = query
+    ? commands.filter(c => (c.label + " " + c.keywords + " " + c.desc).toLowerCase().includes(query.toLowerCase()))
+    : commands;
+
+  useEffectO(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); setHighlight(h => (h + 1) % Math.max(1, filtered.length)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setHighlight(h => (h - 1 + filtered.length) % Math.max(1, filtered.length)); return; }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const c = filtered[highlight];
+        if (c) onPick(c.id);
+        return;
+      }
+      if (e.key === "Backspace" && query === "") { onClose(); return; }
+      // Filter out "/" itself (it was the trigger key)
+      if (e.key === "/") { return; }
+      if (e.key.length === 1) { setQuery(q => q + e.key); setHighlight(0); return; }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [filtered, highlight, query]);
+
+  // Reset highlight on filter change
+  useEffectO(() => { setHighlight(0); }, [query]);
+
+  return (
+    <>
+      <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={onClose} />
+      <div
+        className="slash-menu"
+        style={{
+          position: "fixed",
+          left: Math.min(slashMenu.x, window.innerWidth - 300),
+          top: Math.min(slashMenu.y, window.innerHeight - 320),
+          zIndex: 200,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="slash-menu-head">
+          <Icon name="command" size={12} style={{ color: "var(--accent)" }} />
+          <span style={{ flex: 1 }}>
+            {query ? <span className="mono">/{query}</span> : "블록 타입을 선택하세요"}
+          </span>
+          <span className="kbd">Esc</span>
+        </div>
+        <div className="slash-menu-list">
+          {filtered.length === 0 && (
+            <div style={{ padding: 14, fontSize: 12, color: "var(--text-faint)", textAlign: "center" }}>
+              "{query}"에 해당하는 블록이 없어요
+            </div>
+          )}
+          {filtered.map((c, i) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`slash-menu-item ${i === highlight ? "is-highlight" : ""}`}
+              onClick={() => onPick(c.id)}
+              onMouseEnter={() => setHighlight(i)}
+            >
+              <div className="slash-menu-icon">
+                <Icon name={c.icon} size={14} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="slash-menu-label">{c.label}</div>
+                <div className="slash-menu-desc">{c.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="slash-menu-foot">
+          <span><span className="kbd">↑↓</span> 이동</span>
+          <span><span className="kbd">↵</span> 선택</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+window.Planary.SlashCommandMenu = SlashCommandMenu;
+
+/* ===========================================================
+   ADDITIONAL WIKI BLOCK TYPES
+   (ports of features from memo/wiki.js — list, checklist, code, math, table, image, attach, link)
+   =========================================================== */
+
+function ListBlock({ block, onUpdate }) {
+  const items = block.items || [""];
+  const isOrdered = block.type === "ol";
+  const Tag = isOrdered ? "ol" : "ul";
+  const updateItem = (i, val) => {
+    const next = [...items];
+    next[i] = val;
+    onUpdate({ items: next });
+  };
+  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), "", ...items.slice(afterIdx + 1)] });
+  const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
+  return (
+    <Tag style={{ paddingLeft: 22, margin: "8px 0", color: "var(--text-md)", lineHeight: 1.6 }}>
+      {items.map((item, i) => (
+        <li key={i} style={{ margin: "3px 0" }}>
+          <span
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => updateItem(i, e.currentTarget.innerHTML)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); addItem(i); }
+              if (e.key === "Backspace" && e.currentTarget.textContent === "") { e.preventDefault(); removeItem(i); }
+            }}
+            style={{ outline: "none", display: "block", minHeight: 22 }}
+            dangerouslySetInnerHTML={{ __html: item || "" }}
+          />
+        </li>
+      ))}
+    </Tag>
+  );
+}
+
+function ChecklistBlock({ block, onUpdate }) {
+  const items = block.items || [{ text: "", done: false }];
+  const update = (i, patch) => onUpdate({ items: items.map((x, idx) => idx === i ? { ...x, ...patch } : x) });
+  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", done: false }, ...items.slice(afterIdx + 1)] });
+  const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
+  return (
+    <div style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4 }}>
+      {items.map((it, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "start", gap: 8, padding: "4px 0" }}>
+          <button
+            type="button"
+            className={`checkbox ${it.done ? "is-checked" : ""}`}
+            style={{ marginTop: 3, flexShrink: 0 }}
+            onClick={() => update(i, { done: !it.done })}
+          >
+            {it.done && <Icon name="check" size={11} stroke={3} />}
+          </button>
+          <span
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => update(i, { text: e.currentTarget.innerHTML })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); addItem(i); }
+              if (e.key === "Backspace" && e.currentTarget.textContent === "") { e.preventDefault(); removeItem(i); }
+            }}
+            style={{
+              outline: "none", flex: 1, minHeight: 22,
+              color: it.done ? "var(--text-lo)" : "var(--text-md)",
+              textDecoration: it.done ? "line-through" : "none",
+              textDecorationColor: "var(--text-faint)",
+            }}
+            dangerouslySetInnerHTML={{ __html: it.text || "" }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CodeEditorBlock({ block, onUpdate }) {
+  const langs = ["javascript", "typescript", "tsx", "css", "html", "python", "java", "kotlin", "swift", "go", "rust", "sql", "shell", "json", "yaml", "markdown"];
+  const lang = block.lang || "javascript";
+  const code = block.code || "";
+  const [copied, setCopied] = useStateO(false);
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className="codeblock" style={{ margin: "10px 0" }}>
+      <div className="codeblock-bar">
+        <select
+          value={lang}
+          onChange={(e) => onUpdate({ lang: e.target.value })}
+          style={{ fontSize: 11, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: 4, padding: "2px 6px", color: "var(--text-md)", fontFamily: "var(--font-mono)" }}
+        >
+          {langs.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <button className="codeblock-copy" onClick={handleCopy} type="button">
+          <Icon name={copied ? "check" : "copy"} size={12} />{copied ? "복사됨" : "복사"}
+        </button>
+      </div>
+      <pre style={{ margin: 0, border: 0 }}>
+        <code
+          contentEditable
+          suppressContentEditableWarning
+          spellCheck="false"
+          onBlur={(e) => onUpdate({ code: e.currentTarget.textContent })}
+          style={{
+            display: "block", padding: "12px 14px",
+            fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.55,
+            color: "var(--text-md)", outline: "none", whiteSpace: "pre",
+          }}
+        >{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+function MathBlock({ block, onUpdate }) {
+  const [tex, setTex] = useStateO(block.tex || "");
+  const [edit, setEdit] = useStateO(!block.tex);
+  // Render via KaTeX (loaded externally) or as plain text if not loaded
+  const renderedRef = useRefO(null);
+  useEffectO(() => {
+    if (edit || !renderedRef.current) return;
+    if (typeof window.katex !== "undefined") {
+      try {
+        window.katex.render(tex, renderedRef.current, { throwOnError: false, displayMode: true, strict: false });
+      } catch (_) { renderedRef.current.textContent = tex; }
+    } else {
+      renderedRef.current.textContent = tex || "수식을 입력하세요";
+    }
+  }, [tex, edit]);
+  return (
+    <div style={{ margin: "10px 0", padding: 16, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-md)", textAlign: "center" }}>
+      {edit ? (
+        <textarea
+          autoFocus
+          value={tex}
+          onChange={(e) => setTex(e.target.value)}
+          onBlur={() => { onUpdate({ tex }); setEdit(false); }}
+          placeholder={"\\sum_{i=1}^n i = \\frac{n(n+1)}{2}"}
+          rows={2}
+          style={{
+            width: "100%",
+            fontFamily: "var(--font-mono)", fontSize: 13,
+            background: "var(--bg)", color: "var(--text-hi)",
+            border: "1px solid var(--border)", borderRadius: 6,
+            padding: 10, resize: "vertical", outline: "none",
+          }}
+        />
+      ) : (
+        <div ref={renderedRef} style={{ minHeight: 30, cursor: "pointer", color: "var(--text-hi)", fontSize: 18 }} onClick={() => setEdit(true)} />
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, fontSize: 10, color: "var(--text-faint)" }}>
+        <span>KaTeX · LaTeX</span>
+        {!edit && <button type="button" className="btn btn-sm" onClick={() => setEdit(true)}><Icon name="edit" size={11} />수정</button>}
+      </div>
+    </div>
+  );
+}
+
+function TableBlock({ block, onUpdate }) {
+  const rows = block.rows || [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]];
+  const updateCell = (r, c, val) => {
+    const next = rows.map(row => [...row]);
+    next[r][c] = val;
+    onUpdate({ rows: next });
+  };
+  const addRow = () => onUpdate({ rows: [...rows, Array(rows[0].length).fill("")] });
+  const addCol = () => onUpdate({ rows: rows.map(r => [...r, ""]) });
+  return (
+    <div style={{ margin: "10px 0", overflow: "auto", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <tbody>
+          {rows.map((row, r) => (
+            <tr key={r}>
+              {row.map((cell, c) => {
+                const isHeader = r === 0;
+                const Tag = isHeader ? "th" : "td";
+                return (
+                  <Tag
+                    key={c}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => updateCell(r, c, e.currentTarget.textContent)}
+                    style={{
+                      padding: "8px 10px",
+                      border: "1px solid var(--border-soft)",
+                      background: isHeader ? "var(--bg-elev)" : "transparent",
+                      fontWeight: isHeader ? 700 : 500,
+                      color: isHeader ? "var(--text-hi)" : "var(--text-md)",
+                      textAlign: "left", outline: "none",
+                      minWidth: 80,
+                    }}
+                  >{cell}</Tag>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ display: "flex", gap: 6, padding: 6, borderTop: "1px solid var(--border-soft)", background: "var(--surface-2)" }}>
+        <button type="button" className="btn btn-sm" onClick={addRow}><Icon name="plus" size={11} />행 추가</button>
+        <button type="button" className="btn btn-sm" onClick={addCol}><Icon name="plus" size={11} />열 추가</button>
+      </div>
+    </div>
+  );
+}
+
+function ImageBlock({ block, onUpdate }) {
+  const fileRef = useRefO(null);
+  const [caption, setCaption] = useStateO(block.caption || "");
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onUpdate({ url: reader.result, name: file.name });
+    reader.readAsDataURL(file);
+  };
+  const handleUrl = () => {
+    const u = window.prompt("이미지 URL을 입력하세요");
+    if (u) onUpdate({ url: u, name: u.split("/").pop() });
+  };
+  if (!block.url) {
+    return (
+      <div style={{ margin: "10px 0", padding: 24, border: "1px dashed var(--border)", borderRadius: "var(--r-md)", background: "var(--bg-elev)", textAlign: "center" }}>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+        <Icon name="image" size={28} style={{ color: "var(--text-faint)", marginBottom: 8 }} />
+        <div style={{ fontSize: 13, color: "var(--text-md)", fontWeight: 600 }}>이미지를 추가하세요</div>
+        <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 4 }}>PNG · JPG · WebP · GIF</div>
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 12 }}>
+          <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()}><Icon name="image" size={11} />업로드</button>
+          <button type="button" className="btn btn-sm" onClick={handleUrl}><Icon name="link" size={11} />URL</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <figure style={{ margin: "10px 0", padding: 0 }}>
+      <img src={block.url} alt={block.name || ""} style={{ maxWidth: "100%", borderRadius: "var(--r-md)", border: "1px solid var(--border-soft)", display: "block" }} />
+      <figcaption
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={(e) => onUpdate({ caption: e.currentTarget.textContent })}
+        style={{ fontSize: 11, color: "var(--text-lo)", textAlign: "center", marginTop: 6, outline: "none", fontStyle: "italic" }}
+        data-placeholder="캡션 추가"
+      >{caption || ""}</figcaption>
+    </figure>
+  );
+}
+
+function AttachBlock({ block, onUpdate }) {
+  const fileRef = useRefO(null);
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    onUpdate({ name: file.name, size: file.size });
+  };
+  if (!block.name) {
+    return (
+      <div style={{ margin: "10px 0", padding: 14, border: "1px dashed var(--border)", borderRadius: "var(--r-md)", background: "var(--bg-elev)", display: "flex", alignItems: "center", gap: 12 }}>
+        <input ref={fileRef} type="file" style={{ display: "none" }} onChange={handleFile} />
+        <Icon name="paperclip" size={18} style={{ color: "var(--text-lo)", flexShrink: 0 }} />
+        <div style={{ flex: 1, fontSize: 13, color: "var(--text-lo)" }}>파일 첨부</div>
+        <button type="button" className="btn btn-sm btn-primary" onClick={() => fileRef.current?.click()}>
+          <Icon name="paperclip" size={11} />선택
+        </button>
+      </div>
+    );
+  }
+  const sizeKB = block.size ? Math.round(block.size / 1024) : 0;
+  return (
+    <div style={{ margin: "10px 0", padding: 12, border: "1px solid var(--border)", borderRadius: "var(--r-md)", background: "var(--surface)", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name="paperclip" size={16} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{block.name}</div>
+        <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{sizeKB > 0 ? `${sizeKB.toLocaleString()} KB` : "—"}</div>
+      </div>
+      <button type="button" className="btn btn-sm"><Icon name="download" size={11} />다운로드</button>
+    </div>
+  );
+}
+
+function BookmarkBlock({ block, onUpdate }) {
+  const [editing, setEditing] = useStateO(!block.url);
+  const [urlDraft, setUrlDraft] = useStateO(block.url || "");
+  if (editing) {
+    return (
+      <div style={{ margin: "10px 0", padding: 14, border: "1px dashed var(--border)", borderRadius: "var(--r-md)", background: "var(--bg-elev)" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Icon name="link" size={16} style={{ color: "var(--text-lo)", flexShrink: 0 }} />
+          <input
+            autoFocus
+            type="url"
+            value={urlDraft}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onUpdate({ url: urlDraft, title: urlDraft.replace(/^https?:\/\//, "").split("/")[0] });
+                setEditing(false);
+              }
+            }}
+            placeholder="URL을 붙여넣고 Enter"
+            className="form-input"
+            style={{ flex: 1, fontFamily: "var(--font-mono)" }}
+          />
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            onClick={() => { onUpdate({ url: urlDraft, title: urlDraft.replace(/^https?:\/\//, "").split("/")[0] }); setEditing(false); }}
+            disabled={!urlDraft.trim()}
+          >
+            가져오기
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <a
+      href={block.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => { if (e.target.closest(".bookmark-edit-btn")) e.preventDefault(); }}
+      style={{
+        margin: "10px 0", padding: 14,
+        display: "flex", gap: 14,
+        background: "var(--bg-elev)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r-md)",
+        color: "inherit", textDecoration: "none",
+      }}
+    >
+      <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+        <Icon name="globe" size={16} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{block.title || block.url}</div>
+        <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>{block.url}</div>
+      </div>
+      <button
+        type="button"
+        className="btn btn-sm bookmark-edit-btn"
+        onClick={(e) => { e.preventDefault(); setEditing(true); }}
+        style={{ alignSelf: "start" }}
+      >
+        <Icon name="edit" size={11} />
+      </button>
+    </a>
+  );
+}
+
+/* ===========================================================
+   SHARE DIALOG (existing — leave below)
+   =========================================================== */
+
 function ShareDialog({ onClose, title }) {
   const [visibility, setVisibility] = useStateO("private");
   const [emailDraft, setEmailDraft] = useStateO("");
   const [copied, setCopied] = useStateO(false);
   const [collaborators, setCollaborators] = useStateO([
-    { name: "도하 김", email: "doha@planary.app", role: "owner", initials: "DK" },
-  ]);
+  { name: "도하 김", email: "doha@planary.app", role: "owner", initials: "DK" }]
+  );
 
   const url = `https://planary.app/w/${title.replace(/\s+/g, "-").toLowerCase()}-x9k2`;
 
@@ -1958,12 +3247,12 @@ function ShareDialog({ onClose, title }) {
     if (!emailDraft.trim() || !emailDraft.includes("@")) return;
     const name = emailDraft.split("@")[0];
     const initials = name.slice(0, 2).toUpperCase();
-    setCollaborators(prev => [...prev, { name, email: emailDraft.trim(), role: "editor", initials }]);
+    setCollaborators((prev) => [...prev, { name, email: emailDraft.trim(), role: "editor", initials }]);
     setEmailDraft("");
   };
 
   useEffectO(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {if (e.key === "Escape") onClose();};
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -1988,7 +3277,7 @@ function ShareDialog({ onClose, title }) {
               placeholder="name@example.com"
               value={emailDraft}
               onChange={(e) => setEmailDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleInvite(); }}
+              onKeyDown={(e) => {if (e.key === "Enter") handleInvite();}}
               style={{
                 flex: 1,
                 background: "var(--bg-elev)",
@@ -1996,9 +3285,9 @@ function ShareDialog({ onClose, title }) {
                 borderRadius: "var(--r-md)",
                 padding: "9px 12px",
                 fontSize: 13, color: "var(--text-hi)",
-                outline: "none",
-              }}
-            />
+                outline: "none"
+              }} />
+            
             <select
               defaultValue="editor"
               style={{
@@ -2007,9 +3296,9 @@ function ShareDialog({ onClose, title }) {
                 borderRadius: "var(--r-md)",
                 padding: "0 10px",
                 fontSize: 12, color: "var(--text-md)",
-                outline: "none",
-              }}
-            >
+                outline: "none"
+              }}>
+              
               <option value="viewer">읽기 전용</option>
               <option value="editor">편집 가능</option>
               <option value="admin">관리자</option>
@@ -2023,42 +3312,42 @@ function ShareDialog({ onClose, title }) {
           <div style={{ marginTop: 16 }}>
             <div className="kicker" style={{ marginBottom: 8 }}>접근 가능한 사용자 · {collaborators.length}명</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {collaborators.map((c, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 6px", borderRadius: "var(--r-sm)" }}>
+              {collaborators.map((c, i) =>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 6px", borderRadius: "var(--r-sm)" }}>
                   <div className="avatar" style={{ width: 28, height: 28 }}>{c.initials}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{c.name}</div>
                     <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{c.email}</div>
                   </div>
-                  {c.role === "owner" ? (
-                    <span className="chip" style={{ height: 22 }}>소유자</span>
-                  ) : (
-                    <>
+                  {c.role === "owner" ?
+                <span className="chip" style={{ height: 22 }}>소유자</span> :
+
+                <>
                       <select
-                        defaultValue={c.role}
-                        style={{
-                          background: "transparent",
-                          border: "1px solid var(--border-soft)",
-                          borderRadius: "var(--r-sm)",
-                          padding: "4px 8px",
-                          fontSize: 11, color: "var(--text-md)",
-                          outline: "none", cursor: "pointer",
-                        }}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (v === "remove") setCollaborators(prev => prev.filter((_, idx) => idx !== i));
-                          else setCollaborators(prev => prev.map((x, idx) => idx === i ? { ...x, role: v } : x));
-                        }}
-                      >
+                    defaultValue={c.role}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid var(--border-soft)",
+                      borderRadius: "var(--r-sm)",
+                      padding: "4px 8px",
+                      fontSize: 11, color: "var(--text-md)",
+                      outline: "none", cursor: "pointer"
+                    }}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "remove") setCollaborators((prev) => prev.filter((_, idx) => idx !== i));else
+                      setCollaborators((prev) => prev.map((x, idx) => idx === i ? { ...x, role: v } : x));
+                    }}>
+                    
                         <option value="viewer">읽기</option>
                         <option value="editor">편집</option>
                         <option value="admin">관리자</option>
                         <option value="remove" style={{ color: "var(--err)" }}>제거</option>
                       </select>
                     </>
-                  )}
+                }
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -2069,30 +3358,30 @@ function ShareDialog({ onClose, title }) {
           <label className="kicker" style={{ marginBottom: 10, display: "block" }}>일반 액세스</label>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {[
-              { id: "private", icon: "lock", title: "비공개", body: "초대된 사람만 볼 수 있어요" },
-              { id: "link", icon: "link", title: "링크 있는 모든 사람", body: "링크를 가진 사람은 누구나 읽을 수 있어요" },
-              { id: "public", icon: "globe", title: "공개 (검색 허용)", body: "검색엔진과 모든 인터넷 사용자에게 공개돼요" },
-            ].map(opt => (
-              <button
-                key={opt.id}
-                onClick={() => setVisibility(opt.id)}
-                type="button"
-                style={{
-                  display: "flex", alignItems: "start", gap: 12,
-                  padding: 12,
-                  border: visibility === opt.id ? "1px solid var(--accent-ring)" : "1px solid var(--border-soft)",
-                  background: visibility === opt.id ? "var(--accent-softer)" : "transparent",
-                  borderRadius: "var(--r-md)",
-                  cursor: "pointer", textAlign: "left",
-                  transition: "all var(--dur-fast)",
-                }}
-              >
+            { id: "private", icon: "lock", title: "비공개", body: "초대된 사람만 볼 수 있어요" },
+            { id: "link", icon: "link", title: "링크 있는 모든 사람", body: "링크를 가진 사람은 누구나 읽을 수 있어요" },
+            { id: "public", icon: "globe", title: "공개 (검색 허용)", body: "검색엔진과 모든 인터넷 사용자에게 공개돼요" }].
+            map((opt) =>
+            <button
+              key={opt.id}
+              onClick={() => setVisibility(opt.id)}
+              type="button"
+              style={{
+                display: "flex", alignItems: "start", gap: 12,
+                padding: 12,
+                border: visibility === opt.id ? "1px solid var(--accent-ring)" : "1px solid var(--border-soft)",
+                background: visibility === opt.id ? "var(--accent-softer)" : "transparent",
+                borderRadius: "var(--r-md)",
+                cursor: "pointer", textAlign: "left",
+                transition: "all var(--dur-fast)"
+              }}>
+              
                 <div style={{
-                  width: 30, height: 30, borderRadius: 8,
-                  background: visibility === opt.id ? "var(--accent-soft)" : "var(--surface-2)",
-                  color: visibility === opt.id ? "var(--accent)" : "var(--text-lo)",
-                  display: "grid", placeItems: "center", flexShrink: 0,
-                }}>
+                width: 30, height: 30, borderRadius: 8,
+                background: visibility === opt.id ? "var(--accent-soft)" : "var(--surface-2)",
+                color: visibility === opt.id ? "var(--accent)" : "var(--text-lo)",
+                display: "grid", placeItems: "center", flexShrink: 0
+              }}>
                   <Icon name={opt.icon} size={14} />
                 </div>
                 <div style={{ flex: 1 }}>
@@ -2101,7 +3390,7 @@ function ShareDialog({ onClose, title }) {
                 </div>
                 {visibility === opt.id && <Icon name="check" size={14} style={{ color: "var(--accent)", marginTop: 8 }} stroke={3} />}
               </button>
-            ))}
+            )}
           </div>
         </div>
 
@@ -2117,8 +3406,8 @@ function ShareDialog({ onClose, title }) {
           <button className="btn btn-primary btn-sm" onClick={onClose}>완료</button>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 /* ===========================================================
@@ -2131,9 +3420,9 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
   const [priorityPopover, setPriorityPopover] = useStateO(false);
   const [projectPopover, setProjectPopover] = useStateO(false);
 
-  const update = (k, v) => setDraft(prev => ({ ...prev, [k]: v }));
-  const proj = PROJECTS.find(p => p.id === draft.project);
-  const course = ECLASS_COURSES && ECLASS_COURSES.find(c => c.id === draft.course);
+  const update = (k, v) => setDraft((prev) => ({ ...prev, [k]: v }));
+  const proj = PROJECTS.find((p) => p.id === draft.project);
+  const course = ECLASS_COURSES && ECLASS_COURSES.find((c) => c.id === draft.course);
 
   useEffectO(() => {
     const onKey = (e) => {
@@ -2146,8 +3435,8 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
 
   const priorityMeta = {
     high: { label: "높음", color: "var(--err)" },
-    med:  { label: "보통", color: "var(--warn)" },
-    low:  { label: "낮음", color: "var(--info)" },
+    med: { label: "보통", color: "var(--warn)" },
+    low: { label: "낮음", color: "var(--info)" }
   };
   const p = priorityMeta[draft.priority] || priorityMeta.med;
 
@@ -2160,8 +3449,8 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
             <button
               className={`checkbox ${draft.done ? "is-checked" : ""}`}
-              onClick={() => update("done", !draft.done)}
-            >
+              onClick={() => update("done", !draft.done)}>
+              
               {draft.done && <Icon name="check" size={12} stroke={3} />}
             </button>
             <input
@@ -2175,9 +3464,9 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
                 background: "transparent", border: 0, outline: "none",
                 color: "var(--text-hi)",
                 letterSpacing: "-0.015em",
-                textDecoration: draft.done ? "line-through" : "none",
-              }}
-            />
+                textDecoration: draft.done ? "line-through" : "none"
+              }} />
+            
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="닫기"><Icon name="x" size={16} /></button>
         </div>
@@ -2197,35 +3486,35 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
               fontSize: 14, lineHeight: 1.6,
               fontFamily: "var(--font-display)",
               resize: "vertical",
-              padding: 0,
-            }}
-          />
+              padding: 0
+            }} />
+          
 
           {/* Property rows */}
           <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 0, borderTop: "1px solid var(--border-soft)" }}>
             {/* Date */}
-            <PropRow icon="calendar" label="날짜" value={dateLabel} onClick={() => { setDatePopover(true); setPriorityPopover(false); setProjectPopover(false); }}>
-              {datePopover && (
-                <PropPopover onClose={() => setDatePopover(false)}>
+            <PropRow icon="calendar" label="날짜" value={dateLabel} onClick={() => {setDatePopover(true);setPriorityPopover(false);setProjectPopover(false);}}>
+              {datePopover &&
+              <PropPopover onClose={() => setDatePopover(false)}>
                   {[
-                    { label: "오늘",  value: "오늘" },
-                    { label: "내일",  value: "내일" },
-                    { label: "이번 주", value: "수요일" },
-                    { label: "다음 주", value: "다음주 월요일" },
-                    { label: "없음", value: null },
-                  ].map(opt => (
-                    <button
-                      key={opt.label}
-                      className={`tool-popover-item ${draft.time === opt.value ? "is-active" : ""}`}
-                      onClick={() => { update("time", opt.value); setDatePopover(false); }}
-                      type="button"
-                    >
+                { label: "오늘", value: "오늘" },
+                { label: "내일", value: "내일" },
+                { label: "이번 주", value: "수요일" },
+                { label: "다음 주", value: "다음주 월요일" },
+                { label: "없음", value: null }].
+                map((opt) =>
+                <button
+                  key={opt.label}
+                  className={`tool-popover-item ${draft.time === opt.value ? "is-active" : ""}`}
+                  onClick={() => {update("time", opt.value);setDatePopover(false);}}
+                  type="button">
+                  
                       <Icon name="calendar" size={12} />
                       <span>{opt.label}</span>
                     </button>
-                  ))}
+                )}
                 </PropPopover>
-              )}
+              }
             </PropRow>
 
             {/* Time / Reminder */}
@@ -2234,26 +3523,26 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
               label="리마인더"
               value={draft.reminder ? "알림 켜짐" : "없음"}
               onClick={() => update("reminder", !draft.reminder)}
-              chip={draft.reminder && <span className="chip chip-accent" style={{ height: 22 }}>활성</span>}
-            />
+              chip={draft.reminder && <span className="chip chip-accent" style={{ height: 22 }}>활성</span>} />
+            
 
             {/* Priority */}
-            <PropRow icon="flag" label="우선순위" valueColor={p.color} value={p.label} onClick={() => { setPriorityPopover(true); setDatePopover(false); setProjectPopover(false); }}>
-              {priorityPopover && (
-                <PropPopover onClose={() => setPriorityPopover(false)}>
-                  {Object.entries(priorityMeta).map(([k, v]) => (
-                    <button
-                      key={k}
-                      className={`tool-popover-item ${draft.priority === k ? "is-active" : ""}`}
-                      onClick={() => { update("priority", k); setPriorityPopover(false); }}
-                      type="button"
-                    >
+            <PropRow icon="flag" label="우선순위" valueColor={p.color} value={p.label} onClick={() => {setPriorityPopover(true);setDatePopover(false);setProjectPopover(false);}}>
+              {priorityPopover &&
+              <PropPopover onClose={() => setPriorityPopover(false)}>
+                  {Object.entries(priorityMeta).map(([k, v]) =>
+                <button
+                  key={k}
+                  className={`tool-popover-item ${draft.priority === k ? "is-active" : ""}`}
+                  onClick={() => {update("priority", k);setPriorityPopover(false);}}
+                  type="button">
+                  
                       <span className="dot" style={{ background: v.color, width: 9, height: 9, borderRadius: 2 }} />
                       <span>{v.label}</span>
                     </button>
-                  ))}
+                )}
                 </PropPopover>
-              )}
+              }
             </PropRow>
 
             {/* Project */}
@@ -2261,44 +3550,44 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
               icon="folder"
               label="프로젝트"
               value={proj ? proj.name : course ? course.name : "프로젝트 없음"}
-              onClick={() => { setProjectPopover(true); setDatePopover(false); setPriorityPopover(false); }}
-            >
-              {projectPopover && (
-                <PropPopover onClose={() => setProjectPopover(false)}>
+              onClick={() => {setProjectPopover(true);setDatePopover(false);setPriorityPopover(false);}}>
+              
+              {projectPopover &&
+              <PropPopover onClose={() => setProjectPopover(false)}>
                   <button
-                    className={`tool-popover-item ${!draft.project ? "is-active" : ""}`}
-                    onClick={() => { update("project", null); setProjectPopover(false); }}
-                    type="button"
-                  >
+                  className={`tool-popover-item ${!draft.project ? "is-active" : ""}`}
+                  onClick={() => {update("project", null);setProjectPopover(false);}}
+                  type="button">
+                  
                     <span className="proj-color" style={{ background: "var(--text-faint)" }} />
                     <span>프로젝트 없음</span>
                   </button>
-                  {PROJECTS.map(p => (
-                    <button
-                      key={p.id}
-                      className={`tool-popover-item ${draft.project === p.id ? "is-active" : ""}`}
-                      onClick={() => { update("project", p.id); setProjectPopover(false); }}
-                      type="button"
-                    >
+                  {PROJECTS.map((p) =>
+                <button
+                  key={p.id}
+                  className={`tool-popover-item ${draft.project === p.id ? "is-active" : ""}`}
+                  onClick={() => {update("project", p.id);setProjectPopover(false);}}
+                  type="button">
+                  
                       <span className="proj-color" style={{ background: p.color }} />
                       <span>{p.name}</span>
                     </button>
-                  ))}
+                )}
                 </PropPopover>
-              )}
+              }
             </PropRow>
 
             {/* Tags */}
             <PropRow icon="hash" label="태그" value={draft.tags && draft.tags.length ? "" : "태그 없음"}>
-              {draft.tags && draft.tags.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1, justifyContent: "flex-end" }}>
-                  {draft.tags.map(tag => (
-                    <span key={tag} className="tag" onClick={() => update("tags", draft.tags.filter(x => x !== tag))}>
+              {draft.tags && draft.tags.length > 0 &&
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1, justifyContent: "flex-end" }}>
+                  {draft.tags.map((tag) =>
+                <span key={tag} className="tag" onClick={() => update("tags", draft.tags.filter((x) => x !== tag))}>
                       {tag} <Icon name="x" size={9} style={{ marginLeft: 2, opacity: 0.6 }} />
                     </span>
-                  ))}
+                )}
                 </div>
-              )}
+              }
             </PropRow>
           </div>
         </div>
@@ -2307,8 +3596,8 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
           <button
             className="btn btn-sm"
             style={{ color: "var(--err)" }}
-            onClick={() => { if (window.confirm("이 작업을 삭제할까요?")) onDelete(task.id); }}
-          >
+            onClick={() => {if (window.confirm("이 작업을 삭제할까요?")) onDelete(task.id);}}>
+            
             <Icon name="trash" size={12} />삭제
           </button>
           <div style={{ flex: 1 }} />
@@ -2318,8 +3607,8 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
           </button>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 function PropRow({ icon, label, value, valueColor, onClick, children, chip }) {
@@ -2337,24 +3626,24 @@ function PropRow({ icon, label, value, valueColor, onClick, children, chip }) {
           background: "transparent",
           cursor: onClick ? "pointer" : "default",
           textAlign: "left",
-          transition: "background var(--dur-fast)",
+          transition: "background var(--dur-fast)"
         }}
         onMouseEnter={(e) => onClick && (e.currentTarget.style.background = "var(--hover)")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-      >
+        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+        
         <div style={{ width: 24, color: "var(--text-lo)", display: "grid", placeItems: "center" }}>
           <Icon name={icon} size={14} />
         </div>
         <div style={{ flex: 1, fontSize: 13, color: "var(--text-lo)", fontWeight: 600 }}>{label}</div>
         {chip}
-        {value && (
-          <div style={{ fontSize: 13, color: valueColor || "var(--text-hi)", fontWeight: 600 }}>{value}</div>
-        )}
+        {value &&
+        <div style={{ fontSize: 13, color: valueColor || "var(--text-hi)", fontWeight: 600 }}>{value}</div>
+        }
         {onClick && <Icon name="chevronRight" size={11} style={{ color: "var(--text-faint)" }} />}
       </button>
       {children}
-    </div>
-  );
+    </div>);
+
 }
 
 function PropPopover({ children, onClose }) {
@@ -2367,11 +3656,11 @@ function PropPopover({ children, onClose }) {
     <div
       className="tool-popover"
       style={{ position: "absolute", top: "100%", right: 4, left: "auto", bottom: "auto", minWidth: 180 }}
-      onClick={(e) => e.stopPropagation()}
-    >
+      onClick={(e) => e.stopPropagation()}>
+      
       {children}
-    </div>
-  );
+    </div>);
+
 }
 
 /* ===========================================================
@@ -2383,7 +3672,7 @@ function SignOutDialog({ onClose, user }) {
   const expected = user && user.email ? user.email : "";
 
   useEffectO(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {if (e.key === "Escape") onClose();};
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -2407,9 +3696,9 @@ function SignOutDialog({ onClose, user }) {
               {mode === "signout" ? "로그아웃" : "계정 탈퇴"}
             </h3>
             <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>
-              {mode === "signout"
-                ? "이 기기에서 세션을 종료합니다. 데이터는 그대로 유지돼요."
-                : "계정과 모든 데이터를 영구 삭제합니다. 되돌릴 수 없습니다."}
+              {mode === "signout" ?
+              "이 기기에서 세션을 종료합니다. 데이터는 그대로 유지돼요." :
+              "계정과 모든 데이터를 영구 삭제합니다. 되돌릴 수 없습니다."}
             </p>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
@@ -2418,28 +3707,28 @@ function SignOutDialog({ onClose, user }) {
         <div style={{ padding: "16px 22px" }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 14, padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-sm)" }}>
             {[
-              { id: "signout", label: "로그아웃", icon: "logout" },
-              { id: "delete",  label: "계정 탈퇴", icon: "trash" },
-            ].map(t => (
-              <button
-                key={t.id}
-                onClick={() => { setMode(t.id); setConfirmText(""); }}
-                style={{
-                  flex: 1, height: 30, borderRadius: 6,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  fontSize: 12, fontWeight: 600,
-                  background: mode === t.id ? "var(--surface)" : "transparent",
-                  color: mode === t.id ? (t.id === "delete" ? "var(--err)" : "var(--text-hi)") : "var(--text-lo)",
-                  boxShadow: mode === t.id ? "var(--shadow-sm)" : "none",
-                }}
-              >
+            { id: "signout", label: "로그아웃", icon: "logout" },
+            { id: "delete", label: "계정 탈퇴", icon: "trash" }].
+            map((t) =>
+            <button
+              key={t.id}
+              onClick={() => {setMode(t.id);setConfirmText("");}}
+              style={{
+                flex: 1, height: 30, borderRadius: 6,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                fontSize: 12, fontWeight: 600,
+                background: mode === t.id ? "var(--surface)" : "transparent",
+                color: mode === t.id ? t.id === "delete" ? "var(--err)" : "var(--text-hi)" : "var(--text-lo)",
+                boxShadow: mode === t.id ? "var(--shadow-sm)" : "none"
+              }}>
+              
                 <Icon name={t.icon} size={12} />{t.label}
               </button>
-            ))}
+            )}
           </div>
 
-          {mode === "signout" ? (
-            <>
+          {mode === "signout" ?
+          <>
               <div style={{ padding: 14, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-md)" }}>
                 <div style={{ fontSize: 13, color: "var(--text-md)", lineHeight: 1.6 }}>
                   로그아웃해도 작업·노트·위키·북마크는 모두 안전하게 보관됩니다. 같은 계정으로 다시 로그인하면 그대로 이어집니다.
@@ -2447,18 +3736,18 @@ function SignOutDialog({ onClose, user }) {
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: "14px 0 0", display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
-                  "이 기기에서 세션만 종료",
-                  "데이터는 클라우드에 그대로 유지",
-                  "다른 기기에는 영향 없음",
-                ].map((p, i) => (
-                  <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-md)" }}>
+              "이 기기에서 세션만 종료",
+              "데이터는 클라우드에 그대로 유지",
+              "다른 기기에는 영향 없음"].
+              map((p, i) =>
+              <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-md)" }}>
                     <Icon name="check" size={11} stroke={3} style={{ color: "var(--ok)" }} />{p}
                   </li>
-                ))}
+              )}
               </ul>
-            </>
-          ) : (
-            <>
+            </> :
+
+          <>
               <div style={{ padding: 14, background: "color-mix(in oklab, var(--err) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--err) 30%, var(--border))", borderRadius: "var(--r-md)" }}>
                 <div style={{ display: "flex", gap: 10, alignItems: "start" }}>
                   <Icon name="flag" size={16} style={{ color: "var(--err)", flexShrink: 0, marginTop: 2 }} />
@@ -2476,15 +3765,15 @@ function SignOutDialog({ onClose, user }) {
                 </label>
                 <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 4, marginBottom: 6, fontFamily: "var(--font-mono)" }}>{expected}</div>
                 <input
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder={expected}
-                  className="form-input"
-                  style={{ fontFamily: "var(--font-mono)" }}
-                />
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder={expected}
+                className="form-input"
+                style={{ fontFamily: "var(--font-mono)" }} />
+              
               </div>
             </>
-          )}
+          }
         </div>
 
         <div className="dialog-foot">
@@ -2492,24 +3781,24 @@ function SignOutDialog({ onClose, user }) {
             {mode === "delete" && confirmText !== expected ? "이메일이 일치하지 않습니다" : ""}
           </div>
           <button className="btn btn-sm" onClick={onClose}>취소</button>
-          {mode === "signout" ? (
-            <button className="btn btn-sm" style={{ color: "var(--err)", borderColor: "color-mix(in oklab, var(--err) 30%, var(--border))" }} onClick={signOut}>
+          {mode === "signout" ?
+          <button className="btn btn-sm" style={{ color: "var(--err)", borderColor: "color-mix(in oklab, var(--err) 30%, var(--border))" }} onClick={signOut}>
               <Icon name="logout" size={12} />로그아웃
-            </button>
-          ) : (
-            <button
-              className="btn btn-sm btn-primary"
-              style={{ background: "var(--err)", color: "white" }}
-              disabled={confirmText !== expected}
-              onClick={deleteAccount}
-            >
+            </button> :
+
+          <button
+            className="btn btn-sm btn-primary"
+            style={{ background: "var(--err)", color: "white" }}
+            disabled={confirmText !== expected}
+            onClick={deleteAccount}>
+            
               <Icon name="trash" size={12} />영구 삭제
             </button>
-          )}
+          }
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 /* ===========================================================
@@ -2518,7 +3807,7 @@ function SignOutDialog({ onClose, user }) {
 function ProfileEditDialog({ user, onClose, onSave }) {
   const [draft, setDraft] = useStateO({ ...user });
   const fileRef = useRefO(null);
-  const update = (k, v) => setDraft(prev => ({ ...prev, [k]: v }));
+  const update = (k, v) => setDraft((prev) => ({ ...prev, [k]: v }));
   const isImage = draft.avatar && typeof draft.avatar === "string" && draft.avatar.startsWith("url(");
 
   const handleFile = (e) => {
@@ -2530,10 +3819,10 @@ function ProfileEditDialog({ user, onClose, onSave }) {
   };
 
   const SCHOOLS = [
-    "서울과학기술대학교", "서울대학교", "연세대학교", "고려대학교",
-    "한양대학교", "성균관대학교", "이화여자대학교", "중앙대학교",
-    "건국대학교", "동국대학교", "기타",
-  ];
+  "서울과학기술대학교", "서울대학교", "연세대학교", "고려대학교",
+  "한양대학교", "성균관대학교", "이화여자대학교", "중앙대학교",
+  "건국대학교", "동국대학교", "기타"];
+
 
   useEffectO(() => {
     const onKey = (e) => {
@@ -2568,9 +3857,9 @@ function ProfileEditDialog({ user, onClose, onSave }) {
                 display: "grid", placeItems: "center",
                 fontSize: 30, fontWeight: 800,
                 border: "1px solid var(--border)",
-                flexShrink: 0, overflow: "hidden",
-              }}
-            >
+                flexShrink: 0, overflow: "hidden"
+              }}>
+              
               {!isImage && draft.initials}
             </div>
             <div style={{ flex: 1 }}>
@@ -2580,16 +3869,16 @@ function ProfileEditDialog({ user, onClose, onSave }) {
                 </button>
                 <button
                   className="btn btn-sm"
-                  onClick={() => { const url = window.prompt("이미지 URL", ""); if (url) update("avatar", `url("${url}")`); }}
-                  type="button"
-                >
+                  onClick={() => {const url = window.prompt("이미지 URL", "");if (url) update("avatar", `url("${url}")`);}}
+                  type="button">
+                  
                   <Icon name="link" size={12} />URL로 추가
                 </button>
-                {isImage && (
-                  <button className="btn btn-sm" style={{ color: "var(--err)" }} onClick={() => update("avatar", null)} type="button">
+                {isImage &&
+                <button className="btn btn-sm" style={{ color: "var(--err)" }} onClick={() => update("avatar", null)} type="button">
                     <Icon name="trash" size={12} />제거
                   </button>
-                )}
+                }
               </div>
               <p style={{ fontSize: 11, color: "var(--text-faint)", lineHeight: 1.5 }}>
                 정사각형 이미지 권장 · 5MB까지. 비워두면 이니셜이 표시됩니다.
@@ -2605,14 +3894,14 @@ function ProfileEditDialog({ user, onClose, onSave }) {
                   const v = e.target.value;
                   update("name", v);
                   const parts = v.split(/\s+/).filter(Boolean);
-                  const initials = parts.length > 1
-                    ? (parts[1][0] + parts[0][0]).toUpperCase()
-                    : v.slice(0, 2).toUpperCase();
+                  const initials = parts.length > 1 ?
+                  (parts[1][0] + parts[0][0]).toUpperCase() :
+                  v.slice(0, 2).toUpperCase();
                   update("initials", initials);
                 }}
                 className="form-input"
-                placeholder="이름"
-              />
+                placeholder="이름" />
+              
             </FormField>
             <FormField label="이메일" hint="변경하려면 인증이 필요합니다">
               <div style={{ position: "relative" }}>
@@ -2624,7 +3913,7 @@ function ProfileEditDialog({ user, onClose, onSave }) {
             </FormField>
             <FormField label="학교">
               <select value={draft.school || ""} onChange={(e) => update("school", e.target.value)} className="form-input">
-                {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                {SCHOOLS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </FormField>
             <FormField label="학번">
@@ -2640,8 +3929,8 @@ function ProfileEditDialog({ user, onClose, onSave }) {
                 placeholder="간단한 자기소개를 적어주세요"
                 rows={2}
                 className="form-input"
-                style={{ resize: "vertical", lineHeight: 1.5 }}
-              />
+                style={{ resize: "vertical", lineHeight: 1.5 }} />
+              
               <div style={{ fontSize: 10, color: "var(--text-faint)", textAlign: "right", marginTop: 2 }}>
                 {(draft.bio || "").length}/140
               </div>
@@ -2659,8 +3948,8 @@ function ProfileEditDialog({ user, onClose, onSave }) {
           </button>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 function FormField({ label, hint, children }) {
@@ -2671,11 +3960,358 @@ function FormField({ label, hint, children }) {
         {hint && <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{hint}</span>}
       </div>
       {children}
-    </label>
+    </label>);
+
+}
+
+/* ===========================================================
+   WIKI BLOCKS — editable + drag-reorderable
+   =========================================================== */
+const INITIAL_BLOCKS_BY_PAGE = {
+  w3: [
+    { id: "b1", type: "p", content: "Planary는 <strong>단일 악센트 컬러</strong> 위에 풍부한 중성색 스택을 쌓아 정보 위계를 만듭니다. 다크 모드를 기본으로 하고, 라이트 모드는 동일한 위계를 반전 톤으로 유지합니다." },
+    { id: "b2", type: "callout", variant: "ok", title: "설계 원칙.", body: "새로운 hex를 추가하지 마세요. 악센트의 투명도 단계(<code>--accent-soft</code>, <code>--accent-softer</code>)와 <code>color-mix(in oklab, ...)</code>로 충분히 표현 가능합니다." },
+    { id: "b3", type: "h2", content: "코어 토큰" },
+    { id: "b4", type: "p", content: "모든 컬러는 <code>var(--*)</code>로만 접근합니다. 가공이 필요할 때는 <code>color-mix</code>로 표현해 다크/라이트 자동 호환을 보장합니다." },
+    { id: "b5", type: "h3", content: "악센트 팔레트" },
+    { id: "b6", type: "p", content: "사용자는 6가지 악센트 중 자신의 워크스페이스 톤을 선택할 수 있습니다. 모두 같은 시각적 무게를 가지도록 조정되어 있습니다." },
+    { id: "b7", type: "h3", content: "텍스트 스택" },
+    { id: "b8", type: "p", content: "슬레이트 5단계로 위계를 만듭니다. 본문 안에 <code>--text-md</code>, 헤딩에 <code>--text-hi</code>, 메타에 <code>--text-lo</code>, 빈 상태에 <code>--text-mute</code>." },
+    { id: "b9", type: "quote", content: "좋은 위계는 무엇이 중요한지 말해주지 않습니다. 그저 보이게 만들 뿐이에요." },
+    { id: "b10", type: "callout", variant: "warn", title: "주의.", body: "본문 안에 <code>--text-hi</code>를 쓰면 위계가 망가집니다. 본문은 무조건 <code>--text-md</code>." },
+    { id: "b11", type: "h2", content: "그림자 & 글로우" },
+    { id: "b12", type: "p", content: "물리적 그림자 3단계 + 악센트 글로우 1종. 활성 CTA·로고에만 사용해 브랜드 시그니처로 살립니다." },
+  ],
+};
+
+function WikiBlocks({ activeId }) {
+  const [blocks, setBlocks] = useStateO(() => INITIAL_BLOCKS_BY_PAGE[activeId] || [
+    { id: "b1", type: "p", content: "" }
+  ]);
+  const [activeBlockId, setActiveBlockId] = useStateO(null);
+  const [focusBlockId, setFocusBlockId] = useStateO(null);
+  const [dragId, setDragId] = useStateO(null);
+  const [dropId, setDropId] = useStateO(null);
+  const [dropPos, setDropPos] = useStateO("after"); // before | after
+  const [menuOpenId, setMenuOpenId] = useStateO(null);
+  const [slashMenu, setSlashMenu] = useStateO(null); // { blockId, x, y } | null
+
+  // Re-load blocks when switching pages
+  useEffectO(() => {
+    setBlocks(INITIAL_BLOCKS_BY_PAGE[activeId] || [
+      { id: `b${Date.now()}`, type: "p", content: "" }
+    ]);
+    setActiveBlockId(null);
+    setSlashMenu(null);
+  }, [activeId]);
+
+  const updateBlock = (id, patch) =>
+    setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
+
+  const addBlockAfter = (afterId, type = "p", { focus = true } = {}) => {
+    const newId = `b${Date.now()}${Math.random().toString(36).slice(2, 5)}`;
+    const newBlock = { id: newId, type, content: "" };
+    if (type === "callout") { newBlock.variant = "ok"; newBlock.title = "포인트"; newBlock.body = ""; }
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === afterId);
+      if (idx < 0) return [...prev, newBlock];
+      return [...prev.slice(0, idx + 1), newBlock, ...prev.slice(idx + 1)];
+    });
+    setActiveBlockId(newId);
+    if (focus) setFocusBlockId(newId);
+    return newId;
+  };
+
+  const removeBlock = (id) =>
+    setBlocks(prev => prev.filter(b => b.id !== id));
+
+  const duplicateBlock = (id) =>
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === id);
+      if (idx < 0) return prev;
+      const orig = prev[idx];
+      const copy = { ...orig, id: `b${Date.now()}${Math.random().toString(36).slice(2, 5)}` };
+      return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
+    });
+
+  const openSlashMenu = (blockId, rect) => {
+    setSlashMenu({ blockId, x: rect.left, y: rect.bottom + 6 });
+  };
+
+  // Drag handlers
+  const onDragStart = (e, id) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", id); } catch (_) {}
+  };
+  const onDragOver = (e, id) => {
+    e.preventDefault();
+    if (id === dragId) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos = (e.clientY - rect.top) < rect.height / 2 ? "before" : "after";
+    setDropId(id);
+    setDropPos(pos);
+  };
+  const onDragEnd = () => { setDragId(null); setDropId(null); };
+  const onDrop = (e, id) => {
+    e.preventDefault();
+    if (!dragId || dragId === id) { onDragEnd(); return; }
+    setBlocks(prev => {
+      const src = prev.find(b => b.id === dragId);
+      if (!src) return prev;
+      const remaining = prev.filter(b => b.id !== dragId);
+      const targetIdx = remaining.findIndex(b => b.id === id);
+      if (targetIdx < 0) return prev;
+      const insertAt = dropPos === "before" ? targetIdx : targetIdx + 1;
+      return [...remaining.slice(0, insertAt), src, ...remaining.slice(insertAt)];
+    });
+    onDragEnd();
+  };
+
+  const addAtEnd = () => {
+    const lastId = blocks[blocks.length - 1]?.id;
+    addBlockAfter(lastId, "p");
+  };
+
+  return (
+    <div className="wiki-block" onClick={() => setMenuOpenId(null)}>
+      {blocks.map((b, i) => (
+        <WikiBlockItem
+          key={b.id}
+          block={b}
+          isActive={activeBlockId === b.id}
+          autoFocus={focusBlockId === b.id}
+          onAutoFocused={() => setFocusBlockId(null)}
+          isDragging={dragId === b.id}
+          dropIndicator={dropId === b.id ? dropPos : null}
+          isMenuOpen={menuOpenId === b.id}
+          onActivate={() => setActiveBlockId(b.id)}
+          onUpdate={(patch) => updateBlock(b.id, patch)}
+          onAddAfter={(type) => addBlockAfter(b.id, type)}
+          onDuplicate={() => duplicateBlock(b.id)}
+          onRemove={() => {
+            removeBlock(b.id);
+            // focus previous block on remove
+            if (i > 0) setFocusBlockId(blocks[i - 1].id);
+          }}
+          onMenuToggle={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
+          onMenuClose={() => setMenuOpenId(null)}
+          onSlashCommand={(rect) => openSlashMenu(b.id, rect)}
+          onDragStart={(e) => onDragStart(e, b.id)}
+          onDragOver={(e) => onDragOver(e, b.id)}
+          onDrop={(e) => onDrop(e, b.id)}
+          onDragEnd={onDragEnd}
+        />
+      ))}
+
+      {/* Notion-style trailing affordance — click to add a focused block */}
+      <div
+        className="wiki-block-trail"
+        onClick={addAtEnd}
+        title="클릭해서 추가 · /로 명령 메뉴"
+      >
+        <span className="wiki-block-trail-hint">
+          <Icon name="plus" size={11} />
+          <span>이어서 입력하거나 <kbd className="kbd">/</kbd>로 명령 메뉴 열기</span>
+        </span>
+      </div>
+
+      {slashMenu && (
+        <SlashCommandMenu
+          slashMenu={slashMenu}
+          onClose={() => setSlashMenu(null)}
+          onPick={(type) => {
+            updateBlock(slashMenu.blockId, { type, content: "" });
+            setFocusBlockId(slashMenu.blockId);
+            setSlashMenu(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
+  const ref = useRefO(null);
+  const bodyRef = useRefO(null);
+
+  const commitContent = (key, val) => onUpdate({ [key]: val });
+
+  useEffectO(() => {
+    if (!autoFocus || !bodyRef.current) return;
+    const editable = bodyRef.current.querySelector("[contenteditable]");
+    if (editable) {
+      editable.focus();
+      // Move caret to end
+      const range = document.createRange();
+      range.selectNodeContents(editable);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    onAutoFocused && onAutoFocused();
+  }, [autoFocus]);
+
+  // Handle keyboard:
+  // - "/" opens slash menu (works anywhere — like Notion)
+  // - Enter creates a new block (instead of newline)
+  // - Backspace at empty content removes block and focuses previous
+  const handleKeyDown = (e) => {
+    if (e.key === "/") {
+      e.preventDefault();
+      const rect = e.target.getBoundingClientRect();
+      // Position menu just below the current block
+      onSlashCommand && onSlashCommand(rect);
+      return;
+    }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onAddAfter && onAddAfter("p");
+      return;
+    }
+    if (e.key === "Backspace" && e.target.textContent === "") {
+      e.preventDefault();
+      onRemove && onRemove();
+      return;
+    }
+  };
+
+  const renderContent = () => {
+    const t = block.type;
+    if (t === "h1") return <h1 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h2") return <h2 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h3") return <h3 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "p") return <p ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "quote") return <blockquote ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "ul" || t === "ol") {
+      return <ListBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "todo") {
+      return <ChecklistBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "code") {
+      return <CodeEditorBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "math") {
+      return <MathBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "table") {
+      return <TableBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "image") {
+      return <ImageBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "attach") {
+      return <AttachBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "link") {
+      return <BookmarkBlock block={block} onUpdate={onUpdate} />;
+    }
+    if (t === "callout") {
+      return (
+        <div className={`callout callout-${block.variant || "ok"}`}>
+          <Icon name={block.variant === "warn" ? "flag" : block.variant === "err" ? "x" : "sparkles"} size={18} style={{ color: block.variant === "warn" ? "var(--warn)" : block.variant === "err" ? "var(--err)" : "var(--ok)", flexShrink: 0, marginTop: 2 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong
+              contentEditable suppressContentEditableWarning
+              onBlur={e => commitContent("title", e.currentTarget.textContent)}
+              style={{ color: "var(--text-hi)" }}
+              dangerouslySetInnerHTML={{ __html: block.title || "" }}
+            />{" "}
+            <span
+              contentEditable suppressContentEditableWarning
+              onBlur={e => commitContent("body", e.currentTarget.innerHTML)}
+              dangerouslySetInnerHTML={{ __html: block.body || "" }}
+            />
+          </div>
+        </div>
+      );
+    }
+    if (t === "divider") return <hr style={{ border: 0, borderTop: "1px solid var(--border)", margin: "16px 0" }} />;
+    return <p ref={ref} contentEditable dangerouslySetInnerHTML={{ __html: block.content }} />;
+  };
+
+  return (
+    <div
+      className={`wiki-block-row ${isActive ? "is-active" : ""} ${isDragging ? "is-dragging" : ""} ${dropIndicator ? `drop-${dropIndicator}` : ""}`}
+      onClick={(e) => { e.stopPropagation(); onActivate(); }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      <div className="wiki-block-handles">
+        <button
+          className="wiki-block-handle"
+          draggable
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onClick={(e) => { e.stopPropagation(); onMenuToggle(); }}
+          title="드래그해서 이동 · 클릭해서 메뉴"
+          aria-label="블록 이동 / 메뉴"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="9" cy="6" r="1.6" /><circle cx="9" cy="12" r="1.6" /><circle cx="9" cy="18" r="1.6" />
+            <circle cx="15" cy="6" r="1.6" /><circle cx="15" cy="12" r="1.6" /><circle cx="15" cy="18" r="1.6" />
+          </svg>
+        </button>
+        {isMenuOpen && (
+          <>
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 79 }}
+              onClick={(e) => { e.stopPropagation(); onMenuClose(); }}
+            />
+            <div className="wiki-block-menu" onClick={(e) => e.stopPropagation()}>
+            <div className="kicker" style={{ padding: "6px 10px 4px" }}>전환</div>
+            {[
+              { type: "p",       label: "본문",        icon: "edit" },
+              { type: "h1",      label: "헤딩 1",      icon: "hash" },
+              { type: "h2",      label: "헤딩 2",      icon: "hash" },
+              { type: "h3",      label: "헤딩 3",      icon: "hash" },
+              { type: "ul",      label: "글머리 기호",   icon: "list" },
+              { type: "ol",      label: "번호 매기기",   icon: "list" },
+              { type: "todo",    label: "체크리스트",    icon: "check" },
+              { type: "quote",   label: "인용",        icon: "edit" },
+              { type: "callout", label: "콜아웃",       icon: "sparkles" },
+              { type: "code",    label: "코드 블록",    icon: "command" },
+              { type: "math",    label: "수식",         icon: "hash" },
+              { type: "table",   label: "표",           icon: "grid" },
+              { type: "image",   label: "이미지",       icon: "image" },
+              { type: "attach",  label: "파일 첨부",     icon: "paperclip" },
+              { type: "link",    label: "북마크",        icon: "link" },
+              { type: "divider", label: "구분선",       icon: "list" },
+            ].map(o => (
+              <button
+                key={o.type}
+                className={`popover-item ${block.type === o.type ? "is-active" : ""}`}
+                onClick={() => { onUpdate({ type: o.type, content: block.content || "" }); onMenuClose(); }}
+                style={block.type === o.type ? { color: "var(--accent)", background: "var(--accent-softer)" } : undefined}
+              >
+                <Icon name={o.icon} size={13} />{o.label}
+              </button>
+            ))}
+            <div className="popover-sep" />
+            <button className="popover-item" onClick={() => { onAddAfter("p"); onMenuClose(); }}>
+              <Icon name="plus" size={13} />아래 블록 추가
+            </button>
+            <button className="popover-item" onClick={() => { onDuplicate(); onMenuClose(); }}>
+              <Icon name="copy" size={13} />복제
+            </button>
+            <div className="popover-sep" />
+            <button className="popover-item is-danger" onClick={() => { onRemove(); onMenuClose(); }}>
+              <Icon name="trash" size={13} />삭제
+            </button>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="wiki-block-body" ref={bodyRef}>
+        {renderContent()}
+      </div>
+    </div>
   );
 }
 
 window.Planary = Object.assign(window.Planary || {}, {
   ProjectsPage, NotesPage, WikiPage, BookmarksPage, ArchivePage, ProfilePage,
-  TaskEditDialog, ShareDialog,
+  TaskEditDialog, ShareDialog
 });

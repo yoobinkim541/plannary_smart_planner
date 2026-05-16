@@ -1,6 +1,6 @@
 /* Planary — Home + Tasks pages (with 3 layout variations). */
 
-const { useState: useStateHT, useMemo: useMemoHT } = React;
+const { useState: useStateHT, useMemo: useMemoHT, useEffect: useEffectHT } = React;
 
 /* ===========================================================
    HOME / DASHBOARD
@@ -25,7 +25,7 @@ function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter }) {
 
   const sharedProps = {
     greet, user: USER, today, important,
-    projects: PROJECTS, tasks, setTasks, toggleTask,
+    projects: PROJECTS, tasks, toggleTask,
     completionPct, eclassToday, eclassSoon,
     setPage, setTaskFilter,
   };
@@ -36,7 +36,8 @@ function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter }) {
 }
 
 /* ---------- BALANCED (default) — refined ---------- */
-function HomeBalanced({ greet, user, today, important, projects, tasks, setTasks, toggleTask, completionPct, eclassToday, eclassSoon, setPage, setTaskFilter }) {
+function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTask, completionPct, eclassToday, eclassSoon, setPage, setTaskFilter }) {
+  const [focusMoreOpen, setFocusMoreOpen] = useStateHT(false);
   const todayOpen = today.filter(t => !t.done);
   const todayDone = today.filter(t => t.done);
   const focusTask = todayOpen.find(t => t.priority === "high") || todayOpen[0];
@@ -105,10 +106,10 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, setTasks
       </header>
 
       {/* Quick capture — always present */}
-      <QuickCapture setTasks={setTasks} projects={projects} setPage={setPage} />
+      <QuickCapture />
 
       {/* Focus card + week strip */}
-      <div className="home-focus-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16, marginTop: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16, marginTop: 18 }}>
         {/* Now focus */}
         {focusTask ? (
           <div
@@ -139,13 +140,63 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, setTasks
                 <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); toggleTask(focusTask.id); }}>
                   <Icon name="check" size={12} stroke={3} />완료로 표시
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={(e) => e.stopPropagation()}>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent("planary:enter-focus-mode", { detail: focusTask }));
+                  }}
+                >
                   <Icon name="zap" size={12} />포커스 모드
                 </button>
                 <div style={{ flex: 1 }} />
-                <button className="btn btn-sm" onClick={(e) => e.stopPropagation()}>
-                  <Icon name="more" size={14} />
-                </button>
+                <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="btn btn-sm"
+                    onClick={(e) => { e.stopPropagation(); setFocusMoreOpen(o => !o); }}
+                  >
+                    <Icon name="more" size={14} />
+                  </button>
+                  {focusMoreOpen && (
+                    <>
+                      <div
+                        style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                        onClick={(e) => { e.stopPropagation(); setFocusMoreOpen(false); }}
+                      />
+                      <div
+                        className="popover"
+                        style={{ top: "calc(100% + 6px)", right: 0, minWidth: 200, zIndex: 100 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="popover-item" onClick={() => { setFocusMoreOpen(false); window.dispatchEvent(new CustomEvent("planary:edit-task", { detail: focusTask })); }}>
+                          <Icon name="edit" size={13} />편집
+                        </div>
+                        <div className="popover-item" onClick={() => { setFocusMoreOpen(false); window.dispatchEvent(new CustomEvent("planary:enter-focus-mode", { detail: focusTask })); }}>
+                          <Icon name="zap" size={13} />포커스 모드
+                        </div>
+                        <div className="popover-item" onClick={() => { setFocusMoreOpen(false); window.dispatchEvent(new CustomEvent("planary:postpone-task", { detail: { id: focusTask.id, time: "내일" } })); window.Planary.toast?.({ type: "ok", title: "내일로 미뤘어요", sub: focusTask.title }); }}>
+                          <Icon name="calendar" size={13} />내일로 미루기
+                        </div>
+                        <div className="popover-item" onClick={() => { setFocusMoreOpen(false); navigator.clipboard?.writeText(focusTask.title); window.Planary.toast?.({ type: "ok", title: "제목이 복사됐어요" }); }}>
+                          <Icon name="copy" size={13} />제목 복사
+                        </div>
+                        <div className="popover-sep" />
+                        <div
+                          className="popover-item is-danger"
+                          onClick={() => {
+                            setFocusMoreOpen(false);
+                            if (window.confirm(`"${focusTask.title}"을(를) 삭제할까요?`)) {
+                              window.dispatchEvent(new CustomEvent("planary:delete-task", { detail: focusTask.id }));
+                              window.Planary.toast?.({ type: "err", title: "작업이 삭제됐어요" });
+                            }
+                          }}
+                        >
+                          <Icon name="trash" size={13} />삭제
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -315,50 +366,72 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, setTasks
 }
 
 /* Quick capture — pinned inline */
-function QuickCapture({ setTasks, projects = [], setPage }) {
+function QuickCapture() {
   const [text, setText] = useStateHT("");
   const [type, setType] = useStateHT("task"); // task | note
-  const [time, setTime] = useStateHT("오늘");
-  const [priority, setPriority] = useStateHT("med");
-  const [project, setProject] = useStateHT(null);
-  const [openMenu, setOpenMenu] = useStateHT(null); // 'time' | 'priority' | 'project' | null
+  const [openPop, setOpenPop] = useStateHT(null); // "date" | "priority" | "project" | null
+  const [dueDate, setDueDate] = useStateHT(null); // { id, label }
+  const [priority, setPriority] = useStateHT({ id: "med", label: "보통", color: "var(--warn)" });
+  const [project, setProject] = useStateHT(null); // { id, name, color }
 
-  const priorityLabel = { high: "높음", med: "보통", low: "낮음" }[priority];
+  const dateOpts = [
+    { id: "today",    label: "오늘",    icon: "zap", desc: "오늘 안에" },
+    { id: "tomorrow", label: "내일",    icon: "calendar", desc: "내일" },
+    { id: "after",    label: "모레",    icon: "calendar", desc: "이틀 뒤" },
+    { id: "1w",       label: "1주일 뒤", icon: "calendar", desc: "다음 주 같은 요일" },
+    { id: "1m",       label: "한 달 뒤", icon: "calendar", desc: "다음 달 같은 날" },
+    { id: "none",     label: "기한 없음", icon: "x", desc: "아무때나" },
+  ];
+  const priorityOpts = [
+    { id: "high", label: "높음", color: "var(--err)" },
+    { id: "med",  label: "보통", color: "var(--warn)" },
+    { id: "low",  label: "낮음", color: "var(--info)" },
+  ];
 
   const submit = () => {
-    const value = text.trim();
-    if (!value) return;
-    if (type === "task" && setTasks) {
-      const id = "t" + Date.now();
-      setTasks(prev => [
-        { id, title: value, memo: null, project, priority, due: null, time, reminder: false, done: false, tags: [] },
-        ...prev,
-      ]);
-      window.Planary?.toast?.({ type: "ok", title: "작업이 추가됐어요", sub: value });
+    if (!text.trim()) return;
+    const newTask = {
+      id: "t" + Date.now(),
+      title: text.trim(),
+      memo: null,
+      project: project?.id || null,
+      priority: priority.id,
+      due: null,
+      time: dueDate?.label || null,
+      reminder: false,
+      done: false,
+      tags: [],
+    };
+    if (type === "task") {
+      window.dispatchEvent(new CustomEvent("planary:create-task", { detail: newTask }));
+      window.Planary.toast?.({
+        type: "ok",
+        title: "작업이 추가됐어요",
+        sub: `${dueDate?.label ? dueDate.label + " · " : ""}${text.trim().slice(0, 30)}${text.length > 30 ? "…" : ""}`,
+      });
     } else {
-      const id = "n" + Date.now();
-      const colors = ["yellow","pink","blue","green","purple","orange"];
-      window.Planary.NOTES = [
-        { id, x: 40 + Math.random()*120, y: 40 + Math.random()*120, color: colors[Math.floor(Math.random()*colors.length)], text: value, date: "오늘", rot: (Math.random()*4-2) },
-        ...window.Planary.NOTES,
-      ];
-      window.dispatchEvent(new CustomEvent("planary:notes-changed"));
-      window.Planary?.toast?.({ type: "ok", title: "포스트잇이 추가됐어요", sub: value });
+      window.dispatchEvent(new CustomEvent("planary:create-note", { detail: { text: text.trim() } }));
+      window.Planary.toast?.({
+        type: "ok",
+        title: "메모가 추가됐어요",
+        sub: text.trim().slice(0, 30) + (text.length > 30 ? "…" : ""),
+      });
     }
-    setText("");
-    setOpenMenu(null);
+    setText(""); setDueDate(null); setProject(null);
   };
 
+  const projects = window.Planary.PROJECTS;
+
   return (
-    <div className="composer" style={{ margin: 0, position: "relative" }} onClick={() => setOpenMenu(null)}>
+    <div className="composer" style={{ margin: 0 }}>
       <div className="composer-row">
         <Icon name={type === "task" ? "plus" : "edit"} size={16} style={{ color: "var(--accent)" }} />
         <input
           className="composer-input"
           value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") submit(); }}
-          placeholder={type === "task" ? "빠른 작업 추가 — '내일 3시 디자인 리뷰' 처럼 입력" : "빠른 포스트잇 — 떠오른 생각을 적어두세요"}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          placeholder={type === "task" ? "빠른 작업 추가" : "빠른 메모"}
         />
         <span className="kbd">⏎</span>
       </div>
@@ -366,56 +439,113 @@ function QuickCapture({ setTasks, projects = [], setPage }) {
         <div style={{ display: "inline-flex", padding: 3, background: "var(--bg-elev)", borderRadius: "var(--r-sm)", gap: 1 }}>
           <button
             className="tool-btn"
-            onClick={(e) => { e.stopPropagation(); setType("task"); }}
+            onClick={() => setType("task")}
             style={{ height: 22, border: 0, background: type === "task" ? "var(--surface)" : "transparent", color: type === "task" ? "var(--text-hi)" : "var(--text-lo)" }}
           >
             <Icon name="check" size={11} />작업
           </button>
           <button
             className="tool-btn"
-            onClick={(e) => { e.stopPropagation(); setType("note"); }}
+            onClick={() => setType("note")}
             style={{ height: 22, border: 0, background: type === "note" ? "var(--surface)" : "transparent", color: type === "note" ? "var(--text-hi)" : "var(--text-lo)" }}
           >
-            <Icon name="note" size={11} />포스트잇
+            <Icon name="note" size={11} />메모
           </button>
         </div>
         {type === "task" && (
           <>
+            {/* Date */}
             <div style={{ position: "relative" }}>
-              <button className="tool-btn" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === "time" ? null : "time"); }}>
-                <Icon name="calendar" size={11} />{time}
+              <button
+                className={`tool-btn ${dueDate ? "is-on" : ""}`}
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "date" ? null : "date"); }}
+              >
+                <Icon name="calendar" size={11} />{dueDate?.label || "기한"}
               </button>
-              {openMenu === "time" && (
-                <div className="qc-menu" onClick={e => e.stopPropagation()}>
-                  {["오늘","내일","이번 주","다음 주","보관"].map(t => (
-                    <button key={t} className={`qc-menu-item ${time===t?"is-active":""}`} onClick={() => { setTime(t); setOpenMenu(null); }}>{t}</button>
-                  ))}
-                </div>
+              {openPop === "date" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 200, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    {dateOpts.map(opt => (
+                      <button
+                        key={opt.id}
+                        className={`tool-popover-item ${dueDate?.id === opt.id ? "is-active" : ""}`}
+                        onClick={() => { setDueDate(opt.id === "none" ? null : opt); setOpenPop(null); }}
+                        type="button"
+                      >
+                        <Icon name={opt.icon} size={12} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13 }}>{opt.label}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{opt.desc}</div>
+                        </div>
+                        {dueDate?.id === opt.id && <Icon name="check" size={11} stroke={3} style={{ color: "var(--accent)" }} />}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
+
+            {/* Priority */}
             <div style={{ position: "relative" }}>
-              <button className="tool-btn" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === "priority" ? null : "priority"); }}>
-                <Icon name="flag" size={11} />{priorityLabel}
+              <button
+                className="tool-btn"
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "priority" ? null : "priority"); }}
+                style={priority ? { borderColor: priority.color + "55" } : undefined}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: priority.color }} />
+                {priority.label}
               </button>
-              {openMenu === "priority" && (
-                <div className="qc-menu" onClick={e => e.stopPropagation()}>
-                  {[["high","높음"],["med","보통"],["low","낮음"]].map(([k,v]) => (
-                    <button key={k} className={`qc-menu-item ${priority===k?"is-active":""}`} onClick={() => { setPriority(k); setOpenMenu(null); }}>{v}</button>
-                  ))}
-                </div>
+              {openPop === "priority" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 160, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    {priorityOpts.map(p => (
+                      <button
+                        key={p.id}
+                        className={`tool-popover-item ${priority.id === p.id ? "is-active" : ""}`}
+                        onClick={() => { setPriority(p); setOpenPop(null); }}
+                        type="button"
+                      >
+                        <span className="dot" style={{ background: p.color, width: 9, height: 9, borderRadius: 2 }} />
+                        <span style={{ flex: 1 }}>{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
+
+            {/* Project */}
             <div style={{ position: "relative" }}>
-              <button className="tool-btn" onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === "project" ? null : "project"); }}>
-                <Icon name="folder" size={11} />{project ? (projects.find(p => p.id === project)?.name || "프로젝트") : "프로젝트"}
+              <button
+                className={`tool-btn ${project ? "is-on" : ""}`}
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "project" ? null : "project"); }}
+              >
+                {project ? <span className="proj-color" style={{ background: project.color }} /> : <Icon name="folder" size={11} />}
+                {project?.name || "프로젝트"}
               </button>
-              {openMenu === "project" && (
-                <div className="qc-menu" onClick={e => e.stopPropagation()}>
-                  <button className={`qc-menu-item ${!project?"is-active":""}`} onClick={() => { setProject(null); setOpenMenu(null); }}>없음</button>
-                  {projects.map(p => (
-                    <button key={p.id} className={`qc-menu-item ${project===p.id?"is-active":""}`} onClick={() => { setProject(p.id); setOpenMenu(null); }}>{p.name}</button>
-                  ))}
-                </div>
+              {openPop === "project" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 200, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    <button className={`tool-popover-item ${!project ? "is-active" : ""}`} onClick={() => { setProject(null); setOpenPop(null); }} type="button">
+                      <span className="proj-color" style={{ background: "var(--text-faint)" }} />
+                      <span>프로젝트 없음</span>
+                    </button>
+                    {projects.map(p => (
+                      <button
+                        key={p.id}
+                        className={`tool-popover-item ${project?.id === p.id ? "is-active" : ""}`}
+                        onClick={() => { setProject(p); setOpenPop(null); }}
+                        type="button"
+                      >
+                        <span className="proj-color" style={{ background: p.color }} />
+                        <span>{p.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </>
@@ -647,14 +777,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
   const [search, setSearch] = useStateHT("");
   const [composerOpen, setComposerOpen] = useStateHT(false);
   const [composerText, setComposerText] = useStateHT("");
-  const [composerTime, setComposerTime] = useStateHT("오늘");
-  const [composerPriority, setComposerPriority] = useStateHT("med");
-  const [composerProject, setComposerProject] = useStateHT(null);
-  const [composerReminder, setComposerReminder] = useStateHT(false);
-  const [composerMenu, setComposerMenu] = useStateHT(null);
-  const [grouping, setGrouping] = useStateHT("none"); // none | priority | project | time
-  const [showFilterMenu, setShowFilterMenu] = useStateHT(false);
-  const [showGroupMenu, setShowGroupMenu] = useStateHT(false);
+  const [bulkAction, setBulkAction] = useStateHT(null); // { kind: "postpone"|"reschedule", items, label }
 
   const filtered = useMemoHT(() => {
     return tasks.filter(t => {
@@ -679,31 +802,10 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
   const addTask = () => {
     if (!composerText.trim()) return;
     const id = "t" + Date.now();
-    setTasks(prev => [{
-      id,
-      title: composerText.trim(),
-      memo: null,
-      project: composerProject,
-      priority: composerPriority,
-      due: null,
-      time: composerTime,
-      reminder: composerReminder,
-      done: false,
-      tags: [],
-    }, ...prev]);
+    setTasks(prev => [{ id, title: composerText.trim(), memo: null, project: null, priority: "med", due: null, time: "오늘", reminder: false, done: false, tags: [] }, ...prev]);
     setComposerText("");
     setComposerOpen(false);
-    setComposerTime("오늘");
-    setComposerPriority("med");
-    setComposerProject(null);
-    setComposerReminder(false);
-    window.Planary?.toast?.({ type: "ok", title: "작업이 추가됐어요" });
   };
-  const snoozeAllToday = () => {
-    setTasks(prev => prev.map(t => t.time && t.time.startsWith("오늘") && !t.done ? { ...t, time: "내일" } : t));
-    window.Planary?.toast?.({ type: "ok", title: "오늘 작업을 내일로 미뤘어요" });
-  };
-  const priorityLabel = { high: "높음", med: "보통", low: "낮음" }[composerPriority];
 
   const filters = [
     { id: "all", label: "전체", icon: "list", count: counts.all },
@@ -735,55 +837,32 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
           </div>
           <div className="page-sub">{filtered.length}개 표시 · {tasks.length}개 전체</div>
         </div>
-        <div style={{ display: "flex", gap: 8, position: "relative" }}>
-          <div style={{ position: "relative" }}>
-            <button className="btn btn-ghost" onClick={() => { setShowFilterMenu(v=>!v); setShowGroupMenu(false); }}><Icon name="filter" size={14} />필터</button>
-            {showFilterMenu && (
-              <div className="qc-menu" style={{ right: 0, left: "auto" }}>
-                {filters.map(f => (
-                  <button key={f.id} className={`qc-menu-item ${taskFilter===f.id?"is-active":""}`} onClick={() => { setTaskFilter(f.id); setShowFilterMenu(false); }}>{f.label} · {f.count}</button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div style={{ position: "relative" }}>
-            <button className="btn btn-ghost" onClick={() => { setShowGroupMenu(v=>!v); setShowFilterMenu(false); }}><Icon name="grid" size={14} />그룹: {({none:"없음",priority:"우선순위",project:"프로젝트",time:"시간"}[grouping])}</button>
-            {showGroupMenu && (
-              <div className="qc-menu" style={{ right: 0, left: "auto" }}>
-                {[["none","없음"],["priority","우선순위"],["project","프로젝트"],["time","시간"]].map(([k,v]) => (
-                  <button key={k} className={`qc-menu-item ${grouping===k?"is-active":""}`} onClick={() => { setGrouping(k); setShowGroupMenu(false); }}>{v}</button>
-                ))}
-              </div>
-            )}
-          </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-ghost"><Icon name="filter" size={14} />필터</button>
+          <button className="btn btn-ghost"><Icon name="grid" size={14} />그룹</button>
           <button className="btn btn-primary" onClick={() => setComposerOpen(true)}><Icon name="plus" size={14} />새 작업</button>
         </div>
       </div>
 
-      <div className="tasks-toolbar">
-        {filters.map(f => (
-          <button
-            key={f.id}
-            className={`chip-btn ${taskFilter === f.id ? "is-active" : ""}`}
-            onClick={() => setTaskFilter(f.id)}
-          >
-            <Icon name={f.icon} size={12} />
-            {f.label}
-            <span className="chip-btn-count">{f.count}</span>
-          </button>
-        ))}
-        <div style={{ flex: 1 }} />
-        <button
-          className="chip-btn"
-          style={{ borderStyle: "dashed" }}
-          onClick={() => {
-            setTasks(prev => {
-              const order = { high: 0, med: 1, low: 2 };
-              return [...prev].sort((a,b) => (a.done?1:0) - (b.done?1:0) || (order[a.priority]??1) - (order[b.priority]??1));
-            });
-            window.Planary?.toast?.({ type: "ok", title: "우선순위·완료 기준으로 정렬했어요" });
-          }}
-        >
+      <div className="tag-filter-bar">
+        <div className="tag-filter-label">
+          <Icon name="filter" size={12} />
+          <span>필터</span>
+        </div>
+        <div className="tag-filter-chips">
+          {filters.map(f => (
+            <button
+              key={f.id}
+              className={`tag-chip ${taskFilter === f.id ? "is-active" : ""}`}
+              onClick={() => setTaskFilter(f.id)}
+            >
+              <Icon name={f.icon} size={11} />
+              <span>{f.label}</span>
+              <span className="tag-chip-count">{f.count}</span>
+            </button>
+          ))}
+        </div>
+        <button className="tag-filter-action">
           <Icon name="sparkles" size={12} />AI 정리
         </button>
       </div>
@@ -804,51 +883,11 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
             <span className="kbd">Esc</span>
           </div>
           <div className="composer-tools">
-            <div style={{ position: "relative" }}>
-              <button className="tool-btn" onClick={(e) => { e.stopPropagation(); setComposerMenu(composerMenu==="time"?null:"time"); }}>
-                <Icon name="calendar" size={12} />{composerTime}
-              </button>
-              {composerMenu === "time" && (
-                <div className="qc-menu" onClick={e => e.stopPropagation()}>
-                  {["오늘","내일","이번 주","다음 주","보관"].map(t => (
-                    <button key={t} className={`qc-menu-item ${composerTime===t?"is-active":""}`} onClick={() => { setComposerTime(t); setComposerMenu(null); }}>{t}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              className="tool-btn"
-              onClick={() => setComposerReminder(v => !v)}
-              style={{ color: composerReminder ? "var(--accent)" : undefined, borderColor: composerReminder ? "var(--accent)" : undefined }}
-            >
-              <Icon name="bell" size={12} />리마인더{composerReminder && " ✓"}
-            </button>
-            <div style={{ position: "relative" }}>
-              <button className="tool-btn" onClick={(e) => { e.stopPropagation(); setComposerMenu(composerMenu==="priority"?null:"priority"); }}>
-                <Icon name="flag" size={12} />{priorityLabel}
-              </button>
-              {composerMenu === "priority" && (
-                <div className="qc-menu" onClick={e => e.stopPropagation()}>
-                  {[["high","높음"],["med","보통"],["low","낮음"]].map(([k,v]) => (
-                    <button key={k} className={`qc-menu-item ${composerPriority===k?"is-active":""}`} onClick={() => { setComposerPriority(k); setComposerMenu(null); }}>{v}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ position: "relative" }}>
-              <button className="tool-btn" onClick={(e) => { e.stopPropagation(); setComposerMenu(composerMenu==="project"?null:"project"); }}>
-                <Icon name="folder" size={12} />{composerProject ? (PROJECTS.find(p => p.id === composerProject)?.name || "프로젝트") : "프로젝트"}
-              </button>
-              {composerMenu === "project" && (
-                <div className="qc-menu" onClick={e => e.stopPropagation()}>
-                  <button className={`qc-menu-item ${!composerProject?"is-active":""}`} onClick={() => { setComposerProject(null); setComposerMenu(null); }}>없음</button>
-                  {PROJECTS.map(p => (
-                    <button key={p.id} className={`qc-menu-item ${composerProject===p.id?"is-active":""}`} onClick={() => { setComposerProject(p.id); setComposerMenu(null); }}>{p.name}</button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button className="tool-btn" onClick={() => window.Planary?.toast?.({ type: "info", title: "첨부 기능은 곧 추가됩니다" })}><Icon name="paperclip" size={12} />첨부</button>
+            <button className="tool-btn"><Icon name="calendar" size={12} />오늘</button>
+            <button className="tool-btn"><Icon name="bell" size={12} />리마인더</button>
+            <button className="tool-btn"><Icon name="flag" size={12} />보통</button>
+            <button className="tool-btn"><Icon name="folder" size={12} />프로젝트</button>
+            <button className="tool-btn"><Icon name="paperclip" size={12} />첨부</button>
             <div style={{ flex: 1 }} />
             <button className="btn btn-sm" onClick={() => setComposerOpen(false)}>취소</button>
             <button className="btn btn-sm btn-primary" onClick={addTask}>추가</button>
@@ -910,17 +949,24 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
         // Balanced: grouped by time bucket with sticky group headers
         <div>
           {[
-            { label: "지연", items: filtered.filter(t => !t.done && t.time === "어제"), action: "재예약", onAction: () => { setTasks(prev => prev.map(t => !t.done && t.time === "어제" ? { ...t, time: "오늘" } : t)); window.Planary?.toast?.({ type: "ok", title: "지연된 작업을 오늘로 옮겼어요" }); } },
-            { label: "오늘", items: filtered.filter(t => t.time && t.time.startsWith("오늘") && !t.done), action: "모두 미루기", onAction: snoozeAllToday },
-            { label: "이번 주", items: filtered.filter(t => !t.done && t.time && !t.time.startsWith("오늘") && t.time !== "어제") },
-            { label: "완료", items: filtered.filter(t => t.done) },
+            { id: "overdue", label: "지연", items: filtered.filter(t => !t.done && t.time === "어제"), action: "재예약", actionKind: "reschedule" },
+            { id: "today",   label: "오늘", items: filtered.filter(t => t.time && t.time.startsWith("오늘") && !t.done), action: "모두 미루기", actionKind: "postpone" },
+            { id: "week",    label: "이번 주", items: filtered.filter(t => !t.done && t.time && !t.time.startsWith("오늘") && t.time !== "어제") },
+            { id: "done",    label: "완료", items: filtered.filter(t => t.done) },
           ].map(group => group.items.length > 0 && (
-            <div key={group.label} style={{ marginBottom: 4 }}>
+            <div key={group.id} style={{ marginBottom: 4 }}>
               <div className="group-head">
                 <span className="group-label">{group.label}</span>
                 <span className="group-count">{group.items.length}</span>
                 <div className="group-rule" />
-                {group.action && <button className="group-action" onClick={group.onAction}>{group.action}</button>}
+                {group.action && (
+                  <button
+                    className="group-action"
+                    onClick={() => setBulkAction({ kind: group.actionKind, items: group.items, label: group.label })}
+                  >
+                    {group.action}
+                  </button>
+                )}
               </div>
               <div className="task-list">
                 {group.items.map(t => (
@@ -936,6 +982,24 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
             </div>
           )}
         </div>
+      )}
+
+      {bulkAction && (
+        <BulkActionDialog
+          action={bulkAction}
+          onClose={() => setBulkAction(null)}
+          onConfirm={(targetTime) => {
+            const ids = new Set(bulkAction.items.map(x => x.id));
+            setTasks(prev => prev.map(t => ids.has(t.id) ? { ...t, time: targetTime } : t));
+            const verb = bulkAction.kind === "postpone" ? "미뤘어요" : "재예약했어요";
+            window.Planary.toast?.({
+              type: "ok",
+              title: `${bulkAction.items.length}개 작업을 ${verb}`,
+              sub: `→ ${targetTime}`,
+            });
+            setBulkAction(null);
+          }}
+        />
       )}
     </div>
   );
