@@ -1388,6 +1388,30 @@
 .field-label { font-size: var(--text-sm); color: var(--text-md); }
 .field-value { font-size: var(--text-sm); color: var(--text-lo); }
 
+/* ---------- TABLET / NARROW DESKTOP ---------- */
+/* Apply at the same range where rail-only chrome kicks in (<1100px) but
+   target the dashboard content. Two-column home grids collapsed to a
+   single column avoid the "focus card squeezed to one Korean character
+   per line" problem when the sidebar is hidden but the viewport is
+   still tablet-sized. */
+@media (max-width: 1024px) {
+  .home-focus-grid { grid-template-columns: 1fr !important; }
+  /* Korean — keep word/eojeol intact so text doesn't break inside a word. */
+  .page h1,
+  .page-title,
+  .hero-title,
+  .widget-title,
+  .focus-text,
+  .card .kicker + div,
+  .card div[style*="font-weight: 700"],
+  .card div[style*="font-weight: 800"] {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  /* Hero greeting: 40px is too aggressive in tablet/narrow viewports. */
+  .page h1[style*="font-size: 40px"] { font-size: clamp(26px, 5.6vw, 40px) !important; }
+}
+
 /* ---------- MOBILE ---------- */
 @media (max-width: 760px) {
   /* Mobile: let <body> scroll naturally instead of trapping scroll inside
@@ -1434,7 +1458,6 @@
 
   /* Stack dash widget pairs */
   .dash, .archive-hero, .profile-grid { grid-template-columns: 1fr !important; }
-  .home-focus-grid { grid-template-columns: 1fr !important; }
 
   /* Tasks toolbar — let chips wrap nicely */
   .tasks-toolbar { gap: 6px; padding-bottom: 12px; }

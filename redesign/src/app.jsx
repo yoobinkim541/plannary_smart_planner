@@ -310,4 +310,29 @@ function CommandPalette({ onClose, setPage }) {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) {
+    console.error("[Planary] render error:", err?.message, err?.stack, info?.componentStack);
+    window.__planaryError = { msg: err?.message, stack: err?.stack, info: info?.componentStack };
+  }
+  render() {
+    if (this.state.err) {
+      return (
+        <div style={{ padding: 24, fontFamily: "var(--font-display)", color: "var(--text-hi)" }}>
+          <h2 style={{ color: "var(--err)" }}>렌더 오류</h2>
+          <pre style={{ whiteSpace: "pre-wrap", background: "var(--surface)", padding: 16, borderRadius: 8, fontSize: 12, maxWidth: 900 }}>
+            {String(this.state.err && (this.state.err.stack || this.state.err.message || this.state.err))}
+          </pre>
+          <button className="btn btn-primary" onClick={() => this.setState({ err: null })}>다시 시도</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <ErrorBoundary><App /></ErrorBoundary>
+);

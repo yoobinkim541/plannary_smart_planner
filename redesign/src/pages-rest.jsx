@@ -359,10 +359,16 @@ function NotesPage() {
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
 
-  // Keep global NOTES in sync + react to external additions (e.g. QuickCapture)
-  useEffectO(() => { window.Planary.NOTES = notes; }, [notes]);
+  // Keep global NOTES in sync + react to external additions (e.g. QuickCapture).
   useEffectO(() => {
-    const onExt = () => setNotes(window.Planary.NOTES);
+    if (window.Planary) window.Planary.NOTES = notes;
+  }, [notes]);
+  useEffectO(() => {
+    const onExt = () => {
+      if (window.Planary && Array.isArray(window.Planary.NOTES)) {
+        setNotes(window.Planary.NOTES);
+      }
+    };
     window.addEventListener("planary:notes-changed", onExt);
     return () => window.removeEventListener("planary:notes-changed", onExt);
   }, []);
