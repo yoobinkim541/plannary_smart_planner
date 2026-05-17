@@ -156,6 +156,113 @@
     };
   }
 
+  // ────────────────────────────────────────────────────────────────────
+  // Wiki block transforms (Editor.js ⇄ redesign blocks)
+  // Legacy app stores content as { time, blocks: [{type,data}], version }.
+  // ────────────────────────────────────────────────────────────────────
+
+  function decodeEditorJSBlock(b) {
+    const d = b.data || {};
+    const id = b.id || ("b" + Math.random().toString(36).slice(2, 10));
+    switch (b.type) {
+      case "paragraph":
+        return { id, type: "p", content: d.text || "" };
+      case "header": {
+        const lvl = Math.min(3, Math.max(1, Number(d.level) || 2));
+        return { id, type: "h" + lvl, content: d.text || "" };
+      }
+      case "quote":
+        return { id, type: "quote", content: d.text || "" };
+      case "delimiter":
+        return { id, type: "divider" };
+      case "list": {
+        const t = d.style === "ordered" ? "ol" : "ul";
+        return { id, type: t, items: (d.items || []).map(it => (typeof it === "string" ? it : (it.content || ""))) };
+      }
+      case "checklist":
+        return {
+          id, type: "todo",
+          items: (d.items || []).map(it => ({ text: it.text || "", checked: !!it.checked })),
+        };
+      case "code":
+        return { id, type: "code", content: d.code || "", language: d.language || "plain" };
+      case "math":
+      case "latex":
+        return { id, type: "math", content: d.formula || d.text || "" };
+      case "table":
+        return { id, type: "table", rows: Array.isArray(d.content) ? d.content : [] };
+      case "image":
+        return { id, type: "image", url: (d.file && d.file.url) || d.url || "", caption: d.caption || "" };
+      case "attaches":
+      case "attach":
+        return { id, type: "attach", url: (d.file && d.file.url) || "", name: (d.file && d.file.name) || d.title || "" };
+      case "linkTool":
+      case "link":
+      case "bookmark":
+        return {
+          id, type: "link",
+          url: d.link || d.url || "",
+          title: (d.meta && d.meta.title) || d.title || "",
+          description: (d.meta && d.meta.description) || d.description || "",
+        };
+      case "callout":
+        return {
+          id, type: "callout",
+          variant: d.type || d.variant || "ok",
+          title: d.title || "포인트",
+          body: d.text || d.body || "",
+        };
+      default:
+        // Unknown: keep as paragraph so it stays editable but doesn't crash.
+        return { id, type: "p", content: typeof d.text === "string" ? d.text : "" };
+    }
+  }
+
+  function encodeEditorJSBlock(b) {
+    const id = b.id;
+    switch (b.type) {
+      case "p":      return { id, type: "paragraph", data: { text: b.content || "" } };
+      case "h1":     return { id, type: "header",    data: { text: b.content || "", level: 1 } };
+      case "h2":     return { id, type: "header",    data: { text: b.content || "", level: 2 } };
+      case "h3":     return { id, type: "header",    data: { text: b.content || "", level: 3 } };
+      case "quote":  return { id, type: "quote",     data: { text: b.content || "", caption: "", alignment: "left" } };
+      case "divider":return { id, type: "delimiter", data: {} };
+      case "ul":     return { id, type: "list",      data: { style: "unordered", items: b.items || [] } };
+      case "ol":     return { id, type: "list",      data: { style: "ordered",   items: b.items || [] } };
+      case "todo":   return { id, type: "checklist", data: { items: (b.items || []).map(it => ({ text: it.text || "", checked: !!it.checked })) } };
+      case "code":   return { id, type: "code",      data: { code: b.content || "", language: b.language || "plain" } };
+      case "math":   return { id, type: "math",      data: { formula: b.content || "" } };
+      case "table":  return { id, type: "table",     data: { content: b.rows || [], withHeadings: false } };
+      case "image":  return { id, type: "image",     data: { file: { url: b.url || "" }, caption: b.caption || "" } };
+      case "attach": return { id, type: "attaches",  data: { file: { url: b.url || "", name: b.name || "" } } };
+      case "link":   return { id, type: "linkTool",  data: { link: b.url || "", meta: { title: b.title || "", description: b.description || "" } } };
+      case "callout":return { id, type: "callout",   data: { type: b.variant || "ok", title: b.title || "", text: b.body || "" } };
+      default:       return { id, type: "paragraph", data: { text: typeof b.content === "string" ? b.content : "" } };
+    }
+  }
+
+  function wikiPageDocToEntry(doc) {
+    const d = doc.data() || {};
+    const blocksRaw = (d.content && Array.isArray(d.content.blocks)) ? d.content.blocks : [];
+    const blocks = blocksRaw.length
+      ? blocksRaw.map(decodeEditorJSBlock)
+      : [{ id: "b" + Math.random().toString(36).slice(2, 8), type: "p", content: "" }];
+    return {
+      id: doc.id,
+      title: d.title || "(제목 없음)",
+      parent: d.parentId || null,
+      icon: d.icon || "📄",
+      cover: d.coverUrl || null,
+      coverPosX: typeof d.coverPositionX === "number" ? d.coverPositionX : 50,
+      coverPosY: typeof d.coverPosition === "number" ? d.coverPosition : 50,
+      coverHeight: typeof d.coverHeight === "number" ? d.coverHeight : 180,
+      coverZoom: typeof d.coverZoom === "number" ? d.coverZoom : 100,
+      projectId: d.projectId || null,
+      blocks,
+      updatedAt: d.updatedAt && d.updatedAt.toMillis ? d.updatedAt.toMillis() : 0,
+    };
+  }
+
   function bookmarkDocToBookmark(doc) {
     const d = doc.data() || {};
     let host = d.url || "";
@@ -278,6 +385,51 @@
       });
       return ref.id;
     },
+
+    async createWikiPage(title = "새 페이지", parentId = null) {
+      if (!this.uid) return null;
+      const ref = await db.collection("wiki_pages").add({
+        uid: this.uid,
+        title,
+        parentId,
+        projectId: null,
+        icon: "📄",
+        coverUrl: null,
+        coverPosition: 50,
+        coverPositionX: 50,
+        coverHeight: 180,
+        coverZoom: 100,
+        coverCropMode: "cover",
+        content: { time: Date.now(), blocks: [], version: "redesign-v1" },
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      return ref.id;
+    },
+    async updateWikiPageMeta(id, patch) {
+      if (!this.uid) return;
+      const allowed = {};
+      ["title", "parentId", "projectId", "icon", "coverUrl", "coverPosition", "coverPositionX", "coverHeight", "coverZoom", "coverCropMode"].forEach(k => {
+        if (patch[k] !== undefined) allowed[k] = patch[k];
+      });
+      allowed.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection("wiki_pages").doc(id).update(allowed);
+    },
+    async saveWikiBlocks(id, blocks) {
+      if (!this.uid) return;
+      await db.collection("wiki_pages").doc(id).update({
+        content: {
+          time: Date.now(),
+          blocks: (blocks || []).map(encodeEditorJSBlock),
+          version: "redesign-v1",
+        },
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    },
+    async deleteWikiPage(id) {
+      if (!this.uid) return;
+      await db.collection("wiki_pages").doc(id).delete();
+    },
   };
 
   window.Planary = window.Planary || {};
@@ -363,6 +515,27 @@
           window.dispatchEvent(new CustomEvent("planary:bookmarks-loaded", { detail: bookmarks }));
         },
         (err) => console.error("[Planary] bookmarks snapshot error:", err)
+      )
+    );
+
+    // Wiki pages — tree metadata + decoded blocks. Sorted by updatedAt desc
+    // client-side to match legacy wiki.js (server orderBy filters out docs
+    // whose serverTimestamp hasn't been confirmed yet).
+    unsubs.push(
+      db.collection("wiki_pages").where("uid", "==", user.uid).onSnapshot(
+        (snap) => {
+          const pages = snap.docs.map(wikiPageDocToEntry);
+          pages.sort((a, b) => b.updatedAt - a.updatedAt);
+          // Public tree shape for sidebar / WikiPage (id, title, parent, icon)
+          const tree = pages.map(p => ({ id: p.id, title: p.title, parent: p.parent, icon: p.icon }));
+          window.Planary.WIKI_TREE = tree;
+          // Per-page content + cover info keyed by id (consumed by WikiBlocks)
+          const byId = {};
+          pages.forEach(p => { byId[p.id] = p; });
+          window.Planary.WIKI_PAGES = byId;
+          window.dispatchEvent(new CustomEvent("planary:wiki-loaded", { detail: { tree, byId } }));
+        },
+        (err) => console.error("[Planary] wiki snapshot error:", err)
       )
     );
   });

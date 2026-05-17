@@ -655,8 +655,23 @@ function NotesPage() {
    WIKI
    =========================================================== */
 function WikiPage() {
-  const { WIKI_TREE } = window.Planary;
-  const [activeId, setActiveId] = useStateO("w3"); // "컬러 토큰"
+  const initialTree = Array.isArray(window.Planary.WIKI_TREE) && window.Planary.WIKI_TREE.length
+    ? window.Planary.WIKI_TREE
+    : [{ id: "w0", title: "(빈 공간) — 새 페이지를 만들어보세요", parent: null, icon: "📄" }];
+  const [WIKI_TREE, setWikiTree] = useStateO(initialTree);
+  const [activeId, setActiveId] = useStateO(initialTree[0]?.id || "w3");
+
+  // Live wiki tree from bridge
+  useEffectO(() => {
+    const onLoaded = (e) => {
+      const tree = e.detail?.tree;
+      if (!Array.isArray(tree)) return;
+      setWikiTree(tree.length ? tree : initialTree);
+      setActiveId((prev) => tree.find(t => t.id === prev) ? prev : (tree[0]?.id || prev));
+    };
+    window.addEventListener("planary:wiki-loaded", onLoaded);
+    return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
+  }, []);
   const [showAside, setShowAside] = useStateO(() => typeof window !== 'undefined' && window.innerWidth > 1280);
   const [showTree, setShowTree] = useStateO(() => typeof window !== 'undefined' && window.innerWidth > 1024);
   const [pageIcons, setPageIcons] = useStateO({});
@@ -807,7 +822,23 @@ function WikiPage() {
           <div>
             {roots.map((r) => <TreeNode key={r.id} node={r} />)}
           </div>
-          <div className="wiki-tree-item" style={{ color: "var(--text-lo)", marginTop: 4 }}>
+          <div
+            className="wiki-tree-item"
+            style={{ color: "var(--text-lo)", marginTop: 4, cursor: "pointer" }}
+            onClick={async () => {
+              if (window.Planary?.api?.uid) {
+                try {
+                  const id = await window.Planary.api.createWikiPage("새 페이지", null);
+                  if (id) setActiveId(id);
+                } catch (err) {
+                  console.error("createWikiPage failed:", err);
+                  window.Planary?.toast?.({ type: "err", title: "페이지 만들기 실패", sub: err.message });
+                }
+              } else {
+                window.Planary?.toast?.({ type: "info", title: "로그인 후 페이지를 만들 수 있어요" });
+              }
+            }}
+          >
             <span style={{ width: 18, display: "inline-block" }} />
             <Icon name="plus" size={12} />
             <span>새 페이지</span>
@@ -1119,7 +1150,20 @@ function WikiPage() {
             <span className="tag">v3</span>
             <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }}><Icon name="plus" size={10} />태그</button>
           </div>
-          <h1 className="wiki-doc-title">{active.title}</h1>
+          <h1
+            className="wiki-doc-title"
+            contentEditable={!!window.Planary?.api?.uid}
+            suppressContentEditableWarning
+            onBlur={(e) => {
+              if (!window.Planary?.api?.uid) return;
+              const next = (e.currentTarget.textContent || "").trim();
+              if (!next || next === active.title) return;
+              window.Planary.api.updateWikiPageMeta(activeId, { title: next }).catch(err =>
+                console.error("updateWikiPageMeta failed:", err)
+              );
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
+          >{active.title}</h1>
 
           <WikiBlocks activeId={activeId} />
         </div>
@@ -4083,9 +4127,13 @@ const INITIAL_BLOCKS_BY_PAGE = {
 };
 
 function WikiBlocks({ activeId }) {
-  const [blocks, setBlocks] = useStateO(() => INITIAL_BLOCKS_BY_PAGE[activeId] || [
-    { id: "b1", type: "p", content: "" }
-  ]);
+  const loadBlocksFor = (id) => {
+    const live = window.Planary.WIKI_PAGES && window.Planary.WIKI_PAGES[id];
+    if (live && Array.isArray(live.blocks) && live.blocks.length) return live.blocks;
+    return INITIAL_BLOCKS_BY_PAGE[id] || [{ id: `b${Date.now()}`, type: "p", content: "" }];
+  };
+
+  const [blocks, setBlocks] = useStateO(() => loadBlocksFor(activeId));
   const [activeBlockId, setActiveBlockId] = useStateO(null);
   const [focusBlockId, setFocusBlockId] = useStateO(null);
   const [dragId, setDragId] = useStateO(null);
@@ -4093,15 +4141,53 @@ function WikiBlocks({ activeId }) {
   const [dropPos, setDropPos] = useStateO("after"); // before | after
   const [menuOpenId, setMenuOpenId] = useStateO(null);
   const [slashMenu, setSlashMenu] = useStateO(null); // { blockId, x, y } | null
+  const lastSavedRef = useRefO("");
+  const saveTimerRef = useRefO(null);
+  const initialLoadRef = useRefO(true);
 
   // Re-load blocks when switching pages
   useEffectO(() => {
-    setBlocks(INITIAL_BLOCKS_BY_PAGE[activeId] || [
-      { id: `b${Date.now()}`, type: "p", content: "" }
-    ]);
+    initialLoadRef.current = true;
+    setBlocks(loadBlocksFor(activeId));
     setActiveBlockId(null);
     setSlashMenu(null);
+    lastSavedRef.current = JSON.stringify(loadBlocksFor(activeId));
+    // Also re-load when Firestore snapshot arrives for the same page
+    const onWikiLoaded = (e) => {
+      const byId = e.detail?.byId;
+      if (!byId || !byId[activeId]) return;
+      const fresh = byId[activeId].blocks;
+      const freshKey = JSON.stringify(fresh);
+      // Only overwrite if we don't have pending local edits
+      if (lastSavedRef.current === freshKey) return;
+      // First load OR remote change while user is idle — adopt remote.
+      if (initialLoadRef.current) {
+        setBlocks(fresh);
+        lastSavedRef.current = freshKey;
+        initialLoadRef.current = false;
+      }
+    };
+    window.addEventListener("planary:wiki-loaded", onWikiLoaded);
+    return () => window.removeEventListener("planary:wiki-loaded", onWikiLoaded);
   }, [activeId]);
+
+  // Debounced save when blocks change (only for live firestore pages)
+  useEffectO(() => {
+    if (!window.Planary?.api?.uid) return; // skip when running on mock
+    if (!activeId) return;
+    // Skip the firestore round-trip on the first render
+    if (initialLoadRef.current) { initialLoadRef.current = false; return; }
+    const key = JSON.stringify(blocks);
+    if (key === lastSavedRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      lastSavedRef.current = key;
+      window.Planary.api.saveWikiBlocks(activeId, blocks).catch(err =>
+        console.error("saveWikiBlocks failed:", err)
+      );
+    }, 600);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [blocks, activeId]);
 
   const updateBlock = (id, patch) =>
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
