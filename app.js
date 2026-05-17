@@ -1953,6 +1953,25 @@ function getTaskEmptyState() {
     return TASK_EMPTY_STATES[currentFilter] || TASK_EMPTY_STATES.all;
 }
 
+function isEclassTask(todo) {
+    return todo?.source === 'eclass' || todo?.source === 'eclass-exam';
+}
+
+function renderEclassGroupHeader(todo) {
+    const project = allProjects.find(p => p.id === todo.projectId);
+    const courseName = project?.name || todo.courseTitle || 'e-Class';
+    const courseTasks = allTodos.filter(item => !item.archived && isEclassTask(item) && (item.projectId === todo.projectId || (!todo.projectId && item.courseTitle === todo.courseTitle)));
+    const code = String(courseName).match(/[A-Z]{2,}\d{3,}/)?.[0] || '';
+    return `
+        <div class="eclass-course-divider">
+            <span class="eclass-course-dot" style="background:${project?.color || 'var(--accent)'}"></span>
+            <strong>${escapeHtml(courseName)}</strong>
+            <em>${courseTasks.length}</em>
+            <span>${escapeHtml(code)}</span>
+        </div>
+    `;
+}
+
 function renderTodos(todos) {
     const todoList = getEl('todo-list');
     if (!todoList) return;
@@ -1985,7 +2004,17 @@ function renderTodos(todos) {
     
     const today = new Date().toISOString().split('T')[0];
 
+    let lastEclassGroupKey = null;
     todos.forEach(todo => {
+        if (isEclassTask(todo)) {
+            const groupKey = todo.projectId || todo.courseTitle || 'eclass';
+            if (groupKey !== lastEclassGroupKey) {
+                todoList.insertAdjacentHTML('beforeend', renderEclassGroupHeader(todo));
+                lastEclassGroupKey = groupKey;
+            }
+        } else {
+            lastEclassGroupKey = null;
+        }
         const isDueToday = todo.dueDate === today && !todo.completed && !todo.archived;
         const card = document.createElement('div');
         card.className = `task-card${todo.completed ? ' completed' : ''}`;
@@ -2013,7 +2042,9 @@ function renderTodos(todos) {
 
         const p = todo.priority || 'medium';
         const proj = allProjects.find(px => px.id === todo.projectId);
-        const tag = proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${proj.name}</span>` : '';
+        const sourceTag = isEclassTask(todo) ? `<span class="project-tag eclass-source-tag">e-Class</span>` : '';
+        const typeTag = todo.source === 'eclass-exam' ? `<span class="project-tag eclass-type-tag">시험·발표</span>` : '';
+        const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
         const img = todo.imageUrl ? `<img src="${todo.imageUrl}" class="tc-img" alt="task image" onclick="window.open('${todo.imageUrl}', '_blank')">` : '';
         
         const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';

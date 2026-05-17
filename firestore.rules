@@ -139,13 +139,15 @@ service cloud.firestore {
 
     function validProject() {
       return hasOnlyKeys([
-        'uid', 'name', 'color', 'icon', 'createdAt'
+        'uid', 'name', 'color', 'icon', 'source', 'courseTitle', 'createdAt'
       ]) &&
       request.resource.data.name is string &&
       request.resource.data.name.size() > 0 &&
       request.resource.data.color is string &&
       request.resource.data.color.size() > 0 &&
       (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
+      (!request.resource.data.keys().hasAny(['source']) || isStringOrNull(request.resource.data.source)) &&
+      (!request.resource.data.keys().hasAny(['courseTitle']) || isStringOrNull(request.resource.data.courseTitle)) &&
       isTimestampOrNull(request.resource.data.createdAt);
     }
 
