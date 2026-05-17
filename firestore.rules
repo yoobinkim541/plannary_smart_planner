@@ -63,6 +63,29 @@ service cloud.firestore {
       return value == null || (value is string && value in ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki']);
     }
 
+    function validPreferences(value) {
+      return value is map &&
+        value.keys().hasOnly(['theme', 'accent', 'font', 'radius', 'sidebar', 'density', 'variant', 'lang']) &&
+        (!value.keys().hasAny(['theme']) || isStringOrNull(value.theme)) &&
+        (!value.keys().hasAny(['accent']) || isStringOrNull(value.accent)) &&
+        (!value.keys().hasAny(['font']) || isStringOrNull(value.font)) &&
+        (!value.keys().hasAny(['radius']) || isNumberOrNull(value.radius)) &&
+        (!value.keys().hasAny(['sidebar']) || isStringOrNull(value.sidebar)) &&
+        (!value.keys().hasAny(['density']) || isStringOrNull(value.density)) &&
+        (!value.keys().hasAny(['variant']) || isStringOrNull(value.variant)) &&
+        (!value.keys().hasAny(['lang']) || isStringOrNull(value.lang));
+    }
+
+    function validNotifPrefs(value) {
+      return value is map &&
+        value.keys().hasOnly(['email', 'push', 'gcal', 'apple', 'slack']) &&
+        (!value.keys().hasAny(['email']) || isBoolOrNull(value.email)) &&
+        (!value.keys().hasAny(['push']) || isBoolOrNull(value.push)) &&
+        (!value.keys().hasAny(['gcal']) || isBoolOrNull(value.gcal)) &&
+        (!value.keys().hasAny(['apple']) || isBoolOrNull(value.apple)) &&
+        (!value.keys().hasAny(['slack']) || isBoolOrNull(value.slack));
+    }
+
     function validTodo() {
       return hasOnlyKeys([
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
@@ -116,12 +139,13 @@ service cloud.firestore {
 
     function validProject() {
       return hasOnlyKeys([
-        'uid', 'name', 'color', 'createdAt'
+        'uid', 'name', 'color', 'icon', 'createdAt'
       ]) &&
       request.resource.data.name is string &&
       request.resource.data.name.size() > 0 &&
       request.resource.data.color is string &&
       request.resource.data.color.size() > 0 &&
+      (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
       isTimestampOrNull(request.resource.data.createdAt);
     }
 
@@ -246,14 +270,22 @@ service cloud.firestore {
         hasOnlyKeys([
           'uid', 'email', 'displayName', 'onboardingCompleted',
           'onboardingCompletedAt', 'onboardingProgress', 'onboardingCurrentStep',
+          'photoURL', 'school', 'studentId', 'bio', 'plan', 'preferences', 'notifPrefs',
           'createdAt', 'updatedAt'
         ]) &&
         isStringOrNull(request.resource.data.email) &&
         isStringOrNull(request.resource.data.displayName) &&
-        request.resource.data.onboardingCompleted is bool &&
-        isTimestampOrNull(request.resource.data.onboardingCompletedAt) &&
-        validOnboardingProgress(request.resource.data.onboardingProgress) &&
+        (!request.resource.data.keys().hasAny(['photoURL']) || isStringOrNull(request.resource.data.photoURL)) &&
+        (!request.resource.data.keys().hasAny(['school']) || isStringOrNull(request.resource.data.school)) &&
+        (!request.resource.data.keys().hasAny(['studentId']) || isStringOrNull(request.resource.data.studentId)) &&
+        (!request.resource.data.keys().hasAny(['bio']) || isStringOrNull(request.resource.data.bio)) &&
+        (!request.resource.data.keys().hasAny(['plan']) || (request.resource.data.plan is string && request.resource.data.plan in ['basic', 'pro'])) &&
+        (!request.resource.data.keys().hasAny(['onboardingCompleted']) || request.resource.data.onboardingCompleted is bool) &&
+        (!request.resource.data.keys().hasAny(['onboardingCompletedAt']) || isTimestampOrNull(request.resource.data.onboardingCompletedAt)) &&
+        (!request.resource.data.keys().hasAny(['onboardingProgress']) || validOnboardingProgress(request.resource.data.onboardingProgress)) &&
         validOnboardingCurrentStep(request.resource.data.onboardingCurrentStep) &&
+        (!request.resource.data.keys().hasAny(['preferences']) || validPreferences(request.resource.data.preferences)) &&
+        (!request.resource.data.keys().hasAny(['notifPrefs']) || validNotifPrefs(request.resource.data.notifPrefs)) &&
         isTimestampOrNull(request.resource.data.createdAt) &&
         isTimestampOrNull(request.resource.data.updatedAt);
       allow delete: if isOwner(userId);

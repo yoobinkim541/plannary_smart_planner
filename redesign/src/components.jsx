@@ -801,6 +801,17 @@ function TaskCard({ task, onToggle, projects }) {
       <div className="task-right">
         <button
           className="icon-btn"
+          title={task.archived ? "복원" : "보관"}
+          onClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(new CustomEvent(task.archived ? "planary:unarchive-task" : "planary:archive-task", { detail: task.id }));
+            window.Planary?.toast?.({ type: "ok", title: task.archived ? "작업을 복원했어요" : "작업을 보관했어요" });
+          }}
+        >
+          <Icon name="archive" size={13} />
+        </button>
+        <button
+          className="icon-btn"
           title="편집"
           onClick={(e) => {
             e.stopPropagation();

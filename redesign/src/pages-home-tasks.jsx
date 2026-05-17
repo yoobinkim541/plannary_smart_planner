@@ -781,6 +781,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
 
   const filtered = useMemoHT(() => {
     return tasks.filter(t => {
+      if (t.archived) return false;
       if (taskFilter === "all") return !t.done;
       if (taskFilter === "today") return t.time && t.time.startsWith("오늘");
       if (taskFilter === "important") return t.priority === "high" && !t.done;
@@ -791,11 +792,11 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
   }, [tasks, taskFilter, search]);
 
   const counts = {
-    all: tasks.filter(t => !t.done).length,
-    today: tasks.filter(t => t.time && t.time.startsWith("오늘")).length,
-    important: tasks.filter(t => t.priority === "high" && !t.done).length,
-    reminders: tasks.filter(t => t.reminder).length,
-    completed: tasks.filter(t => t.done).length,
+    all: tasks.filter(t => !t.archived && !t.done).length,
+    today: tasks.filter(t => !t.archived && t.time && t.time.startsWith("오늘")).length,
+    important: tasks.filter(t => !t.archived && t.priority === "high" && !t.done).length,
+    reminders: tasks.filter(t => !t.archived && t.reminder).length,
+    completed: tasks.filter(t => !t.archived && t.done).length,
   };
 
   const toggleTask = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
@@ -854,7 +855,10 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
             <button
               key={f.id}
               className={`tag-chip ${taskFilter === f.id ? "is-active" : ""}`}
-              onClick={() => setTaskFilter(f.id)}
+              onClick={() => {
+                setTaskFilter(f.id);
+                window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "taskViews" }));
+              }}
             >
               <Icon name={f.icon} size={11} />
               <span>{f.label}</span>
