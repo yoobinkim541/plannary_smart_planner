@@ -4,6 +4,7 @@ const { fetchSeoultechItems } = require('./_seoultech');
 const { fetchSyllabusExams, discoverCourseKjs } = require('./_syllabus');
 
 const ECLASS_SOURCES = ['eclass', 'eclass-exam'];
+const COURSE_PROJECT_COLORS = ['#7f0df2', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7'];
 const BATCH_LIMIT = 400;
 
 function dueTimeFor(type) {
@@ -16,7 +17,7 @@ function defaultRemindersFor(type) {
   return [60];
 }
 
-function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, reminders, priority, memo, sourceUrl, courseTitle, ddayText, uid, ts }) {
+function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, reminders, priority, memo, sourceUrl, courseTitle, ddayText, uid, ts, projectId }) {
   return {
     uid, text,
     memo: memo || null,
@@ -26,7 +27,7 @@ function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, remind
     calendarReminderMinutesList: reminders,
     syncCalendar: false,
     priority,
-    projectId: null,
+    projectId: projectId || null,
     imageUrl: null,
     archived: false,
     source, sourceItemId,
@@ -37,7 +38,7 @@ function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, remind
   };
 }
 
-function itemPayload(item, uid, ts) {
+function itemPayload(item, uid, ts, projectId) {
   const reminders = defaultRemindersFor(item.type);
   return buildTodoPayload({
     uid, ts,
@@ -51,11 +52,12 @@ function itemPayload(item, uid, ts) {
     priority: item.type === 'assignment' ? 'high' : 'medium',
     sourceUrl: item.url,
     courseTitle: item.courseTitle,
-    ddayText: item.ddayText
+    ddayText: item.ddayText,
+    projectId
   });
 }
 
-function examPayload(exam, uid, ts) {
+function examPayload(exam, uid, ts, projectId) {
   const reminders = exam.reminderMinutes || [10080, 4320, 1440];
   const prefix = exam.confidence === 'high' ? '' : '[예상] ';
   return buildTodoPayload({
@@ -69,7 +71,8 @@ function examPayload(exam, uid, ts) {
     reminders,
     priority: exam.priority || 'high',
     sourceUrl: exam.sourceUrl,
-    courseTitle: exam.courseTitle
+    courseTitle: exam.courseTitle,
+    projectId
   });
 }
 
@@ -92,6 +95,48 @@ async function loadExistingEclassTodos(db, uid) {
     byKey.set(`${data.source}:${data.sourceItemId}`, doc.ref);
   });
   return { byKey, allDocs: snapshot.docs };
+}
+
+function normalizeCourseTitle(courseTitle) {
+  return String(courseTitle || 'SeoulTech e-Class').trim() || 'SeoulTech e-Class';
+}
+
+async function loadCourseProjects(db, uid) {
+  const snapshot = await db.collection('projects')
+    .where('uid', '==', uid)
+    .get();
+  const byCourse = new Map();
+  snapshot.docs.forEach(doc => {
+    const data = doc.data();
+    if (data.source === 'eclass-course' && data.courseTitle) {
+      byCourse.set(normalizeCourseTitle(data.courseTitle), doc.ref);
+    }
+  });
+  return byCourse;
+}
+
+async function ensureCourseProjects(db, uid, courseTitles, ts) {
+  const byCourse = await loadCourseProjects(db, uid);
+  const missingTitles = courseTitles.filter(courseTitle => !byCourse.has(courseTitle));
+  const ops = [];
+
+  const existingCount = byCourse.size;
+  missingTitles.forEach((courseTitle, index) => {
+    const ref = db.collection('projects').doc();
+    byCourse.set(courseTitle, ref);
+    ops.push(batch => batch.set(ref, {
+      uid,
+      name: courseTitle,
+      color: COURSE_PROJECT_COLORS[(existingCount + index) % COURSE_PROJECT_COLORS.length],
+      icon: 'eclass',
+      source: 'eclass-course',
+      courseTitle,
+      createdAt: ts
+    }));
+  });
+
+  await commitInChunks(db, ops);
+  return byCourse;
 }
 
 async function syncConnection(uid, connection, options = {}) {
@@ -129,9 +174,14 @@ async function syncConnection(uid, connection, options = {}) {
   }
 
   const { byKey, allDocs } = await loadExistingEclassTodos(db, uid);
+  const courseTitles = [...new Set([
+    ...items.map(item => normalizeCourseTitle(item.courseTitle)),
+    ...exams.map(exam => normalizeCourseTitle(exam.courseTitle))
+  ])];
+  const courseProjects = await ensureCourseProjects(db, uid, courseTitles, ts);
   const payloads = [
-    ...items.map(item => itemPayload(item, uid, ts)),
-    ...exams.map(exam => examPayload(exam, uid, ts))
+    ...items.map(item => itemPayload(item, uid, ts, courseProjects.get(normalizeCourseTitle(item.courseTitle))?.id)),
+    ...exams.map(exam => examPayload(exam, uid, ts, courseProjects.get(normalizeCourseTitle(exam.courseTitle))?.id))
   ];
   const activeKeys = new Set(payloads.map(p => `${p.source}:${p.sourceItemId}`));
 
