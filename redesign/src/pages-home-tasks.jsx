@@ -397,7 +397,7 @@ function QuickCapture() {
       project: project?.id || null,
       priority: priority.id,
       due: null,
-      time: dueDate?.label || null,
+      time: (dueDate?.label && dueDate.label !== "기한 없음") ? dueDate.label : (dueDate?.id === "none" ? null : "오늘"),
       reminder: false,
       done: false,
       tags: [],
@@ -803,7 +803,8 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
   const addTask = () => {
     if (!composerText.trim()) return;
     const id = "t" + Date.now();
-    setTasks(prev => [{ id, title: composerText.trim(), memo: null, project: null, priority: "med", due: null, time: "오늘", reminder: false, done: false, tags: [] }, ...prev]);
+    const newTask = { id, title: composerText.trim(), memo: null, project: null, priority: "med", due: null, time: "오늘", reminder: false, done: false, tags: [] };
+    window.dispatchEvent(new CustomEvent("planary:create-task", { detail: newTask }));
     setComposerText("");
     setComposerOpen(false);
   };

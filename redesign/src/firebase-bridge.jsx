@@ -40,6 +40,18 @@
     d.setHours(0, 0, 0, 0);
     return d.toISOString().slice(0, 10);
   };
+  const offsetISO = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  };
+  const monthLaterISO = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  };
 
   function deriveTime(dueDate, dueTime) {
     if (!dueDate) return null;
@@ -91,6 +103,9 @@
     if (!dueDate && task.time) {
       if (task.time.startsWith("오늘")) dueDate = todayISO();
       else if (task.time === "내일") dueDate = tomorrowISO();
+      else if (task.time === "모레") dueDate = offsetISO(2);
+      else if (task.time === "1주일 뒤") dueDate = offsetISO(7);
+      else if (task.time === "한 달 뒤") dueDate = monthLaterISO();
     }
     const payload = {
       uid,
