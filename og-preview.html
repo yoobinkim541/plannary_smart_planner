@@ -6,59 +6,209 @@
 <title>OG Preview — Planary</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
 <style>
-  :root{
-    --bg:#F4F1EA; --bg-soft:#EBE5D6;
-    --ink:#2D2A26; --ink-soft:#6B6760;
-    --clay:#CC785C; --hair: rgba(45,42,38,0.14);
+  :root {
+    --bg:           #0a070e;
+    --bg-elev:      #100913;
+    --surface:      #181024;
+    --surface-2:    #1f1430;
+    --border:       #2d1b40;
+    --border-soft:  #221635;
+    --accent:       #7f0df2;
+    --accent-light: #9b3ff7;
+    --accent-soft:  rgba(127,13,242,0.18);
+    --text-hi:      #f1f5f9;
+    --text-md:      #cbd5e1;
+    --text-lo:      #94a3b8;
+    --text-faint:   #475569;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:16px;padding:24px;background:#1a1816;
-    font-family:'Inter',system-ui,sans-serif;color:#888;
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 32px 24px;
+    background: #07050b;
+    font-family: 'Plus Jakarta Sans', 'Pretendard Variable', 'Pretendard',
+                 system-ui, sans-serif;
+    color: #777;
+    min-height: 100vh;
   }
-  .label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#777}
-  .frame{
-    width:100%;max-width:960px;aspect-ratio:1200/630;
-    border-radius:14px;overflow:hidden;
-    box-shadow:0 30px 80px -30px rgba(0,0,0,.6);
+  .label {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #555;
+    font-weight: 600;
   }
-  .og{
-    width:100%;height:100%;display:flex;background:var(--bg);
-    color:var(--ink);position:relative;overflow:hidden;
-    font-family:'Inter',sans-serif;
-    /* use cqw so all text scales with frame width */
-    container-type:inline-size;
-    padding:6cqw;
+  .frame {
+    width: 100%;
+    max-width: 960px;
+    aspect-ratio: 1200 / 630;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.8),
+                0 8px 32px -8px rgba(127,13,242,0.25);
   }
-  .og::before{
-    content:'';position:absolute;inset:0;pointer-events:none;
+  .og {
+    width: 100%; height: 100%;
+    display: flex;
+    background: var(--bg);
+    color: var(--text-hi);
+    position: relative;
+    overflow: hidden;
+    container-type: inline-size;
+    padding: 6cqw;
+  }
+  .og::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     background:
-      radial-gradient(60% 90% at -10% 110%, rgba(204,120,92,.12), transparent 60%),
-      radial-gradient(50% 80% at 110% -10%, rgba(212,162,127,.20), transparent 60%);
+      radial-gradient(75% 90% at -10% -10%, rgba(127,13,242,0.22), transparent 60%),
+      radial-gradient(55% 80% at 110% 110%, rgba(155,63,247,0.14), transparent 60%);
   }
-  .left{flex:1;display:flex;flex-direction:column;justify-content:space-between;z-index:1;min-width:0}
-  .topline{display:flex;align-items:center;gap:1cqw}
-  .topline svg{width:1.8cqw;height:1.8cqw;color:var(--clay)}
-  .topline span{font-size:1.8cqw;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-soft)}
-  .title{font-family:'Source Serif 4',serif;font-size:6cqw;line-height:1.05;font-weight:600;letter-spacing:-.02em;color:var(--ink);margin-bottom:1.8cqw}
-  .desc{font-size:2.2cqw;line-height:1.4;color:var(--ink-soft);max-width:52cqw}
-  .foot{display:flex;align-items:center;gap:1.2cqw;padding-top:2cqw;border-top:1px solid var(--hair)}
-  .logo{width:2.4cqw;height:2.4cqw;border-radius:.7cqw;background:var(--clay);display:flex;align-items:center;justify-content:center;color:var(--bg);font-family:'Source Serif 4',serif;font-weight:600;font-size:1.4cqw}
-  .domain{font-size:1.8cqw;color:var(--ink-soft);font-weight:500}
-  .right{width:30cqw;margin-left:4cqw;display:flex;align-items:center;justify-content:center;z-index:1}
-  .mock{width:30cqw;height:30cqw;background:#FBF8F1;border:1px solid var(--hair);border-radius:2cqw;box-shadow:0 2.5cqw 5cqw -2.5cqw rgba(45,42,38,.25);overflow:hidden;display:flex;flex-direction:column}
-  .chrome{display:flex;align-items:center;gap:.7cqw;padding:1.2cqw 1.5cqw;border-bottom:1px solid var(--hair)}
-  .dot{width:.85cqw;height:.85cqw;border-radius:999px}
-  .dot.a{background:#E6B3A6} .dot.b{background:#E8D5A6} .dot.c{background:#C9C2B0}
-  .rows{padding:1.8cqw 2cqw;display:flex;flex-direction:column;gap:1.2cqw}
-  .row{display:flex;align-items:center;gap:1cqw}
-  .check{width:1.5cqw;height:1.5cqw;border-radius:.5cqw;border:.15cqw solid var(--ink-soft)}
-  .check.on{background:var(--clay);border-color:var(--clay)}
-  .bar{height:.85cqw;border-radius:999px;background:var(--bg-soft)}
+  .left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 1;
+    min-width: 0;
+  }
+  .topline { display: flex; align-items: center; gap: 1.2cqw; }
+  .brand-mark {
+    width: 3cqw; height: 3cqw;
+    border-radius: 0.9cqw;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-weight: 800;
+    font-size: 1.7cqw;
+    letter-spacing: -0.05em;
+    box-shadow: 0 0 0 1px rgba(127,13,242,0.45),
+                0 0 28px rgba(127,13,242,0.32);
+  }
+  .topline span {
+    font-size: 1.8cqw;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-lo);
+  }
+  .title {
+    font-size: 6.3cqw;
+    line-height: 1.02;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    margin-bottom: 1.8cqw;
+    background: linear-gradient(180deg, var(--text-hi) 0%, var(--accent-light) 200%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  .desc {
+    font-size: 2.2cqw;
+    line-height: 1.4;
+    color: var(--text-md);
+    max-width: 52cqw;
+    font-weight: 500;
+  }
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 1.2cqw;
+    padding-top: 2cqw;
+    border-top: 1px solid var(--border);
+  }
+  .foot .brand-mark { width: 2.4cqw; height: 2.4cqw; border-radius: 0.7cqw; font-size: 1.3cqw; }
+  .domain {
+    font-size: 1.85cqw;
+    color: var(--text-lo);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .right {
+    width: 32cqw;
+    margin-left: 4cqw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+  .mock {
+    width: 32cqw; height: 32cqw;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2cqw;
+    box-shadow: 0 2.5cqw 5cqw -2.5cqw rgba(0,0,0,0.6),
+                0 1cqw 2.5cqw -1cqw rgba(127,13,242,0.25);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .chrome {
+    display: flex;
+    align-items: center;
+    gap: 0.6cqw;
+    padding: 1.2cqw 1.5cqw;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .dot {
+    width: 0.7cqw; height: 0.7cqw;
+    border-radius: 999px;
+    background: #3a2451;
+  }
+  .badge {
+    margin-left: auto;
+    padding: 0.25cqw 0.85cqw;
+    font-size: 0.8cqw;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-light);
+    background: var(--accent-soft);
+    border-radius: 999px;
+  }
+  .rows {
+    padding: 1.8cqw 2cqw;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1cqw;
+    background: var(--bg-elev);
+    flex: 1;
+  }
+  .row { display: flex; align-items: center; gap: 1cqw; }
+  .check {
+    width: 1.5cqw; height: 1.5cqw;
+    border-radius: 0.5cqw;
+    border: 0.15cqw solid var(--border);
+  }
+  .check.on {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .bar {
+    height: 0.85cqw;
+    border-radius: 999px;
+    background: var(--surface-2);
+  }
+  .bar.accent {
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  }
+  .priority {
+    width: 0.3cqw;
+    height: 1.4cqw;
+    margin-left: auto;
+    background: var(--accent);
+    border-radius: 0.15cqw;
+  }
 </style>
 </head>
 <body>
@@ -67,27 +217,32 @@
     <div class="og">
       <div class="left">
         <div class="topline">
-          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 1 L13.6 9.2 L22 12 L13.6 14.8 L12 23 L10.4 14.8 L2 12 L10.4 9.2 Z"/></svg>
+          <div class="brand-mark">P</div>
           <span>Planary</span>
         </div>
         <div>
           <div class="title">생각을 정리하는<br>워크스페이스</div>
-          <div class="desc">할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 조용하고 단정하게 하루를 정리하세요.</div>
+          <div class="desc">할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 다크 톤의 차분한 작업 공간으로 하루를 정리하세요.</div>
         </div>
         <div class="foot">
-          <div class="logo">P</div>
+          <div class="brand-mark">P</div>
           <div class="domain">yourplanary.vercel.app</div>
         </div>
       </div>
       <div class="right">
         <div class="mock">
-          <div class="chrome"><div class="dot a"></div><div class="dot b"></div><div class="dot c"></div></div>
+          <div class="chrome">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="badge">Today</div>
+          </div>
           <div class="rows">
-            <div class="row"><div class="check on"></div><div class="bar" style="width:65%"></div></div>
-            <div class="row"><div class="check on"></div><div class="bar" style="width:55%"></div></div>
-            <div class="row"><div class="check"></div><div class="bar" style="width:75%"></div></div>
-            <div class="row"><div class="check"></div><div class="bar" style="width:45%"></div></div>
-            <div class="row"><div class="check"></div><div class="bar" style="width:60%"></div></div>
+            <div class="row"><div class="check on"></div><div class="bar accent" style="width:60%"></div><div class="priority"></div></div>
+            <div class="row"><div class="check on"></div><div class="bar accent" style="width:48%"></div><div class="priority"></div></div>
+            <div class="row"><div class="check"></div><div class="bar" style="width:68%"></div></div>
+            <div class="row"><div class="check"></div><div class="bar" style="width:40%"></div></div>
+            <div class="row"><div class="check"></div><div class="bar" style="width:55%"></div></div>
           </div>
         </div>
       </div>
