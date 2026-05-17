@@ -779,6 +779,54 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
   const [composerText, setComposerText] = useStateHT("");
   const [bulkAction, setBulkAction] = useStateHT(null); // { kind: "postpone"|"reschedule", items, label }
 
+  // Composer tools state
+  const [openPop, setOpenPop] = useStateHT(null); // "date" | "reminder" | "priority" | "project" | null
+  const [dueDate, setDueDate] = useStateHT({ id: "today", label: "오늘" });
+  const [reminder, setReminder] = useStateHT(null); // null | { id, label }
+  const [priority, setPriority] = useStateHT({ id: "med", label: "보통", color: "var(--warn)" });
+  const [project, setProject] = useStateHT(null);
+  const [attachment, setAttachment] = useStateHT(null); // { name, size, dataUrl? }
+  const attachInputRef = React.useRef(null);
+
+  const dateOpts = [
+    { id: "today",    label: "오늘",     icon: "zap" },
+    { id: "tomorrow", label: "내일",     icon: "calendar" },
+    { id: "after",    label: "모레",     icon: "calendar" },
+    { id: "1w",       label: "1주일 뒤", icon: "calendar" },
+    { id: "1m",       label: "한 달 뒤", icon: "calendar" },
+    { id: "none",     label: "기한 없음", icon: "x" },
+  ];
+  const reminderOpts = [
+    { id: "off",   label: "리마인더 없음", icon: "x" },
+    { id: "0",     label: "정시에",       icon: "bell" },
+    { id: "10",    label: "10분 전",      icon: "bell" },
+    { id: "30",    label: "30분 전",      icon: "bell" },
+    { id: "60",    label: "1시간 전",     icon: "bell" },
+    { id: "1440",  label: "1일 전",       icon: "bell" },
+  ];
+  const priorityOpts = [
+    { id: "high", label: "높음", color: "var(--err)" },
+    { id: "med",  label: "보통", color: "var(--warn)" },
+    { id: "low",  label: "낮음", color: "var(--info)" },
+  ];
+
+  const onAttachPick = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setAttachment({ name: file.name, size: file.size });
+    e.target.value = "";
+  };
+
+  const resetComposer = () => {
+    setComposerText("");
+    setDueDate({ id: "today", label: "오늘" });
+    setReminder(null);
+    setPriority({ id: "med", label: "보통", color: "var(--warn)" });
+    setProject(null);
+    setAttachment(null);
+    setOpenPop(null);
+  };
+
   const filtered = useMemoHT(() => {
     return tasks.filter(t => {
       if (taskFilter === "all") return !t.done;
@@ -802,8 +850,27 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
   const addTask = () => {
     if (!composerText.trim()) return;
     const id = "t" + Date.now();
-    setTasks(prev => [{ id, title: composerText.trim(), memo: null, project: null, priority: "med", due: null, time: "오늘", reminder: false, done: false, tags: [] }, ...prev]);
-    setComposerText("");
+    const time = dueDate && dueDate.id !== "none" ? dueDate.label : null;
+    setTasks(prev => [{
+      id,
+      title: composerText.trim(),
+      memo: null,
+      project: project?.id || null,
+      priority: priority.id,
+      due: null,
+      time,
+      reminder: !!reminder && reminder.id !== "off",
+      reminderOffset: reminder && reminder.id !== "off" ? reminder.id : null,
+      attachment: attachment || null,
+      done: false,
+      tags: [],
+    }, ...prev]);
+    window.Planary.toast?.({
+      type: "ok",
+      title: "작업이 추가됐어요",
+      sub: `${time ? time + " · " : ""}${composerText.trim().slice(0, 30)}`,
+    });
+    resetComposer();
     setComposerOpen(false);
   };
 
@@ -883,14 +950,154 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
             <span className="kbd">Esc</span>
           </div>
           <div className="composer-tools">
-            <button className="tool-btn"><Icon name="calendar" size={12} />오늘</button>
-            <button className="tool-btn"><Icon name="bell" size={12} />리마인더</button>
-            <button className="tool-btn"><Icon name="flag" size={12} />보통</button>
-            <button className="tool-btn"><Icon name="folder" size={12} />프로젝트</button>
-            <button className="tool-btn"><Icon name="paperclip" size={12} />첨부</button>
+            {/* Date */}
+            <div style={{ position: "relative" }}>
+              <button
+                className={`tool-btn ${dueDate && dueDate.id !== "none" ? "is-on" : ""}`}
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "date" ? null : "date"); }}
+                type="button"
+              >
+                <Icon name="calendar" size={12} />{dueDate?.label || "기한"}
+              </button>
+              {openPop === "date" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 180, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    {dateOpts.map(opt => (
+                      <button
+                        key={opt.id}
+                        className={`tool-popover-item ${dueDate?.id === opt.id ? "is-active" : ""}`}
+                        onClick={() => { setDueDate(opt.id === "none" ? { id: "none", label: "기한 없음" } : opt); setOpenPop(null); }}
+                        type="button"
+                      >
+                        <Icon name={opt.icon} size={12} />
+                        <span style={{ flex: 1 }}>{opt.label}</span>
+                        {dueDate?.id === opt.id && <Icon name="check" size={11} stroke={3} style={{ color: "var(--accent)" }} />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Reminder */}
+            <div style={{ position: "relative" }}>
+              <button
+                className={`tool-btn ${reminder ? "is-on" : ""}`}
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "reminder" ? null : "reminder"); }}
+                type="button"
+              >
+                <Icon name="bell" size={12} />{reminder?.label || "리마인더"}
+              </button>
+              {openPop === "reminder" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 160, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    {reminderOpts.map(opt => (
+                      <button
+                        key={opt.id}
+                        className={`tool-popover-item ${(reminder?.id || "off") === opt.id ? "is-active" : ""}`}
+                        onClick={() => { setReminder(opt.id === "off" ? null : opt); setOpenPop(null); }}
+                        type="button"
+                      >
+                        <Icon name={opt.icon} size={12} />
+                        <span style={{ flex: 1 }}>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Priority */}
+            <div style={{ position: "relative" }}>
+              <button
+                className="tool-btn"
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "priority" ? null : "priority"); }}
+                style={{ borderColor: priority.color + "55" }}
+                type="button"
+              >
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: priority.color }} />
+                {priority.label}
+              </button>
+              {openPop === "priority" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 140, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    {priorityOpts.map(p => (
+                      <button
+                        key={p.id}
+                        className={`tool-popover-item ${priority.id === p.id ? "is-active" : ""}`}
+                        onClick={() => { setPriority(p); setOpenPop(null); }}
+                        type="button"
+                      >
+                        <span className="dot" style={{ background: p.color, width: 9, height: 9, borderRadius: 2 }} />
+                        <span style={{ flex: 1 }}>{p.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Project */}
+            <div style={{ position: "relative" }}>
+              <button
+                className={`tool-btn ${project ? "is-on" : ""}`}
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "project" ? null : "project"); }}
+                type="button"
+              >
+                {project ? <span className="proj-color" style={{ background: project.color }} /> : <Icon name="folder" size={12} />}
+                {project?.name || "프로젝트"}
+              </button>
+              {openPop === "project" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 200, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    <button className={`tool-popover-item ${!project ? "is-active" : ""}`} onClick={() => { setProject(null); setOpenPop(null); }} type="button">
+                      <span className="proj-color" style={{ background: "var(--text-faint)" }} />
+                      <span>프로젝트 없음</span>
+                    </button>
+                    {PROJECTS.map(p => (
+                      <button
+                        key={p.id}
+                        className={`tool-popover-item ${project?.id === p.id ? "is-active" : ""}`}
+                        onClick={() => { setProject(p); setOpenPop(null); }}
+                        type="button"
+                      >
+                        <span className="proj-color" style={{ background: p.color }} />
+                        <span>{p.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Attach */}
+            <button
+              className={`tool-btn ${attachment ? "is-on" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (attachment) { setAttachment(null); return; }
+                attachInputRef.current && attachInputRef.current.click();
+              }}
+              type="button"
+              title={attachment ? "첨부 제거" : "파일 첨부"}
+            >
+              <Icon name="paperclip" size={12} />
+              {attachment ? (attachment.name.length > 14 ? attachment.name.slice(0, 12) + "…" : attachment.name) : "첨부"}
+            </button>
+            <input
+              ref={attachInputRef}
+              type="file"
+              style={{ display: "none" }}
+              onChange={onAttachPick}
+            />
+
             <div style={{ flex: 1 }} />
-            <button className="btn btn-sm" onClick={() => setComposerOpen(false)}>취소</button>
-            <button className="btn btn-sm btn-primary" onClick={addTask}>추가</button>
+            <button className="btn btn-sm" onClick={() => { resetComposer(); setComposerOpen(false); }} type="button">취소</button>
+            <button className="btn btn-sm btn-primary" onClick={addTask} type="button">추가</button>
           </div>
         </div>
       )}
