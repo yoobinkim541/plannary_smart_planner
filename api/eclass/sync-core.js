@@ -7,6 +7,10 @@ const ECLASS_SOURCES = ['eclass', 'eclass-exam'];
 const COURSE_PROJECT_COLORS = ['#7f0df2', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7'];
 const BATCH_LIMIT = 400;
 
+function hasSavedCredentials(connection = {}) {
+  return !!connection.encryptedSessionCookie || (!!connection.encryptedUsername && !!connection.encryptedPassword);
+}
+
 function dueTimeFor(type) {
   return type === 'lecture' ? '09:00' : '23:59';
 }
@@ -250,13 +254,15 @@ async function syncConnection(uid, connection, options = {}) {
 async function syncAll(options = {}) {
   const admin = getAdmin();
   const db = admin.firestore();
-  const snapshot = await db.collection('eclass_connections').where('enabled', '==', true).get();
+  const snapshot = await db.collection('eclass_connections').get();
   let todoCount = 0;
   let examCount = 0;
   let projectCount = 0;
   for (const doc of snapshot.docs) {
     try {
-      const result = await syncConnection(doc.id, doc.data(), options);
+      const connection = doc.data();
+      if (connection.enabled === false || !hasSavedCredentials(connection)) continue;
+      const result = await syncConnection(doc.id, connection, options);
       todoCount += result.todoCount;
       examCount += result.examCount;
       projectCount += result.projectCount || 0;
