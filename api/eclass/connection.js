@@ -2,6 +2,10 @@ const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('./_adm
 const { encrypt } = require('./_crypto');
 const { DEFAULT_BASE_URL, loginSeoultech, normalizeBaseUrl } = require('./_seoultech');
 
+function hasSavedCredentials(data = {}) {
+  return !!data.encryptedSessionCookie || (!!data.encryptedUsername && !!data.encryptedPassword);
+}
+
 module.exports = async function handler(req, res) {
   if (!allowMethods(req, res, ['GET', 'POST', 'DELETE'])) return;
   try {
@@ -15,7 +19,7 @@ module.exports = async function handler(req, res) {
       if (!snap.exists) return sendJson(res, 200, { connected: false, baseUrl: DEFAULT_BASE_URL });
       const data = snap.data() || {};
       return sendJson(res, 200, {
-        connected: !!data.enabled,
+        connected: data.enabled === false ? false : hasSavedCredentials(data),
         baseUrl: data.baseUrl || DEFAULT_BASE_URL,
         platform: data.platform || 'seoultech-moodle',
         lastSyncedAt: data.lastSyncedAt || null,

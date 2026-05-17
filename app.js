@@ -724,6 +724,21 @@ async function getAuthHeaders() {
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
+async function loadEclassStatusFromFirestore() {
+    if (!currentUser || !db) return null;
+    const snap = await db.collection('eclass_connections').doc(currentUser.uid).get();
+    if (!snap.exists) return { connected: false, baseUrl: 'https://eclass.seoultech.ac.kr' };
+    const data = snap.data() || {};
+    const hasCredentials = !!data.encryptedSessionCookie || (!!data.encryptedUsername && !!data.encryptedPassword);
+    return {
+        connected: data.enabled === false ? false : hasCredentials,
+        baseUrl: data.baseUrl || 'https://eclass.seoultech.ac.kr',
+        platform: data.platform || 'seoultech-moodle',
+        lastSyncedAt: data.lastSyncedAt || null,
+        lastError: data.lastError || null
+    };
+}
+
 async function loadEclassStatus() {
     if (!currentUser) return;
     try {
@@ -735,7 +750,7 @@ async function loadEclassStatus() {
         updateEclassStatusBadge();
     } catch (error) {
         console.warn('E-class status unavailable:', error);
-        eclassStatus = { connected: false };
+        eclassStatus = await loadEclassStatusFromFirestore().catch(() => ({ connected: false }));
         updateEclassStatusBadge();
     }
 }
