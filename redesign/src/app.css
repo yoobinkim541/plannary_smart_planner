@@ -3296,6 +3296,44 @@
   padding: 8px 3px 2px;
   border-top: 1px solid var(--border-soft);
 }
+.task-attachment-preview {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--bg-elev);
+}
+.task-attachment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.task-attachment-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-hi);
+  font-size: 13px;
+  font-weight: 700;
+}
+.task-attachment-sub {
+  margin-top: 2px;
+  color: var(--text-lo);
+  font-size: 11px;
+}
+.task-attachment-image-link {
+  display: block;
+  background: var(--surface);
+}
+.task-attachment-image {
+  display: block;
+  width: 100%;
+  max-height: min(46vh, 420px);
+  object-fit: contain;
+}
 .dialog-scrim {
   position: fixed; inset: 0;
   background: rgba(8,4,15,0.55);

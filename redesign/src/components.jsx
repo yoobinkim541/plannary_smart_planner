@@ -999,7 +999,18 @@ function TaskCard({ task, onToggle, projects }) {
   else if (isTomorrow) timeClass = "task-due-tomorrow";
 
   return (
-    <div className={`task ${task.done ? "is-done" : ""} ${isOverdue ? "is-overdue" : ""}`}>
+    <div
+      className={`task ${task.done ? "is-done" : ""} ${isOverdue ? "is-overdue" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => window.dispatchEvent(new CustomEvent("planary:edit-task", { detail: task }))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("planary:edit-task", { detail: task }));
+        }
+      }}
+    >
       <div className={`task-priority-bar ${prClass}`} />
       <button
         className={`checkbox ${task.done ? "is-checked" : ""}`}
@@ -1043,6 +1054,11 @@ function TaskCard({ task, onToggle, projects }) {
           {task.reminder && (
             <span className="chip chip-accent">
               <Icon name="bell" size={11} />리마인더
+            </span>
+          )}
+          {task.imageUrl && (
+            <span className="chip" style={{ background: "transparent", borderColor: "var(--border)" }}>
+              <Icon name="image" size={11} />첨부 이미지
             </span>
           )}
           {task.priority === "high" && !task.done && !task.source && (

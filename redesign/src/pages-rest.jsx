@@ -4678,7 +4678,25 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
               resize: "vertical",
               padding: 0
             }} />
-          
+
+          {draft.imageUrl && (
+            <div className="task-attachment-preview">
+              <div className="task-attachment-head">
+                <div>
+                  <div className="task-attachment-title">
+                    <Icon name="image" size={13} />첨부 이미지
+                  </div>
+                  <div className="task-attachment-sub">작업에 연결된 사진</div>
+                </div>
+                <a className="btn btn-sm" href={draft.imageUrl} target="_blank" rel="noreferrer">
+                  <Icon name="arrowUpRight" size={12} />열기
+                </a>
+              </div>
+              <a href={draft.imageUrl} target="_blank" rel="noreferrer" className="task-attachment-image-link">
+                <img src={draft.imageUrl} alt="첨부 이미지" className="task-attachment-image" />
+              </a>
+            </div>
+          )}
 
           {/* Property rows */}
           <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 0, borderTop: "1px solid var(--border-soft)" }}>
