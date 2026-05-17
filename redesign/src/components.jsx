@@ -42,7 +42,19 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
   const [projOpen, setProjOpen] = useState(true);
   const [favOpen, setFavOpen] = useState(true);
   const [recentOpen, setRecentOpen] = useState(true);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [favorites, setFavorites] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("planary.sidebar.favorites") || "null") || [
+      { id: "f1", name: "디자인 시스템 핸드북", target: "wiki" },
+      { id: "f2", name: "이번 주 마감 작업", target: "tasks" },
+    ]; } catch (_) { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("planary.sidebar.favorites", JSON.stringify(favorites)); } catch (_) {}
+  }, [favorites]);
 
   const counts = useMemo(() => ({
     all: tasks.filter(t => !t.done).length,
@@ -77,14 +89,26 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
     </div>
   );
 
-  const SectionHead = ({ label, open, setOpen, action }) => (
-    <div className="nav-section" onClick={() => setOpen(!open)} style={{ cursor: "pointer" }}>
+  const SectionHead = ({ label, open, setOpen, action, actionTitle }) => (
+    <div
+      className={`nav-section ${open ? "is-open" : "is-closed"}`}
+      onClick={() => setOpen(!open)}
+      style={{ cursor: "pointer", userSelect: "none" }}
+    >
       <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <Icon name="chevronDown" size={10} style={{ opacity: 0.6, transform: open ? "none" : "rotate(-90deg)", transition: "transform 120ms" }} />
+        <Icon
+          name="chevronDown"
+          size={10}
+          style={{
+            opacity: 0.6,
+            transform: open ? "none" : "rotate(-90deg)",
+            transition: "transform 200ms var(--ease-out)",
+          }}
+        />
         {label}
       </span>
       {action && (
-        <button onClick={(e) => { e.stopPropagation(); action(); }} title="새로 만들기">
+        <button onClick={(e) => { e.stopPropagation(); action(); }} title={actionTitle || "새로 만들기"}>
           <Icon name="plus" size={11} />
         </button>
       )}
@@ -119,10 +143,51 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
         </div>
       </div>
 
-      <div className="sidebar-search" tabIndex={0}>
-        <Icon name="search" size={14} />
-        <input placeholder="빠른 검색…" />
-        <span className="kbd">⌘K</span>
+      <div style={{ position: "relative", margin: "0 14px 8px" }}>
+        <div className="sidebar-search" tabIndex={0}>
+          <Icon name="search" size={14} />
+          <input
+            placeholder="빠른 검색…"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+            onFocus={() => setSearchOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") { setSearchOpen(false); e.target.blur(); }
+              if (e.key === "Enter") {
+                // Open command palette with current query
+                setSearchOpen(false);
+                window.Planary.toast?.({ type: "info", title: "검색은 명령 팔레트에서 더 강력해요", sub: "⌘K로 열어보세요" });
+              }
+            }}
+          />
+          {searchQuery ? (
+            <button
+              className="icon-btn"
+              style={{ width: 18, height: 18, padding: 0 }}
+              onClick={(e) => { e.stopPropagation(); setSearchQuery(""); }}
+              title="지우기"
+            >
+              <Icon name="x" size={10} />
+            </button>
+          ) : (
+            <span className="kbd">⌘K</span>
+          )}
+        </div>
+        {searchOpen && searchQuery && (
+          <SidebarSearchResults
+            query={searchQuery}
+            tasks={tasks}
+            onSelect={(target) => {
+              setSearchOpen(false);
+              setSearchQuery("");
+              if (target.kind === "page") setPage(target.id);
+              if (target.kind === "task") { setPage("tasks"); }
+              if (target.kind === "project") { setPage("projects"); }
+              if (target.kind === "wiki") setPage("wiki");
+            }}
+            onClose={() => setSearchOpen(false)}
+          />
+        )}
       </div>
 
       <nav className="sidebar-nav" onClick={() => setUserMenuOpen(false)}>
@@ -145,24 +210,37 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
         <NavLink id="archive" icon="archive" label="보관함" />
 
         <SectionHead label="즐겨찾기" open={favOpen} setOpen={setFavOpen} />
-        {favOpen && (
-          <>
-            <div className="proj-row" onClick={() => setPage("wiki")}>
-              <span style={{ width: 16, display: "grid", placeItems: "center", color: "var(--text-lo)" }}>
-                <Icon name="star" size={12} style={{ color: "var(--warn)", fill: "var(--warn)" }} />
-              </span>
-              <span className="proj-name">디자인 시스템 핸드북</span>
-            </div>
-            <div className="proj-row" onClick={() => setPage("tasks")}>
-              <span style={{ width: 16, display: "grid", placeItems: "center", color: "var(--text-lo)" }}>
-                <Icon name="star" size={12} style={{ color: "var(--warn)", fill: "var(--warn)" }} />
-              </span>
-              <span className="proj-name">이번 주 마감 작업</span>
-            </div>
-          </>
+        {favOpen && favorites.length === 0 && (
+          <div className="proj-row" style={{ color: "var(--text-faint)", cursor: "default", fontSize: 12 }}>
+            <span style={{ width: 16, display: "grid", placeItems: "center" }}>
+              <Icon name="star" size={11} />
+            </span>
+            <span style={{ flex: 1 }}>즐겨찾기가 비어있어요</span>
+          </div>
         )}
+        {favOpen && favorites.map((fav) => (
+          <div
+            key={fav.id}
+            className="proj-row"
+            onClick={() => setPage(fav.target || "wiki")}
+            title={fav.name}
+          >
+            <button
+              className="fav-star"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFavorites(prev => prev.filter(x => x.id !== fav.id));
+                window.Planary.toast?.({ type: "ok", title: "즐겨찾기에서 제거됨", sub: fav.name });
+              }}
+              title="즐겨찾기에서 제거"
+            >
+              <Icon name="star" size={12} />
+            </button>
+            <span className="proj-name">{fav.name}</span>
+          </div>
+        ))}
 
-        <SectionHead label="프로젝트" open={projOpen} setOpen={setProjOpen} action={() => {}} />
+        <SectionHead label="프로젝트" open={projOpen} setOpen={setProjOpen} action={() => { setProjOpen(true); setNewProjectOpen(true); }} actionTitle="새 프로젝트" />
         {projOpen && PROJECTS.map(p => (
           <div
             key={p.id}
@@ -210,7 +288,173 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
           <Icon name="settings" size={14} />
         </button>
       </div>
+      {newProjectOpen && (
+        <NewProjectDialog
+          onClose={() => setNewProjectOpen(false)}
+          onCreate={(proj) => {
+            window.Planary.PROJECTS.push(proj);
+            window.Planary.toast?.({ type: "ok", title: "프로젝트가 만들어졌어요", sub: proj.name });
+            setNewProjectOpen(false);
+            setPage("projects");
+          }}
+        />
+      )}
     </aside>
+  );
+}
+
+/* ---------- New Project Dialog ---------- */
+function NewProjectDialog({ onClose, onCreate }) {
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState("🚀");
+  const [color, setColor] = useState("#7f0df2");
+  const [deadline, setDeadline] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && name.trim()) submit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [name]);
+
+  const ICONS_QUICK = ["🚀", "🎯", "✍️", "🔬", "📚", "💼", "🎨", "💡", "📊", "🌱", "🔥", "⭐"];
+  const COLORS = [
+    "#7f0df2", "#2563eb", "#10b981", "#f59e0b",
+    "#e11d48", "#06b6d4", "#a855f7", "#475569",
+  ];
+
+  const submit = () => {
+    if (!name.trim()) return;
+    const id = "p" + Date.now();
+    onCreate({
+      id,
+      name: name.trim(),
+      color,
+      icon,
+      progress: 0,
+      members: [window.Planary.USER.initials],
+      deadline: deadline || null,
+    });
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(500px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>새 프로젝트</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>작업·노트·리마인더가 함께 사는 공간을 만들어요</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+
+        <div style={{ padding: "18px 22px" }}>
+          {/* Icon + name row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+            <div
+              style={{
+                width: 52, height: 52,
+                borderRadius: 14,
+                background: color,
+                display: "grid", placeItems: "center",
+                fontSize: 26,
+                flexShrink: 0,
+              }}
+            >
+              {icon}
+            </div>
+            <input
+              ref={inputRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="프로젝트 이름"
+              className="form-input"
+              style={{ fontSize: 16, fontWeight: 700, height: 44, padding: "0 14px" }}
+            />
+          </div>
+
+          {/* Icon picker */}
+          <div style={{ marginBottom: 14 }}>
+            <div className="kicker" style={{ marginBottom: 8 }}>아이콘</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {ICONS_QUICK.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setIcon(e)}
+                  style={{
+                    width: 34, height: 34,
+                    display: "grid", placeItems: "center",
+                    borderRadius: 8,
+                    fontSize: 18,
+                    background: icon === e ? "var(--accent-soft)" : "var(--bg-elev)",
+                    border: icon === e ? "1px solid var(--accent-ring)" : "1px solid var(--border-soft)",
+                    cursor: "pointer",
+                    transition: "all var(--dur-fast)",
+                  }}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color picker */}
+          <div style={{ marginBottom: 14 }}>
+            <div className="kicker" style={{ marginBottom: 8 }}>색상</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  style={{
+                    width: 28, height: 28,
+                    borderRadius: "50%",
+                    background: c,
+                    border: color === c ? "2px solid var(--text-hi)" : "2px solid transparent",
+                    cursor: "pointer",
+                    transition: "all var(--dur-fast)",
+                    boxShadow: color === c ? "0 0 0 2px var(--bg)" : "none",
+                  }}
+                  aria-label={`색상 ${c}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Deadline (optional) */}
+          <div>
+            <div className="kicker" style={{ marginBottom: 8 }}>마감일 (선택)</div>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="form-input"
+            />
+          </div>
+        </div>
+
+        <div className="dialog-foot">
+          <div style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
+            만들고 나면 좌측 사이드바에서 바로 확인할 수 있어요
+          </div>
+          <button className="btn btn-sm" onClick={onClose}>취소</button>
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={!name.trim()}
+            onClick={submit}
+          >
+            <Icon name="plus" size={12} />만들기
+            <span className="kbd" style={{ marginLeft: 4 }}>⌘↵</span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -221,6 +465,12 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [notifs, setNotifs] = useState([
+    { icon: "bell", iconColor: "var(--accent)", title: "디자인 시스템 v3 토큰 정리", sub: "5분 전 · 리마인더", unread: true },
+    { icon: "user", iconColor: "var(--info)", title: "박서연님이 노트를 수정했습니다", sub: "디자인 시스템 / 컬러 토큰 · 12분 전", unread: true },
+    { icon: "check", iconColor: "var(--ok)", title: "랜딩 페이지 카피 2차 수정", sub: "완료됨 · 1시간 전", unread: false },
+    { icon: "calendar", iconColor: "var(--warn)", title: "Q4 콘텐츠 캘린더 초안", sub: "내일 마감 · 마감 임박", unread: false },
+  ]);
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!window.PlanaryI18n) return;
@@ -281,7 +531,7 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
             style={{ position: "relative", width: 32, padding: 0, justifyContent: "center" }}
           >
             <Icon name="bell" size={15} />
-            <span className="bell-dot" />
+            {notifs.some(n => n.unread) && <span className="bell-dot" />}
           </button>
           {notifOpen && (
             <>
@@ -396,6 +646,9 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
               </div>
               <div className="popover-item" onClick={() => { setPage && setPage("profile"); setUserOpen(false); setTimeout(() => { document.querySelector(".card h3")?.closest(".card")?.scrollIntoView?.({ behavior: "smooth" }); window.Planary.toast?.({ type: "info", title: "알림 설정으로 이동했어요" }); }, 100); }}>
                 <Icon name="bell" size={14} />알림 설정
+              </div>
+              <div className="popover-item" onClick={() => { setUserOpen(false); window.dispatchEvent(new CustomEvent("planary:open-guide")); }}>
+                <Icon name="book" size={14} />사용자 가이드
               </div>
               <div className="popover-sep" />
               <div className="popover-item" onClick={() => { setShortcutsOpen(true); setUserOpen(false); }}>
@@ -801,17 +1054,6 @@ function TaskCard({ task, onToggle, projects }) {
       <div className="task-right">
         <button
           className="icon-btn"
-          title={task.archived ? "복원" : "보관"}
-          onClick={(e) => {
-            e.stopPropagation();
-            window.dispatchEvent(new CustomEvent(task.archived ? "planary:unarchive-task" : "planary:archive-task", { detail: task.id }));
-            window.Planary?.toast?.({ type: "ok", title: task.archived ? "작업을 복원했어요" : "작업을 보관했어요" });
-          }}
-        >
-          <Icon name="archive" size={13} />
-        </button>
-        <button
-          className="icon-btn"
           title="편집"
           onClick={(e) => {
             e.stopPropagation();
@@ -827,8 +1069,98 @@ function TaskCard({ task, onToggle, projects }) {
 }
 
 window.Planary = Object.assign(window.Planary || {}, {
-  Rail, Sidebar, Topbar, MobileBar, MobileTabs, MobileDrawer, TaskCard, AvatarGroup, DatePicker, IconPicker, ToastHost,
 });
+
+/* ---------- Sidebar Search Results dropdown ---------- */
+function SidebarSearchResults({ query, tasks, onSelect, onClose }) {
+  const q = query.toLowerCase().trim();
+  const { PROJECTS, WIKI_TREE, NOTES } = window.Planary;
+  const PAGES = [
+    { id: "home", name: "홈", icon: "home" },
+    { id: "tasks", name: "작업", icon: "check" },
+    { id: "projects", name: "프로젝트", icon: "layers" },
+    { id: "notes", name: "포스트잇", icon: "note" },
+    { id: "wiki", name: "노트", icon: "book" },
+    { id: "bookmarks", name: "북마크", icon: "bookmark" },
+    { id: "archive", name: "보관함", icon: "archive" },
+    { id: "profile", name: "마이페이지", icon: "user" },
+  ];
+  const matchPages = PAGES.filter((p) => p.name.toLowerCase().includes(q));
+  const matchTasks = tasks.filter((t) => t.title.toLowerCase().includes(q)).slice(0, 5);
+  const matchProjects = PROJECTS.filter((p) => p.name.toLowerCase().includes(q));
+  const matchWiki = WIKI_TREE.filter((w) => w.title.toLowerCase().includes(q));
+  const matchNotes = NOTES.filter((n) => n.text.toLowerCase().includes(q)).slice(0, 3);
+  const total = matchPages.length + matchTasks.length + matchProjects.length + matchWiki.length + matchNotes.length;
+
+  useEffect(() => {
+    const onClick = (e) => {
+      if (!e.target.closest(".sidebar-search-results") && !e.target.closest(".sidebar-search")) onClose();
+    };
+    setTimeout(() => document.addEventListener("click", onClick), 0);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
+
+  const NOTE_COLOR = { yellow: "#fef3c7", pink: "#fbcfe8", blue: "#bfdbfe", green: "#bbf7d0", purple: "#ddd6fe", orange: "#fed7aa", mint: "#99f6e4" };
+
+  if (total === 0) {
+    return (
+      <div className="sidebar-search-results">
+        <div className="sidebar-search-empty">
+          "{query}"에 대한 결과가 없어요
+          <div style={{ marginTop: 6, fontSize: 10 }}>다른 키워드로 시도해보세요</div>
+        </div>
+      </div>
+    );
+  }
+
+  const Section = ({ label, items, render }) => items.length === 0 ? null : (
+    <>
+      <div className="sidebar-search-group-label">{label}</div>
+      {items.map(render)}
+    </>
+  );
+
+  return (
+    <div className="sidebar-search-results">
+      <Section label="페이지" items={matchPages} render={(p) => (
+        <button key={p.id} type="button" className="sidebar-search-result"
+          onClick={() => onSelect({ kind: "page", id: p.id })}>
+          <Icon name={p.icon} size={13} className="sidebar-search-result-icon" />
+          <span>{p.name}</span>
+        </button>
+      )} />
+      <Section label={`작업 (${matchTasks.length})`} items={matchTasks} render={(t) => (
+        <button key={t.id} type="button" className="sidebar-search-result"
+          onClick={() => onSelect({ kind: "task", id: t.id })}>
+          <Icon name="check" size={13} className="sidebar-search-result-icon" />
+          <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</span>
+          {t.time && <span className="sidebar-search-result-meta">{t.time}</span>}
+        </button>
+      )} />
+      <Section label="프로젝트" items={matchProjects} render={(p) => (
+        <button key={p.id} type="button" className="sidebar-search-result"
+          onClick={() => onSelect({ kind: "project", id: p.id })}>
+          <span style={{ fontSize: 13, lineHeight: 1 }}>{p.icon}</span>
+          <span>{p.name}</span>
+        </button>
+      )} />
+      <Section label="노트" items={matchWiki} render={(w) => (
+        <button key={w.id} type="button" className="sidebar-search-result"
+          onClick={() => onSelect({ kind: "wiki", id: w.id })}>
+          <span style={{ fontSize: 13, lineHeight: 1 }}>{w.icon}</span>
+          <span>{w.title}</span>
+        </button>
+      )} />
+      <Section label="포스트잇" items={matchNotes} render={(n) => (
+        <button key={n.id} type="button" className="sidebar-search-result"
+          onClick={() => onSelect({ kind: "notes", id: n.id })}>
+          <span style={{ width: 13, height: 13, borderRadius: 3, background: NOTE_COLOR[n.color] }} className="sidebar-search-result-icon" />
+          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.text.split("\n")[0].slice(0, 30)}</span>
+        </button>
+      )} />
+    </div>
+  );
+}
 
 /* ---------- Toast Host (mount once at app root) ---------- */
 function ToastHost() {
@@ -1259,3 +1591,11 @@ function DatePicker({ value, onChange, onClose }) {
     </div>
   );
 }
+
+
+// Final exports — placed at the end so all function declarations are guaranteed defined.
+window.Planary = Object.assign(window.Planary || {}, {
+  Rail, Sidebar, Topbar, MobileBar, MobileTabs, MobileDrawer,
+  TaskCard, AvatarGroup, DatePicker, IconPicker, ToastHost,
+  SidebarSearchResults, ShortcutsDialog, NewProjectDialog,
+});

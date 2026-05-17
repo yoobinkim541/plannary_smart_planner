@@ -803,5 +803,171 @@
     });
   });
 
+  // ── Notes ───────────────────────────────────────────────────────────
+  window.addEventListener("planary:create-note", (e) => {
+    const note = e.detail || {};
+    api.createNote(note).catch(err => {
+      console.error("[Planary] create-note failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "메모 추가 실패", sub: err.message });
+    });
+  });
+  window.addEventListener("planary:update-note", (e) => {
+    const { id, patch } = e.detail || {};
+    if (!id || !patch) return;
+    api.updateNote(id, patch).catch(err => console.error("[Planary] update-note failed:", err));
+  });
+  window.addEventListener("planary:delete-note", (e) => {
+    const id = e.detail;
+    if (!id) return;
+    api.deleteNote(id).catch(err => console.error("[Planary] delete-note failed:", err));
+  });
+
+  // ── Projects ────────────────────────────────────────────────────────
+  window.addEventListener("planary:create-project", (e) => {
+    const { name, color, icon } = e.detail || {};
+    api.createProject(name, color, icon).catch(err => {
+      console.error("[Planary] create-project failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "프로젝트 생성 실패", sub: err.message });
+    });
+  });
+  window.addEventListener("planary:update-project", (e) => {
+    const { id, patch } = e.detail || {};
+    if (!id) return;
+    api.updateProject(id, patch || {}).catch(err => console.error("[Planary] update-project failed:", err));
+  });
+  window.addEventListener("planary:delete-project", (e) => {
+    const id = e.detail;
+    if (!id) return;
+    api.deleteProject(id).catch(err => console.error("[Planary] delete-project failed:", err));
+  });
+
+  // ── Bookmarks ───────────────────────────────────────────────────────
+  window.addEventListener("planary:create-bookmark", (e) => {
+    const bm = e.detail || {};
+    api.createBookmark(bm).catch(err => {
+      console.error("[Planary] create-bookmark failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "북마크 추가 실패", sub: err.message });
+    });
+  });
+  window.addEventListener("planary:update-bookmark", (e) => {
+    const { id, patch } = e.detail || {};
+    if (!id) return;
+    api.updateBookmark(id, patch || {}).catch(err => console.error("[Planary] update-bookmark failed:", err));
+  });
+  window.addEventListener("planary:delete-bookmark", (e) => {
+    const id = e.detail;
+    if (!id) return;
+    api.deleteBookmark(id).catch(err => console.error("[Planary] delete-bookmark failed:", err));
+  });
+
+  // ── Wiki ────────────────────────────────────────────────────────────
+  window.addEventListener("planary:create-wiki-page", (e) => {
+    const { title, parentId } = e.detail || {};
+    api.createWikiPage(title || "새 페이지", parentId || null).catch(err => {
+      console.error("[Planary] create-wiki-page failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "페이지 생성 실패", sub: err.message });
+    });
+  });
+  window.addEventListener("planary:save-wiki-blocks", (e) => {
+    const { id, blocks } = e.detail || {};
+    if (!id) return;
+    api.saveWikiBlocks(id, blocks || []).catch(err => console.error("[Planary] save-wiki-blocks failed:", err));
+  });
+  window.addEventListener("planary:update-wiki-page-meta", (e) => {
+    const { id, patch } = e.detail || {};
+    if (!id) return;
+    api.updateWikiPageMeta(id, patch || {}).catch(err => console.error("[Planary] update-wiki-page-meta failed:", err));
+  });
+  window.addEventListener("planary:delete-wiki-page", (e) => {
+    const id = e.detail;
+    if (!id) return;
+    api.deleteWikiPage(id).catch(err => console.error("[Planary] delete-wiki-page failed:", err));
+  });
+
+  // ── Profile / Account ───────────────────────────────────────────────
+  window.addEventListener("planary:update-profile", (e) => {
+    const profile = e.detail || {};
+    api.updateProfile(profile).catch(err => {
+      console.error("[Planary] update-profile failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "프로필 저장 실패", sub: err.message });
+    });
+  });
+  window.addEventListener("planary:change-password", async (e) => {
+    const { current, next, onResult } = e.detail || {};
+    try {
+      await api.changePassword(current, next);
+      onResult && onResult({ ok: true });
+      window.Planary?.toast?.({ type: "ok", title: "비밀번호를 변경했어요" });
+    } catch (err) {
+      console.error("[Planary] change-password failed:", err);
+      onResult && onResult({ ok: false, error: err.message });
+      window.Planary?.toast?.({ type: "err", title: "비밀번호 변경 실패", sub: err.message });
+    }
+  });
+  window.addEventListener("planary:sign-out", () => {
+    api.signOut().catch(err => console.error("[Planary] sign-out failed:", err));
+  });
+  window.addEventListener("planary:delete-account", async (e) => {
+    const { onResult } = e.detail || {};
+    try {
+      await api.deleteAccount();
+      onResult && onResult({ ok: true });
+    } catch (err) {
+      console.error("[Planary] delete-account failed:", err);
+      onResult && onResult({ ok: false, error: err.message });
+      window.Planary?.toast?.({ type: "err", title: "계정 삭제 실패", sub: err.message });
+    }
+  });
+  window.addEventListener("planary:save-notif-prefs", (e) => {
+    const patch = e.detail || {};
+    api.saveNotifPrefs(patch).catch(err => console.error("[Planary] save-notif-prefs failed:", err));
+  });
+  window.addEventListener("planary:save-plan", (e) => {
+    const plan = e.detail;
+    if (!plan) return;
+    api.savePlan(plan).catch(err => console.error("[Planary] save-plan failed:", err));
+  });
+  window.addEventListener("planary:save-preferences", (e) => {
+    const patch = e.detail || {};
+    api.savePreferences(patch).catch(err => console.error("[Planary] save-preferences failed:", err));
+  });
+
+  // ── e-Class ─────────────────────────────────────────────────────────
+  window.addEventListener("planary:eclass-connect", async (e) => {
+    const { url, id, password, onResult } = e.detail || {};
+    try {
+      const data = await api.connectEclass({ url, id, password });
+      onResult && onResult({ ok: true, data });
+      window.Planary?.toast?.({ type: "ok", title: "e-Class에 연결됐어요" });
+    } catch (err) {
+      console.error("[Planary] eclass-connect failed:", err);
+      onResult && onResult({ ok: false, error: err.message });
+      window.Planary?.toast?.({ type: "err", title: "e-Class 연결 실패", sub: err.message });
+    }
+  });
+  window.addEventListener("planary:eclass-disconnect", async (e) => {
+    const { onResult } = e.detail || {};
+    try {
+      await api.disconnectEclass();
+      onResult && onResult({ ok: true });
+      window.Planary?.toast?.({ type: "ok", title: "e-Class 연결을 해제했어요" });
+    } catch (err) {
+      console.error("[Planary] eclass-disconnect failed:", err);
+      onResult && onResult({ ok: false, error: err.message });
+    }
+  });
+  window.addEventListener("planary:eclass-sync", async (e) => {
+    const { onResult } = e.detail || {};
+    try {
+      const data = await api.triggerEclassSync();
+      onResult && onResult({ ok: true, data });
+      window.Planary?.toast?.({ type: "ok", title: "동기화 완료", sub: data && data.itemCount ? `${data.itemCount}건` : undefined });
+    } catch (err) {
+      console.error("[Planary] eclass-sync failed:", err);
+      onResult && onResult({ ok: false, error: err.message });
+      window.Planary?.toast?.({ type: "err", title: "동기화 실패", sub: err.message });
+    }
+  });
+
   console.info("[Planary] Firebase bridge ready.");
 })();

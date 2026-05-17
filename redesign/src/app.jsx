@@ -36,31 +36,6 @@ const PAGE_CRUMBS = {
   profile:   ["Planary", "마이페이지"],
 };
 
-const ONBOARDING_STEPS = [
-  { id: "taskCreate", page: "tasks", icon: "plus", title: "첫 작업 만들기", body: "오늘 처리할 일을 하나 적고 저장해 작업 흐름을 시작합니다.", action: "작업 만들기" },
-  { id: "taskDetails", page: "tasks", icon: "calendar", title: "작업 정보 채우기", body: "마감일, 우선순위, 메모를 붙여 나중에 다시 봐도 바로 이해되게 만듭니다.", action: "작업 열기" },
-  { id: "taskManage", page: "tasks", icon: "check", title: "완료와 보관 익히기", body: "작업을 완료하거나 보관해서 오늘 목록을 가볍게 유지합니다.", action: "작업 관리" },
-  { id: "taskViews", page: "tasks", icon: "filter", title: "필터로 보기", body: "오늘, 중요, 리마인더 필터를 바꿔 필요한 작업만 빠르게 봅니다.", action: "필터 보기" },
-  { id: "projects", page: "projects", icon: "layers", title: "프로젝트 만들기", body: "작업을 수업, 팀, 개인 목표별로 묶어 진행률을 확인합니다.", action: "프로젝트로 이동" },
-  { id: "notesCreate", page: "notes", icon: "note", title: "포스트잇 남기기", body: "작업으로 만들기 전의 생각을 빠르게 적고 색상으로 구분합니다.", action: "메모 쓰기" },
-  { id: "notesManage", page: "notes", icon: "archive", title: "메모 정리하기", body: "드래그, 색상 변경, 삭제로 포스트잇 보드를 정돈합니다.", action: "보드 열기" },
-  { id: "wiki", page: "wiki", icon: "book", title: "위키 페이지 만들기", body: "길어지는 기록은 위키로 옮겨 프로젝트와 함께 관리합니다.", action: "위키 열기" },
-];
-
-const ONBOARDING_STATUS = ["pending", "completed", "skipped"];
-
-function normalizeOnboardingProgress(progress) {
-  const raw = progress && typeof progress === "object" ? progress : {};
-  return Object.fromEntries(ONBOARDING_STEPS.map(s => [
-    s.id,
-    ONBOARDING_STATUS.includes(raw[s.id]) ? raw[s.id] : "pending",
-  ]));
-}
-
-function getNextOnboardingStep(progress) {
-  return ONBOARDING_STEPS.find(s => progress[s.id] === "pending")?.id || null;
-}
-
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [page, setPage] = useState("home");
@@ -71,13 +46,18 @@ function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [focusModeTask, setFocusModeTask] = useState(null);
   const [tabletSidebarOpen, setTabletSidebarOpen] = useState(false);
+  // Onboarding: open by default unless user has finished it before
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (window.__planaryForceOnboarding) return true;
+    try { return !localStorage.getItem("planary.onboarding.done"); } catch (_) { return true; }
+  });
+  const [guideOpen, setGuideOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authedUser, setAuthedUser] = useState(null);
-  const [onboarding, setOnboarding] = useState(() => {
-    const progress = normalizeOnboardingProgress();
-    return { progress, currentStep: getNextOnboardingStep(progress), completed: false, loaded: false, open: false };
-  });
+
+  // Persist tweak edits to Firestore (no-op when bridge isn't loaded)
   const saveTweak = React.useCallback((keyOrEdits, val) => {
     const edits = typeof keyOrEdits === "object" && keyOrEdits !== null ? keyOrEdits : { [keyOrEdits]: val };
     setTweak(edits);
@@ -93,15 +73,12 @@ function App() {
       setAuthedUser(e.detail);
       setAuthChecked(true);
       if (!e.detail) {
-        // Not signed in — bounce to landing/login so the user can authenticate.
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
           window.location.replace("/landing.html");
         }
       }
     };
     window.addEventListener("planary:auth-changed", onAuth);
-    // If the bridge never fires (SDK missing or local prototype), still
-    // mark auth checked so we render the prototype as before.
     const fallback = setTimeout(() => { if (alive && !authChecked) setAuthChecked(true); }, 1500);
     return () => { alive = false; window.removeEventListener("planary:auth-changed", onAuth); clearTimeout(fallback); };
   }, []);
@@ -116,47 +93,21 @@ function App() {
   useEffect(() => {
     const onUserDoc = (e) => {
       const doc = e.detail || {};
-      const prefs = e.detail?.preferences;
+      const prefs = doc.preferences;
       if (prefs && typeof prefs === "object") {
         setTweak(Object.fromEntries(Object.entries(prefs).filter(([, v]) => v !== undefined)));
         if (prefs.lang) window.PlanaryI18n?.setLang?.(prefs.lang);
       }
-      const progress = normalizeOnboardingProgress(doc.onboardingProgress);
-      const completed = !!doc.onboardingCompleted || !getNextOnboardingStep(progress);
-      const currentStep = completed ? null : (doc.onboardingCurrentStep && progress[doc.onboardingCurrentStep] === "pending" ? doc.onboardingCurrentStep : getNextOnboardingStep(progress));
-      setOnboarding(prev => ({
-        progress,
-        currentStep,
-        completed,
-        loaded: true,
-        open: prev.loaded ? prev.open : !completed,
-      }));
+      // Sync onboarding-completed flag from Firestore → localStorage so the
+      // prompt doesn't reappear for returning users.
+      if (doc.onboardingCompleted) {
+        try { localStorage.setItem("planary.onboarding.done", "1"); } catch (_) {}
+        setOnboardingOpen(false);
+      }
     };
     window.addEventListener("planary:user-doc-loaded", onUserDoc);
     return () => window.removeEventListener("planary:user-doc-loaded", onUserDoc);
   }, [setTweak]);
-
-  const persistOnboarding = React.useCallback((next) => {
-    window.Planary?.api?.saveOnboarding?.({
-      progress: next.progress,
-      currentStep: next.currentStep,
-      completed: next.completed,
-    }).catch(err => console.error("[Planary] saveOnboarding failed:", err));
-  }, []);
-
-  const updateOnboardingStep = React.useCallback((stepId, status) => {
-    setOnboarding(prev => {
-      const progress = normalizeOnboardingProgress({ ...prev.progress, [stepId]: status });
-      const nextStep = getNextOnboardingStep(progress);
-      const completed = !nextStep;
-      const next = { ...prev, progress, currentStep: nextStep, completed, open: !completed };
-      persistOnboarding(next);
-      if (completed) window.Planary?.toast?.({ type: "ok", title: "온보딩을 완료했어요" });
-      return next;
-    });
-  }, [persistOnboarding]);
-
-  const completeOnboardingStep = React.useCallback((stepId) => updateOnboardingStep(stepId, "completed"), [updateOnboardingStep]);
 
   // Apply tweaks to root
   useEffect(() => {
@@ -192,60 +143,53 @@ function App() {
     const onEdit = (e) => setEditingTask(e.detail);
     const onToggle = (e) => setTasks(prev => prev.map(t => t.id === e.detail ? { ...t, done: !t.done } : t));
     const onShortcuts = () => setShortcutsOpen(true);
+    const onOpenGuide = () => setGuideOpen(true);
+    const onOpenOnboarding = () => setOnboardingOpen(true);
     const onPostpone = (e) => {
       const { id, time } = e.detail || {};
       setTasks(prev => prev.map(t => t.id === id ? { ...t, time } : t));
     };
     const onDeleteTask = (e) => setTasks(prev => prev.filter(t => t.id !== e.detail));
-    const onArchiveTask = (e) => {
-      setTasks(prev => prev.map(t => t.id === e.detail ? { ...t, archived: true } : t));
-      completeOnboardingStep("taskManage");
-    };
+    const onArchiveTask = (e) => setTasks(prev => prev.map(t => t.id === e.detail ? { ...t, archived: true } : t));
     const onUnarchiveTask = (e) => setTasks(prev => prev.map(t => t.id === e.detail ? { ...t, archived: false } : t));
     const onEnterFocus = (e) => setFocusModeTask(e.detail);
-    const onOnboardingComplete = (e) => {
-      if (typeof e.detail === "string") completeOnboardingStep(e.detail);
-    };
-    const onCreateTask = (e) => {
-      setTasks(prev => [e.detail, ...prev]);
-      completeOnboardingStep("taskCreate");
-    };
+    const onCreateTask = (e) => setTasks(prev => [e.detail, ...prev]);
     window.addEventListener("planary:edit-task", onEdit);
     window.addEventListener("planary:toggle-task", onToggle);
     window.addEventListener("planary:open-shortcuts", onShortcuts);
+    window.addEventListener("planary:open-guide", onOpenGuide);
+    window.addEventListener("planary:open-onboarding", onOpenOnboarding);
     window.addEventListener("planary:postpone-task", onPostpone);
     window.addEventListener("planary:delete-task", onDeleteTask);
     window.addEventListener("planary:archive-task", onArchiveTask);
     window.addEventListener("planary:unarchive-task", onUnarchiveTask);
     window.addEventListener("planary:enter-focus-mode", onEnterFocus);
-    window.addEventListener("planary:onboarding-complete", onOnboardingComplete);
     window.addEventListener("planary:create-task", onCreateTask);
     return () => {
       window.removeEventListener("planary:edit-task", onEdit);
       window.removeEventListener("planary:toggle-task", onToggle);
       window.removeEventListener("planary:open-shortcuts", onShortcuts);
+      window.removeEventListener("planary:open-guide", onOpenGuide);
+      window.removeEventListener("planary:open-onboarding", onOpenOnboarding);
       window.removeEventListener("planary:postpone-task", onPostpone);
       window.removeEventListener("planary:delete-task", onDeleteTask);
       window.removeEventListener("planary:archive-task", onArchiveTask);
       window.removeEventListener("planary:unarchive-task", onUnarchiveTask);
       window.removeEventListener("planary:enter-focus-mode", onEnterFocus);
-      window.removeEventListener("planary:onboarding-complete", onOnboardingComplete);
       window.removeEventListener("planary:create-task", onCreateTask);
     };
-  }, [completeOnboardingStep]);
+  }, []);
 
   const saveTask = (draft) => {
     setTasks(prev => prev.map(t => t.id === draft.id ? draft : t));
     setEditingTask(null);
     window.dispatchEvent(new CustomEvent("planary:save-task", { detail: draft }));
-    completeOnboardingStep("taskDetails");
     window.Planary.toast({ type: "ok", title: "변경사항이 저장됐어요" });
   };
   const deleteTask = (id) => {
     setTasks(prev => prev.filter(t => t.id !== id));
     setEditingTask(null);
     window.dispatchEvent(new CustomEvent("planary:delete-task", { detail: id }));
-    completeOnboardingStep("taskManage");
     window.Planary.toast({ type: "ok", title: "작업이 삭제됐어요" });
   };
   const visibleTasks = tasks.filter(t => !t.archived);
@@ -310,23 +254,6 @@ function App() {
 
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} setPage={setPage} />}
 
-      {!onboarding.open && !onboarding.completed && (
-        <button className="onboarding-launcher" onClick={() => setOnboarding(prev => ({ ...prev, open: true }))}>
-          <Icon name="target" size={14} />가이드
-        </button>
-      )}
-
-      {onboarding.open && !onboarding.completed && (
-        <OnboardingGuide
-          state={onboarding}
-          setPage={setPage}
-          setTaskFilter={setTaskFilter}
-          onClose={() => setOnboarding(prev => ({ ...prev, open: false }))}
-          onComplete={completeOnboardingStep}
-          onSkip={(stepId) => updateOnboardingStep(stepId, "skipped")}
-        />
-      )}
-
       {editingTask && (
         <window.Planary.TaskEditDialog
           task={editingTask}
@@ -338,72 +265,22 @@ function App() {
 
       <window.Planary.ToastHost />
 
+      {onboardingOpen && window.Planary.OnboardingFlow && (
+        <window.Planary.OnboardingFlow
+          onComplete={() => {
+            setOnboardingOpen(false);
+            try { localStorage.setItem("planary.onboarding.done", "1"); } catch (_) {}
+            window.Planary?.api?.saveOnboarding?.({ completed: true }).catch(err => console.error("[Planary] saveOnboarding failed:", err));
+            setTimeout(() => setGuideOpen(true), 500);
+          }}
+        />
+      )}
+
+      {guideOpen && window.Planary.UserGuide && (
+        <window.Planary.UserGuide onClose={() => setGuideOpen(false)} setPage={setPage} currentPage={page} />
+      )}
+
       <PlanaryTweaks t={t} setTweak={saveTweak} />
-    </div>
-  );
-}
-
-function OnboardingGuide({ state, setPage, setTaskFilter, onClose, onComplete, onSkip }) {
-  const progress = normalizeOnboardingProgress(state.progress);
-  const current = ONBOARDING_STEPS.find(s => s.id === state.currentStep) || ONBOARDING_STEPS[0];
-  const doneCount = ONBOARDING_STEPS.filter(s => progress[s.id] !== "pending").length;
-  const pct = Math.round(doneCount / ONBOARDING_STEPS.length * 100);
-
-  const startStep = () => {
-    setPage(current.page);
-    if (current.id === "taskViews") setTaskFilter("today");
-    onClose();
-  };
-
-  return (
-    <div className="onboarding-shell" role="dialog" aria-modal="false" aria-label="Planary 시작 가이드">
-      <div className="onboarding-panel">
-        <div className="onboarding-head">
-          <div>
-            <div className="onboarding-title">Planary 시작 가이드</div>
-            <div className="onboarding-sub">{doneCount}/{ONBOARDING_STEPS.length} 완료</div>
-          </div>
-          <button className="icon-btn" onClick={onClose} aria-label="온보딩 닫기"><Icon name="x" size={14} /></button>
-        </div>
-        <div className="onboarding-meter"><span style={{ width: `${pct}%` }} /></div>
-        <div className="onboarding-current">
-          <div className="onboarding-step-icon"><Icon name={current.icon} size={18} /></div>
-          <div>
-            <h3>{current.title}</h3>
-            <p>{current.body}</p>
-          </div>
-        </div>
-        <div className="onboarding-steps">
-          {ONBOARDING_STEPS.map((step, index) => {
-            const status = progress[step.id];
-            const active = step.id === current.id;
-            return (
-              <button
-                key={step.id}
-                className={`onboarding-step-row ${active ? "is-active" : ""} ${status}`}
-                onClick={() => {
-                  if (status === "pending") {
-                    setPage(step.page);
-                    if (step.id === "taskViews") setTaskFilter("today");
-                  }
-                }}
-                type="button"
-              >
-                <span className="onboarding-step-num">{status === "completed" ? <Icon name="check" size={11} stroke={3} /> : index + 1}</span>
-                <span>{step.title}</span>
-                <em>{status === "completed" ? "완료" : status === "skipped" ? "건너뜀" : "대기"}</em>
-              </button>
-            );
-          })}
-        </div>
-        <div className="onboarding-actions">
-          <button className="btn btn-sm" onClick={() => onSkip(current.id)}>건너뛰기</button>
-          <button className="btn btn-sm" onClick={() => onComplete(current.id)}>완료 표시</button>
-          <button className="btn btn-sm btn-primary" onClick={startStep}>
-            <Icon name={current.icon} size={12} />{current.action}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
