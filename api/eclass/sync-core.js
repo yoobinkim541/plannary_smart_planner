@@ -136,7 +136,7 @@ async function ensureCourseProjects(db, uid, courseTitles, ts) {
   });
 
   await commitInChunks(db, ops);
-  return byCourse;
+  return { byCourse, createdCount: ops.length };
 }
 
 async function syncConnection(uid, connection, options = {}) {
@@ -174,11 +174,15 @@ async function syncConnection(uid, connection, options = {}) {
   }
 
   const { byKey, allDocs } = await loadExistingEclassTodos(db, uid);
+  const existingCourseTitles = allDocs
+    .map(doc => normalizeCourseTitle(doc.data().courseTitle))
+    .filter(Boolean);
   const courseTitles = [...new Set([
     ...items.map(item => normalizeCourseTitle(item.courseTitle)),
-    ...exams.map(exam => normalizeCourseTitle(exam.courseTitle))
+    ...exams.map(exam => normalizeCourseTitle(exam.courseTitle)),
+    ...existingCourseTitles
   ])];
-  const courseProjects = await ensureCourseProjects(db, uid, courseTitles, ts);
+  const { byCourse: courseProjects, createdCount: projectCount } = await ensureCourseProjects(db, uid, courseTitles, ts);
   const payloads = [
     ...items.map(item => itemPayload(item, uid, ts, courseProjects.get(normalizeCourseTitle(item.courseTitle))?.id)),
     ...exams.map(exam => examPayload(exam, uid, ts, courseProjects.get(normalizeCourseTitle(exam.courseTitle))?.id))
@@ -219,6 +223,10 @@ async function syncConnection(uid, connection, options = {}) {
   allDocs.forEach(doc => {
     const data = doc.data();
     const key = `${data.source}:${data.sourceItemId}`;
+    const projectRef = courseProjects.get(normalizeCourseTitle(data.courseTitle));
+    if (projectRef && data.projectId !== projectRef.id) {
+      ops.push(batch => batch.set(doc.ref, { projectId: projectRef.id, syncedAt: ts }, { merge: true }));
+    }
     if (!activeKeys.has(key) && !data.archived) {
       ops.push(batch => batch.set(doc.ref, { archived: true, syncedAt: ts }, { merge: true }));
     }
@@ -230,12 +238,13 @@ async function syncConnection(uid, connection, options = {}) {
     lastError: null,
     lastItemCount: items.length,
     lastExamCount: exams.length,
+    lastProjectCount: projectCount,
     lastCourseCount,
     lastSyllabusMetrics: syllabusMetrics || null
   }, { merge: true }));
 
   await commitInChunks(db, ops);
-  return { todoCount: items.length, examCount: exams.length };
+  return { todoCount: items.length, examCount: exams.length, projectCount };
 }
 
 async function syncAll(options = {}) {
@@ -244,11 +253,13 @@ async function syncAll(options = {}) {
   const snapshot = await db.collection('eclass_connections').where('enabled', '==', true).get();
   let todoCount = 0;
   let examCount = 0;
+  let projectCount = 0;
   for (const doc of snapshot.docs) {
     try {
       const result = await syncConnection(doc.id, doc.data(), options);
       todoCount += result.todoCount;
       examCount += result.examCount;
+      projectCount += result.projectCount || 0;
     } catch (error) {
       await doc.ref.set({
         lastError: error.message || String(error),
@@ -256,7 +267,7 @@ async function syncAll(options = {}) {
       }, { merge: true });
     }
   }
-  return { todoCount, examCount };
+  return { todoCount, examCount, projectCount };
 }
 
 module.exports = { syncAll, syncConnection };

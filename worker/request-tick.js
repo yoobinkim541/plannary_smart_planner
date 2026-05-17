@@ -45,7 +45,8 @@ async function requestTick() {
         lastSyncedAt: FieldValue.serverTimestamp(),
         lastError: null,
         lastTodoCount: result.todoCount,
-        lastExamCount: result.examCount
+        lastExamCount: result.examCount,
+        lastProjectCount: result.projectCount
       }, { merge: true });
       processed++;
     } catch (error) {
