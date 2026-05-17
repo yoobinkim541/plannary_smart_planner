@@ -2,6 +2,26 @@
 
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
+function UserAvatar({ user = window.Planary.USER, size, className = "", style = {} }) {
+  const avatar = user?.avatar;
+  const isImage = avatar && typeof avatar === "string" && avatar.startsWith("url(");
+  return (
+    <div
+      className={`avatar ${className}`}
+      style={{
+        width: size,
+        height: size,
+        fontSize: size ? Math.round(size * 0.38) : undefined,
+        background: isImage ? `${avatar} center/cover no-repeat` : undefined,
+        color: isImage ? "transparent" : undefined,
+        ...style,
+      }}
+    >
+      {!isImage && (user?.initials || "U")}
+    </div>
+  );
+}
+
 /* ---------- Icon Rail (left, 60px) ---------- */
 function Rail({ page, setPage, onToggleSidebar }) {
   const items = [
@@ -29,7 +49,7 @@ function Rail({ page, setPage, onToggleSidebar }) {
       ))}
       <div className="rail-spacer" />
       <button className={`rail-btn ${page === "profile" ? "is-active" : ""}`} onClick={() => setPage("profile")}>
-        <Icon name="user" size={18} />
+        <UserAvatar size={22} style={{ borderRadius: "var(--r-full)", border: "1px solid var(--border-soft)" }} />
         <span className="rail-tooltip">마이페이지</span>
       </button>
     </div>
@@ -276,7 +296,7 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
       </nav>
 
       <div className="sidebar-foot">
-        <div className="avatar">{USER.initials}</div>
+        <UserAvatar user={USER} />
         <div className="user-meta">
           <div className="user-name">{USER.name}</div>
           <div className="user-email" style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -621,7 +641,7 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
             onClick={(e) => { e.stopPropagation(); setUserOpen(!userOpen); setNotifOpen(false); }}
             style={{ display: "flex", alignItems: "center", padding: 0, background: "transparent", border: 0 }}
           >
-            <div className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>{window.Planary.USER.initials}</div>
+            <UserAvatar user={window.Planary.USER} size={28} />
           </button>
           {userOpen && (
             <>
@@ -631,7 +651,7 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
               />
               <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, minWidth: 220, zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div className="avatar" style={{ width: 34, height: 34 }}>{window.Planary.USER.initials}</div>
+                <UserAvatar user={window.Planary.USER} size={34} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{window.Planary.USER.name}</div>
                   <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{window.Planary.USER.email}</div>
@@ -680,7 +700,7 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
 function AccountSwitcherDialog({ onClose }) {
   const me = window.Planary.USER;
   const [accounts, setAccounts] = useState([
-    { id: "me", name: me.name, email: me.email, initials: me.initials, workspace: "개인 워크스페이스", active: true },
+    { id: "me", name: me.name, email: me.email, initials: me.initials, avatar: me.avatar, workspace: "개인 워크스페이스", active: true },
     { id: "team", name: "Planary Team", email: "team@planary.app", initials: "TM", workspace: "팀 워크스페이스", active: false, badge: "팀" },
   ]);
 
@@ -728,7 +748,7 @@ function AccountSwitcherDialog({ onClose }) {
               onMouseEnter={(e) => { if (!a.active) e.currentTarget.style.background = "var(--hover)"; }}
               onMouseLeave={(e) => { if (!a.active) e.currentTarget.style.background = "transparent"; }}
             >
-              <div className="avatar" style={{ width: 36, height: 36 }}>{a.initials}</div>
+              <UserAvatar user={a} size={36} />
               <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</span>
@@ -970,7 +990,7 @@ function MobileDrawer({ open, onClose, page, setPage, taskFilter, setTaskFilter,
           ))}
         </nav>
         <div className="drawer-foot">
-          <div className="avatar">{USER.initials}</div>
+          <UserAvatar user={USER} />
           <div className="user-meta">
             <div className="user-name">{USER.name}</div>
             <div className="user-email">{USER.email}</div>
@@ -1236,9 +1256,9 @@ function AvatarGroup({ members = [], max = 3, size = 24 }) {
     <div className="avatar-group" style={{ "--size": size }}>
       {more > 0 && <div className="avatar-group-more">+{more}</div>}
       {shown.map((m, i) => (
-        <div key={i} className="avatar" style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}>
-          {typeof m === "string" ? m : m.initials}
-        </div>
+        typeof m === "string"
+          ? <div key={i} className="avatar" style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}>{m}</div>
+          : <UserAvatar key={i} user={m} size={size} />
       ))}
     </div>
   );
@@ -1648,6 +1668,6 @@ function DatePicker({ value, onChange, onClose }) {
 // Final exports — placed at the end so all function declarations are guaranteed defined.
 window.Planary = Object.assign(window.Planary || {}, {
   Rail, Sidebar, Topbar, MobileBar, MobileTabs, MobileDrawer,
-  TaskCard, AvatarGroup, DatePicker, IconPicker, ToastHost,
+  TaskCard, UserAvatar, AvatarGroup, DatePicker, IconPicker, ToastHost,
   SidebarSearchResults, ShortcutsDialog, NewProjectDialog,
 });

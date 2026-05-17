@@ -2317,6 +2317,7 @@ function ProfilePage({ tasks, t, setTweak }) {
   const saveProfile = (draft) => {
     setUser(draft);
     window.Planary.USER = { ...window.Planary.USER, ...draft };
+    window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: window.Planary.USER }));
     setEditOpen(false);
     window.dispatchEvent(new CustomEvent("planary:update-profile", {
       detail: {
