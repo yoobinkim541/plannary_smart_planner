@@ -810,6 +810,38 @@ function WikiPage() {
 
   const matchSearch = (w) => !search || w.title.toLowerCase().includes(search.toLowerCase());
 
+  const collectDescendantIds = (id) => {
+    const kids = childrenOf(id);
+    return kids.flatMap(k => [k.id, ...collectDescendantIds(k.id)]);
+  };
+
+  const deleteActivePage = async () => {
+    if (!active || active.id === "w0") return;
+    const ids = [active.id, ...collectDescendantIds(active.id)];
+    const label = ids.length > 1 ? `"${active.title}"와 하위 ${ids.length - 1}개 페이지` : `"${active.title}" 페이지`;
+    if (!window.confirm(`${label}를 삭제할까요?`)) return;
+    if (!window.Planary?.api?.uid) {
+      window.Planary?.toast?.({ type: "info", title: "로그인 후 페이지를 삭제할 수 있어요" });
+      return;
+    }
+    const previousTree = WIKI_TREE;
+    const nextTree = WIKI_TREE.filter(w => !ids.includes(w.id));
+    setWikiTree(nextTree.length ? nextTree : initialTree);
+    setActiveId((nextTree[0] || initialTree[0])?.id);
+    try {
+      await Promise.all(ids.map(id => window.Planary.api.deleteWikiPage(id)));
+      window.Planary.toast?.({
+        type: "ok",
+        title: ids.length > 1 ? "페이지 묶음이 삭제됐어요" : "페이지가 삭제됐어요",
+        sub: ids.length > 1 ? `${ids.length}개 페이지` : active.title,
+      });
+    } catch (err) {
+      setWikiTree(previousTree);
+      setActiveId(active.id);
+      window.Planary.toast?.({ type: "err", title: "페이지 삭제 실패", sub: err.message });
+    }
+  };
+
   const TreeNode = ({ node, depth = 0 }) => {
     const kids = childrenOf(node.id);
     const hasKids = kids.length > 0;
@@ -1200,9 +1232,7 @@ function WikiPage() {
                       className="popover-item is-danger"
                       onClick={() => {
                         setMoreMenuOpen(false);
-                        if (window.confirm(`"${active.title}" 페이지를 삭제할까요?`)) {
-                          window.Planary.toast?.({ type: "err", title: "페이지가 삭제됐어요", sub: "30일 후 영구 삭제됩니다" });
-                        }
+                        deleteActivePage();
                       }}
                     >
                       <Icon name="trash" size={14} />페이지 삭제
