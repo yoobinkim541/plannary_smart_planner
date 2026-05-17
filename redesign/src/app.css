@@ -3031,6 +3031,184 @@ select.form-input { cursor: pointer; }
   color: var(--text-faint);
 }
 
+/* Onboarding */
+.onboarding-shell {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 900;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.onboarding-panel {
+  pointer-events: auto;
+  background: color-mix(in oklab, var(--surface) 94%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(18px) saturate(140%);
+  overflow: hidden;
+}
+.onboarding-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.onboarding-title {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--text-hi);
+}
+.onboarding-sub {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-lo);
+}
+.onboarding-meter {
+  height: 4px;
+  background: var(--surface-2);
+}
+.onboarding-meter span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), color-mix(in oklab, var(--accent) 55%, var(--info)));
+  transition: width var(--dur-base) var(--ease-out);
+}
+.onboarding-current {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.onboarding-step-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.onboarding-current h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-hi);
+}
+.onboarding-current p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-md);
+}
+.onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 10px 10px;
+  max-height: 230px;
+  overflow-y: auto;
+}
+.onboarding-step-row {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  color: var(--text-md);
+  text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.onboarding-step-row:hover,
+.onboarding-step-row.is-active {
+  background: var(--hover);
+  color: var(--text-hi);
+}
+.onboarding-step-row.completed { color: var(--text-lo); }
+.onboarding-step-row.skipped { color: var(--text-faint); }
+.onboarding-step-num {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-lo);
+  font-size: 10px;
+  font-weight: 800;
+}
+.onboarding-step-row.completed .onboarding-step-num {
+  background: color-mix(in oklab, var(--ok) 18%, transparent);
+  color: var(--ok);
+}
+.onboarding-step-row span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.onboarding-step-row em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--border-soft);
+}
+.onboarding-launcher {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 880;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-hi);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+@media (max-width: 640px) {
+  .onboarding-shell {
+    right: 10px;
+    left: 10px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    width: auto;
+  }
+  .onboarding-steps { max-height: 180px; }
+  .onboarding-actions { flex-wrap: wrap; }
+  .onboarding-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .onboarding-launcher {
+    right: 12px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
 /* Utility */
 .row { display: flex; align-items: center; gap: 8px; }
 .col { display: flex; flex-direction: column; }

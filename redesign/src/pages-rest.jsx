@@ -24,7 +24,7 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
     return () => window.removeEventListener("planary:projects-loaded", onLoaded);
   }, [selected]);
   const proj = projects.find((p) => p.id === selected);
-  const projTasks = tasks.filter((t) => t.project === selected);
+  const projTasks = tasks.filter((t) => t.project === selected && !t.archived);
   const open = projTasks.filter((t) => !t.done);
   const done = projTasks.filter((t) => t.done);
 
@@ -47,13 +47,35 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
     window.Planary.PROJECTS = next; // optimistic
     setSelected(tempId);
     setCreateOpen(false);
+    window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "projects" }));
     window.Planary.toast({ type: "ok", title: "프로젝트가 만들어졌어요", sub: draft.name });
     if (window.Planary?.api?.uid) {
-      window.Planary.api.createProject(draft.name, draft.color).catch(err => {
+      window.Planary.api.createProject(draft.name, draft.color, draft.icon).catch(err => {
         console.error("createProject failed:", err);
         window.Planary?.toast?.({ type: "err", title: "프로젝트 저장 실패", sub: err.message });
       });
     }
+  };
+
+  const editProject = (p) => {
+    const name = window.prompt("프로젝트 이름", p.name);
+    if (name == null) return;
+    const color = window.prompt("색상 hex", p.color) || p.color;
+    const icon = window.prompt("아이콘", p.icon) || p.icon;
+    const patch = { name: name.trim() || p.name, color, icon };
+    setProjects(prev => prev.map(x => x.id === p.id ? { ...x, ...patch } : x));
+    window.Planary?.api?.updateProject?.(p.id, patch)
+      .then(() => window.Planary.toast({ type: "ok", title: "프로젝트가 수정됐어요" }))
+      .catch(err => window.Planary.toast({ type: "err", title: "프로젝트 수정 실패", sub: err.message }));
+  };
+
+  const deleteProject = (p) => {
+    if (!window.confirm(`${p.name} 프로젝트를 삭제할까요? 작업은 삭제되지 않습니다.`)) return;
+    setProjects(prev => prev.filter(x => x.id !== p.id));
+    if (selected === p.id) setSelected(projects.find(x => x.id !== p.id)?.id || null);
+    window.Planary?.api?.deleteProject?.(p.id)
+      .then(() => window.Planary.toast({ type: "ok", title: "프로젝트가 삭제됐어요" }))
+      .catch(err => window.Planary.toast({ type: "err", title: "프로젝트 삭제 실패", sub: err.message }));
   };
 
   const triggerSync = () => {
@@ -102,6 +124,21 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
               className="card card-hover"
               style={{ cursor: "pointer", borderColor: active ? "var(--accent-ring)" : undefined, background: active ? "var(--accent-softer)" : undefined, position: "relative" }}
               onClick={() => setSelected(p.id)}>
+              {!p.isEclass && (
+                <button
+                  className="icon-btn"
+                  style={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const action = window.prompt("프로젝트 작업: edit 또는 delete", "edit");
+                    if (action === "delete") deleteProject(p);
+                    else if (action !== null) editProject(p);
+                  }}
+                  aria-label="프로젝트 작업"
+                >
+                  <Icon name="more" size={14} />
+                </button>
+              )}
               
               {p.isEclass &&
               <span
@@ -509,12 +546,13 @@ function NotesPage() {
     const draftNote = { id, x: 60 + Math.random() * 200, y: 60 + Math.random() * 100, color: draftColor, text: draft.trim(), date: "방금", rot: (Math.random() - 0.5) * 4, dragging: false };
     setNotes((prev) => [draftNote, ...prev]);
     setDraft("");
+    window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "notesCreate" }));
     if (window.Planary?.api?.uid) {
       window.Planary.api.createNote(draftNote).catch(err => console.error("createNote failed:", err));
     }
   };
 
-  const colors = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
+  const colors = ["yellow", "pink", "blue", "green", "purple", "orange"];
 
   return (
     <div className="page-wide">
@@ -606,6 +644,21 @@ function NotesPage() {
               <div className="note-text">{n.text}</div>
               <div className="note-foot">
                 <span>{n.date}</span>
+                <div style={{ display: "flex", gap: 3, marginLeft: "auto" }}>
+                  {colors.map((c) =>
+                    <button
+                      key={c}
+                      className={`note note-${c}`}
+                      style={{ position: "static", width: 14, height: 14, minHeight: 14, padding: 0, borderRadius: 3, transform: "none", boxShadow: n.color === c ? "0 0 0 1.5px rgba(0,0,0,.45)" : "none" }}
+                      onClick={() => {
+                        setNotes(prev => prev.map(x => x.id === n.id ? { ...x, color: c } : x));
+                        window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "notesManage" }));
+                        window.Planary?.api?.updateNote?.(n.id, { color: c }).catch(err => window.Planary.toast({ type: "err", title: "색상 저장 실패", sub: err.message }));
+                      }}
+                      title={c}
+                    />
+                  )}
+                </div>
                 <button
               style={{ color: "rgba(0,0,0,0.4)", background: "none", border: 0, cursor: "pointer", padding: 2 }}
               onClick={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); if (window.Planary?.api?.uid) window.Planary.api.deleteNote(n.id).catch(err => console.error("deleteNote failed:", err)); }}
@@ -635,6 +688,21 @@ function NotesPage() {
               <div className="note-text">{n.text}</div>
               <div className="note-foot">
                 <span>{n.date}</span>
+                <div style={{ display: "flex", gap: 3, marginLeft: "auto" }}>
+                  {colors.map((c) =>
+                    <button
+                      key={c}
+                      className={`note note-${c}`}
+                      style={{ position: "static", width: 14, height: 14, minHeight: 14, padding: 0, borderRadius: 3, transform: "none", boxShadow: n.color === c ? "0 0 0 1.5px rgba(0,0,0,.45)" : "none" }}
+                      onClick={() => {
+                        setNotes(prev => prev.map(x => x.id === n.id ? { ...x, color: c } : x));
+                        window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "notesManage" }));
+                        window.Planary?.api?.updateNote?.(n.id, { color: c }).catch(err => window.Planary.toast({ type: "err", title: "색상 저장 실패", sub: err.message }));
+                      }}
+                      title={c}
+                    />
+                  )}
+                </div>
                 <button
               style={{ color: "rgba(0,0,0,0.4)", background: "none", border: 0, cursor: "pointer", padding: 2 }}
               onClick={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); if (window.Planary?.api?.uid) window.Planary.api.deleteNote(n.id).catch(err => console.error("deleteNote failed:", err)); }}
@@ -830,6 +898,7 @@ function WikiPage() {
                 try {
                   const id = await window.Planary.api.createWikiPage("새 페이지", null);
                   if (id) setActiveId(id);
+                  window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "wiki" }));
                 } catch (err) {
                   console.error("createWikiPage failed:", err);
                   window.Planary?.toast?.({ type: "err", title: "페이지 만들기 실패", sub: err.message });
@@ -1254,6 +1323,27 @@ function BookmarksPage() {
     window.Planary?.toast?.({ type: "ok", title: "북마크 추가됨", sub: host });
   };
 
+  const editBookmark = (b) => {
+    const title = window.prompt("북마크 제목", b.title);
+    if (title == null) return;
+    const tagText = window.prompt("태그 (쉼표로 구분)", (b.tags || []).join(", "));
+    if (tagText == null) return;
+    const tags = tagText.split(",").map(t => t.trim()).filter(Boolean);
+    const patch = { title: title.trim() || b.title, tags };
+    setBookmarks(prev => prev.map(x => x.id === b.id ? { ...x, ...patch } : x));
+    window.Planary?.api?.updateBookmark?.(b.id, patch)
+      .then(() => window.Planary.toast({ type: "ok", title: "북마크가 수정됐어요" }))
+      .catch(err => window.Planary.toast({ type: "err", title: "북마크 수정 실패", sub: err.message }));
+  };
+
+  const deleteBookmark = (b) => {
+    if (!window.confirm(`${b.title} 북마크를 삭제할까요?`)) return;
+    setBookmarks(prev => prev.filter(x => x.id !== b.id));
+    window.Planary?.api?.deleteBookmark?.(b.id)
+      .then(() => window.Planary.toast({ type: "ok", title: "북마크가 삭제됐어요" }))
+      .catch(err => window.Planary.toast({ type: "err", title: "북마크 삭제 실패", sub: err.message }));
+  };
+
   const allTags = ["전체", ...new Set(bookmarks.flatMap((b) => b.tags))];
   const filtered = bookmarks.filter((b) =>
   (active === "전체" || b.tags.includes(active)) && (
@@ -1339,6 +1429,19 @@ function BookmarksPage() {
             >
               <Icon name="arrowUpRight" size={14} />
             </button>
+            <button
+              className="icon-btn"
+              style={{ alignSelf: "start" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const action = window.prompt("북마크 작업: edit 또는 delete", "edit");
+                if (action === "delete") deleteBookmark(b);
+                else if (action !== null) editBookmark(b);
+              }}
+              aria-label="북마크 편집"
+            >
+              <Icon name="more" size={14} />
+            </button>
           </div>
         )}
         {filtered.length === 0 && (
@@ -1370,7 +1473,7 @@ const ARCHIVE_QUOTES = [
    ARCHIVE
    =========================================================== */
 function ArchivePage({ tasks }) {
-  const completed = tasks.filter((t) => t.done);
+  const completed = tasks.filter((t) => t.archived || t.done);
   const heat = window.Planary.WEEKLY_HEATMAP;
   const [range, setRange] = useStateO("month"); // week | month | quarter | year | all
   const [archiveSearch, setArchiveSearch] = useStateO("");
@@ -1634,11 +1737,32 @@ function ProfilePage({ tasks, t, setTweak }) {
   const planMeta = plan === "pro" ?
   { chip: "Pro 플랜", chipClass: "chip-accent", price: "월 5,900원", features: ["무제한 프로젝트", "e-Class 자동 동기화", "1년 활동 히트맵", "팀 협업 (베타)"] } :
   { chip: "Basic 플랜", chipClass: "chip", price: "무료", features: ["프로젝트 3개", "수동 동기화", "30일 히트맵", "개인 사용 전용"] };
+  useEffectO(() => {
+    const onUserDoc = (e) => {
+      const d = e.detail || {};
+      if (d.notifPrefs) setNotifs(prev => ({ ...prev, ...d.notifPrefs }));
+      if (d.plan) setPlan(d.plan);
+      if (d.preferences?.lang) setLangState(d.preferences.lang);
+      setUser(prev => ({
+        ...prev,
+        name: d.displayName || prev.name,
+        avatar: d.photoURL ? `url("${d.photoURL}")` : prev.avatar,
+        school: d.school || "",
+        studentId: d.studentId || "",
+        bio: d.bio || "",
+      }));
+    };
+    window.addEventListener("planary:user-doc-loaded", onUserDoc);
+    return () => window.removeEventListener("planary:user-doc-loaded", onUserDoc);
+  }, []);
+
   const saveProfile = (draft) => {
     setUser(draft);
     window.Planary.USER = { ...window.Planary.USER, ...draft };
     setEditOpen(false);
-    window.Planary.toast({ type: "ok", title: "프로필이 업데이트됐어요" });
+    window.Planary?.api?.updateProfile?.(draft)
+      .then(() => window.Planary.toast({ type: "ok", title: "프로필이 업데이트됐어요" }))
+      .catch(err => window.Planary.toast({ type: "err", title: "프로필 저장 실패", sub: err.message }));
   };
 
   return (
@@ -1681,7 +1805,10 @@ function ProfilePage({ tasks, t, setTweak }) {
                 {["basic", "pro"].map((p) =>
                 <button
                   key={p}
-                  onClick={() => setPlan(p)}
+                  onClick={() => {
+                    setPlan(p);
+                    window.Planary?.api?.savePlan?.(p).catch(err => window.Planary.toast({ type: "err", title: "플랜 저장 실패", sub: err.message }));
+                  }}
                   style={{
                     height: 22, padding: "0 9px", borderRadius: 4,
                     fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
@@ -1771,6 +1898,7 @@ function ProfilePage({ tasks, t, setTweak }) {
                 selected={lang}
                 onSelect={(v) => {
                   setLangState(v);
+                  setTweak && setTweak("lang", v);
                   window.PlanaryI18n?.setLang?.(v);
                   const msg = window.PlanaryI18n?.t?.("toast.langChanged") || "Language changed";
                   window.Planary.toast({ type: "ok", title: msg });
@@ -1804,6 +1932,10 @@ function ProfilePage({ tasks, t, setTweak }) {
                   onClick={() => {
                     const next = !notifs[r.id];
                     setNotifs((prev) => ({ ...prev, [r.id]: next }));
+                    window.Planary?.api?.saveNotifPrefs?.({ [r.id]: next }).catch(err => {
+                      console.error("saveNotifPrefs failed:", err);
+                      window.Planary.toast({ type: "err", title: "알림 설정 저장 실패", sub: err.message });
+                    });
                     window.Planary.toast({ type: "ok", title: `${r.label} ${next ? "켜짐" : "꺼짐"}` });
                   }} />
                 
@@ -1890,13 +2022,15 @@ function PasswordCard() {
     e?.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      setCurrent("");
-      setNext("");
-      setConfirm("");
-      window.Planary.toast?.({ type: "ok", title: "비밀번호가 변경됐어요", sub: "다음 로그인부터 새 비밀번호를 사용하세요" });
-    }, 900);
+    window.Planary?.api?.changePassword?.(current, next)
+      .then(() => {
+        setCurrent("");
+        setNext("");
+        setConfirm("");
+        window.Planary.toast?.({ type: "ok", title: "비밀번호가 변경됐어요", sub: "다음 로그인부터 새 비밀번호를 사용하세요" });
+      })
+      .catch(err => window.Planary.toast?.({ type: "err", title: "비밀번호 변경 실패", sub: err.message }))
+      .finally(() => setSubmitting(false));
   };
 
   const inputWrap = {
@@ -2112,13 +2246,69 @@ function ProfileDropdownRow({ label, value, options, selected, onSelect, open, o
 function EclassConnectionCard() {
   const { USER, ECLASS_COURSES, PROJECTS } = window.Planary;
   const pe = PROJECTS.find((p) => p.id === "pe");
-  const [connected, setConnected] = useStateO(true);
+  const [connected, setConnected] = useStateO(false);
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
+  const [url, setUrl] = useStateO("https://eclass.seoultech.ac.kr");
+  const [eclassId, setEclassId] = useStateO("");
+  const [password, setPassword] = useStateO("");
+  const [saving, setSaving] = useStateO(false);
+  const [lastStatus, setLastStatus] = useStateO(null);
+
+  useEffectO(() => {
+    let alive = true;
+    window.Planary?.api?.getEclassConnection?.()
+      .then(data => {
+        if (!alive) return;
+        setConnected(!!data.connected);
+        if (data.baseUrl) setUrl(data.baseUrl);
+      })
+      .catch(err => console.warn("getEclassConnection failed:", err));
+    const onConnection = (e) => {
+      const d = e.detail || {};
+      setLastStatus(d);
+      setConnected(!!d.enabled);
+      if (d.baseUrl) setUrl(d.baseUrl);
+      if (d.syncStatus !== "running") setSyncing(false);
+    };
+    window.addEventListener("planary:eclass-connection", onConnection);
+    return () => { alive = false; window.removeEventListener("planary:eclass-connection", onConnection); };
+  }, []);
 
   const handleSync = () => {
     setSyncing(true);
-    setTimeout(() => setSyncing(false), 1400);
+    window.Planary?.api?.triggerEclassSync?.()
+      .then(() => window.Planary.toast({ type: "ok", title: "e-Class 동기화를 시작했어요" }))
+      .catch(err => {
+        setSyncing(false);
+        window.Planary.toast({ type: "err", title: "e-Class 동기화 실패", sub: err.message });
+      });
+  };
+
+  const handleConnect = () => {
+    if (!eclassId.trim() || !password) {
+      window.Planary.toast({ type: "err", title: "아이디와 비밀번호를 입력하세요" });
+      return;
+    }
+    setSaving(true);
+    window.Planary?.api?.connectEclass?.({ url, id: eclassId.trim(), password })
+      .then(() => {
+        setPassword("");
+        setConnected(true);
+        window.Planary.toast({ type: "ok", title: "e-Class가 연결됐어요" });
+        handleSync();
+      })
+      .catch(err => window.Planary.toast({ type: "err", title: "e-Class 연결 실패", sub: err.message, ttl: 4800 }))
+      .finally(() => setSaving(false));
+  };
+
+  const handleDisconnect = () => {
+    window.Planary?.api?.disconnectEclass?.()
+      .then(() => {
+        setConnected(false);
+        window.Planary.toast({ type: "ok", title: "e-Class 연결을 해제했어요" });
+      })
+      .catch(err => window.Planary.toast({ type: "err", title: "연결 해제 실패", sub: err.message }));
   };
 
   return (
@@ -2181,7 +2371,7 @@ function EclassConnectionCard() {
           <div className="field-row" style={{ borderBottom: 0 }}>
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>마지막 동기화</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{pe?.lastSync || "기록 없음"} · 항목 {window.Planary.TASKS.filter((t) => t.project === "pe").length}개</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{lastStatus?.lastSyncedAt?.toDate ? lastStatus.lastSyncedAt.toDate().toLocaleString("ko-KR") : pe?.lastSync || "기록 없음"} · 항목 {lastStatus?.lastTodoCount ?? window.Planary.TASKS.filter((t) => t.source === "eclass").length}개</div>
             </div>
             <button className="btn btn-sm btn-primary" onClick={handleSync} disabled={syncing} style={{ minWidth: 120, justifyContent: "center" }}>
               <Icon name="refresh" size={13} style={{ animation: syncing ? "spin 1s linear infinite" : "none" }} />
@@ -2203,7 +2393,7 @@ function EclassConnectionCard() {
             <button
             className="btn btn-sm"
             style={{ color: "var(--err)", marginTop: 8 }}
-            onClick={() => setConnected(false)}>
+            onClick={handleDisconnect}>
             
               <Icon name="lock" size={12} />연결 해제
             </button>
@@ -2219,7 +2409,8 @@ function EclassConnectionCard() {
               <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase" }}>e-Class URL</label>
               <input
               type="url"
-              defaultValue="https://eclass.seoultech.ac.kr"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
               style={{
                 width: "100%", marginTop: 4,
                 background: "var(--bg-elev)",
@@ -2236,6 +2427,8 @@ function EclassConnectionCard() {
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase" }}>아이디</label>
                 <input
                 type="text"
+                value={eclassId}
+                onChange={(e) => setEclassId(e.target.value)}
                 placeholder="학번 또는 ID"
                 style={{
                   width: "100%", marginTop: 4,
@@ -2252,6 +2445,8 @@ function EclassConnectionCard() {
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase" }}>비밀번호</label>
                 <input
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 style={{
                   width: "100%", marginTop: 4,
@@ -2266,8 +2461,8 @@ function EclassConnectionCard() {
               </div>
             </div>
           </div>
-          <button className="btn btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={() => setConnected(true)}>
-            <Icon name="lock" size={13} />연결 저장
+          <button className="btn btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={handleConnect} disabled={saving}>
+            <Icon name={saving ? "refresh" : "lock"} size={13} style={{ animation: saving ? "spin 1s linear infinite" : "none" }} />{saving ? "연결 중…" : "연결 저장"}
           </button>
           <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5 }}>
             비밀번호는 서버에서 암호화(AES-256)되어 저장되며, 동기화 외 다른 용도로 사용되지 않습니다.
@@ -3821,12 +4016,18 @@ function SignOutDialog({ onClose, user }) {
 
   const signOut = () => {
     window.Planary.toast({ type: "info", title: "로그아웃 중…", sub: "잠시 후 로그인 화면으로 이동합니다" });
-    setTimeout(onClose, 600);
+    window.Planary?.api?.signOut?.()
+      .then(() => { window.location.href = "/landing.html"; })
+      .catch(err => window.Planary.toast({ type: "err", title: "로그아웃 실패", sub: err.message }));
   };
   const deleteAccount = () => {
     if (confirmText !== expected) return;
-    window.Planary.toast({ type: "err", title: "계정 삭제 처리됨", sub: "복구는 30일 이내에만 가능합니다", ttl: 4800 });
-    setTimeout(onClose, 600);
+    window.Planary?.api?.deleteAccount?.()
+      .then(() => {
+        window.Planary.toast({ type: "err", title: "계정 삭제 처리됨", sub: "데이터 삭제가 완료되었습니다", ttl: 4800 });
+        window.location.href = "/landing.html";
+      })
+      .catch(err => window.Planary.toast({ type: "err", title: "계정 삭제 실패", sub: err.message, ttl: 4800 }));
   };
 
   return (

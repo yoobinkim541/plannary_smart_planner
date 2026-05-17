@@ -141,7 +141,7 @@
 
   function projectDocToProject(doc, tasks) {
     const d = doc.data() || {};
-    const projectTasks = tasks.filter(t => t.project === doc.id);
+    const projectTasks = tasks.filter(t => t.project === doc.id && !t.archived);
     const completed = projectTasks.filter(t => t.done).length;
     const progress = projectTasks.length ? Math.round((completed / projectTasks.length) * 100) : 0;
     return {
@@ -289,6 +289,60 @@
     uid: null,
     user: null,
 
+    async authHeaders() {
+      const user = auth.currentUser;
+      if (!user) throw new Error("로그인이 필요합니다.");
+      return {
+        Authorization: `Bearer ${await user.getIdToken()}`,
+        "Content-Type": "application/json",
+      };
+    },
+
+    async updateProfile(profile) {
+      const user = auth.currentUser;
+      if (!user || !this.uid) return;
+      const name = (profile.name || "").trim() || user.displayName || "사용자";
+      const avatar = profile.avatar || null;
+      const photoURL = avatar && /^url\(".*"\)$/.test(avatar) ? avatar.slice(5, -2) : avatar;
+      await user.updateProfile({ displayName: name, photoURL: photoURL || null });
+      await db.collection("users").doc(this.uid).set({
+        uid: this.uid,
+        email: user.email || "",
+        displayName: name,
+        photoURL: photoURL || null,
+        school: profile.school || null,
+        studentId: profile.studentId || null,
+        bio: profile.bio || null,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+      this.user = { ...this.user, ...profile, name, avatar, initials: name.slice(0, 1).toUpperCase() };
+      window.Planary.USER = this.user;
+      window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: this.user }));
+    },
+
+    async signOut() {
+      await auth.signOut();
+    },
+
+    async changePassword(current, next) {
+      const user = auth.currentUser;
+      if (!user || !user.email) throw new Error("로그인이 필요합니다.");
+      const credential = firebase.auth.EmailAuthProvider.credential(user.email, current);
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(next);
+    },
+
+    async deleteAccount() {
+      const response = await fetch("/api/account/delete-data", {
+        method: "POST",
+        headers: await this.authHeaders(),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      const user = auth.currentUser;
+      if (user) await user.delete();
+    },
+
     async createTask(task) {
       if (!this.uid) return null;
       const payload = taskToTodoDoc(this.uid, task);
@@ -311,6 +365,14 @@
     async deleteTask(id) {
       if (!this.uid) return;
       await db.collection("todos").doc(id).delete();
+    },
+    async archiveTask(id) {
+      if (!this.uid) return;
+      await db.collection("todos").doc(id).update({ archived: true });
+    },
+    async unarchiveTask(id) {
+      if (!this.uid) return;
+      await db.collection("todos").doc(id).update({ archived: false });
     },
     async postponeTask(id, timeLabel) {
       if (!this.uid) return;
@@ -374,16 +436,110 @@
       if (!this.uid) return;
       await db.collection("bookmarks").doc(id).delete();
     },
+    async updateBookmark(id, patch) {
+      if (!this.uid) return;
+      const allowed = {};
+      if (patch.title !== undefined) allowed.title = patch.title || null;
+      if (patch.tags !== undefined) allowed.tags = Array.isArray(patch.tags) ? patch.tags : [];
+      await db.collection("bookmarks").doc(id).update(allowed);
+    },
 
-    async createProject(name, color = "#7f0df2") {
+    async createProject(name, color = "#7f0df2", icon = "📁") {
       if (!this.uid) return null;
       const ref = await db.collection("projects").add({
         uid: this.uid,
         name: name.trim() || "새 프로젝트",
         color,
+        icon,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
       return ref.id;
+    },
+    async updateProject(id, patch) {
+      if (!this.uid) return;
+      const allowed = {};
+      ["name", "color", "icon"].forEach(k => {
+        if (patch[k] !== undefined) allowed[k] = patch[k];
+      });
+      await db.collection("projects").doc(id).update(allowed);
+    },
+    async deleteProject(id) {
+      if (!this.uid) return;
+      await db.collection("projects").doc(id).delete();
+    },
+
+    async savePreferences(patch) {
+      if (!this.uid) return;
+      await db.collection("users").doc(this.uid).set({
+        uid: this.uid,
+        preferences: patch || {},
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    },
+    async saveNotifPrefs(patch) {
+      if (!this.uid) return;
+      await db.collection("users").doc(this.uid).set({
+        uid: this.uid,
+        notifPrefs: patch || {},
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    },
+    async savePlan(plan) {
+      if (!this.uid) return;
+      await db.collection("users").doc(this.uid).set({
+        uid: this.uid,
+        plan,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    },
+    async saveOnboarding({ progress, currentStep, completed }) {
+      if (!this.uid) return;
+      const payload = {
+        uid: this.uid,
+        onboardingProgress: progress,
+        onboardingCurrentStep: currentStep || null,
+        onboardingCompleted: !!completed,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      if (completed) payload.onboardingCompletedAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection("users").doc(this.uid).set(payload, { merge: true });
+    },
+
+    async getEclassConnection() {
+      const response = await fetch("/api/eclass/connection", { headers: await this.authHeaders() });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      return data;
+    },
+    async connectEclass({ url, id, password }) {
+      const response = await fetch("/api/eclass/connection", {
+        method: "POST",
+        headers: await this.authHeaders(),
+        body: JSON.stringify({ baseUrl: url, username: id, password }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      return data;
+    },
+    async disconnectEclass() {
+      const response = await fetch("/api/eclass/connection", {
+        method: "DELETE",
+        headers: await this.authHeaders(),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+    },
+    async triggerEclassSync() {
+      const response = await fetch("/api/eclass/sync", {
+        method: "POST",
+        headers: await this.authHeaders(),
+        body: JSON.stringify({ uid: this.uid }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      return data;
     },
 
     async createWikiPage(title = "새 페이지", parentId = null) {
@@ -456,8 +612,9 @@
     api.user = {
       name: user.displayName || (user.email || "").split("@")[0] || "사용자",
       email: user.email || "",
-      avatar: user.photoURL || null,
+      avatar: user.photoURL ? `url("${user.photoURL}")` : null,
       handle: user.email || "",
+      initials: (user.displayName || user.email || "U").slice(0, 1).toUpperCase(),
       school: "",
       studentId: "",
       bio: "",
@@ -470,7 +627,7 @@
     unsubs.push(
       db.collection("todos").where("uid", "==", user.uid).onSnapshot(
         (snap) => {
-          const tasks = snap.docs.map(todoDocToTask).filter(t => !t.archived);
+          const tasks = snap.docs.map(todoDocToTask);
           latestTasks = tasks;
           window.Planary.TASKS = tasks;
           window.dispatchEvent(new CustomEvent("planary:tasks-loaded", { detail: tasks }));
@@ -478,6 +635,39 @@
           window.dispatchEvent(new CustomEvent("planary:tasks-changed-for-projects"));
         },
         (err) => console.error("[Planary] todos snapshot error:", err)
+      )
+    );
+
+    // User profile + synchronized preferences
+    unsubs.push(
+      db.collection("users").doc(user.uid).onSnapshot(
+        (snap) => {
+          const d = snap.data() || {};
+          api.user = {
+            ...api.user,
+            name: d.displayName || api.user.name,
+            email: d.email || api.user.email,
+            avatar: d.photoURL ? `url("${d.photoURL}")` : api.user.avatar,
+            initials: (d.displayName || api.user.name || "U").slice(0, 1).toUpperCase(),
+            school: d.school || "",
+            studentId: d.studentId || "",
+            bio: d.bio || "",
+          };
+          window.Planary.USER = api.user;
+          window.dispatchEvent(new CustomEvent("planary:user-doc-loaded", { detail: d }));
+          window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: api.user }));
+        },
+        (err) => console.error("[Planary] user snapshot error:", err)
+      )
+    );
+
+    // e-Class connection status
+    unsubs.push(
+      db.collection("eclass_connections").doc(user.uid).onSnapshot(
+        (snap) => {
+          window.dispatchEvent(new CustomEvent("planary:eclass-connection", { detail: snap.data() || null }));
+        },
+        (err) => console.error("[Planary] eclass connection snapshot error:", err)
       )
     );
 
@@ -578,6 +768,24 @@
     const { id, time } = e.detail || {};
     if (!id || !time) return;
     api.postponeTask(id, time).catch(err => console.error("[Planary] postpone failed:", err));
+  });
+
+  window.addEventListener("planary:archive-task", (e) => {
+    const id = e.detail;
+    if (!id) return;
+    api.archiveTask(id).catch(err => {
+      console.error("[Planary] archive-task failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "보관 실패", sub: err.message });
+    });
+  });
+
+  window.addEventListener("planary:unarchive-task", (e) => {
+    const id = e.detail;
+    if (!id) return;
+    api.unarchiveTask(id).catch(err => {
+      console.error("[Planary] unarchive-task failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "복원 실패", sub: err.message });
+    });
   });
 
   console.info("[Planary] Firebase bridge ready.");

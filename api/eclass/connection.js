@@ -3,7 +3,7 @@ const { encrypt } = require('./_crypto');
 const { DEFAULT_BASE_URL, loginSeoultech, normalizeBaseUrl } = require('./_seoultech');
 
 module.exports = async function handler(req, res) {
-  if (!allowMethods(req, res, ['GET', 'POST'])) return;
+  if (!allowMethods(req, res, ['GET', 'POST', 'DELETE'])) return;
   try {
     const user = await getUserFromRequest(req);
     const admin = getAdmin();
@@ -21,6 +21,18 @@ module.exports = async function handler(req, res) {
         lastSyncedAt: data.lastSyncedAt || null,
         lastError: data.lastError || null
       });
+    }
+
+    if (req.method === 'DELETE') {
+      await ref.set({
+        uid: user.uid,
+        enabled: false,
+        encryptedUsername: admin.firestore.FieldValue.delete(),
+        encryptedPassword: admin.firestore.FieldValue.delete(),
+        encryptedSessionCookie: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return sendJson(res, 200, { connected: false });
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
