@@ -921,21 +921,22 @@ function NoteToolbar({ note, isEditing, editing, setEditing, onEdit, onCommit, o
             />
           ))}
         </div>
-        <div style={{ flex: 1 }} />
-        <button
-          type="button"
-          className="note-edit-btn"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={onCancel}
-          title="취소 (Esc)"
-        >취소</button>
-        <button
-          type="button"
-          className="note-edit-btn is-primary"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={onCommit}
-          title="저장 (⌘+Enter)"
-        >저장</button>
+        <div className="note-edit-actions">
+          <button
+            type="button"
+            className="note-edit-btn"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onCancel}
+            title="취소 (Esc)"
+          >취소</button>
+          <button
+            type="button"
+            className="note-edit-btn is-primary"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onCommit}
+            title="저장 (⌘+Enter)"
+          >저장</button>
+        </div>
       </div>
     );
   }
@@ -1099,7 +1100,7 @@ function WikiPage() {
     // Auto enter rename for the new page
     setTimeout(() => startRename(newNode), 80);
     window.dispatchEvent(new CustomEvent("planary:create-wiki-page", {
-      detail: { title: preset.title, parentId: parent || null },
+      detail: { clientId: id, title: preset.title, parentId: parent || null },
     }));
     window.Planary.toast?.({ type: "ok", title: "새 페이지가 추가됐어요", ttl: 1800 });
   };
@@ -1344,39 +1345,39 @@ function WikiPage() {
               <div className="popover-header" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 4px" }}>
                 {node.title} 안에 추가
               </div>
-              <div className="popover-item" onClick={() => { addPage(node.id, "blank"); setAddMenuFor(null); }}>
+              <button type="button" className="popover-item" onClick={() => { addPage(node.id, "blank"); setAddMenuFor(null); }}>
                 <Icon name="document" size={12} />
                 <div style={{ flex: 1 }}>
                   <div>빈 페이지</div>
                   <div style={{ fontSize: 10, color: "var(--text-faint)" }}>제목 없이 새로 시작</div>
                 </div>
-              </div>
-              <div className="popover-item" onClick={() => { addPage(node.id, "meeting"); setAddMenuFor(null); }}>
+              </button>
+              <button type="button" className="popover-item" onClick={() => { addPage(node.id, "meeting"); setAddMenuFor(null); }}>
                 <Icon name="calendar" size={12} />
                 <div style={{ flex: 1 }}>
                   <div>회의록</div>
                   <div style={{ fontSize: 10, color: "var(--text-faint)" }}>일시·안건·결정 템플릿</div>
                 </div>
-              </div>
-              <div className="popover-item" onClick={() => { addPage(node.id, "research"); setAddMenuFor(null); }}>
+              </button>
+              <button type="button" className="popover-item" onClick={() => { addPage(node.id, "research"); setAddMenuFor(null); }}>
                 <Icon name="sparkles" size={12} />
                 <div style={{ flex: 1 }}>
                   <div>리서치 노트</div>
                   <div style={{ fontSize: 10, color: "var(--text-faint)" }}>가설·방법·결과 템플릿</div>
                 </div>
-              </div>
-              <div className="popover-item" onClick={() => { addPage(node.id, "okr"); setAddMenuFor(null); }}>
+              </button>
+              <button type="button" className="popover-item" onClick={() => { addPage(node.id, "okr"); setAddMenuFor(null); }}>
                 <Icon name="target" size={12} />
                 <div style={{ flex: 1 }}>
                   <div>OKR & 마일스톤</div>
                   <div style={{ fontSize: 10, color: "var(--text-faint)" }}>분기 목표 템플릿</div>
                 </div>
-              </div>
+              </button>
               <div className="popover-sep" />
-              <div className="popover-item" onClick={() => { addPage(node.parent, "blank"); setAddMenuFor(null); }}>
+              <button type="button" className="popover-item" onClick={() => { addPage(node.parent, "blank"); setAddMenuFor(null); }}>
                 <Icon name="arrowRight" size={12} style={{ transform: "rotate(-90deg)" }} />
                 <span>같은 레벨에 추가</span>
-              </div>
+              </button>
             </div>
           )}
 
@@ -1388,6 +1389,9 @@ function WikiPage() {
             >
               <div className="popover-item" onClick={() => { setActiveId(node.id); setTreeMenuFor(null); }}>
                 <Icon name="eye" size={12} />열기
+              </div>
+              <div className="popover-item" onClick={() => { addPage(node.id, "blank"); setTreeMenuFor(null); }}>
+                <Icon name="document" size={12} />하위 페이지 추가
               </div>
               <div className="popover-item" onClick={() => startRename(node)}>
                 <Icon name="edit" size={12} />이름 변경
@@ -1449,11 +1453,15 @@ function WikiPage() {
           <div>
             {roots.map((r) => <TreeNode key={r.id} node={r} />)}
           </div>
-          <div className="wiki-tree-item" style={{ color: "var(--text-lo)", marginTop: 4 }}>
+          <button
+            className="wiki-tree-item wiki-tree-add"
+            type="button"
+            onClick={() => addPage(null, "blank")}
+            style={{ color: "var(--text-lo)", marginTop: 4, width: "100%" }}>
             <span style={{ width: 18, display: "inline-block" }} />
             <Icon name="plus" size={12} />
             <span>새 페이지</span>
-          </div>
+          </button>
         </aside>}
 
         <div className="wiki-doc">

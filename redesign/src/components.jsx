@@ -1230,7 +1230,8 @@ function AvatarGroup({ members = [], max = 3, size = 24 }) {
 
 /* ---------- Reusable: Icon Picker ---------- */
 const EMOJI_PICKS = [
-  "🎓","📚","📝","✏️","🚀","🎯","🔬","💡","📌","🗂️","📊","📈","💼","💻","🎨","🖼️",
+  "📄","📃","📑","🎓","📚","📝","✏️","🚀","🎯","🔬","💡","📌","🗂️","📊","📈","💼",
+  "💻","🎨","🖼️",
   "📷","🎬","🎵","🎮","⚽","🏃","🍱","☕","🌱","🌿","🌸","🌎","🔥","⚡","✨","💫",
   "📅","📆","⏰","⌛","🔔","💬","💭","📣","🎉","🎁","🏆","💪","❤️","🧠","👀","✅",
 ];
@@ -1240,8 +1241,39 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
   const [tab, setTab] = useState("emoji"); // emoji | upload | url
   const [urlDraft, setUrlDraft] = useState("");
   const [urlPreviewError, setUrlPreviewError] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef(null);
   const fileRef = useRef(null);
   const isImage = value && typeof value === "string" && value.startsWith("url(");
+  const menuWidth = 280;
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const gap = 8;
+    const margin = 12;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || menuWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 360;
+    const estimatedHeight = tab === "emoji" ? 314 : 260;
+    const openAbove = rect.bottom + gap + estimatedHeight > viewportHeight && rect.top > estimatedHeight;
+    const rawLeft = anchor.endsWith("end") ? rect.right - menuWidth : rect.left;
+    setMenuPos({
+      top: openAbove ? Math.max(margin, rect.top - gap - estimatedHeight) : Math.min(rect.bottom + gap, viewportHeight - margin),
+      left: Math.min(Math.max(margin, rawLeft), Math.max(margin, viewportWidth - menuWidth - margin)),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open, tab, anchor]);
 
   const handleFile = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -1272,6 +1304,7 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(!open)}
         title="아이콘 변경"
@@ -1319,16 +1352,19 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
           />
           <div
             style={{
-              position: "absolute",
-              top: `calc(100% + 8px)`,
-              left: 0,
-              width: 280,
+              position: "fixed",
+              top: menuPos.top,
+              left: menuPos.left,
+              width: menuWidth,
+              maxWidth: "calc(100vw - 24px)",
+              maxHeight: "calc(100vh - 24px)",
+              overflowY: "auto",
               background: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: "var(--r-lg)",
               boxShadow: "var(--shadow-lg)",
               padding: 10,
-              zIndex: 51,
+              zIndex: 260,
             }}
             onClick={(e) => e.stopPropagation()}
           >
