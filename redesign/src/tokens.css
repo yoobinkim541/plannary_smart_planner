@@ -1,0 +1,142 @@
+/* =========================================================================
+   Planary — Design Tokens
+   Derived from NEXTMEDIA Voice DS, adapted for dual light/dark + accents.
+   ========================================================================= */
+
+:root {
+  /* Accent — defaults to violet; overridden by [data-accent] */
+  --accent:        #7f0df2;
+  --accent-light:  #9b3ff7;
+  --accent-dark:   #5a06b0;
+  --accent-soft:   color-mix(in oklab, var(--accent) 14%, transparent);
+  --accent-softer: color-mix(in oklab, var(--accent) 6%, transparent);
+  --accent-ring:   color-mix(in oklab, var(--accent) 35%, transparent);
+
+  /* Semantic */
+  --ok:    #10b981;
+  --warn:  #f59e0b;
+  --err:   #ef4444;
+  --info:  #3b82f6;
+
+  /* Type */
+  --font-display: "Plus Jakarta Sans", "Pretendard Variable", "Pretendard",
+                  ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:    ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-4xl: 40px;
+  --text-3xl: 30px;
+  --text-2xl: 24px;
+  --text-xl:  20px;
+  --text-lg:  17px;
+  --text-base:15px;
+  --text-sm:  13px;
+  --text-xs:  11px;
+
+  /* Radius — Tweaks can shift the base */
+  --r-base: 12px;
+  --r-sm:   calc(var(--r-base) * 0.5);
+  --r-md:   calc(var(--r-base) * 0.75);
+  --r-lg:   var(--r-base);
+  --r-xl:   calc(var(--r-base) * 1.33);
+  --r-2xl:  calc(var(--r-base) * 1.66);
+  --r-full: 999px;
+
+  /* Spacing 4-based */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+}
+
+/* ---------- DARK THEME (default) ---------- */
+:root,
+[data-theme="dark"] {
+  --bg:           #0a070e;
+  --bg-elev:      #100913;
+  --surface:      #181024;
+  --surface-2:    #1f1430;
+  --surface-3:    #281a3d;
+  --border:       #2d1b40;
+  --border-strong:#3a2451;
+  --border-soft:  #221635;
+
+  --text-hi:    #f1f5f9;
+  --text-md:    #cbd5e1;
+  --text-lo:    #94a3b8;
+  --text-mute:  #64748b;
+  --text-faint: #475569;
+
+  --hover:      rgba(255,255,255,0.04);
+  --press:      rgba(255,255,255,0.07);
+  --glow:       0 0 40px color-mix(in oklab, var(--accent) 35%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 10px -2px rgba(0,0,0,0.55), 0 2px 4px -2px rgba(0,0,0,0.4);
+  --shadow-lg: 0 18px 40px -10px rgba(0,0,0,0.6), 0 10px 20px -10px color-mix(in oklab, var(--accent) 25%, transparent);
+
+  color-scheme: dark;
+}
+
+/* ---------- LIGHT THEME ---------- */
+[data-theme="light"] {
+  --bg:           #f7f6fb;
+  --bg-elev:      #fdfcff;
+  --surface:      #ffffff;
+  --surface-2:    #f4f2f9;
+  --surface-3:    #ebe7f3;
+  --border:       #e5e1ee;
+  --border-strong:#d6cee6;
+  --border-soft:  #efebf6;
+
+  --text-hi:    #15131c;
+  --text-md:    #383544;
+  --text-lo:    #6b6779;
+  --text-mute:  #94909f;
+  --text-faint: #b7b3c1;
+
+  --hover:      rgba(20,15,30,0.04);
+  --press:      rgba(20,15,30,0.07);
+  --glow:       0 0 32px color-mix(in oklab, var(--accent) 20%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(20,15,30,0.06);
+  --shadow-md: 0 6px 14px -4px rgba(20,15,30,0.08), 0 2px 4px -2px rgba(20,15,30,0.06);
+  --shadow-lg: 0 24px 50px -16px rgba(20,15,30,0.18), 0 10px 20px -10px color-mix(in oklab, var(--accent) 12%, transparent);
+
+  color-scheme: light;
+}
+
+/* ---------- ACCENT PALETTES ---------- */
+[data-accent="violet"] { --accent:#7f0df2; --accent-light:#9b3ff7; --accent-dark:#5a06b0; }
+[data-accent="blue"]   { --accent:#2563eb; --accent-light:#3b82f6; --accent-dark:#1d4ed8; }
+[data-accent="emerald"]{ --accent:#10b981; --accent-light:#34d399; --accent-dark:#047857; }
+[data-accent="amber"]  { --accent:#f59e0b; --accent-light:#fbbf24; --accent-dark:#b45309; }
+[data-accent="rose"]   { --accent:#e11d48; --accent-light:#f43f5e; --accent-dark:#9f1239; }
+[data-accent="slate"]  { --accent:#475569; --accent-light:#64748b; --accent-dark:#1e293b; }
+
+/* ---------- RESET ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text-hi);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+  overflow: hidden;
+}
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+input, textarea, select { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--accent-soft); color: var(--text-hi); }
+
+/* Font choices via Tweaks */
+[data-font="jakarta"]  { --font-display: "Plus Jakarta Sans", system-ui, sans-serif; }
+[data-font="pretendard"] { --font-display: "Pretendard Variable", "Pretendard", system-ui, sans-serif; }
+[data-font="inter"]    { --font-display: "Inter", system-ui, sans-serif; }
