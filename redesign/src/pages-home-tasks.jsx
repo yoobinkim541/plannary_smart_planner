@@ -369,19 +369,65 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
 function QuickCapture() {
   const [text, setText] = useStateHT("");
   const [type, setType] = useStateHT("task"); // task | note
-  const [openPop, setOpenPop] = useStateHT(null); // "date" | "priority" | "project" | null
-  const [dueDate, setDueDate] = useStateHT(null); // { id, label }
+  const [openPop, setOpenPop] = useStateHT(null); // "date" | "reminder" | "priority" | "project" | null
+  const [dueDate, setDueDate] = useStateHT(null); // { id, label, iso }
+  const [reminders, setReminders] = useStateHT([]);
   const [priority, setPriority] = useStateHT({ id: "med", label: "보통", color: "var(--warn)" });
   const [project, setProject] = useStateHT(null); // { id, name, color }
 
+  const toISODate = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const addDaysISO = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return toISODate(d);
+  };
+  const addMonthsISO = (months) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
+    return toISODate(d);
+  };
+  const labelForDate = (iso) => {
+    if (!iso) return "기한";
+    const today = toISODate(new Date());
+    if (iso === today) return "오늘";
+    if (iso === addDaysISO(1)) return "내일";
+    if (iso === addDaysISO(2)) return "모레";
+    return new Date(`${iso}T00:00:00`).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+  };
+  const today = toISODate(new Date());
+  const oneMonthLater = addMonthsISO(1);
   const dateOpts = [
-    { id: "today",    label: "오늘",    icon: "zap", desc: "오늘 안에" },
-    { id: "tomorrow", label: "내일",    icon: "calendar", desc: "내일" },
-    { id: "after",    label: "모레",    icon: "calendar", desc: "이틀 뒤" },
-    { id: "1w",       label: "1주일 뒤", icon: "calendar", desc: "다음 주 같은 요일" },
-    { id: "1m",       label: "한 달 뒤", icon: "calendar", desc: "다음 달 같은 날" },
+    { id: "today",    label: "오늘",    icon: "zap", desc: "오늘 안에", iso: today },
+    { id: "tomorrow", label: "내일",    icon: "calendar", desc: "내일", iso: addDaysISO(1) },
+    { id: "after",    label: "모레",    icon: "calendar", desc: "이틀 뒤", iso: addDaysISO(2) },
+    { id: "1w",       label: "1주일 뒤", icon: "calendar", desc: "다음 주 같은 요일", iso: addDaysISO(7) },
+    { id: "1m",       label: "한 달 뒤", icon: "calendar", desc: "다음 달 같은 날", iso: oneMonthLater },
     { id: "none",     label: "기한 없음", icon: "x", desc: "아무때나" },
   ];
+  const reminderOpts = [
+    { value: 10, label: "10분 전" },
+    { value: 30, label: "30분 전" },
+    { value: 60, label: "1시간 전" },
+    { value: 1440, label: "1일 전" },
+    { value: 10080, label: "1주일 전" },
+  ];
+  const reminderLabel = (minutes) => reminderOpts.find(r => r.value === minutes)?.label || `${minutes}분 전`;
+  const toggleReminder = (minutes) => {
+    setReminders(prev => {
+      if (prev.includes(minutes)) return prev.filter(v => v !== minutes);
+      return [...prev, minutes].sort((a, b) => b - a);
+    });
+  };
+  const reminderButtonLabel = reminders.length
+    ? (reminders.length === 1 ? reminderLabel(reminders[0]) : `${reminderLabel(reminders[0])} 외 ${reminders.length - 1}`)
+    : "알림";
   const priorityOpts = [
     { id: "high", label: "높음", color: "var(--err)" },
     { id: "med",  label: "보통", color: "var(--warn)" },
@@ -390,6 +436,7 @@ function QuickCapture() {
 
   const submit = () => {
     if (!text.trim()) return;
+    const selectedReminders = dueDate ? reminders : [];
     const newTask = {
       id: "t" + Date.now(),
       title: text.trim(),
@@ -397,8 +444,11 @@ function QuickCapture() {
       project: project?.id || null,
       priority: priority.id,
       due: null,
+      dueDate: dueDate?.iso || null,
       time: dueDate?.label || null,
-      reminder: false,
+      reminder: selectedReminders.length > 0,
+      calendarReminderMinutes: selectedReminders[0] ?? null,
+      calendarReminderMinutesList: selectedReminders,
       done: false,
       tags: [],
     };
@@ -417,7 +467,7 @@ function QuickCapture() {
         sub: text.trim().slice(0, 30) + (text.length > 30 ? "…" : ""),
       });
     }
-    setText(""); setDueDate(null); setProject(null);
+    setText(""); setDueDate(null); setReminders([]); setProject(null);
   };
 
   const projects = window.Planary.PROJECTS;
@@ -465,12 +515,12 @@ function QuickCapture() {
               {openPop === "date" && (
                 <>
                   <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
-                  <div className="tool-popover" style={{ minWidth: 200, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                  <div className="tool-popover" style={{ minWidth: 248, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
                     {dateOpts.map(opt => (
                       <button
                         key={opt.id}
                         className={`tool-popover-item ${dueDate?.id === opt.id ? "is-active" : ""}`}
-                        onClick={() => { setDueDate(opt.id === "none" ? null : opt); setOpenPop(null); }}
+                        onClick={() => { setDueDate(opt.id === "none" ? null : opt); if (opt.id === "none") setReminders([]); setOpenPop(null); }}
                         type="button"
                       >
                         <Icon name={opt.icon} size={12} />
@@ -481,6 +531,55 @@ function QuickCapture() {
                         {dueDate?.id === opt.id && <Icon name="check" size={11} stroke={3} style={{ color: "var(--accent)" }} />}
                       </button>
                     ))}
+                    <div className="tool-popover-field">
+                      <div className="tool-popover-label">직접 선택</div>
+                      <input
+                        className="tool-date-input"
+                        type="date"
+                        min={today}
+                        max={oneMonthLater}
+                        value={dueDate?.iso || ""}
+                        onChange={(e) => {
+                          const iso = e.target.value;
+                          if (!iso) return;
+                          setDueDate({ id: "custom", label: labelForDate(iso), icon: "calendar", desc: "직접 선택", iso });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Reminders */}
+            <div style={{ position: "relative" }}>
+              <button
+                className={`tool-btn ${reminders.length ? "is-on" : ""}`}
+                onClick={(e) => { e.stopPropagation(); setOpenPop(openPop === "reminder" ? null : "reminder"); }}
+              >
+                <Icon name="bell" size={11} />{reminderButtonLabel}
+              </button>
+              {openPop === "reminder" && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setOpenPop(null)} />
+                  <div className="tool-popover" style={{ minWidth: 190, zIndex: 50, top: "calc(100% + 6px)", bottom: "auto" }} onClick={(e) => e.stopPropagation()}>
+                    {!dueDate && <div className="tool-popover-hint">기한을 먼저 선택하면 알림이 적용돼요.</div>}
+                    {reminderOpts.map(opt => (
+                      <button
+                        key={opt.value}
+                        className={`tool-popover-item ${reminders.includes(opt.value) ? "is-active" : ""}`}
+                        onClick={() => toggleReminder(opt.value)}
+                        type="button"
+                      >
+                        <Icon name="bell" size={12} />
+                        <span style={{ flex: 1 }}>{opt.label}</span>
+                        {reminders.includes(opt.value) && <Icon name="check" size={11} stroke={3} style={{ color: "var(--accent)" }} />}
+                      </button>
+                    ))}
+                    <div className="tool-popover-actions">
+                      <button type="button" className="btn btn-sm" onClick={() => setReminders([])}>초기화</button>
+                      <button type="button" className="btn btn-sm btn-primary" onClick={() => setOpenPop(null)}>완료</button>
+                    </div>
                   </div>
                 </>
               )}

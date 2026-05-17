@@ -76,15 +76,21 @@
 
   function todoDocToTask(doc) {
     const d = doc.data() || {};
+    const reminderList = Array.isArray(d.calendarReminderMinutesList) && d.calendarReminderMinutesList.length
+      ? d.calendarReminderMinutesList
+      : (Number.isFinite(d.calendarReminderMinutes) ? [d.calendarReminderMinutes] : []);
     return {
       id: doc.id,
       title: d.text || "",
       memo: d.memo || null,
       priority: PRIORITY_TO_UI[d.priority] || "med",
       due: d.dueTime || null,
+      dueDate: d.dueDate || null,
       time: deriveTime(d.dueDate, d.dueTime),
       project: d.projectId || null,
-      reminder: !!(d.calendarReminderMinutes || (d.calendarReminderMinutesList && d.calendarReminderMinutesList.length)),
+      reminder: reminderList.length > 0,
+      calendarReminderMinutes: reminderList[0] ?? null,
+      calendarReminderMinutesList: reminderList,
       done: !!d.completed,
       archived: !!d.archived,
       tags: d.courseTitle ? [d.courseTitle] : [],
@@ -121,10 +127,19 @@
       orderIndex: typeof task.orderIndex === "number" ? task.orderIndex : 0,
       createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp(),
     };
+    const hasReminderInput = Array.isArray(task.calendarReminderMinutesList) || task.calendarReminderMinutes !== undefined || task.reminder !== undefined;
+    if (hasReminderInput) {
+      const rawReminders = Array.isArray(task.calendarReminderMinutesList)
+        ? task.calendarReminderMinutesList
+        : (task.calendarReminderMinutes == null ? [] : [task.calendarReminderMinutes]);
+      const reminderList = [...new Set(rawReminders.map(Number).filter(value => Number.isFinite(value) && value >= 0))].sort((a, b) => b - a);
+      payload.calendarReminderMinutes = reminderList[0] ?? null;
+      payload.calendarReminderMinutesList = reminderList;
+    }
     // Preserve e-Class fields if they were on the existing doc
     if (existing) {
       ["source", "sourceItemId", "sourceUrl", "courseTitle", "ddayText", "syncedAt", "calendarEventId", "calendarReminderMinutes", "calendarReminderMinutesList", "syncCalendar", "remindersSent"].forEach(k => {
-        if (existing[k] !== undefined) payload[k] = existing[k];
+        if (payload[k] === undefined && existing[k] !== undefined) payload[k] = existing[k];
       });
     }
     return payload;
@@ -557,9 +572,9 @@
       return data;
     },
 
-    async createWikiPage(title = "새 페이지", parentId = null) {
+    async createWikiPage(title = "새 페이지", parentId = null, clientId = null) {
       if (!this.uid) return null;
-      const ref = await db.collection("wiki_pages").add({
+      const payload = {
         uid: this.uid,
         title,
         parentId,
@@ -574,7 +589,11 @@
         content: { time: Date.now(), blocks: [], version: "redesign-v1" },
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+      const ref = clientId
+        ? db.collection("wiki_pages").doc(clientId)
+        : db.collection("wiki_pages").doc();
+      await ref.set(payload);
       return ref.id;
     },
     async updateWikiPageMeta(id, patch) {
@@ -584,7 +603,7 @@
         if (patch[k] !== undefined) allowed[k] = patch[k];
       });
       allowed.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection("wiki_pages").doc(id).update(allowed);
+      await db.collection("wiki_pages").doc(id).set(allowed, { merge: true });
     },
     async saveWikiBlocks(id, blocks) {
       if (!this.uid) return;
@@ -862,8 +881,8 @@
 
   // ── Wiki ────────────────────────────────────────────────────────────
   window.addEventListener("planary:create-wiki-page", (e) => {
-    const { title, parentId } = e.detail || {};
-    api.createWikiPage(title || "새 페이지", parentId || null).catch(err => {
+    const { title, parentId, clientId } = e.detail || {};
+    api.createWikiPage(title || "새 페이지", parentId || null, clientId || null).catch(err => {
       console.error("[Planary] create-wiki-page failed:", err);
       window.Planary?.toast?.({ type: "err", title: "페이지 생성 실패", sub: err.message });
     });

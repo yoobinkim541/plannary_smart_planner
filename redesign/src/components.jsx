@@ -2,6 +2,26 @@
 
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
+function UserAvatar({ user = window.Planary.USER, size, className = "", style = {} }) {
+  const avatar = user?.avatar;
+  const isImage = avatar && typeof avatar === "string" && avatar.startsWith("url(");
+  return (
+    <div
+      className={`avatar ${className}`}
+      style={{
+        width: size,
+        height: size,
+        fontSize: size ? Math.round(size * 0.38) : undefined,
+        background: isImage ? `${avatar} center/cover no-repeat` : undefined,
+        color: isImage ? "transparent" : undefined,
+        ...style,
+      }}
+    >
+      {!isImage && (user?.initials || "U")}
+    </div>
+  );
+}
+
 /* ---------- Icon Rail (left, 60px) ---------- */
 function Rail({ page, setPage, onToggleSidebar }) {
   const items = [
@@ -29,7 +49,7 @@ function Rail({ page, setPage, onToggleSidebar }) {
       ))}
       <div className="rail-spacer" />
       <button className={`rail-btn ${page === "profile" ? "is-active" : ""}`} onClick={() => setPage("profile")}>
-        <Icon name="user" size={18} />
+        <UserAvatar size={22} style={{ borderRadius: "var(--r-full)", border: "1px solid var(--border-soft)" }} />
         <span className="rail-tooltip">마이페이지</span>
       </button>
     </div>
@@ -276,7 +296,7 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
       </nav>
 
       <div className="sidebar-foot">
-        <div className="avatar">{USER.initials}</div>
+        <UserAvatar user={USER} />
         <div className="user-meta">
           <div className="user-name">{USER.name}</div>
           <div className="user-email" style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -621,7 +641,7 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
             onClick={(e) => { e.stopPropagation(); setUserOpen(!userOpen); setNotifOpen(false); }}
             style={{ display: "flex", alignItems: "center", padding: 0, background: "transparent", border: 0 }}
           >
-            <div className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>{window.Planary.USER.initials}</div>
+            <UserAvatar user={window.Planary.USER} size={28} />
           </button>
           {userOpen && (
             <>
@@ -631,7 +651,7 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
               />
               <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, minWidth: 220, zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div className="avatar" style={{ width: 34, height: 34 }}>{window.Planary.USER.initials}</div>
+                <UserAvatar user={window.Planary.USER} size={34} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{window.Planary.USER.name}</div>
                   <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{window.Planary.USER.email}</div>
@@ -680,7 +700,7 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
 function AccountSwitcherDialog({ onClose }) {
   const me = window.Planary.USER;
   const [accounts, setAccounts] = useState([
-    { id: "me", name: me.name, email: me.email, initials: me.initials, workspace: "개인 워크스페이스", active: true },
+    { id: "me", name: me.name, email: me.email, initials: me.initials, avatar: me.avatar, workspace: "개인 워크스페이스", active: true },
     { id: "team", name: "Planary Team", email: "team@planary.app", initials: "TM", workspace: "팀 워크스페이스", active: false, badge: "팀" },
   ]);
 
@@ -728,7 +748,7 @@ function AccountSwitcherDialog({ onClose }) {
               onMouseEnter={(e) => { if (!a.active) e.currentTarget.style.background = "var(--hover)"; }}
               onMouseLeave={(e) => { if (!a.active) e.currentTarget.style.background = "transparent"; }}
             >
-              <div className="avatar" style={{ width: 36, height: 36 }}>{a.initials}</div>
+              <UserAvatar user={a} size={36} />
               <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.name}</span>
@@ -970,7 +990,7 @@ function MobileDrawer({ open, onClose, page, setPage, taskFilter, setTaskFilter,
           ))}
         </nav>
         <div className="drawer-foot">
-          <div className="avatar">{USER.initials}</div>
+          <UserAvatar user={USER} />
           <div className="user-meta">
             <div className="user-name">{USER.name}</div>
             <div className="user-email">{USER.email}</div>
@@ -999,7 +1019,18 @@ function TaskCard({ task, onToggle, projects }) {
   else if (isTomorrow) timeClass = "task-due-tomorrow";
 
   return (
-    <div className={`task ${task.done ? "is-done" : ""} ${isOverdue ? "is-overdue" : ""}`}>
+    <div
+      className={`task ${task.done ? "is-done" : ""} ${isOverdue ? "is-overdue" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => window.dispatchEvent(new CustomEvent("planary:edit-task", { detail: task }))}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("planary:edit-task", { detail: task }));
+        }
+      }}
+    >
       <div className={`task-priority-bar ${prClass}`} />
       <button
         className={`checkbox ${task.done ? "is-checked" : ""}`}
@@ -1043,6 +1074,11 @@ function TaskCard({ task, onToggle, projects }) {
           {task.reminder && (
             <span className="chip chip-accent">
               <Icon name="bell" size={11} />리마인더
+            </span>
+          )}
+          {task.imageUrl && (
+            <span className="chip" style={{ background: "transparent", borderColor: "var(--border)" }}>
+              <Icon name="image" size={11} />첨부 이미지
             </span>
           )}
           {task.priority === "high" && !task.done && !task.source && (
@@ -1220,9 +1256,9 @@ function AvatarGroup({ members = [], max = 3, size = 24 }) {
     <div className="avatar-group" style={{ "--size": size }}>
       {more > 0 && <div className="avatar-group-more">+{more}</div>}
       {shown.map((m, i) => (
-        <div key={i} className="avatar" style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}>
-          {typeof m === "string" ? m : m.initials}
-        </div>
+        typeof m === "string"
+          ? <div key={i} className="avatar" style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}>{m}</div>
+          : <UserAvatar key={i} user={m} size={size} />
       ))}
     </div>
   );
@@ -1230,7 +1266,8 @@ function AvatarGroup({ members = [], max = 3, size = 24 }) {
 
 /* ---------- Reusable: Icon Picker ---------- */
 const EMOJI_PICKS = [
-  "🎓","📚","📝","✏️","🚀","🎯","🔬","💡","📌","🗂️","📊","📈","💼","💻","🎨","🖼️",
+  "📄","📃","📑","🎓","📚","📝","✏️","🚀","🎯","🔬","💡","📌","🗂️","📊","📈","💼",
+  "💻","🎨","🖼️",
   "📷","🎬","🎵","🎮","⚽","🏃","🍱","☕","🌱","🌿","🌸","🌎","🔥","⚡","✨","💫",
   "📅","📆","⏰","⌛","🔔","💬","💭","📣","🎉","🎁","🏆","💪","❤️","🧠","👀","✅",
 ];
@@ -1240,8 +1277,39 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
   const [tab, setTab] = useState("emoji"); // emoji | upload | url
   const [urlDraft, setUrlDraft] = useState("");
   const [urlPreviewError, setUrlPreviewError] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef(null);
   const fileRef = useRef(null);
   const isImage = value && typeof value === "string" && value.startsWith("url(");
+  const menuWidth = 280;
+
+  const updateMenuPosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const gap = 8;
+    const margin = 12;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || menuWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 360;
+    const estimatedHeight = tab === "emoji" ? 314 : 260;
+    const openAbove = rect.bottom + gap + estimatedHeight > viewportHeight && rect.top > estimatedHeight;
+    const rawLeft = anchor.endsWith("end") ? rect.right - menuWidth : rect.left;
+    setMenuPos({
+      top: openAbove ? Math.max(margin, rect.top - gap - estimatedHeight) : Math.min(rect.bottom + gap, viewportHeight - margin),
+      left: Math.min(Math.max(margin, rawLeft), Math.max(margin, viewportWidth - menuWidth - margin)),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open, tab, anchor]);
 
   const handleFile = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -1272,6 +1340,7 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(!open)}
         title="아이콘 변경"
@@ -1319,16 +1388,19 @@ function IconPicker({ value, onChange, size = 56, color = "#7f0df2", onClose, an
           />
           <div
             style={{
-              position: "absolute",
-              top: `calc(100% + 8px)`,
-              left: 0,
-              width: 280,
+              position: "fixed",
+              top: menuPos.top,
+              left: menuPos.left,
+              width: menuWidth,
+              maxWidth: "calc(100vw - 24px)",
+              maxHeight: "calc(100vh - 24px)",
+              overflowY: "auto",
               background: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: "var(--r-lg)",
               boxShadow: "var(--shadow-lg)",
               padding: 10,
-              zIndex: 51,
+              zIndex: 260,
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1596,6 +1668,6 @@ function DatePicker({ value, onChange, onClose }) {
 // Final exports — placed at the end so all function declarations are guaranteed defined.
 window.Planary = Object.assign(window.Planary || {}, {
   Rail, Sidebar, Topbar, MobileBar, MobileTabs, MobileDrawer,
-  TaskCard, AvatarGroup, DatePicker, IconPicker, ToastHost,
+  TaskCard, UserAvatar, AvatarGroup, DatePicker, IconPicker, ToastHost,
   SidebarSearchResults, ShortcutsDialog, NewProjectDialog,
 });

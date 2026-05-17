@@ -1117,15 +1117,25 @@
 .note-toolbar.is-editing {
   top: auto;
   right: 8px; left: 8px; bottom: 8px;
-  padding: 4px 4px 4px 6px;
+  padding: 6px;
   background: rgba(0,0,0,0.08);
   border-radius: 6px;
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
+  gap: 6px;
+  flex-direction: column;
+  align-items: stretch;
 }
-.note-color-strip { display: flex; gap: 3px; }
+.note-color-strip {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
 .note-color-swatch {
-  width: 16px; height: 16px;
+  width: 28px; height: 28px;
+  flex: 0 0 28px;
   border-radius: 50%;
   cursor: pointer;
   border: 1px solid rgba(0,0,0,0.12);
@@ -1137,9 +1147,17 @@
   box-shadow: 0 0 0 2px rgba(0,0,0,0.85), 0 0 0 3px rgba(255,255,255,0.6);
   transform: scale(1.1);
 }
+.note-edit-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  justify-content: flex-end;
+}
 .note-edit-btn {
-  height: 22px;
-  padding: 0 8px;
+  min-width: 52px;
+  height: 34px;
+  padding: 0 10px;
+  white-space: nowrap;
   border-radius: 4px;
   border: 0;
   background: rgba(255,255,255,0.7);
@@ -1179,6 +1197,7 @@
     0 28px 56px -12px rgba(0,0,0,0.6),
     0 0 0 3px rgba(127,13,242,0.4);
   cursor: text !important;
+  padding-bottom: 94px;
 }
 .note.is-editing::after { display: none; } /* hide curl while editing */
 
@@ -2863,11 +2882,13 @@
 }
 .popover-item {
   display: flex; align-items: center; gap: 10px;
+  width: 100%;
   padding: 7px 10px;
   border-radius: var(--r-sm);
   font-size: var(--text-sm);
   color: var(--text-md);
   cursor: pointer;
+  text-align: left;
   transition: background var(--dur-fast);
 }
 .popover-item:hover { background: var(--hover); color: var(--text-hi); }
@@ -3234,6 +3255,85 @@
 }
 .tool-popover-item:hover { background: var(--hover); color: var(--text-hi); }
 .tool-popover-item.is-active { background: var(--accent-softer); color: var(--accent); font-weight: 600; }
+.tool-popover-field {
+  margin-top: 6px;
+  padding: 8px 9px 9px;
+  border-top: 1px solid var(--border-soft);
+}
+.tool-popover-label {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-lo);
+}
+.tool-date-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--bg-elev);
+  color: var(--text-hi);
+  font: inherit;
+  font-size: 13px;
+}
+.tool-date-input:focus {
+  outline: none;
+  border-color: var(--accent-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
+}
+.tool-popover-hint {
+  padding: 7px 9px 8px;
+  color: var(--text-lo);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.tool-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px 3px 2px;
+  border-top: 1px solid var(--border-soft);
+}
+.task-attachment-preview {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  background: var(--bg-elev);
+}
+.task-attachment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.task-attachment-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-hi);
+  font-size: 13px;
+  font-weight: 700;
+}
+.task-attachment-sub {
+  margin-top: 2px;
+  color: var(--text-lo);
+  font-size: 11px;
+}
+.task-attachment-image-link {
+  display: block;
+  background: var(--surface);
+}
+.task-attachment-image {
+  display: block;
+  width: 100%;
+  max-height: min(46vh, 420px);
+  object-fit: contain;
+}
 .dialog-scrim {
   position: fixed; inset: 0;
   background: rgba(8,4,15,0.55);
