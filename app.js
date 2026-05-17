@@ -1268,6 +1268,16 @@ function getUserGuideName(user = currentUser) {
     return user.displayName || (user.email ? user.email.split('@')[0] : t('defaultUserName'));
 }
 
+function getSocialAuthProfile(user) {
+    if (!user) return {};
+    const hasSocialProvider = user.providerData.some(provider => provider.providerId !== 'password');
+    if (!hasSocialProvider) return {};
+    return {
+        displayName: user.displayName || null,
+        photoURL: user.photoURL || null
+    };
+}
+
 function normalizeOnboardingProgress(progress = {}) {
     const legacy = progress || {};
     return GUIDE_STEP_IDS.reduce((normalized, id) => {
@@ -1921,10 +1931,12 @@ async function showOnboardingIfNeeded(user) {
         const snapshot = await ref.get();
         if (!snapshot.exists) {
             const progress = createDefaultOnboardingProgress();
+            const socialProfile = getSocialAuthProfile(user);
             await ref.set({
                 uid: user.uid,
                 email: user.email || null,
-                displayName: user.displayName || null,
+                displayName: socialProfile.displayName || user.displayName || null,
+                photoURL: socialProfile.photoURL || null,
                 onboardingCompleted: false,
                 onboardingCompletedAt: null,
                 onboardingProgress: progress,
@@ -1937,6 +1949,16 @@ async function showOnboardingIfNeeded(user) {
             return;
         }
         const data = snapshot.data();
+        const socialProfile = getSocialAuthProfile(user);
+        const profileUpdates = {};
+        if (!data.displayName && socialProfile.displayName) profileUpdates.displayName = socialProfile.displayName;
+        if (!data.photoURL && socialProfile.photoURL) profileUpdates.photoURL = socialProfile.photoURL;
+        if (Object.keys(profileUpdates).length) {
+            await ref.set({
+                ...profileUpdates,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
         onboardingState = buildOnboardingState(data);
         const hasExpandedGuideProgress = data.onboardingProgress && GUIDE_STEP_IDS.every(id => GUIDE_STATUS.includes(data.onboardingProgress[id]));
         const hasNoWork = await userHasNoWork(user.uid);
