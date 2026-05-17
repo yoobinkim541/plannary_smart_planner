@@ -4916,6 +4916,26 @@ body.onboarding-spotlight-active #main-area {
     position: relative;
 }
 
+#editorjs .ce-block__content {
+    padding: 2px 0;
+}
+
+#editorjs .ce-paragraph,
+#editorjs .cdx-block {
+    padding: 2px 0;
+    line-height: 1.55;
+}
+
+#editorjs .ce-header {
+    padding: 6px 0 2px;
+    margin: 0;
+    line-height: 1.3;
+}
+
+#editorjs .ce-block + .ce-block {
+    margin-top: 0;
+}
+
 .wiki-block-drag-handle {
     position: absolute;
     left: -30px;

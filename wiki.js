@@ -754,9 +754,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const date = value.toDate ? value.toDate() : new Date(value);
         return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
     };
+    let autosaveTimer = null;
+    let autosaveInFlight = false;
+    const scheduleAutosave = () => {
+        if (!currentPageId) return;
+        clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(async () => {
+            if (autosaveInFlight) { scheduleAutosave(); return; }
+            autosaveInFlight = true;
+            try { await savePage({ silent: true }); }
+            catch (err) { console.warn('[Wiki] autosave failed:', err); }
+            finally { autosaveInFlight = false; }
+        }, 1500);
+    };
     const markDirty = () => {
         if (saveWikiBtn) saveWikiBtn.disabled = false;
         if (saveStateEl) saveStateEl.textContent = tr('unsavedChanges');
+        scheduleAutosave();
     };
     const getCurrentPage = () => allPages.find(page => page.id === currentPageId);
     const getProjectName = (projectId) => {
@@ -1961,7 +1975,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- SAVE FUNCTION ---
-    const savePage = async () => {
+    const savePage = async (options = {}) => {
+        const { silent = false } = options;
         if (!editor || !currentPageId || !currentUser) {
             console.warn('[Wiki] Save aborted: editor or pageId missing', { editor: !!editor, currentPageId, currentUser: !!currentUser });
             window.showToast(tr('cannotSaveNotReady'), 'error');
@@ -2002,17 +2017,17 @@ document.addEventListener('DOMContentLoaded', () => {
             resetUndoHistory(contentData);
             resetMetaUndoHistory();
             if (saveStateEl) saveStateEl.textContent = tr('saved');
-            window.showToast(tr('pageSaved'), 'success');
+            if (!silent) window.showToast(tr('pageSaved'), 'success');
         } catch (err) {
             console.error('[Wiki] Save error:', err);
-            // Show actual error message for diagnosis
-            window.showToast(tr('saveFailed') + ': ' + (err.message || err), 'error');
+            if (!silent) window.showToast(tr('saveFailed') + ': ' + (err.message || err), 'error');
+            throw err;
         } finally {
             if (saveWikiBtn) { saveWikiBtn.textContent = tr('saveChanges'); saveWikiBtn.disabled = false; }
         }
     };
 
-    if (saveWikiBtn) saveWikiBtn.onclick = savePage;
+    if (saveWikiBtn) saveWikiBtn.onclick = () => { savePage().catch(() => {}); };
 
     if (wikiProjectSelect) {
         wikiProjectSelect.addEventListener('focus', pushMetaUndoSnapshot);
@@ -2032,7 +2047,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (key === 's') {
             e.preventDefault();
             e.stopPropagation();
-            if (currentPageId) savePage();
+            if (currentPageId) savePage().catch(() => {});
             return;
         }
         if (key === 'z' && !e.shiftKey) {
