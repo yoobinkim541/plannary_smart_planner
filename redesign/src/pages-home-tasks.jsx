@@ -74,7 +74,7 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
             <strong style={{ color: "var(--text-hi)" }}>e-Class에서 오늘 마감 {eclassToday.length}개</strong>
             <span style={{ color: "var(--text-lo)" }}> · {eclassToday[0].title}{eclassToday.length > 1 ? ` 외 ${eclassToday.length - 1}개` : ""}</span>
           </div>
-          <span style={{ fontSize: 11, color: "var(--text-lo)" }}>12분 전 동기화</span>
+          <span className="notice-meta">12분 전 동기화</span>
           <Icon name="arrowRight" size={14} style={{ color: "var(--text-lo)" }} />
         </div>
       )}
@@ -397,7 +397,7 @@ function QuickCapture() {
       project: project?.id || null,
       priority: priority.id,
       due: null,
-      time: (dueDate?.label && dueDate.label !== "기한 없음") ? dueDate.label : (dueDate?.id === "none" ? null : "오늘"),
+      time: dueDate?.label || null,
       reminder: false,
       done: false,
       tags: [],
@@ -410,7 +410,7 @@ function QuickCapture() {
         sub: `${dueDate?.label ? dueDate.label + " · " : ""}${text.trim().slice(0, 30)}${text.length > 30 ? "…" : ""}`,
       });
     } else {
-      window.dispatchEvent(new CustomEvent("planary:create-note", { detail: { text: text.trim() } }));
+      window.dispatchEvent(new CustomEvent("planary:create-note", { detail: { text: text.trim(), color: "yellow", x: 80, y: 80 } }));
       window.Planary.toast?.({
         type: "ok",
         title: "메모가 추가됐어요",
@@ -781,7 +781,6 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
 
   const filtered = useMemoHT(() => {
     return tasks.filter(t => {
-      if (t.archived) return false;
       if (taskFilter === "all") return !t.done;
       if (taskFilter === "today") return t.time && t.time.startsWith("오늘");
       if (taskFilter === "important") return t.priority === "high" && !t.done;
@@ -792,19 +791,18 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
   }, [tasks, taskFilter, search]);
 
   const counts = {
-    all: tasks.filter(t => !t.archived && !t.done).length,
-    today: tasks.filter(t => !t.archived && t.time && t.time.startsWith("오늘")).length,
-    important: tasks.filter(t => !t.archived && t.priority === "high" && !t.done).length,
-    reminders: tasks.filter(t => !t.archived && t.reminder).length,
-    completed: tasks.filter(t => !t.archived && t.done).length,
+    all: tasks.filter(t => !t.done).length,
+    today: tasks.filter(t => t.time && t.time.startsWith("오늘")).length,
+    important: tasks.filter(t => t.priority === "high" && !t.done).length,
+    reminders: tasks.filter(t => t.reminder).length,
+    completed: tasks.filter(t => t.done).length,
   };
 
   const toggleTask = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
   const addTask = () => {
     if (!composerText.trim()) return;
     const id = "t" + Date.now();
-    const newTask = { id, title: composerText.trim(), memo: null, project: null, priority: "med", due: null, time: "오늘", reminder: false, done: false, tags: [] };
-    window.dispatchEvent(new CustomEvent("planary:create-task", { detail: newTask }));
+    setTasks(prev => [{ id, title: composerText.trim(), memo: null, project: null, priority: "med", due: null, time: "오늘", reminder: false, done: false, tags: [] }, ...prev]);
     setComposerText("");
     setComposerOpen(false);
   };
@@ -856,10 +854,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
             <button
               key={f.id}
               className={`tag-chip ${taskFilter === f.id ? "is-active" : ""}`}
-              onClick={() => {
-                setTaskFilter(f.id);
-                window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "taskViews" }));
-              }}
+              onClick={() => setTaskFilter(f.id)}
             >
               <Icon name={f.icon} size={11} />
               <span>{f.label}</span>

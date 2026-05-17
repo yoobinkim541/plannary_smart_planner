@@ -6,76 +6,51 @@ const { useState: useStateO, useRef: useRefO, useEffect: useEffectO, useMemo: us
    PROJECTS
    =========================================================== */
 function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
-  const { ECLASS_COURSES } = window.Planary;
-  const initialProjects = Array.isArray(window.Planary.PROJECTS) ? window.Planary.PROJECTS : [];
-  const [projects, setProjects] = useStateO(initialProjects);
-  const [selected, setSelected] = useStateO(initialProjects[0]?.id || null);
+  const { PROJECTS, ECLASS_COURSES } = window.Planary;
+  const [projects, setProjects] = useStateO(PROJECTS);
+  const [selected, setSelected] = useStateO(PROJECTS[0].id);
   const [syncing, setSyncing] = useStateO(false);
   const [createOpen, setCreateOpen] = useStateO(false);
 
+  // Live-sync projects from firebase-bridge
   useEffectO(() => {
     const onLoaded = (e) => {
-      if (Array.isArray(e.detail)) {
+      if (Array.isArray(e.detail) && e.detail.length) {
         setProjects(e.detail);
-        if (!e.detail.find(p => p.id === selected) && e.detail.length) setSelected(e.detail[0].id);
+        setSelected((cur) => e.detail.some((p) => p.id === cur) ? cur : e.detail[0].id);
       }
     };
     window.addEventListener("planary:projects-loaded", onLoaded);
     return () => window.removeEventListener("planary:projects-loaded", onLoaded);
-  }, [selected]);
+  }, []);
   const proj = projects.find((p) => p.id === selected);
-  const projTasks = tasks.filter((t) => t.project === selected && !t.archived);
+  const projTasks = tasks.filter((t) => t.project === selected);
   const open = projTasks.filter((t) => !t.done);
   const done = projTasks.filter((t) => t.done);
 
   const toggleTask = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
 
   const handleCreate = (draft) => {
-    const tempId = `p${Date.now()}`;
+    const id = `p${Date.now()}`;
     const newProj = {
-      id: tempId,
+      id,
       name: draft.name,
       color: draft.color,
       icon: draft.icon,
       progress: 0,
-      members: [window.Planary.USER?.initials || "U"],
+      members: [window.Planary.USER.initials],
       deadline: draft.deadline || null,
       description: draft.description || "",
     };
     const next = [...projects, newProj];
     setProjects(next);
-    window.Planary.PROJECTS = next; // optimistic
-    setSelected(tempId);
+    window.Planary.PROJECTS = next; // reflect globally
+    setSelected(id);
     setCreateOpen(false);
-    window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "projects" }));
+    window.dispatchEvent(new CustomEvent("planary:create-project", {
+      detail: { name: draft.name, color: draft.color, icon: draft.icon },
+    }));
     window.Planary.toast({ type: "ok", title: "프로젝트가 만들어졌어요", sub: draft.name });
-    if (window.Planary?.api?.uid) {
-      window.Planary.api.createProject(draft.name, draft.color, draft.icon).catch(err => {
-        console.error("createProject failed:", err);
-        window.Planary?.toast?.({ type: "err", title: "프로젝트 저장 실패", sub: err.message });
-      });
-    }
-  };
-
-  const editProject = (p) => {
-    const name = window.prompt("프로젝트 이름", p.name);
-    if (name == null) return;
-    const color = window.prompt("색상 hex", p.color) || p.color;
-    const icon = window.prompt("아이콘", p.icon) || p.icon;
-    const patch = { name: name.trim() || p.name, color, icon };
-    setProjects(prev => prev.map(x => x.id === p.id ? { ...x, ...patch } : x));
-    window.Planary?.api?.updateProject?.(p.id, patch)
-      .then(() => window.Planary.toast({ type: "ok", title: "프로젝트가 수정됐어요" }))
-      .catch(err => window.Planary.toast({ type: "err", title: "프로젝트 수정 실패", sub: err.message }));
-  };
-
-  const deleteProject = (p) => {
-    if (!window.confirm(`${p.name} 프로젝트를 삭제할까요? 작업은 삭제되지 않습니다.`)) return;
-    setProjects(prev => prev.filter(x => x.id !== p.id));
-    if (selected === p.id) setSelected(projects.find(x => x.id !== p.id)?.id || null);
-    window.Planary?.api?.deleteProject?.(p.id)
-      .then(() => window.Planary.toast({ type: "ok", title: "프로젝트가 삭제됐어요" }))
-      .catch(err => window.Planary.toast({ type: "err", title: "프로젝트 삭제 실패", sub: err.message }));
   };
 
   const triggerSync = () => {
@@ -124,21 +99,6 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
               className="card card-hover"
               style={{ cursor: "pointer", borderColor: active ? "var(--accent-ring)" : undefined, background: active ? "var(--accent-softer)" : undefined, position: "relative" }}
               onClick={() => setSelected(p.id)}>
-              {!p.isEclass && (
-                <button
-                  className="icon-btn"
-                  style={{ position: "absolute", top: 8, right: 8, zIndex: 2 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const action = window.prompt("프로젝트 작업: edit 또는 delete", "edit");
-                    if (action === "delete") deleteProject(p);
-                    else if (action !== null) editProject(p);
-                  }}
-                  aria-label="프로젝트 작업"
-                >
-                  <Icon name="more" size={14} />
-                </button>
-              )}
               
               {p.isEclass &&
               <span
@@ -255,12 +215,145 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
           </div>
         </div>)
       }
+      {createOpen && <CreateProjectDialog onClose={() => setCreateOpen(false)} onCreate={handleCreate} />}
     </div>);
 
 }
 
-/* ---------- e-Class detail view ---------- */
-/* ---------- e-Class detail view ---------- */
+
+/* ===========================================================
+   CREATE PROJECT DIALOG
+   =========================================================== */
+function CreateProjectDialog({ onClose, onCreate }) {
+  const [name, setName] = useStateO("");
+  const [icon, setIcon] = useStateO("🚀");
+  const [color, setColor] = useStateO("#7f0df2");
+  const [description, setDescription] = useStateO("");
+  const [deadline, setDeadline] = useStateO("");
+
+  const COLORS = ["#7f0df2", "#3b82f6", "#10b981", "#f59e0b", "#e11d48", "#0ea5e9", "#8b5cf6", "#475569"];
+  const ICONS  = ["🚀", "🎯", "🔬", "✍️", "🎨", "📚", "💼", "🧪", "📊", "🛠️", "💡", "🌱"];
+
+  useEffectO(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [name, icon, color, description, deadline]);
+
+  const canSubmit = name.trim().length > 0;
+  const submit = () => {
+    if (!canSubmit) return;
+    onCreate({ name: name.trim(), icon, color, description: description.trim(), deadline: deadline.trim() });
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(540px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>새 프로젝트</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>작업·노트·리마인더를 묶을 새 공간을 만들어요</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+
+        <div style={{ padding: "18px 22px" }}>
+          {/* Live preview */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-md)", marginBottom: 18 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: color, display: "grid", placeItems: "center", fontSize: 22, flexShrink: 0 }}>{icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: name ? "var(--text-hi)" : "var(--text-faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name || "프로젝트 이름"}</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>1명 · 0개 작업{deadline ? ` · ${deadline} 마감` : ""}</div>
+            </div>
+            <span className="chip">미리보기</span>
+          </div>
+
+          <div>
+            <label className="kicker" style={{ display: "block", marginBottom: 6 }}>이름 <span style={{ color: "var(--err)", fontWeight: 600 }}>*</span></label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: Planary v3 출시"
+              className="form-input"
+            />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+            <div>
+              <label className="kicker" style={{ display: "block", marginBottom: 6 }}>아이콘</label>
+              <div className="proj-icon-grid">
+                {ICONS.map(i => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setIcon(i)}
+                    className={`proj-icon-cell ${icon === i ? "is-active" : ""}`}
+                  >
+                    {i}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="kicker" style={{ display: "block", marginBottom: 6 }}>컬러</label>
+              <div className="proj-color-grid">
+                {COLORS.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={`proj-color-cell ${color === c ? "is-active" : ""}`}
+                    style={{ background: c }}
+                  >
+                    {color === c && <Icon name="check" size={11} stroke={3} style={{ color: "white" }} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <label className="kicker" style={{ display: "block", marginBottom: 6 }}>설명 <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>(선택)</span></label>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="이 프로젝트의 목표나 맥락을 한 줄로"
+              className="form-input"
+            />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <label className="kicker" style={{ display: "block", marginBottom: 6 }}>마감일 <span style={{ color: "var(--text-faint)", fontWeight: 500 }}>(선택)</span></label>
+            <input
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              placeholder="예: 12월 18일"
+              className="form-input"
+            />
+          </div>
+        </div>
+
+        <div className="dialog-foot">
+          <div style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>나중에 언제든 변경할 수 있어요</div>
+          <button className="btn btn-sm" onClick={onClose}>취소</button>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={submit}
+            disabled={!canSubmit}
+            style={!canSubmit ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+          >
+            <Icon name="plus" size={12} />프로젝트 만들기 <span className="kbd" style={{ marginLeft: 4 }}>⌘↵</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- e-Class detail view ---------- */
 function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPage }) {
   const { ECLASS_COURSES, USER } = window.Planary;
@@ -451,21 +544,79 @@ function NotesPage() {
   const [draft, setDraft] = useStateO("");
   const [view, setView] = useStateO("board"); // board | grid
   const [boardW, setBoardW] = useStateO(0);
+  const [editing, setEditing] = useStateO(null); // { id, text, color } | null
+  const [colorMenuFor, setColorMenuFor] = useStateO(null); // note id whose color menu is open
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
+  const editAreaRef = useRefO(null);
 
-  // Sync with Firestore via bridge (planary:notes-loaded / -changed)
+  // Focus textarea when entering edit mode
+  useEffectO(() => {
+    if (editing && editAreaRef.current) {
+      const el = editAreaRef.current;
+      el.focus();
+      // Move cursor to end
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    }
+  }, [editing && editing.id]);
+
+  // Live-sync notes from firebase-bridge
   useEffectO(() => {
     const onLoaded = (e) => {
       if (Array.isArray(e.detail)) setNotes(e.detail);
     };
     window.addEventListener("planary:notes-loaded", onLoaded);
-    window.addEventListener("planary:notes-changed", onLoaded);
-    return () => {
-      window.removeEventListener("planary:notes-loaded", onLoaded);
-      window.removeEventListener("planary:notes-changed", onLoaded);
-    };
+    return () => window.removeEventListener("planary:notes-loaded", onLoaded);
   }, []);
+
+  const startEdit = (n) => setEditing({ id: n.id, text: n.text, color: n.color });
+  const cancelEdit = () => setEditing(null);
+  const commitEdit = () => {
+    if (!editing) return;
+    const trimmed = editing.text.trim();
+    if (!trimmed) {
+      // Empty -> delete the note
+      setNotes((prev) => prev.filter((n) => n.id !== editing.id));
+      window.dispatchEvent(new CustomEvent("planary:delete-note", { detail: editing.id }));
+    } else {
+      setNotes((prev) => prev.map((n) =>
+        n.id === editing.id
+          ? { ...n, text: trimmed, color: editing.color, date: "방금 수정", rot: n.dragging ? n.rot : n.rot }
+          : n
+      ));
+      window.dispatchEvent(new CustomEvent("planary:update-note", {
+        detail: { id: editing.id, patch: { text: trimmed, color: editing.color } },
+      }));
+    }
+    setEditing(null);
+  };
+
+  const cycleColor = (id) => {
+    const order = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
+    let nextColor = null;
+    setNotes((prev) => prev.map((n) => {
+      if (n.id !== id) return n;
+      nextColor = order[(order.indexOf(n.color) + 1) % order.length];
+      return { ...n, color: nextColor };
+    }));
+    if (nextColor) {
+      window.dispatchEvent(new CustomEvent("planary:update-note", {
+        detail: { id, patch: { color: nextColor } },
+      }));
+    }
+  };
+
+  const duplicateNote = (n) => {
+    const id = "n" + Date.now();
+    setNotes((prev) => [
+      { ...n, id, x: n.x + 24, y: n.y + 24, rot: (Math.random() - 0.5) * 4, date: "방금 복제" },
+      ...prev,
+    ]);
+    window.dispatchEvent(new CustomEvent("planary:create-note", {
+      detail: { text: n.text, color: n.color, x: n.x + 24, y: n.y + 24 },
+    }));
+  };
 
   // Track board width so notes can clamp to its bounds on every render & resize
   useEffectO(() => {
@@ -478,7 +629,9 @@ function NotesPage() {
   }, [view]);
 
   const onPointerDown = (e, note) => {
-    if (e.target.closest(".note-foot") || e.target.tagName === "BUTTON") return;
+    if (e.target.closest(".note-foot") || e.target.closest(".note-toolbar") || e.target.tagName === "BUTTON" || e.target.tagName === "TEXTAREA") return;
+    // Don't drag the note we're editing
+    if (editing && editing.id === note.id) return;
     // Left click only (pointer button === 0). Touch and pen also report 0.
     if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault();
@@ -512,16 +665,16 @@ function NotesPage() {
     const onUp = () => {
       const d = dragRef.current;
       if (d) {
-        let final = null;
+        let finalPos = null;
         setNotes((prev) => prev.map((n) => {
           if (n.id !== d.id) return n;
-          final = { ...n, dragging: false };
-          return final;
+          if (d.moved) finalPos = { x: n.x, y: n.y };
+          return { ...n, dragging: false };
         }));
-        // Persist new position if we actually moved + signed in
-        if (d.moved && final && window.Planary?.api?.uid) {
-          window.Planary.api.updateNote(final.id, { x: final.x, y: final.y })
-            .catch(err => console.error("updateNote failed:", err));
+        if (finalPos) {
+          window.dispatchEvent(new CustomEvent("planary:update-note", {
+            detail: { id: d.id, patch: finalPos },
+          }));
         }
         dragRef.current = null;
       }
@@ -543,16 +696,20 @@ function NotesPage() {
   const addNote = () => {
     if (!draft.trim()) return;
     const id = "n" + Date.now();
-    const draftNote = { id, x: 60 + Math.random() * 200, y: 60 + Math.random() * 100, color: draftColor, text: draft.trim(), date: "방금", rot: (Math.random() - 0.5) * 4, dragging: false };
-    setNotes((prev) => [draftNote, ...prev]);
+    const x = 60 + Math.random() * 200;
+    const y = 60 + Math.random() * 100;
+    const text = draft.trim();
+    setNotes((prev) => [
+    { id, x, y, color: draftColor, text, date: "방금", rot: (Math.random() - 0.5) * 4, dragging: false },
+    ...prev]
+    );
+    window.dispatchEvent(new CustomEvent("planary:create-note", {
+      detail: { text, color: draftColor, x, y },
+    }));
     setDraft("");
-    window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "notesCreate" }));
-    if (window.Planary?.api?.uid) {
-      window.Planary.api.createNote(draftNote).catch(err => console.error("createNote failed:", err));
-    }
   };
 
-  const colors = ["yellow", "pink", "blue", "green", "purple", "orange"];
+  const colors = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
 
   return (
     <div className="page-wide">
@@ -629,117 +786,194 @@ function NotesPage() {
         const NOTE_W = 200, NOTE_H = 144, PAD = 8;
         const maxX = Math.max(0, boardW - NOTE_W - PAD);
         const safeX = boardW > 0 ? Math.min(n.x, maxX) : n.x;
+        const isEditing = editing && editing.id === n.id;
+        const displayColor = isEditing ? editing.color : n.color;
         return (
         <div
           key={n.id}
-          className={`note note-${n.color} ${n.dragging ? "dragging" : ""}`}
+          className={`note note-${displayColor} ${n.dragging ? "dragging" : ""} ${isEditing ? "is-editing" : ""}`}
           style={{
             left: safeX, top: n.y,
-            transform: `rotate(${n.dragging ? 0 : n.rot}deg)${n.dragging ? " scale(1.04)" : ""}`,
-            zIndex: n.dragging ? 10 : "auto",
-            touchAction: "none"
+            transform: isEditing ? "rotate(0deg) scale(1.06)" : `rotate(${n.dragging ? 0 : n.rot}deg)${n.dragging ? " scale(1.04)" : ""}`,
+            zIndex: isEditing ? 20 : (n.dragging ? 10 : "auto"),
+            touchAction: "none",
+            cursor: isEditing ? "default" : undefined,
           }}
-          onPointerDown={(e) => onPointerDown(e, n)}>
-          
-              <div className="note-text">{n.text}</div>
-              <div className="note-foot">
-                <span>{n.date}</span>
-                <div style={{ display: "flex", gap: 3, marginLeft: "auto" }}>
-                  {colors.map((c) =>
-                    <button
-                      key={c}
-                      className={`note note-${c}`}
-                      style={{ position: "static", width: 14, height: 14, minHeight: 14, padding: 0, borderRadius: 3, transform: "none", boxShadow: n.color === c ? "0 0 0 1.5px rgba(0,0,0,.45)" : "none" }}
-                      onClick={() => {
-                        setNotes(prev => prev.map(x => x.id === n.id ? { ...x, color: c } : x));
-                        window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "notesManage" }));
-                        window.Planary?.api?.updateNote?.(n.id, { color: c }).catch(err => window.Planary.toast({ type: "err", title: "색상 저장 실패", sub: err.message }));
-                      }}
-                      title={c}
-                    />
-                  )}
+          onPointerDown={(e) => onPointerDown(e, n)}
+          onDoubleClick={() => !isEditing && startEdit(n)}
+        >
+              {isEditing ? (
+                <textarea
+                  ref={editAreaRef}
+                  className="note-edit-area"
+                  value={editing.text}
+                  onChange={(e) => setEditing({ ...editing, text: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") cancelEdit();
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitEdit();
+                  }}
+                  onBlur={commitEdit}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  placeholder="내용을 입력하세요…"
+                />
+              ) : (
+                <div className="note-text">{n.text}</div>
+              )}
+
+              <NoteToolbar
+                note={n}
+                isEditing={isEditing}
+                editing={editing}
+                setEditing={setEditing}
+                onEdit={() => startEdit(n)}
+                onCommit={commitEdit}
+                onCancel={cancelEdit}
+                onCycleColor={() => cycleColor(n.id)}
+                onDuplicate={() => duplicateNote(n)}
+                onDelete={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); window.dispatchEvent(new CustomEvent("planary:delete-note", { detail: n.id })); }}
+              />
+
+              {!isEditing && (
+                <div className="note-foot">
+                  <span>{n.date}</span>
                 </div>
-                <button
-              style={{ color: "rgba(0,0,0,0.4)", background: "none", border: 0, cursor: "pointer", padding: 2 }}
-              onClick={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); if (window.Planary?.api?.uid) window.Planary.api.deleteNote(n.id).catch(err => console.error("deleteNote failed:", err)); }}
-              title="삭제">
-              
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
+              )}
             </div>);
         })}
         </div> :
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-          {notes.map((n) =>
+          {notes.map((n) => {
+            const isEditing = editing && editing.id === n.id;
+            const displayColor = isEditing ? editing.color : n.color;
+            return (
         <div
           key={n.id}
-          className={`note note-${n.color}`}
+          className={`note note-${displayColor} ${isEditing ? "is-editing" : ""}`}
           style={{
             position: "relative",
             width: "auto",
             left: 0, top: 0,
             transform: "rotate(-0.5deg)",
             minHeight: 140,
-            cursor: "default"
-          }}>
-          
-              <div className="note-text">{n.text}</div>
-              <div className="note-foot">
-                <span>{n.date}</span>
-                <div style={{ display: "flex", gap: 3, marginLeft: "auto" }}>
-                  {colors.map((c) =>
-                    <button
-                      key={c}
-                      className={`note note-${c}`}
-                      style={{ position: "static", width: 14, height: 14, minHeight: 14, padding: 0, borderRadius: 3, transform: "none", boxShadow: n.color === c ? "0 0 0 1.5px rgba(0,0,0,.45)" : "none" }}
-                      onClick={() => {
-                        setNotes(prev => prev.map(x => x.id === n.id ? { ...x, color: c } : x));
-                        window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "notesManage" }));
-                        window.Planary?.api?.updateNote?.(n.id, { color: c }).catch(err => window.Planary.toast({ type: "err", title: "색상 저장 실패", sub: err.message }));
-                      }}
-                      title={c}
-                    />
-                  )}
+            cursor: isEditing ? "default" : "default"
+          }}
+          onDoubleClick={() => !isEditing && startEdit(n)}
+        >
+              {isEditing ? (
+                <textarea
+                  ref={editAreaRef}
+                  className="note-edit-area"
+                  value={editing.text}
+                  onChange={(e) => setEditing({ ...editing, text: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") cancelEdit();
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commitEdit();
+                  }}
+                  onBlur={commitEdit}
+                  placeholder="내용을 입력하세요…"
+                />
+              ) : (
+                <div className="note-text">{n.text}</div>
+              )}
+
+              <NoteToolbar
+                note={n}
+                isEditing={isEditing}
+                editing={editing}
+                setEditing={setEditing}
+                onEdit={() => startEdit(n)}
+                onCommit={commitEdit}
+                onCancel={cancelEdit}
+                onCycleColor={() => cycleColor(n.id)}
+                onDuplicate={() => duplicateNote(n)}
+                onDelete={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); window.dispatchEvent(new CustomEvent("planary:delete-note", { detail: n.id })); }}
+              />
+
+              {!isEditing && (
+                <div className="note-foot">
+                  <span>{n.date}</span>
                 </div>
-                <button
-              style={{ color: "rgba(0,0,0,0.4)", background: "none", border: 0, cursor: "pointer", padding: 2 }}
-              onClick={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); if (window.Planary?.api?.uid) window.Planary.api.deleteNote(n.id).catch(err => console.error("deleteNote failed:", err)); }}
-              title="삭제">
-              
-                  <Icon name="x" size={12} />
-                </button>
-              </div>
-            </div>
-        )}
+              )}
+            </div>);
+          })}
         </div>
       }
     </div>);
 
 }
 
+/* ---------- Note Toolbar (hover/edit actions) ---------- */
+function NoteToolbar({ note, isEditing, editing, setEditing, onEdit, onCommit, onCancel, onCycleColor, onDuplicate, onDelete }) {
+  if (isEditing) {
+    const COLORS = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
+    return (
+      <div className="note-toolbar is-editing" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="note-color-strip">
+          {COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              title={c}
+              className={`note-color-swatch note-${c} ${editing.color === c ? "is-on" : ""}`}
+              onClick={() => setEditing({ ...editing, color: c })}
+              onMouseDown={(e) => e.preventDefault()}
+            />
+          ))}
+        </div>
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          className="note-edit-btn"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onCancel}
+          title="취소 (Esc)"
+        >취소</button>
+        <button
+          type="button"
+          className="note-edit-btn is-primary"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onCommit}
+          title="저장 (⌘+Enter)"
+        >저장</button>
+      </div>
+    );
+  }
+  return (
+    <div className="note-toolbar" onPointerDown={(e) => e.stopPropagation()}>
+      <button type="button" className="note-icon-btn" onClick={onEdit} title="편집 (더블클릭)">
+        <Icon name="edit" size={11} />
+      </button>
+      <button type="button" className="note-icon-btn" onClick={onCycleColor} title="색상 바꾸기">
+        <Icon name="sparkles" size={11} />
+      </button>
+      <button type="button" className="note-icon-btn" onClick={onDuplicate} title="복제">
+        <Icon name="copy" size={11} />
+      </button>
+      <button type="button" className="note-icon-btn is-danger" onClick={onDelete} title="삭제">
+        <Icon name="trash" size={11} />
+      </button>
+    </div>
+  );
+}
+
 /* ===========================================================
    WIKI
    =========================================================== */
 function WikiPage() {
-  const initialTree = Array.isArray(window.Planary.WIKI_TREE) && window.Planary.WIKI_TREE.length
-    ? window.Planary.WIKI_TREE
-    : [{ id: "w0", title: "(빈 공간) — 새 페이지를 만들어보세요", parent: null, icon: "📄" }];
-  const [WIKI_TREE, setWikiTree] = useStateO(initialTree);
-  const [activeId, setActiveId] = useStateO(initialTree[0]?.id || "w3");
-
-  // Live wiki tree from bridge
-  useEffectO(() => {
-    const onLoaded = (e) => {
-      const tree = e.detail?.tree;
-      if (!Array.isArray(tree)) return;
-      setWikiTree(tree.length ? tree : initialTree);
-      setActiveId((prev) => tree.find(t => t.id === prev) ? prev : (tree[0]?.id || prev));
-    };
-    window.addEventListener("planary:wiki-loaded", onLoaded);
-    return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
-  }, []);
+  const [tree, setTree] = useStateO(() => [...(window.Planary.WIKI_TREE || [])]);
+  const [activeId, setActiveId] = useStateO("w3"); // "컬러 토큰"
+  const [docBlocks, setDocBlocks] = useStateO([]); // sync from <WikiBlocks/>
+  const [pendingDelete, setPendingDelete] = useStateO(null); // node being confirmed for deletion
+  const [treeMenuFor, setTreeMenuFor] = useStateO(null); // node id whose ··· menu is open
+  const [renamingId, setRenamingId] = useStateO(null); // node id being renamed inline
+  const [renameDraft, setRenameDraft] = useStateO("");
+  const renameInputRef = useRefO(null);
+  const [duplicating, setDuplicating] = useStateO(null); // { node } | null
+  const [addMenuFor, setAddMenuFor] = useStateO(null); // node id whose + add menu is open
+  // Drag-and-drop reordering
+  const [dragId, setDragId] = useStateO(null);
+  const [dropTarget, setDropTarget] = useStateO(null); // { id, pos: "before"|"after"|"inside" }
   const [showAside, setShowAside] = useStateO(() => typeof window !== 'undefined' && window.innerWidth > 1280);
   const [showTree, setShowTree] = useStateO(() => typeof window !== 'undefined' && window.innerWidth > 1024);
   const [pageIcons, setPageIcons] = useStateO({});
@@ -760,7 +994,7 @@ function WikiPage() {
   const [infoOpen, setInfoOpen] = useStateO(false);
   const [favorites, setFavorites] = useStateO(() => new Set());
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
-  const active = WIKI_TREE.find((w) => w.id === activeId) || WIKI_TREE[0];
+  const active = tree.find((w) => w.id === activeId) || tree[0];
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
   const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
 
@@ -803,43 +1037,165 @@ function WikiPage() {
   };
 
   // Build tree: roots and children
-  const roots = WIKI_TREE.filter((w) => !w.parent);
-  const childrenOf = (id) => WIKI_TREE.filter((w) => w.parent === id);
+  const roots = tree.filter((w) => !w.parent);
+  const childrenOf = (id) => tree.filter((w) => w.parent === id);
 
   const toggleNode = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const matchSearch = (w) => !search || w.title.toLowerCase().includes(search.toLowerCase());
 
-  const collectDescendantIds = (id) => {
-    const kids = childrenOf(id);
-    return kids.flatMap(k => [k.id, ...collectDescendantIds(k.id)]);
+  // Sync tree → global on every change so other parts of the app see updates
+  useEffectO(() => {
+    window.Planary.WIKI_TREE = tree;
+  }, [tree]);
+
+  // Live-sync wiki tree from firebase-bridge
+  useEffectO(() => {
+    const onLoaded = (e) => {
+      const d = e.detail || {};
+      if (Array.isArray(d.tree)) {
+        setTree(d.tree);
+        setActiveId((cur) => d.tree.some((w) => w.id === cur) ? cur : (d.tree[0]?.id || cur));
+      }
+    };
+    window.addEventListener("planary:wiki-loaded", onLoaded);
+    return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
+  }, []);
+
+  // Collect a page and all its descendants
+  const collectDescendants = (id) => {
+    const result = [id];
+    const stack = [id];
+    while (stack.length) {
+      const cur = stack.pop();
+      tree.filter((w) => w.parent === cur).forEach((w) => {
+        result.push(w.id);
+        stack.push(w.id);
+      });
+    }
+    return result;
   };
 
-  const deleteActivePage = async () => {
-    if (!active || active.id === "w0") return;
-    const ids = [active.id, ...collectDescendantIds(active.id)];
-    const label = ids.length > 1 ? `"${active.title}"와 하위 ${ids.length - 1}개 페이지` : `"${active.title}" 페이지`;
-    if (!window.confirm(`${label}를 삭제할까요?`)) return;
-    if (!window.Planary?.api?.uid) {
-      window.Planary?.toast?.({ type: "info", title: "로그인 후 페이지를 삭제할 수 있어요" });
+  const startRename = (node) => {
+    setRenameDraft(node.title);
+    setRenamingId(node.id);
+    setTreeMenuFor(null);
+  };
+
+  // Add a new page (called from + button menu)
+  const addPage = (parent, type) => {
+    const id = `w${Date.now()}`;
+    const presets = {
+      blank:    { icon: "📄", title: "새 페이지" },
+      meeting:  { icon: "🗓️", title: "회의록", body: "헤더에 일시·참석자, 본문에 안건·결정·액션 아이템" },
+      research: { icon: "🔬", title: "리서치 노트", body: "가설 · 방법 · 결과 · 다음 단계" },
+      okr:      { icon: "🎯", title: "OKR & 마일스톤", body: "분기 목표와 핵심 결과" },
+    };
+    const preset = presets[type] || presets.blank;
+    const newNode = { id, title: preset.title, icon: preset.icon, parent: parent || null };
+    setTree((prev) => [...prev, newNode]);
+    if (parent) setExpanded((prev) => ({ ...prev, [parent]: true }));
+    setActiveId(id);
+    // Auto enter rename for the new page
+    setTimeout(() => startRename(newNode), 80);
+    window.dispatchEvent(new CustomEvent("planary:create-wiki-page", {
+      detail: { title: preset.title, parentId: parent || null },
+    }));
+    window.Planary.toast?.({ type: "ok", title: "새 페이지가 추가됐어요", ttl: 1800 });
+  };
+
+  const commitRename = () => {
+    if (!renamingId) return;
+    const v = renameDraft.trim();
+    if (v) {
+      setTree((prev) => prev.map((w) => w.id === renamingId ? { ...w, title: v } : w));
+      window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+        detail: { id: renamingId, patch: { title: v } },
+      }));
+      window.Planary.toast?.({ type: "ok", title: "이름이 변경됐어요", ttl: 1800 });
+    }
+    setRenamingId(null);
+    setRenameDraft("");
+  };
+  const cancelRename = () => { setRenamingId(null); setRenameDraft(""); };
+
+  // Focus the input when inline rename starts
+  useEffectO(() => {
+    if (renamingId && renameInputRef.current) {
+      const el = renameInputRef.current;
+      el.focus();
+      el.select();
+    }
+  }, [renamingId]);
+  const executeDelete = () => {
+    if (!pendingDelete) return;
+    const idsToRemove = new Set(collectDescendants(pendingDelete.id));
+    idsToRemove.forEach((wid) => {
+      window.dispatchEvent(new CustomEvent("planary:delete-wiki-page", { detail: wid }));
+    });
+    setTree((prev) => prev.filter((w) => !idsToRemove.has(w.id)));
+    if (idsToRemove.has(activeId)) {
+      const survivors = tree.filter((w) => !idsToRemove.has(w.id));
+      const first = survivors.find((w) => !w.parent) || survivors[0];
+      if (first) setActiveId(first.id);
+    }
+    window.Planary.toast?.({
+      type: "ok",
+      title: `"${pendingDelete.title}" 삭제됨`,
+      sub: idsToRemove.size > 1 ? `${idsToRemove.size}개 페이지가 함께 삭제됐어요` : undefined,
+    });
+    setPendingDelete(null);
+  };
+
+  // Drag-and-drop reorder/reparent helpers
+  const isDescendantOf = (ancestorId, candidateId) => {
+    if (ancestorId === candidateId) return true;
+    let cur = tree.find((w) => w.id === candidateId);
+    while (cur && cur.parent) {
+      if (cur.parent === ancestorId) return true;
+      cur = tree.find((w) => w.id === cur.parent);
+    }
+    return false;
+  };
+
+  const moveNode = (sourceId, targetId, position) => {
+    if (sourceId === targetId) return;
+    if (isDescendantOf(sourceId, targetId)) {
+      window.Planary.toast?.({ type: "err", title: "하위 페이지로 이동할 수 없어요" });
       return;
     }
-    const previousTree = WIKI_TREE;
-    const nextTree = WIKI_TREE.filter(w => !ids.includes(w.id));
-    setWikiTree(nextTree.length ? nextTree : initialTree);
-    setActiveId((nextTree[0] || initialTree[0])?.id);
-    try {
-      await Promise.all(ids.map(id => window.Planary.api.deleteWikiPage(id)));
-      window.Planary.toast?.({
-        type: "ok",
-        title: ids.length > 1 ? "페이지 묶음이 삭제됐어요" : "페이지가 삭제됐어요",
-        sub: ids.length > 1 ? `${ids.length}개 페이지` : active.title,
-      });
-    } catch (err) {
-      setWikiTree(previousTree);
-      setActiveId(active.id);
-      window.Planary.toast?.({ type: "err", title: "페이지 삭제 실패", sub: err.message });
+    setTree((prev) => {
+      const src = prev.find((w) => w.id === sourceId);
+      const tgt = prev.find((w) => w.id === targetId);
+      if (!src || !tgt) return prev;
+      const without = prev.filter((w) => w.id !== sourceId);
+      let newParent = position === "inside" ? targetId : (tgt.parent || null);
+      const newSrc = { ...src, parent: newParent };
+      const out = [];
+      let inserted = false;
+      if (position === "inside") {
+        // place at end
+        out.push(...without, newSrc);
+        inserted = true;
+      } else {
+        const anchor = position === "before" ? "before" : "after";
+        for (const w of without) {
+          if (anchor === "before" && w.id === targetId && !inserted) {
+            out.push(newSrc); inserted = true;
+          }
+          out.push(w);
+          if (anchor === "after" && w.id === targetId && !inserted) {
+            out.push(newSrc); inserted = true;
+          }
+        }
+        if (!inserted) out.push(newSrc);
+      }
+      return out;
+    });
+    if (position === "inside") {
+      setExpanded((prev) => ({ ...prev, [targetId]: true }));
     }
+    window.Planary.toast?.({ type: "ok", title: "페이지가 이동됐어요", ttl: 1800 });
   };
 
   const TreeNode = ({ node, depth = 0 }) => {
@@ -847,42 +1203,213 @@ function WikiPage() {
     const hasKids = kids.length > 0;
     const isOpen = !!expanded[node.id];
     // Auto-expand if any descendant matches search
-    const expandedBySearch = search && (matchSearch(node) || WIKI_TREE.some((w) => w.parent === node.id && matchSearch(w)));
+    const expandedBySearch = search && (matchSearch(node) || tree.some((w) => w.parent === node.id && matchSearch(w)));
     const open = isOpen || expandedBySearch;
+    const isDragSource = dragId === node.id;
+    const dropPos = dropTarget && dropTarget.id === node.id ? dropTarget.pos : null;
+    const isMenuOpen = treeMenuFor === node.id;
 
     if (search && !matchSearch(node) && !kids.some((k) => matchSearch(k))) return null;
+
+    const onDragStartEvt = (e) => {
+      setDragId(node.id);
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", node.id); } catch (_) {}
+    };
+
+    const onDragOverEvt = (e) => {
+      if (!dragId || dragId === node.id) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      const rect = e.currentTarget.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const h = rect.height;
+      let pos;
+      if (y < h * 0.25) pos = "before";
+      else if (y > h * 0.75) pos = "after";
+      else pos = "inside";
+      setDropTarget({ id: node.id, pos });
+    };
+
+    const onDragLeaveEvt = (e) => {
+      // Only clear if leaving the row entirely
+      if (!e.currentTarget.contains(e.relatedTarget)) {
+        if (dropTarget && dropTarget.id === node.id) setDropTarget(null);
+      }
+    };
+
+    const onDropEvt = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (dragId && dragId !== node.id && dropTarget && dropTarget.id === node.id) {
+        moveNode(dragId, node.id, dropTarget.pos);
+      }
+      setDragId(null);
+      setDropTarget(null);
+    };
+
+    const onDragEndEvt = () => { setDragId(null); setDropTarget(null); };
 
     return (
       <div>
         <div
-          className={`wiki-tree-item ${activeId === node.id ? "is-active" : ""}`}
+          className={`wiki-tree-item ${activeId === node.id ? "is-active" : ""} ${isDragSource ? "is-drag-src" : ""} ${dropPos ? `drop-${dropPos}` : ""}`}
           style={{ paddingLeft: 6 + depth * 14 }}
-          onClick={() => setActiveId(node.id)}>
-          
+          onClick={() => setActiveId(node.id)}
+          draggable
+          onDragStart={onDragStartEvt}
+          onDragOver={onDragOverEvt}
+          onDragLeave={onDragLeaveEvt}
+          onDrop={onDropEvt}
+          onDragEnd={onDragEndEvt}
+        >
+
           {hasKids ?
           <button
             className={`wiki-tree-toggle ${open ? "is-open" : ""}`}
             onClick={(e) => {e.stopPropagation();toggleNode(node.id);}}
             title={open ? "접기" : "펼치기"}>
-            
+
               <Icon name="chevronRight" size={11} />
             </button> :
 
           <span style={{ width: 18, display: "inline-block" }} />
           }
           <span style={{ fontSize: 14 }}>{node.icon}</span>
-          <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{node.title}</span>
-          {hasKids &&
-          <span style={{ fontSize: 10, color: "var(--text-faint)" }}>
+          {renamingId === node.id ? (
+            <input
+              ref={renameInputRef}
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename();
+                if (e.key === "Escape") cancelRename();
+              }}
+              onBlur={commitRename}
+              className="wiki-tree-rename-input"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+            />
+          ) : (
+            <span
+              style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              onDoubleClick={(e) => { e.stopPropagation(); startRename(node); }}
+              title="더블클릭으로 이름 변경"
+            >
+              {node.title}
+            </span>
+          )}
+
+          <div className="wiki-tree-actions" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="wiki-tree-action-btn"
+              title="페이지 추가"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAddMenuFor(addMenuFor === node.id ? null : node.id);
+                setTreeMenuFor(null);
+              }}
+            >
+              <Icon name="plus" size={11} />
+            </button>
+            <button
+              type="button"
+              className="wiki-tree-action-btn"
+              title="더 보기"
+              onClick={(e) => {
+                e.stopPropagation();
+                setTreeMenuFor(isMenuOpen ? null : node.id);
+                setAddMenuFor(null);
+              }}
+            >
+              <Icon name="more" size={12} />
+            </button>
+          </div>
+
+          {hasKids && !isMenuOpen && addMenuFor !== node.id &&
+          <span style={{ fontSize: 10, color: "var(--text-faint)" }} className="wiki-tree-count">
               {kids.length}
             </span>
           }
+
+          {addMenuFor === node.id && (
+            <div
+              className="popover"
+              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 220 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="popover-header" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 4px" }}>
+                {node.title} 안에 추가
+              </div>
+              <div className="popover-item" onClick={() => { addPage(node.id, "blank"); setAddMenuFor(null); }}>
+                <Icon name="document" size={12} />
+                <div style={{ flex: 1 }}>
+                  <div>빈 페이지</div>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>제목 없이 새로 시작</div>
+                </div>
+              </div>
+              <div className="popover-item" onClick={() => { addPage(node.id, "meeting"); setAddMenuFor(null); }}>
+                <Icon name="calendar" size={12} />
+                <div style={{ flex: 1 }}>
+                  <div>회의록</div>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>일시·안건·결정 템플릿</div>
+                </div>
+              </div>
+              <div className="popover-item" onClick={() => { addPage(node.id, "research"); setAddMenuFor(null); }}>
+                <Icon name="sparkles" size={12} />
+                <div style={{ flex: 1 }}>
+                  <div>리서치 노트</div>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>가설·방법·결과 템플릿</div>
+                </div>
+              </div>
+              <div className="popover-item" onClick={() => { addPage(node.id, "okr"); setAddMenuFor(null); }}>
+                <Icon name="target" size={12} />
+                <div style={{ flex: 1 }}>
+                  <div>OKR & 마일스톤</div>
+                  <div style={{ fontSize: 10, color: "var(--text-faint)" }}>분기 목표 템플릿</div>
+                </div>
+              </div>
+              <div className="popover-sep" />
+              <div className="popover-item" onClick={() => { addPage(node.parent, "blank"); setAddMenuFor(null); }}>
+                <Icon name="arrowRight" size={12} style={{ transform: "rotate(-90deg)" }} />
+                <span>같은 레벨에 추가</span>
+              </div>
+            </div>
+          )}
+
+          {isMenuOpen && (
+            <div
+              className="popover"
+              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 160 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="popover-item" onClick={() => { setActiveId(node.id); setTreeMenuFor(null); }}>
+                <Icon name="eye" size={12} />열기
+              </div>
+              <div className="popover-item" onClick={() => startRename(node)}>
+                <Icon name="edit" size={12} />이름 변경
+              </div>
+              <div className="popover-item" onClick={() => { setDuplicating({ node }); setTreeMenuFor(null); }}>
+                <Icon name="copy" size={12} />복제
+              </div>
+              <div className="popover-sep" />
+              <div
+                className="popover-item is-danger"
+                onClick={() => { setPendingDelete(node); setTreeMenuFor(null); }}
+              >
+                <Icon name="trash" size={12} />삭제
+              </div>
+            </div>
+          )}
         </div>
         {hasKids &&
         <div
           className={`wiki-tree-children ${open ? "is-open" : "is-closed"}`}
           style={{ maxHeight: open ? `${kids.length * 80}px` : 0 }}>
-          
+
             {kids.map((k) => <TreeNode key={k.id} node={k} depth={depth + 1} />)}
           </div>
         }
@@ -922,24 +1449,7 @@ function WikiPage() {
           <div>
             {roots.map((r) => <TreeNode key={r.id} node={r} />)}
           </div>
-          <div
-            className="wiki-tree-item"
-            style={{ color: "var(--text-lo)", marginTop: 4, cursor: "pointer" }}
-            onClick={async () => {
-              if (window.Planary?.api?.uid) {
-                try {
-                  const id = await window.Planary.api.createWikiPage("새 페이지", null);
-                  if (id) setActiveId(id);
-                  window.dispatchEvent(new CustomEvent("planary:onboarding-complete", { detail: "wiki" }));
-                } catch (err) {
-                  console.error("createWikiPage failed:", err);
-                  window.Planary?.toast?.({ type: "err", title: "페이지 만들기 실패", sub: err.message });
-                }
-              } else {
-                window.Planary?.toast?.({ type: "info", title: "로그인 후 페이지를 만들 수 있어요" });
-              }
-            }}
-          >
+          <div className="wiki-tree-item" style={{ color: "var(--text-lo)", marginTop: 4 }}>
             <span style={{ width: 18, display: "inline-block" }} />
             <Icon name="plus" size={12} />
             <span>새 페이지</span>
@@ -1109,7 +1619,7 @@ function WikiPage() {
               let cur = active;
               while (cur) {
                 chain.unshift(cur);
-                cur = cur.parent ? WIKI_TREE.find(w => w.id === cur.parent) : null;
+                cur = cur.parent ? tree.find(w => w.id === cur.parent) : null;
               }
               return chain.map((node, i) => {
                 const isLast = i === chain.length - 1;
@@ -1232,7 +1742,9 @@ function WikiPage() {
                       className="popover-item is-danger"
                       onClick={() => {
                         setMoreMenuOpen(false);
-                        deleteActivePage();
+                        if (window.confirm(`"${active.title}" 페이지를 삭제할까요?`)) {
+                          window.Planary.toast?.({ type: "err", title: "페이지가 삭제됐어요", sub: "30일 후 영구 삭제됩니다" });
+                        }
                       }}
                     >
                       <Icon name="trash" size={14} />페이지 삭제
@@ -1249,22 +1761,9 @@ function WikiPage() {
             <span className="tag">v3</span>
             <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }}><Icon name="plus" size={10} />태그</button>
           </div>
-          <h1
-            className="wiki-doc-title"
-            contentEditable={!!window.Planary?.api?.uid}
-            suppressContentEditableWarning
-            onBlur={(e) => {
-              if (!window.Planary?.api?.uid) return;
-              const next = (e.currentTarget.textContent || "").trim();
-              if (!next || next === active.title) return;
-              window.Planary.api.updateWikiPageMeta(activeId, { title: next }).catch(err =>
-                console.error("updateWikiPageMeta failed:", err)
-              );
-            }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
-          >{active.title}</h1>
+          <h1 className="wiki-doc-title">{active.title}</h1>
 
-          <WikiBlocks activeId={activeId} />
+          <WikiBlocks activeId={activeId} onBlocksChange={setDocBlocks} />
         </div>
 
         {showAside &&
@@ -1279,30 +1778,26 @@ function WikiPage() {
                   <Icon name="chevronRight" size={12} />
                 </button>
               </div>
-              <div className="toc-link is-active">코어 토큰</div>
-              <div className="toc-link is-sub">악센트 팔레트</div>
-              <div className="toc-link is-sub">CSS 변수 사용</div>
-              <div className="toc-link is-sub">텍스트 스택</div>
-              <div className="toc-link">그림자 & 글로우</div>
+              <WikiTOC blocks={docBlocks} />
             </div>
 
             <div className="wiki-aside-card">
-              <div className="kicker" style={{ marginBottom: 10 }}>관련 작업</div>
-              {window.Planary.TASKS.filter((t) => t.title.includes("디자인")).slice(0, 3).map((t) =>
-            <div key={t.id} className="focus-row" style={{ padding: "6px 8px" }}>
-                  <div className={`checkbox ${t.done ? "is-checked" : ""}`} style={{ width: 14, height: 14 }}>
-                    {t.done && <Icon name="check" size={9} stroke={3} />}
-                  </div>
-                  <span style={{ flex: 1, fontSize: 12, color: "var(--text-md)" }}>{t.title}</span>
-                </div>
-            )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div className="kicker">관련 작업</div>
+                <span
+                  className="info-tip"
+                  title="이 페이지의 태그 또는 같은 프로젝트의 작업을 모아 보여줘요"
+                  style={{ fontSize: 11, color: "var(--text-faint)", cursor: "help" }}
+                >
+                  <Icon name="info" size={12} style={{ verticalAlign: -2 }} />
+                </span>
+              </div>
+              <RelatedTasks activePage={active} />
             </div>
 
             <div className="wiki-aside-card">
               <div className="kicker" style={{ marginBottom: 10 }}>백링크</div>
-              <div className="toc-link">← Planary 핸드북</div>
-              <div className="toc-link">← 디자인 시스템</div>
-              <div className="toc-link">← 주간 회고 #42</div>
+              <Backlinks activePage={active} />
             </div>
           </aside>}
       </div>
@@ -1310,6 +1805,82 @@ function WikiPage() {
       {historyOpen && <VersionHistoryDialog onClose={() => setHistoryOpen(false)} page={active} />}
       {infoOpen && <PageInfoDialog onClose={() => setInfoOpen(false)} page={active} favorites={favorites} />}
       {exportMenuOpen && <ExportDialog onClose={() => setExportMenuOpen(false)} page={active} />}
+      {duplicating && (
+        <DuplicatePageDialog
+          node={duplicating.node}
+          tree={tree}
+          collectDescendants={collectDescendants}
+          onClose={() => setDuplicating(null)}
+          onConfirm={(opts) => {
+            // Create deep copy: new id for the source, and for each descendant if includeChildren
+            const idMap = {};
+            const newRoot = { ...duplicating.node, id: `w${Date.now()}`, title: opts.title };
+            idMap[duplicating.node.id] = newRoot.id;
+            const additions = [newRoot];
+            if (opts.includeChildren) {
+              const queue = [duplicating.node.id];
+              while (queue.length) {
+                const curId = queue.shift();
+                tree.filter((w) => w.parent === curId).forEach((child) => {
+                  const newId = `w${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+                  idMap[child.id] = newId;
+                  additions.push({ ...child, id: newId, parent: idMap[child.parent] });
+                  queue.push(child.id);
+                });
+              }
+            }
+            setTree((prev) => [...prev, ...additions]);
+            if (duplicating.node.parent) setExpanded((prev) => ({ ...prev, [duplicating.node.parent]: true }));
+            setActiveId(newRoot.id);
+            window.Planary.toast?.({
+              type: "ok",
+              title: `"${opts.title}" 복제됨`,
+              sub: additions.length > 1 ? `하위 페이지 ${additions.length - 1}개 포함` : undefined,
+            });
+            setDuplicating(null);
+          }}
+        />
+      )}
+      {pendingDelete && (
+        <div className="dialog-scrim" onClick={() => setPendingDelete(null)}>
+          <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(420px, 92vw)" }}>
+            <div className="dialog-head">
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>페이지 삭제</h3>
+                <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>이 작업은 되돌릴 수 없습니다</p>
+              </div>
+              <button className="icon-btn" onClick={() => setPendingDelete(null)}><Icon name="x" size={16} /></button>
+            </div>
+            <div style={{ padding: "16px 22px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, background: "var(--bg-elev)", borderRadius: "var(--r-md)" }}>
+                <span style={{ fontSize: 28 }}>{pendingDelete.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{pendingDelete.title}</div>
+                  {(() => {
+                    const childCount = collectDescendants(pendingDelete.id).length - 1;
+                    return (
+                      <div style={{ fontSize: 11, color: childCount > 0 ? "var(--err)" : "var(--text-lo)", marginTop: 2 }}>
+                        {childCount > 0 ? `하위 페이지 ${childCount}개가 함께 삭제됩니다` : "하위 페이지 없음"}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+            <div className="dialog-foot">
+              <div style={{ flex: 1 }} />
+              <button className="btn btn-sm" onClick={() => setPendingDelete(null)}>취소</button>
+              <button
+                className="btn btn-sm btn-primary"
+                style={{ background: "var(--err)" }}
+                onClick={executeDelete}
+              >
+                <Icon name="trash" size={12} />삭제하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>);
 
 }
@@ -1318,67 +1889,35 @@ function WikiPage() {
    BOOKMARKS
    =========================================================== */
 function BookmarksPage() {
-  const [bookmarks, setBookmarks] = useStateO(Array.isArray(window.Planary.BOOKMARKS) ? window.Planary.BOOKMARKS : []);
+  const [bookmarks, setBookmarks] = useStateO(() => window.Planary.BOOKMARKS || []);
   const [query, setQuery] = useStateO("");
   const [active, setActive] = useStateO("전체");
   const [urlDraft, setUrlDraft] = useStateO("");
-  const composerInputRef = useRefO(null);
 
+  // Live-sync bookmarks from firebase-bridge
   useEffectO(() => {
-    const onLoaded = (e) => { if (Array.isArray(e.detail)) setBookmarks(e.detail); };
+    const onLoaded = (e) => {
+      if (Array.isArray(e.detail)) setBookmarks(e.detail);
+    };
     window.addEventListener("planary:bookmarks-loaded", onLoaded);
     return () => window.removeEventListener("planary:bookmarks-loaded", onLoaded);
   }, []);
-
-  const saveBookmark = () => {
-    const raw = urlDraft.trim();
-    if (!raw) return;
-    let url = raw;
-    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
-    let host = url;
-    try { host = new URL(url).hostname.replace(/^www\./, ""); } catch (_) {}
-    const title = host.split(".")[0].replace(/^./, c => c.toUpperCase());
-    const id = "bk" + Date.now();
-    const palette = ["#7f0df2","#2563eb","#10b981","#f59e0b","#e11d48","#0ea5e9"];
-    const letter = title.slice(0,1).toUpperCase();
-    const optimistic = { id, title, url, color: palette[(letter.charCodeAt(0)||0) % palette.length], letter, tags: [] };
-    setBookmarks(prev => [optimistic, ...prev]);
-    setUrlDraft("");
-    if (window.Planary?.api?.uid) {
-      window.Planary.api.createBookmark({ url, title, tags: [] }).catch(err => {
-        console.error("createBookmark failed:", err);
-        window.Planary?.toast?.({ type: "err", title: "북마크 저장 실패", sub: err.message });
-      });
-    }
-    window.Planary?.toast?.({ type: "ok", title: "북마크 추가됨", sub: host });
-  };
-
-  const editBookmark = (b) => {
-    const title = window.prompt("북마크 제목", b.title);
-    if (title == null) return;
-    const tagText = window.prompt("태그 (쉼표로 구분)", (b.tags || []).join(", "));
-    if (tagText == null) return;
-    const tags = tagText.split(",").map(t => t.trim()).filter(Boolean);
-    const patch = { title: title.trim() || b.title, tags };
-    setBookmarks(prev => prev.map(x => x.id === b.id ? { ...x, ...patch } : x));
-    window.Planary?.api?.updateBookmark?.(b.id, patch)
-      .then(() => window.Planary.toast({ type: "ok", title: "북마크가 수정됐어요" }))
-      .catch(err => window.Planary.toast({ type: "err", title: "북마크 수정 실패", sub: err.message }));
-  };
-
-  const deleteBookmark = (b) => {
-    if (!window.confirm(`${b.title} 북마크를 삭제할까요?`)) return;
-    setBookmarks(prev => prev.filter(x => x.id !== b.id));
-    window.Planary?.api?.deleteBookmark?.(b.id)
-      .then(() => window.Planary.toast({ type: "ok", title: "북마크가 삭제됐어요" }))
-      .catch(err => window.Planary.toast({ type: "err", title: "북마크 삭제 실패", sub: err.message }));
-  };
 
   const allTags = ["전체", ...new Set(bookmarks.flatMap((b) => b.tags))];
   const filtered = bookmarks.filter((b) =>
   (active === "전체" || b.tags.includes(active)) && (
   !query || b.title.toLowerCase().includes(query.toLowerCase()) || b.url.toLowerCase().includes(query.toLowerCase()))
   );
+
+  const submitBookmark = () => {
+    const url = urlDraft.trim();
+    if (!url) return;
+    window.dispatchEvent(new CustomEvent("planary:create-bookmark", {
+      detail: { url, title: "", tags: [] },
+    }));
+    setUrlDraft("");
+    window.Planary.toast?.({ type: "ok", title: "북마크가 추가됐어요", sub: url });
+  };
 
   return (
     <div className="page-wide">
@@ -1388,21 +1927,20 @@ function BookmarksPage() {
           <div className="page-title">북마크</div>
           <div className="page-sub">{bookmarks.length}개 · 태그로 정리된 링크 모음</div>
         </div>
-        <button className="btn btn-primary" onClick={() => composerInputRef.current?.focus()}><Icon name="plus" size={14} />새 북마크</button>
+        <button className="btn btn-primary" onClick={submitBookmark}><Icon name="plus" size={14} />새 북마크</button>
       </div>
 
       <div className="composer">
         <div className="composer-row">
           <Icon name="link" size={16} style={{ color: "var(--accent)" }} />
           <input
-            ref={composerInputRef}
             className="composer-input"
             placeholder="URL 붙여넣기 — https://..."
             value={urlDraft}
-            onChange={e => setUrlDraft(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") saveBookmark(); }}
+            onChange={(e) => setUrlDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submitBookmark(); }}
           />
-          <button className="btn btn-sm btn-primary" onClick={saveBookmark} disabled={!urlDraft.trim()}>저장</button>
+          <button className="btn btn-sm btn-primary" onClick={submitBookmark}>저장</button>
         </div>
       </div>
 
@@ -1437,12 +1975,7 @@ function BookmarksPage() {
 
       <div className="bookmarks-grid">
         {filtered.map((b) =>
-        <div
-          key={b.id}
-          className="bookmark"
-          style={{ cursor: "pointer" }}
-          onClick={() => window.open(b.url, "_blank", "noopener")}
-        >
+        <div key={b.id} className="bookmark">
             <div className="bookmark-favicon" style={{ background: b.color }}>{b.letter}</div>
             <div className="bookmark-main">
               <div className="bookmark-title">{b.title}</div>
@@ -1451,34 +1984,17 @@ function BookmarksPage() {
                 {b.tags.map((t) => <span key={t} className="tag">#{t}</span>)}
               </div>
             </div>
-            <button
-              className="icon-btn"
-              style={{ alignSelf: "start" }}
-              onClick={(e) => { e.stopPropagation(); window.open(b.url, "_blank", "noopener"); }}
-              aria-label="새 탭에서 열기"
-            >
+            <button className="icon-btn" style={{ alignSelf: "start" }} onClick={() => window.open(b.url, "_blank", "noopener")}>
               <Icon name="arrowUpRight" size={14} />
             </button>
             <button
               className="icon-btn"
-              style={{ alignSelf: "start" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                const action = window.prompt("북마크 작업: edit 또는 delete", "edit");
-                if (action === "delete") deleteBookmark(b);
-                else if (action !== null) editBookmark(b);
-              }}
-              aria-label="북마크 편집"
+              style={{ alignSelf: "start", color: "var(--err)" }}
+              title="삭제"
+              onClick={() => window.dispatchEvent(new CustomEvent("planary:delete-bookmark", { detail: b.id }))}
             >
-              <Icon name="more" size={14} />
+              <Icon name="trash" size={13} />
             </button>
-          </div>
-        )}
-        {filtered.length === 0 && (
-          <div className="empty card" style={{ gridColumn: "1 / -1" }}>
-            <div className="empty-icon"><Icon name="link" size={24} /></div>
-            <div style={{ fontWeight: 600, marginTop: 8 }}>북마크가 없어요</div>
-            <div style={{ fontSize: 12, color: "var(--text-lo)" }}>위 입력칸에 URL을 붙여넣어 추가하세요</div>
           </div>
         )}
       </div>
@@ -1503,7 +2019,7 @@ const ARCHIVE_QUOTES = [
    ARCHIVE
    =========================================================== */
 function ArchivePage({ tasks }) {
-  const completed = tasks.filter((t) => t.archived || t.done);
+  const completed = tasks.filter((t) => t.done);
   const heat = window.Planary.WEEKLY_HEATMAP;
   const [range, setRange] = useStateO("month"); // week | month | quarter | year | all
   const [archiveSearch, setArchiveSearch] = useStateO("");
@@ -1746,6 +2262,29 @@ function ProfilePage({ tasks, t, setTweak }) {
   const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | "lang" | null
   const [lang, setLangState] = useStateO(() => window.PlanaryI18n?.getLang?.() || "ko");
   const [notifs, setNotifs] = useStateO({ email: true, push: true, gcal: true, apple: false, slack: false });
+
+  // Sync user doc from firebase-bridge
+  useEffectO(() => {
+    const onUserDoc = (e) => {
+      const d = e.detail || {};
+      setUser((prev) => ({
+        ...prev,
+        name: d.displayName || prev.name,
+        email: d.email || prev.email,
+        avatar: d.photoURL ? `url("${d.photoURL}")` : prev.avatar,
+        initials: (d.displayName || prev.name || "U").slice(0, 1).toUpperCase(),
+        school: d.school || prev.school || "",
+        studentId: d.studentId || prev.studentId || "",
+        bio: d.bio || prev.bio || "",
+      }));
+      if (d.plan === "basic" || d.plan === "pro") setPlan(d.plan);
+      if (d.notifPrefs && typeof d.notifPrefs === "object") {
+        setNotifs((prev) => ({ ...prev, ...d.notifPrefs }));
+      }
+    };
+    window.addEventListener("planary:user-doc-loaded", onUserDoc);
+    return () => window.removeEventListener("planary:user-doc-loaded", onUserDoc);
+  }, []);
   const done = tasks.filter((x) => x.done).length;
   const pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
   const isImage = user.avatar && typeof user.avatar === "string" && user.avatar.startsWith("url(");
@@ -1767,32 +2306,20 @@ function ProfilePage({ tasks, t, setTweak }) {
   const planMeta = plan === "pro" ?
   { chip: "Pro 플랜", chipClass: "chip-accent", price: "월 5,900원", features: ["무제한 프로젝트", "e-Class 자동 동기화", "1년 활동 히트맵", "팀 협업 (베타)"] } :
   { chip: "Basic 플랜", chipClass: "chip", price: "무료", features: ["프로젝트 3개", "수동 동기화", "30일 히트맵", "개인 사용 전용"] };
-  useEffectO(() => {
-    const onUserDoc = (e) => {
-      const d = e.detail || {};
-      if (d.notifPrefs) setNotifs(prev => ({ ...prev, ...d.notifPrefs }));
-      if (d.plan) setPlan(d.plan);
-      if (d.preferences?.lang) setLangState(d.preferences.lang);
-      setUser(prev => ({
-        ...prev,
-        name: d.displayName || prev.name,
-        avatar: d.photoURL ? `url("${d.photoURL}")` : prev.avatar,
-        school: d.school || "",
-        studentId: d.studentId || "",
-        bio: d.bio || "",
-      }));
-    };
-    window.addEventListener("planary:user-doc-loaded", onUserDoc);
-    return () => window.removeEventListener("planary:user-doc-loaded", onUserDoc);
-  }, []);
-
   const saveProfile = (draft) => {
     setUser(draft);
     window.Planary.USER = { ...window.Planary.USER, ...draft };
     setEditOpen(false);
-    window.Planary?.api?.updateProfile?.(draft)
-      .then(() => window.Planary.toast({ type: "ok", title: "프로필이 업데이트됐어요" }))
-      .catch(err => window.Planary.toast({ type: "err", title: "프로필 저장 실패", sub: err.message }));
+    window.dispatchEvent(new CustomEvent("planary:update-profile", {
+      detail: {
+        name: draft.name || null,
+        avatar: draft.avatar || null,
+        school: draft.school || null,
+        studentId: draft.studentId || null,
+        bio: draft.bio || null,
+      },
+    }));
+    window.Planary.toast({ type: "ok", title: "프로필이 업데이트됐어요" });
   };
 
   return (
@@ -1835,10 +2362,7 @@ function ProfilePage({ tasks, t, setTweak }) {
                 {["basic", "pro"].map((p) =>
                 <button
                   key={p}
-                  onClick={() => {
-                    setPlan(p);
-                    window.Planary?.api?.savePlan?.(p).catch(err => window.Planary.toast({ type: "err", title: "플랜 저장 실패", sub: err.message }));
-                  }}
+                  onClick={() => { setPlan(p); window.dispatchEvent(new CustomEvent("planary:save-plan", { detail: p })); }}
                   style={{
                     height: 22, padding: "0 9px", borderRadius: 4,
                     fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
@@ -1928,8 +2452,8 @@ function ProfilePage({ tasks, t, setTweak }) {
                 selected={lang}
                 onSelect={(v) => {
                   setLangState(v);
-                  setTweak && setTweak("lang", v);
                   window.PlanaryI18n?.setLang?.(v);
+                  window.dispatchEvent(new CustomEvent("planary:save-preferences", { detail: { lang: v } }));
                   const msg = window.PlanaryI18n?.t?.("toast.langChanged") || "Language changed";
                   window.Planary.toast({ type: "ok", title: msg });
                 }}
@@ -1938,6 +2462,25 @@ function ProfilePage({ tasks, t, setTweak }) {
                 onClose={() => setOpenMenu(null)} />
               <ProfileRow label="키보드 단축키" sub="⌘K · ⌘N · / 등">
                 <span className="chip chip-ok"><Icon name="check" size={9} stroke={3} />활성</span>
+              </ProfileRow>
+              <ProfileRow label="온보딩 다시 보기" sub="Planary 시작 가이드를 다시 실행합니다">
+                <button
+                  className="btn btn-sm"
+                  onClick={() => {
+                    try { localStorage.removeItem("planary.onboarding.done"); } catch (_) {}
+                    window.dispatchEvent(new CustomEvent("planary:open-onboarding"));
+                  }}
+                >
+                  <Icon name="sparkles" size={12} />다시 보기
+                </button>
+              </ProfileRow>
+              <ProfileRow label="사용자 가이드" sub="기능 사용법을 정리한 문서">
+                <button
+                  className="btn btn-sm"
+                  onClick={() => window.dispatchEvent(new CustomEvent("planary:open-guide"))}
+                >
+                  <Icon name="book" size={12} />열기
+                </button>
               </ProfileRow>
             </div>
           </div>
@@ -1962,10 +2505,7 @@ function ProfilePage({ tasks, t, setTweak }) {
                   onClick={() => {
                     const next = !notifs[r.id];
                     setNotifs((prev) => ({ ...prev, [r.id]: next }));
-                    window.Planary?.api?.saveNotifPrefs?.({ [r.id]: next }).catch(err => {
-                      console.error("saveNotifPrefs failed:", err);
-                      window.Planary.toast({ type: "err", title: "알림 설정 저장 실패", sub: err.message });
-                    });
+                    window.dispatchEvent(new CustomEvent("planary:save-notif-prefs", { detail: { [r.id]: next } }));
                     window.Planary.toast({ type: "ok", title: `${r.label} ${next ? "켜짐" : "꺼짐"}` });
                   }} />
                 
@@ -2052,15 +2592,20 @@ function PasswordCard() {
     e?.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
-    window.Planary?.api?.changePassword?.(current, next)
-      .then(() => {
-        setCurrent("");
-        setNext("");
-        setConfirm("");
-        window.Planary.toast?.({ type: "ok", title: "비밀번호가 변경됐어요", sub: "다음 로그인부터 새 비밀번호를 사용하세요" });
-      })
-      .catch(err => window.Planary.toast?.({ type: "err", title: "비밀번호 변경 실패", sub: err.message }))
-      .finally(() => setSubmitting(false));
+    window.dispatchEvent(new CustomEvent("planary:change-password", {
+      detail: {
+        current,
+        next,
+        onResult: (res) => {
+          setSubmitting(false);
+          if (res && res.ok) {
+            setCurrent("");
+            setNext("");
+            setConfirm("");
+          }
+        },
+      },
+    }));
   };
 
   const inputWrap = {
@@ -2279,66 +2824,52 @@ function EclassConnectionCard() {
   const [connected, setConnected] = useStateO(false);
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
-  const [url, setUrl] = useStateO("https://eclass.seoultech.ac.kr");
-  const [eclassId, setEclassId] = useStateO("");
-  const [password, setPassword] = useStateO("");
-  const [saving, setSaving] = useStateO(false);
-  const [lastStatus, setLastStatus] = useStateO(null);
+  const [urlInput, setUrlInput] = useStateO("https://eclass.seoultech.ac.kr");
+  const [idInput, setIdInput] = useStateO("");
+  const [pwInput, setPwInput] = useStateO("");
 
+  // Live-sync e-Class connection state from firebase-bridge
   useEffectO(() => {
-    let alive = true;
-    window.Planary?.api?.getEclassConnection?.()
-      .then(data => {
-        if (!alive) return;
-        setConnected(!!data.connected);
-        if (data.baseUrl) setUrl(data.baseUrl);
-      })
-      .catch(err => console.warn("getEclassConnection failed:", err));
-    const onConnection = (e) => {
-      const d = e.detail || {};
-      setLastStatus(d);
-      setConnected(!!d.enabled);
-      if (d.baseUrl) setUrl(d.baseUrl);
-      if (d.syncStatus !== "running") setSyncing(false);
+    const onConn = (e) => {
+      const d = e.detail;
+      setConnected(!!(d && (d.username || d.connected || d.baseUrl)));
     };
-    window.addEventListener("planary:eclass-connection", onConnection);
-    return () => { alive = false; window.removeEventListener("planary:eclass-connection", onConnection); };
+    window.addEventListener("planary:eclass-connection", onConn);
+    return () => window.removeEventListener("planary:eclass-connection", onConn);
   }, []);
 
   const handleSync = () => {
     setSyncing(true);
-    window.Planary?.api?.triggerEclassSync?.()
-      .then(() => window.Planary.toast({ type: "ok", title: "e-Class 동기화를 시작했어요" }))
-      .catch(err => {
-        setSyncing(false);
-        window.Planary.toast({ type: "err", title: "e-Class 동기화 실패", sub: err.message });
-      });
+    window.dispatchEvent(new CustomEvent("planary:eclass-sync", {
+      detail: { onResult: () => setSyncing(false) },
+    }));
   };
 
   const handleConnect = () => {
-    if (!eclassId.trim() || !password) {
-      window.Planary.toast({ type: "err", title: "아이디와 비밀번호를 입력하세요" });
-      return;
-    }
-    setSaving(true);
-    window.Planary?.api?.connectEclass?.({ url, id: eclassId.trim(), password })
-      .then(() => {
-        setPassword("");
-        setConnected(true);
-        window.Planary.toast({ type: "ok", title: "e-Class가 연결됐어요" });
-        handleSync();
-      })
-      .catch(err => window.Planary.toast({ type: "err", title: "e-Class 연결 실패", sub: err.message, ttl: 4800 }))
-      .finally(() => setSaving(false));
+    if (!urlInput.trim() || !idInput.trim() || !pwInput) return;
+    window.dispatchEvent(new CustomEvent("planary:eclass-connect", {
+      detail: {
+        url: urlInput.trim(),
+        id: idInput.trim(),
+        password: pwInput,
+        onResult: (res) => {
+          if (res && res.ok) {
+            setConnected(true);
+            setPwInput("");
+          }
+        },
+      },
+    }));
   };
 
   const handleDisconnect = () => {
-    window.Planary?.api?.disconnectEclass?.()
-      .then(() => {
-        setConnected(false);
-        window.Planary.toast({ type: "ok", title: "e-Class 연결을 해제했어요" });
-      })
-      .catch(err => window.Planary.toast({ type: "err", title: "연결 해제 실패", sub: err.message }));
+    window.dispatchEvent(new CustomEvent("planary:eclass-disconnect", {
+      detail: {
+        onResult: (res) => {
+          if (res && res.ok) setConnected(false);
+        },
+      },
+    }));
   };
 
   return (
@@ -2401,7 +2932,7 @@ function EclassConnectionCard() {
           <div className="field-row" style={{ borderBottom: 0 }}>
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>마지막 동기화</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{lastStatus?.lastSyncedAt?.toDate ? lastStatus.lastSyncedAt.toDate().toLocaleString("ko-KR") : pe?.lastSync || "기록 없음"} · 항목 {lastStatus?.lastTodoCount ?? window.Planary.TASKS.filter((t) => t.source === "eclass").length}개</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{pe?.lastSync || "기록 없음"} · 항목 {window.Planary.TASKS.filter((t) => t.project === "pe").length}개</div>
             </div>
             <button className="btn btn-sm btn-primary" onClick={handleSync} disabled={syncing} style={{ minWidth: 120, justifyContent: "center" }}>
               <Icon name="refresh" size={13} style={{ animation: syncing ? "spin 1s linear infinite" : "none" }} />
@@ -2424,7 +2955,7 @@ function EclassConnectionCard() {
             className="btn btn-sm"
             style={{ color: "var(--err)", marginTop: 8 }}
             onClick={handleDisconnect}>
-            
+
               <Icon name="lock" size={12} />연결 해제
             </button>
           </div>
@@ -2439,8 +2970,8 @@ function EclassConnectionCard() {
               <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase" }}>e-Class URL</label>
               <input
               type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
               style={{
                 width: "100%", marginTop: 4,
                 background: "var(--bg-elev)",
@@ -2457,9 +2988,9 @@ function EclassConnectionCard() {
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase" }}>아이디</label>
                 <input
                 type="text"
-                value={eclassId}
-                onChange={(e) => setEclassId(e.target.value)}
                 placeholder="학번 또는 ID"
+                value={idInput}
+                onChange={(e) => setIdInput(e.target.value)}
                 style={{
                   width: "100%", marginTop: 4,
                   background: "var(--bg-elev)",
@@ -2475,9 +3006,9 @@ function EclassConnectionCard() {
                 <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase" }}>비밀번호</label>
                 <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                value={pwInput}
+                onChange={(e) => setPwInput(e.target.value)}
                 style={{
                   width: "100%", marginTop: 4,
                   background: "var(--bg-elev)",
@@ -2491,8 +3022,8 @@ function EclassConnectionCard() {
               </div>
             </div>
           </div>
-          <button className="btn btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={handleConnect} disabled={saving}>
-            <Icon name={saving ? "refresh" : "lock"} size={13} style={{ animation: saving ? "spin 1s linear infinite" : "none" }} />{saving ? "연결 중…" : "연결 저장"}
+          <button className="btn btn-primary" style={{ marginTop: 14, width: "100%" }} onClick={handleConnect}>
+            <Icon name="lock" size={13} />연결 저장
           </button>
           <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5 }}>
             비밀번호는 서버에서 암호화(AES-256)되어 저장되며, 동기화 외 다른 용도로 사용되지 않습니다.
@@ -3119,6 +3650,290 @@ function ExportDialog({ onClose, page }) {
 
 window.Planary.PageInfoDialog = PageInfoDialog;
 window.Planary.ExportDialog = ExportDialog;
+
+/* ===========================================================
+   DUPLICATE PAGE DIALOG
+   =========================================================== */
+function DuplicatePageDialog({ node, tree, collectDescendants, onClose, onConfirm }) {
+  const [title, setTitle] = useStateO(node.title + " (복사)");
+  const [includeChildren, setIncludeChildren] = useStateO(true);
+  const childCount = collectDescendants(node.id).length - 1;
+  const inputRef = useRefO(null);
+
+  useEffectO(() => {
+    setTimeout(() => {
+      if (inputRef.current) { inputRef.current.focus(); inputRef.current.select(); }
+    }, 50);
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) confirm();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [title, includeChildren]);
+
+  const confirm = () => {
+    if (!title.trim()) return;
+    onConfirm({ title: title.trim(), includeChildren });
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>페이지 복제</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>같은 위치에 사본을 만듭니다</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+
+        <div style={{ padding: "16px 22px" }}>
+          {/* Source preview */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 12, background: "var(--bg-elev)", borderRadius: "var(--r-md)", marginBottom: 16 }}>
+            <span style={{ fontSize: 22 }}>{node.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{node.title}</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>
+                {childCount > 0 ? `하위 페이지 ${childCount}개` : "하위 페이지 없음"}
+              </div>
+            </div>
+          </div>
+
+          {/* Title input */}
+          <label style={{ display: "block", marginBottom: 14 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-lo)", letterSpacing: "0.04em", textTransform: "uppercase" }}>새 페이지 이름</span>
+            <input
+              ref={inputRef}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="form-input"
+              style={{ marginTop: 5 }}
+              placeholder="페이지 이름"
+            />
+          </label>
+
+          {/* Include children toggle */}
+          {childCount > 0 && (
+            <label
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: 12,
+                background: "var(--bg-elev)",
+                border: includeChildren ? "1px solid var(--accent-ring)" : "1px solid var(--border-soft)",
+                borderRadius: "var(--r-md)",
+                cursor: "pointer",
+                transition: "all var(--dur-fast)",
+              }}
+              onClick={() => setIncludeChildren(!includeChildren)}
+            >
+              <button
+                type="button"
+                className={`checkbox ${includeChildren ? "is-checked" : ""}`}
+                onClick={(e) => { e.preventDefault(); setIncludeChildren(!includeChildren); }}
+              >
+                {includeChildren && <Icon name="check" size={11} stroke={3} />}
+              </button>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>하위 페이지도 복제</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>
+                  {includeChildren ? `${childCount}개 페이지가 함께 복제됩니다` : "이 페이지만 복제합니다"}
+                </div>
+              </div>
+            </label>
+          )}
+        </div>
+
+        <div className="dialog-foot">
+          <div style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
+            <span className="kbd">⌘↵</span>로 빠르게 확인
+          </div>
+          <button className="btn btn-sm" onClick={onClose}>취소</button>
+          <button className="btn btn-sm btn-primary" onClick={confirm} disabled={!title.trim()}>
+            <Icon name="copy" size={12} />복제
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.Planary.DuplicatePageDialog = DuplicatePageDialog;
+
+/* ===========================================================
+   WIKI TOC — auto-generated from h2 / h3 blocks
+   =========================================================== */
+function WikiTOC({ blocks }) {
+  const [activeHash, setActiveHash] = useStateO(null);
+  const items = (blocks || [])
+    .filter((b) => b.type === "h2" || b.type === "h3")
+    .map((b) => {
+      const text = (b.content || "").replace(/<[^>]+>/g, "").trim() || "(제목 없음)";
+      return { id: b.id, text, level: b.type };
+    });
+
+  // Scroll-spy: highlight the heading whose block-row is closest to top
+  useEffectO(() => {
+    if (items.length === 0) return;
+    const onScroll = () => {
+      let bestId = items[0].id;
+      let bestDist = Infinity;
+      for (const it of items) {
+        // Find the rendered heading element by its block content id wrapper —
+        // we look up the contenteditable inside the matching block row.
+        const row = document.querySelector(`.wiki-block-row[data-block-id="${it.id}"]`);
+        if (!row) continue;
+        const r = row.getBoundingClientRect();
+        const dist = Math.abs(r.top - 80);
+        if (r.top < window.innerHeight && r.top > -r.height && dist < bestDist) {
+          bestDist = dist;
+          bestId = it.id;
+        }
+      }
+      setActiveHash(bestId);
+    };
+    onScroll();
+    const main = document.querySelector(".page");
+    main && main.addEventListener("scroll", onScroll, { passive: true });
+    return () => main && main.removeEventListener("scroll", onScroll);
+  }, [items.length, items.map((i) => i.id).join("|")]);
+
+  const scrollTo = (id) => {
+    const row = document.querySelector(`.wiki-block-row[data-block-id="${id}"]`);
+    if (row) {
+      const main = document.querySelector(".page");
+      if (main) {
+        const targetTop = row.getBoundingClientRect().top + main.scrollTop - 60;
+        main.scrollTo({ top: targetTop, behavior: "smooth" });
+      } else {
+        row.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    setActiveHash(id);
+  };
+
+  if (items.length === 0) {
+    return (
+      <div style={{ fontSize: 12, color: "var(--text-faint)", padding: "8px 4px" }}>
+        제목(H2 / H3)을 추가하면 자동으로 목차가 생성돼요
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {items.map((it) => (
+        <div
+          key={it.id}
+          className={`toc-link ${it.level === "h3" ? "is-sub" : ""} ${activeHash === it.id ? "is-active" : ""}`}
+          onClick={() => scrollTo(it.id)}
+          role="button"
+          tabIndex={0}
+        >
+          {it.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ===========================================================
+   RELATED TASKS — filtered by tag overlap with the page
+   =========================================================== */
+function RelatedTasks({ activePage }) {
+  const { TASKS } = window.Planary;
+  // Derive keywords from the page title (tokenize on space / punctuation)
+  const title = (activePage && activePage.title) || "";
+  const keywords = title.toLowerCase().split(/[\s·.,/—-]+/).filter((s) => s.length >= 2);
+
+  const matches = TASKS.filter((t) => {
+    const tags = (t.tags || []).map((x) => x.toLowerCase());
+    if (keywords.some((k) => tags.includes(k))) return true;
+    const blob = (t.title + " " + (t.memo || "")).toLowerCase();
+    return keywords.some((k) => blob.includes(k));
+  }).slice(0, 4);
+
+  if (matches.length === 0) {
+    return (
+      <div style={{ fontSize: 11, color: "var(--text-faint)", padding: "6px 4px" }}>
+        제목 키워드와 일치하는 작업이 없어요
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 6, lineHeight: 1.5 }}>
+        제목 키워드와 일치하는 작업 · 자동 매칭
+      </div>
+      {matches.map((t) => (
+        <div key={t.id} className="focus-row" style={{ padding: "6px 8px", cursor: "pointer" }}>
+          <div
+            className={`checkbox ${t.done ? "is-checked" : ""}`}
+            style={{ width: 14, height: 14 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent("planary:toggle-task", { detail: t.id }));
+            }}
+          >
+            {t.done && <Icon name="check" size={9} stroke={3} />}
+          </div>
+          <span
+            style={{
+              flex: 1, fontSize: 12, color: "var(--text-md)",
+              textDecoration: t.done ? "line-through" : "none",
+              opacity: t.done ? 0.55 : 1,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            }}
+            onClick={() => window.dispatchEvent(new CustomEvent("planary:edit-task", { detail: t }))}
+          >
+            {t.title}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ===========================================================
+   BACKLINKS — pages that mention the current page title
+   =========================================================== */
+function Backlinks({ activePage }) {
+  const { WIKI_TREE } = window.Planary;
+  const title = (activePage && activePage.title) || "";
+
+  // Show the chain of parent pages (genuine relations) as backlinks
+  const parents = [];
+  let cur = activePage;
+  while (cur && cur.parent) {
+    const p = WIKI_TREE.find((w) => w.id === cur.parent);
+    if (!p) break;
+    parents.unshift(p);
+    cur = p;
+  }
+
+  if (parents.length === 0) {
+    return (
+      <div style={{ fontSize: 11, color: "var(--text-faint)", padding: "6px 4px" }}>
+        이 페이지를 참조하는 다른 페이지가 없어요
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 6, lineHeight: 1.5 }}>
+        하위 페이지로 등록된 위치
+      </div>
+      {parents.map((p) => (
+        <div key={p.id} className="toc-link">
+          <span style={{ marginRight: 4 }}>{p.icon}</span>
+          {p.title}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /* ===========================================================
    SLASH COMMAND MENU — Notion-style block type picker
@@ -4046,18 +4861,23 @@ function SignOutDialog({ onClose, user }) {
 
   const signOut = () => {
     window.Planary.toast({ type: "info", title: "로그아웃 중…", sub: "잠시 후 로그인 화면으로 이동합니다" });
-    window.Planary?.api?.signOut?.()
-      .then(() => { window.location.href = "/landing.html"; })
-      .catch(err => window.Planary.toast({ type: "err", title: "로그아웃 실패", sub: err.message }));
+    window.dispatchEvent(new CustomEvent("planary:sign-out"));
+    setTimeout(onClose, 600);
   };
   const deleteAccount = () => {
     if (confirmText !== expected) return;
-    window.Planary?.api?.deleteAccount?.()
-      .then(() => {
-        window.Planary.toast({ type: "err", title: "계정 삭제 처리됨", sub: "데이터 삭제가 완료되었습니다", ttl: 4800 });
-        window.location.href = "/landing.html";
-      })
-      .catch(err => window.Planary.toast({ type: "err", title: "계정 삭제 실패", sub: err.message, ttl: 4800 }));
+    window.dispatchEvent(new CustomEvent("planary:delete-account", {
+      detail: {
+        onResult: (res) => {
+          if (res && res.ok) {
+            window.Planary.toast({ type: "err", title: "계정이 삭제됐어요", sub: "복구는 30일 이내에만 가능합니다", ttl: 4800 });
+          } else {
+            window.Planary.toast({ type: "err", title: "계정 삭제 실패", sub: res && res.error });
+          }
+        },
+      },
+    }));
+    setTimeout(onClose, 600);
   };
 
   return (
@@ -4357,14 +5177,10 @@ const INITIAL_BLOCKS_BY_PAGE = {
   ],
 };
 
-function WikiBlocks({ activeId }) {
-  const loadBlocksFor = (id) => {
-    const live = window.Planary.WIKI_PAGES && window.Planary.WIKI_PAGES[id];
-    if (live && Array.isArray(live.blocks) && live.blocks.length) return live.blocks;
-    return INITIAL_BLOCKS_BY_PAGE[id] || [{ id: `b${Date.now()}`, type: "p", content: "" }];
-  };
-
-  const [blocks, setBlocks] = useStateO(() => loadBlocksFor(activeId));
+function WikiBlocks({ activeId, onBlocksChange }) {
+  const [blocks, setBlocks] = useStateO(() => INITIAL_BLOCKS_BY_PAGE[activeId] || [
+    { id: "b1", type: "p", content: "" }
+  ]);
   const [activeBlockId, setActiveBlockId] = useStateO(null);
   const [focusBlockId, setFocusBlockId] = useStateO(null);
   const [dragId, setDragId] = useStateO(null);
@@ -4373,51 +5189,54 @@ function WikiBlocks({ activeId }) {
   const [menuOpenId, setMenuOpenId] = useStateO(null);
   const [slashMenu, setSlashMenu] = useStateO(null); // { blockId, x, y } | null
   const lastSavedRef = useRefO("");
-  const saveTimerRef = useRefO(null);
-  const initialLoadRef = useRefO(true);
 
-  // Re-load blocks when switching pages
+  // Re-load blocks when switching pages — prefer live WIKI_PAGES from firebase-bridge
   useEffectO(() => {
-    initialLoadRef.current = true;
-    setBlocks(loadBlocksFor(activeId));
+    const live = window.Planary.WIKI_PAGES && window.Planary.WIKI_PAGES[activeId];
+    const initial = (live && Array.isArray(live.blocks) && live.blocks.length)
+      ? live.blocks
+      : (INITIAL_BLOCKS_BY_PAGE[activeId] || [{ id: `b${Date.now()}`, type: "p", content: "" }]);
+    setBlocks(initial);
     setActiveBlockId(null);
     setSlashMenu(null);
-    lastSavedRef.current = JSON.stringify(loadBlocksFor(activeId));
-    // Also re-load when Firestore snapshot arrives for the same page
-    const onWikiLoaded = (e) => {
-      const byId = e.detail?.byId;
-      if (!byId || !byId[activeId]) return;
-      const fresh = byId[activeId].blocks;
-      const freshKey = JSON.stringify(fresh);
-      // Only overwrite if we don't have pending local edits
-      if (lastSavedRef.current === freshKey) return;
-      // First load OR remote change while user is idle — adopt remote.
-      if (initialLoadRef.current) {
-        setBlocks(fresh);
-        lastSavedRef.current = freshKey;
-        initialLoadRef.current = false;
-      }
-    };
-    window.addEventListener("planary:wiki-loaded", onWikiLoaded);
-    return () => window.removeEventListener("planary:wiki-loaded", onWikiLoaded);
+    // Mark this load as "remote" so the save-effect below skips it
+    lastSavedRef.current = JSON.stringify(initial);
   }, [activeId]);
 
-  // Debounced save when blocks change (only for live firestore pages)
+  // Refresh blocks when the bridge emits fresh wiki data for the current page
   useEffectO(() => {
-    if (!window.Planary?.api?.uid) return; // skip when running on mock
+    const onLoaded = (e) => {
+      const d = e.detail || {};
+      const live = d.byId && d.byId[activeId];
+      if (live && Array.isArray(live.blocks)) {
+        const serialized = JSON.stringify(live.blocks);
+        if (serialized !== lastSavedRef.current) {
+          setBlocks(live.blocks);
+          lastSavedRef.current = serialized;
+        }
+      }
+    };
+    window.addEventListener("planary:wiki-loaded", onLoaded);
+    return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
+  }, [activeId]);
+
+  // Notify parent of block changes (for TOC etc.)
+  useEffectO(() => {
+    onBlocksChange && onBlocksChange(blocks);
+  }, [blocks]);
+
+  // Debounced auto-save to Firestore (~800ms after last edit)
+  useEffectO(() => {
     if (!activeId) return;
-    // Skip the firestore round-trip on the first render
-    if (initialLoadRef.current) { initialLoadRef.current = false; return; }
-    const key = JSON.stringify(blocks);
-    if (key === lastSavedRef.current) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      lastSavedRef.current = key;
-      window.Planary.api.saveWikiBlocks(activeId, blocks).catch(err =>
-        console.error("saveWikiBlocks failed:", err)
-      );
-    }, 600);
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    const serialized = JSON.stringify(blocks);
+    if (serialized === lastSavedRef.current) return;
+    const t = setTimeout(() => {
+      lastSavedRef.current = serialized;
+      window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
+        detail: { id: activeId, blocks },
+      }));
+    }, 800);
+    return () => clearTimeout(t);
   }, [blocks, activeId]);
 
   const updateBlock = (id, patch) =>
@@ -4650,6 +5469,8 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   return (
     <div
       className={`wiki-block-row ${isActive ? "is-active" : ""} ${isDragging ? "is-dragging" : ""} ${dropIndicator ? `drop-${dropIndicator}` : ""}`}
+      data-block-id={block.id}
+      data-block-type={block.type}
       onClick={(e) => { e.stopPropagation(); onActivate(); }}
       onDragOver={onDragOver}
       onDrop={onDrop}
