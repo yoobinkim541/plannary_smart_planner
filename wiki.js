@@ -1144,6 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 scheduleMarkdownMathConversion();
                 scheduleUndoSnapshot();
                 setTimeout(installWikiBlockDragHandles, 0);
+                renderTocWidget();
             }
         });
     }
@@ -1262,9 +1263,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                     </svg>
-                    <span>${escapeHtml(page.title || tr('untitledDocument'))}</span>
+                    <span class="wiki-page-item-title">${escapeHtml(page.title || tr('untitledDocument'))}</span>
+                    <button class="wiki-list-delete-btn" type="button" data-page-id="${page.id}" title="${tr('delete')}" aria-label="${tr('delete')}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
                 `;
                 el.onclick = () => navigateToPage(page.id);
+                const delBtn = el.querySelector('.wiki-list-delete-btn');
+                if (delBtn) delBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    deletePageById(page.id);
+                });
                 wikiPageList.appendChild(el);
                 const shouldExpand = term || forceExpanded || page.id === expandedRootId;
                 if (shouldExpand) {
@@ -1288,9 +1297,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                     </svg>
-                    <span>${escapeHtml(page.title || tr('untitledDocument'))}</span>
+                    <span class="wiki-page-item-title">${escapeHtml(page.title || tr('untitledDocument'))}</span>
+                    <button class="wiki-list-delete-btn" type="button" data-page-id="${page.id}" title="${tr('delete')}" aria-label="${tr('delete')}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
                 `;
                 el.onclick = () => navigateToPage(page.id);
+                const orphanDelBtn = el.querySelector('.wiki-list-delete-btn');
+                if (orphanDelBtn) orphanDelBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    deletePageById(page.id);
+                });
                 wikiPageList.appendChild(el);
                 renderedIds.add(page.id);
             });
@@ -1475,7 +1492,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const renderTocWidget = () => {
+        const list = document.getElementById('wiki-widget-toc-list');
+        if (!list) return;
+        const headings = [...document.querySelectorAll('#editorjs .ce-block h1, #editorjs .ce-block h2, #editorjs .ce-block h3, #editorjs .ce-block h4, #editorjs .ce-block h5, #editorjs .ce-block h6')];
+        if (!currentPageId || !headings.length) {
+            list.innerHTML = `<div class="wiki-widget-muted">${tr('tocEmpty')}</div>`;
+            return;
+        }
+        list.innerHTML = '';
+        headings.forEach(h => {
+            const level = parseInt(h.tagName.substring(1), 10) || 2;
+            const text = (h.textContent || '').trim();
+            if (!text) return;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = `wiki-widget-toc-item wiki-widget-toc-level-${level}`;
+            item.textContent = text;
+            item.onclick = () => {
+                const block = h.closest('.ce-block') || h;
+                block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            };
+            list.appendChild(item);
+        });
+        if (!list.children.length) {
+            list.innerHTML = `<div class="wiki-widget-muted">${tr('tocEmpty')}</div>`;
+        }
+    };
+
     const renderWidgets = () => {
+        renderTocWidget();
         const currentPage = getCurrentPage();
         const childPages = currentPageId ? getChildPages(currentPageId) : [];
         const projectId = currentPage ? getInheritedProjectId(currentPage) : (wikiProjectSelect?.value || '');
@@ -1750,6 +1796,14 @@ document.addEventListener('DOMContentLoaded', () => {
         wikiTitleInput.addEventListener('input', () => {
             pushMetaUndoSnapshot();
             markDirty();
+            if (currentPageId) {
+                const page = getPageById(currentPageId);
+                if (page) {
+                    page.title = wikiTitleInput.value;
+                    renderPageList();
+                    renderNoteSidebarTree();
+                }
+            }
         });
     }
 
@@ -1969,55 +2023,78 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Ctrl+S keyboard shortcut
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    // Ctrl+S / Ctrl+Z keyboard shortcuts — capture phase so EditorJS/contenteditable
+    // can't swallow the event before we see it.
+    const onWikiShortcut = (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
+        if (pageWiki && !pageWiki.classList.contains('active')) return;
+        const key = (e.key || '').toLowerCase();
+        if (key === 's') {
             e.preventDefault();
+            e.stopPropagation();
             if (currentPageId) savePage();
+            return;
         }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (key === 'z' && !e.shiftKey) {
             const holder = document.getElementById('editorjs');
-            if (wikiTitleInput && wikiTitleInput === document.activeElement) {
+            const active = document.activeElement;
+            if (wikiTitleInput && wikiTitleInput === active) {
                 e.preventDefault();
+                e.stopPropagation();
                 undoMetaChange();
-            } else if (wikiProjectSelect && wikiProjectSelect === document.activeElement) {
+            } else if (wikiProjectSelect && wikiProjectSelect === active) {
                 e.preventDefault();
+                e.stopPropagation();
                 undoMetaChange();
-            } else if (holder && holder.contains(document.activeElement)) {
+            } else if (holder && holder.contains(active)) {
                 e.preventDefault();
+                e.stopPropagation();
                 undoEditorChange();
-            } else if (currentPageId && undoMetaChange()) {
-                e.preventDefault();
+            } else if (currentPageId) {
+                if (undoMetaChange()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             }
         }
-    });
+    };
+    window.addEventListener('keydown', onWikiShortcut, true);
 
-    if (deleteWikiBtn) {
-        deleteWikiBtn.onclick = async () => {
-            if (!currentPageId) return;
-            const descendantIds = getDescendantPageIds(currentPageId);
+    const deletePageById = async (pageId, options = {}) => {
+        if (!pageId) return false;
+        const { skipConfirm = false } = options;
+        const descendantIds = getDescendantPageIds(pageId);
+        if (!skipConfirm) {
             const confirmMessage = descendantIds.length
                 ? fmt('deletePageWithSubpagesConfirm', { count: descendantIds.length })
                 : tr('deletePageConfirm');
-            if (!confirm(confirmMessage)) return;
+            if (!confirm(confirmMessage)) return false;
+        }
+        const batch = db.batch();
+        const deletingIds = [pageId, ...descendantIds];
+        const deletingIdSet = new Set(deletingIds);
+        const deletingUrls = new Set();
+        deletingIds.forEach(id => {
+            getWikiPageStorageUrls(getPageById(id)).forEach(url => deletingUrls.add(url));
+            batch.delete(db.collection('wiki_pages').doc(id));
+        });
+        try {
+            await batch.commit();
+            await deleteUnlinkedWikiStorageUrls(deletingUrls, getLinkedWikiStorageUrls(null, deletingIdSet));
+            if (currentPageId && deletingIdSet.has(currentPageId)) goBackToList();
+            window.showToast(tr('pageDeleted'));
+            return true;
+        } catch (err) {
+            console.error('[Wiki] Delete error:', err);
+            window.showToast(tr('failedDeletePage') + ': ' + (err.message || err), 'error');
+            return false;
+        }
+    };
 
-            const batch = db.batch();
-            const deletingIds = [currentPageId, ...descendantIds];
-            const deletingIdSet = new Set(deletingIds);
-            const deletingUrls = new Set();
-            deletingIds.forEach(pageId => {
-                getWikiPageStorageUrls(getPageById(pageId)).forEach(url => deletingUrls.add(url));
-                batch.delete(db.collection('wiki_pages').doc(pageId));
-            });
-
-            batch.commit().then(async () => {
-                await deleteUnlinkedWikiStorageUrls(deletingUrls, getLinkedWikiStorageUrls(null, deletingIdSet));
-                goBackToList();
-                window.showToast(tr('pageDeleted'));
-            }).catch(err => {
-                console.error("Delete error:", err);
-                window.showToast(tr('failedDeletePage') + ': ' + err.message, "error");
-            });
+    if (deleteWikiBtn) {
+        deleteWikiBtn.onclick = () => {
+            if (!currentPageId) return;
+            deletePageById(currentPageId);
         };
     }
 

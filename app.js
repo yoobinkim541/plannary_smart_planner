@@ -3081,6 +3081,25 @@ document.addEventListener('DOMContentLoaded', () => {
     handleHash();
 
     // Event Listeners
+    if (getEl('empty-archive-btn')) getEl('empty-archive-btn').onclick = async () => {
+        const archived = allTodos.filter(item => item.archived);
+        if (!archived.length) { showToast(t('archiveAlreadyEmpty')); return; }
+        if (!confirm(t('emptyArchiveConfirm'))) return;
+        try {
+            const urls = new Set();
+            const batch = db.batch();
+            archived.forEach(task => {
+                batch.delete(db.collection('todos').doc(task.id));
+                if (task.imageUrl) urls.add(task.imageUrl);
+            });
+            await batch.commit();
+            if (urls.size) await deleteStorageUrls(urls);
+            showToast(t('archiveEmptied'));
+        } catch (err) {
+            console.error('[Archive] empty failed:', err);
+            showToast((t('archiveEmptyFailed') || 'Failed') + ': ' + (err.message || err), 'error');
+        }
+    };
     if (getEl('theme-toggle-btn')) getEl('theme-toggle-btn').onclick = () => {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const next = isDark ? 'light' : 'dark';
