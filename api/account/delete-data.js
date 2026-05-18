@@ -21,6 +21,8 @@ module.exports = async function handler(req, res) {
       await deleteCollectionByUid(db, name, user.uid);
     }
     await db.collection('eclass_connections').doc(user.uid).delete().catch(() => {});
+    await db.collection('account_security').doc(user.uid).delete().catch(() => {});
+    await deleteCollectionByUid(db, 'account_sessions', user.uid);
     await db.collection('users').doc(user.uid).delete().catch(() => {});
     return sendJson(res, 200, { ok: true });
   } catch (error) {

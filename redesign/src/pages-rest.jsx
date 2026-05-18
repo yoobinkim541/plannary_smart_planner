@@ -2266,7 +2266,7 @@ function ProfilePage({ tasks, t, setTweak }) {
   const [editOpen, setEditOpen] = useStateO(false);
   const [signOutOpen, setSignOutOpen] = useStateO(false);
   const [switchOpen, setSwitchOpen] = useStateO(false);
-  const [plan, setPlan] = useStateO("pro");
+  const [plan, setPlan] = useStateO("basis");
   const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | "lang" | null
   const [lang, setLangState] = useStateO(() => window.PlanaryI18n?.getLang?.() || "ko");
   const [notifs, setNotifs] = useStateO({ email: true, push: true, gcal: true, apple: false, slack: false });
@@ -2285,7 +2285,8 @@ function ProfilePage({ tasks, t, setTweak }) {
         studentId: d.studentId || prev.studentId || "",
         bio: d.bio || prev.bio || "",
       }));
-      if (d.plan === "basic" || d.plan === "pro") setPlan(d.plan);
+      if (d.plan === "basis" || d.plan === "pro") setPlan(d.plan);
+      if (d.plan === "basic") setPlan("basis");
       if (d.notifPrefs && typeof d.notifPrefs === "object") {
         setNotifs((prev) => ({ ...prev, ...d.notifPrefs }));
       }
@@ -2313,7 +2314,7 @@ function ProfilePage({ tasks, t, setTweak }) {
   const densityLabel = (densityOpts.find((o) => o.id === (t && t.density)) || densityOpts[1]).label;
   const planMeta = plan === "pro" ?
   { chip: "Pro 플랜", chipClass: "chip-accent", price: "월 5,900원", features: ["무제한 프로젝트", "e-Class 자동 동기화", "1년 활동 히트맵", "팀 협업 (베타)"] } :
-  { chip: "Basic 플랜", chipClass: "chip", price: "무료", features: ["프로젝트 3개", "수동 동기화", "30일 히트맵", "개인 사용 전용"] };
+  { chip: "Basis 플랜", chipClass: "chip", price: "무료", features: ["프로젝트 3개", "수동 동기화", "30일 히트맵", "개인 사용 전용"] };
   const saveProfile = (draft) => {
     setUser(draft);
     window.Planary.USER = { ...window.Planary.USER, ...draft };
@@ -2368,7 +2369,7 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 10 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>플랜</h3>
               <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-sm)", gap: 1 }}>
-                {["basic", "pro"].map((p) =>
+                {["basis", "pro"].map((p) =>
                 <button
                   key={p}
                   onClick={() => { setPlan(p); window.dispatchEvent(new CustomEvent("planary:save-plan", { detail: p })); }}
@@ -2396,7 +2397,7 @@ function ProfilePage({ tasks, t, setTweak }) {
                   </li>
                 )}
               </ul>
-              {plan === "basic" &&
+              {plan === "basis" &&
               <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 14 }}>
                   <Icon name="sparkles" size={12} />Pro로 업그레이드
                 </button>

@@ -281,7 +281,7 @@ service cloud.firestore {
         (!request.resource.data.keys().hasAny(['school']) || isStringOrNull(request.resource.data.school)) &&
         (!request.resource.data.keys().hasAny(['studentId']) || isStringOrNull(request.resource.data.studentId)) &&
         (!request.resource.data.keys().hasAny(['bio']) || isStringOrNull(request.resource.data.bio)) &&
-        (!request.resource.data.keys().hasAny(['plan']) || (request.resource.data.plan is string && request.resource.data.plan in ['basic', 'pro'])) &&
+        (!request.resource.data.keys().hasAny(['plan']) || (request.resource.data.plan is string && request.resource.data.plan in ['basis', 'basic', 'pro'])) &&
         (!request.resource.data.keys().hasAny(['onboardingCompleted']) || request.resource.data.onboardingCompleted is bool) &&
         (!request.resource.data.keys().hasAny(['onboardingCompletedAt']) || isTimestampOrNull(request.resource.data.onboardingCompletedAt)) &&
         (!request.resource.data.keys().hasAny(['onboardingProgress']) || validOnboardingProgress(request.resource.data.onboardingProgress)) &&

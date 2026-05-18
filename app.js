@@ -1952,6 +1952,7 @@ async function showOnboardingIfNeeded(user) {
                 email: user.email || null,
                 displayName: socialProfile.displayName || user.displayName || null,
                 photoURL: socialProfile.photoURL || null,
+                plan: 'basis',
                 onboardingCompleted: false,
                 onboardingCompletedAt: null,
                 onboardingProgress: progress,
