@@ -1018,6 +1018,11 @@ function WikiPage() {
   const [infoOpen, setInfoOpen] = useStateO(false);
   const [favorites, setFavorites] = useStateO(() => new Set());
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
+  const [tagInputOpen, setTagInputOpen] = useStateO(false);
+  const [tagDraft, setTagDraft] = useStateO("");
+  const [titleDraft, setTitleDraft] = useStateO("");
+  const tagInputRef = useRefO(null);
+  const titleInputRef = useRefO(null);
   const active = tree.find((w) => w.id === activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
   const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
@@ -1042,8 +1047,23 @@ function WikiPage() {
       tags: [...inferred].filter(Boolean).slice(0, 4),
     };
   }, [activeId, tree, docBlocks]);
-  const addPageTag = () => {
-    const value = window.prompt("태그를 입력하세요", "");
+  useEffectO(() => {
+    setTitleDraft(active.title || "");
+    setTagInputOpen(false);
+    setTagDraft("");
+  }, [activeId, active.title]);
+  useEffectO(() => {
+    if (tagInputOpen) tagInputRef.current?.focus();
+  }, [tagInputOpen]);
+  const commitTitle = () => {
+    const title = titleDraft.trim() || "제목 없음";
+    if (title === active.title) return;
+    setTree((prev) => prev.map((w) => w.id === activeId ? { ...w, title } : w));
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { title } },
+    }));
+  };
+  const addPageTag = (value = tagDraft) => {
     const tag = value && value.trim().replace(/^#/, "");
     if (!tag) return;
     const nextTags = [...new Set([...(Array.isArray(active.tags) ? active.tags : []), tag])];
@@ -1051,6 +1071,8 @@ function WikiPage() {
     window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
       detail: { id: activeId, patch: { tags: nextTags } },
     }));
+    setTagDraft("");
+    setTagInputOpen(false);
   };
 
   const COVER_GALLERY = [
@@ -1838,9 +1860,37 @@ function WikiPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <span className="chip chip-accent"><Icon name="book" size={10} />{currentPageMeta.section}</span>
             {currentPageMeta.tags.map((tag) => <span key={tag} className="tag">#{tag}</span>)}
-            <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={addPageTag}><Icon name="plus" size={10} />태그</button>
+            {tagInputOpen ? (
+              <span className="wiki-tag-input-chip">
+                <Icon name="hash" size={10} />
+                <input
+                  ref={tagInputRef}
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addPageTag();
+                    if (e.key === "Escape") { setTagDraft(""); setTagInputOpen(false); }
+                  }}
+                  onBlur={() => { if (tagDraft.trim()) addPageTag(); else setTagInputOpen(false); }}
+                  placeholder="태그"
+                />
+              </span>
+            ) : (
+              <button className="chip wiki-tag-add-btn" onClick={() => setTagInputOpen(true)}><Icon name="plus" size={10} />태그</button>
+            )}
           </div>
-          <h1 className="wiki-doc-title">{active.title}</h1>
+          <input
+            ref={titleInputRef}
+            className="wiki-doc-title wiki-doc-title-input"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commitTitle(); titleInputRef.current?.blur(); }
+              if (e.key === "Escape") { setTitleDraft(active.title || ""); titleInputRef.current?.blur(); }
+            }}
+            placeholder="제목 없음"
+          />
 
           <WikiBlocks activeId={activeId} onBlocksChange={setDocBlocks} />
         </div>
@@ -4204,18 +4254,36 @@ function ListBlock({ block, onUpdate }) {
   const items = block.items || [""];
   const isOrdered = block.type === "ol";
   const Tag = isOrdered ? "ol" : "ul";
+  const focusItem = (index) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-list-block-id="${block.id}"][data-list-index="${index}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const updateItem = (i, val) => {
     const next = [...items];
     next[i] = val;
     onUpdate({ items: next });
   };
-  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), "", ...items.slice(afterIdx + 1)] });
+  const addItem = (afterIdx) => {
+    onUpdate({ items: [...items.slice(0, afterIdx + 1), "", ...items.slice(afterIdx + 1)] });
+    focusItem(afterIdx + 1);
+  };
   const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
   return (
     <Tag style={{ paddingLeft: 22, margin: "8px 0", color: "var(--text-md)", lineHeight: 1.6 }}>
       {items.map((item, i) => (
         <li key={i} style={{ margin: "3px 0" }}>
           <span
+            data-list-block-id={block.id}
+            data-list-index={i}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => updateItem(i, e.currentTarget.innerHTML)}
@@ -4233,9 +4301,25 @@ function ListBlock({ block, onUpdate }) {
 }
 
 function ChecklistBlock({ block, onUpdate }) {
-  const items = block.items || [{ text: "", done: false }];
+  const items = (block.items || [{ text: "", checked: false }]).map((it) => ({ ...it, checked: !!(it.checked ?? it.done) }));
+  const focusItem = (index) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-checklist-block-id="${block.id}"][data-checklist-index="${index}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const update = (i, patch) => onUpdate({ items: items.map((x, idx) => idx === i ? { ...x, ...patch } : x) });
-  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", done: false }, ...items.slice(afterIdx + 1)] });
+  const addItem = (afterIdx) => {
+    onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", checked: false }, ...items.slice(afterIdx + 1)] });
+    focusItem(afterIdx + 1);
+  };
   const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
   return (
     <div style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -4243,13 +4327,15 @@ function ChecklistBlock({ block, onUpdate }) {
         <div key={i} style={{ display: "flex", alignItems: "start", gap: 8, padding: "4px 0" }}>
           <button
             type="button"
-            className={`checkbox ${it.done ? "is-checked" : ""}`}
+            className={`checkbox ${it.checked ? "is-checked" : ""}`}
             style={{ marginTop: 3, flexShrink: 0 }}
-            onClick={() => update(i, { done: !it.done })}
+            onClick={() => update(i, { checked: !it.checked })}
           >
-            {it.done && <Icon name="check" size={11} stroke={3} />}
+            {it.checked && <Icon name="check" size={11} stroke={3} />}
           </button>
           <span
+            data-checklist-block-id={block.id}
+            data-checklist-index={i}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => update(i, { text: e.currentTarget.innerHTML })}
@@ -4259,8 +4345,8 @@ function ChecklistBlock({ block, onUpdate }) {
             }}
             style={{
               outline: "none", flex: 1, minHeight: 22,
-              color: it.done ? "var(--text-lo)" : "var(--text-md)",
-              textDecoration: it.done ? "line-through" : "none",
+              color: it.checked ? "var(--text-lo)" : "var(--text-md)",
+              textDecoration: it.checked ? "line-through" : "none",
               textDecorationColor: "var(--text-faint)",
             }}
             dangerouslySetInnerHTML={{ __html: it.text || "" }}
@@ -4357,14 +4443,35 @@ function MathBlock({ block, onUpdate }) {
 }
 
 function TableBlock({ block, onUpdate }) {
-  const rows = block.rows || [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]];
+  const rows = Array.isArray(block.rows) && block.rows.length
+    ? block.rows.map((row) => Array.isArray(row) && row.length ? row : [""])
+    : [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]];
+  const focusCell = (r, c) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-table-block-id="${block.id}"][data-row="${r}"][data-col="${c}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const updateCell = (r, c, val) => {
     const next = rows.map(row => [...row]);
     next[r][c] = val;
     onUpdate({ rows: next });
   };
-  const addRow = () => onUpdate({ rows: [...rows, Array(rows[0].length).fill("")] });
-  const addCol = () => onUpdate({ rows: rows.map(r => [...r, ""]) });
+  const addRow = (focusCol = 0) => {
+    onUpdate({ rows: [...rows, Array(rows[0].length).fill("")] });
+    focusCell(rows.length, focusCol);
+  };
+  const addCol = () => {
+    onUpdate({ rows: rows.map(r => [...r, ""]) });
+    focusCell(0, rows[0].length);
+  };
   return (
     <div style={{ margin: "10px 0", overflow: "auto", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -4377,9 +4484,25 @@ function TableBlock({ block, onUpdate }) {
                 return (
                   <Tag
                     key={c}
+                    data-table-block-id={block.id}
+                    data-row={r}
+                    data-col={c}
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) => updateCell(r, c, e.currentTarget.textContent)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); addRow(c); }
+                      if (e.key === "Tab") {
+                        e.preventDefault();
+                        if (c === row.length - 1 && r === rows.length - 1) {
+                          addRow(c);
+                        } else {
+                          const nextRow = c === row.length - 1 ? r + 1 : r;
+                          const nextCol = c === row.length - 1 ? 0 : c + 1;
+                          focusCell(nextRow, nextCol);
+                        }
+                      }
+                    }}
                     style={{
                       padding: "8px 10px",
                       border: "1px solid var(--border-soft)",
@@ -4397,7 +4520,7 @@ function TableBlock({ block, onUpdate }) {
         </tbody>
       </table>
       <div style={{ display: "flex", gap: 6, padding: 6, borderTop: "1px solid var(--border-soft)", background: "var(--surface-2)" }}>
-        <button type="button" className="btn btn-sm" onClick={addRow}><Icon name="plus" size={11} />행 추가</button>
+        <button type="button" className="btn btn-sm" onClick={() => addRow()}><Icon name="plus" size={11} />행 추가</button>
         <button type="button" className="btn btn-sm" onClick={addCol}><Icon name="plus" size={11} />열 추가</button>
       </div>
     </div>
@@ -5496,10 +5619,17 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   const updateBlock = (id, patch) =>
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
 
+  const defaultsForType = (type, content = "") => {
+    if (type === "ul" || type === "ol") return { type, items: [content] };
+    if (type === "todo") return { type, items: [{ text: content, checked: false }] };
+    if (type === "table") return { type, rows: [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]] };
+    if (type === "callout") return { type, variant: "ok", title: "포인트", body: content };
+    return { type, content };
+  };
+
   const addBlockAfter = (afterId, type = "p", { focus = true } = {}) => {
     const newId = `b${Date.now()}${Math.random().toString(36).slice(2, 5)}`;
-    const newBlock = { id: newId, type, content: "" };
-    if (type === "callout") { newBlock.variant = "ok"; newBlock.title = "포인트"; newBlock.body = ""; }
+    const newBlock = { id: newId, ...defaultsForType(type, "") };
     setBlocks(prev => {
       const idx = prev.findIndex(b => b.id === afterId);
       if (idx < 0) return [...prev, newBlock];
@@ -5610,7 +5740,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           slashMenu={slashMenu}
           onClose={() => setSlashMenu(null)}
           onPick={(type) => {
-            updateBlock(slashMenu.blockId, { type, content: "" });
+            updateBlock(slashMenu.blockId, defaultsForType(type, ""));
             setFocusBlockId(slashMenu.blockId);
             setSlashMenu(null);
           }}
@@ -5625,6 +5755,13 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   const bodyRef = useRefO(null);
 
   const commitContent = (key, val) => onUpdate({ [key]: val });
+  const defaultsForType = (type, content = "") => {
+    if (type === "ul" || type === "ol") return { type, items: [content] };
+    if (type === "todo") return { type, items: [{ text: content, checked: false }] };
+    if (type === "table") return { type, rows: [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]] };
+    if (type === "callout") return { type, variant: "ok", title: "포인트", body: content };
+    return { type, content };
+  };
   const handleInput = (e) => onLiveEdit && onLiveEdit("content", e.currentTarget.innerHTML);
 
   useEffectO(() => {
@@ -5671,7 +5808,18 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
     e.preventDefault();
     // Clear the visible prefix immediately so the caret resets.
     e.currentTarget.innerHTML = "";
-    onUpdate({ type: nextType, content: "" });
+    onUpdate(defaultsForType(nextType, ""));
+    window.setTimeout(() => {
+      const nextEditable = document.querySelector(`.wiki-block-row[data-block-id="${block.id}"] [contenteditable]`);
+      if (!nextEditable) return;
+      nextEditable.focus();
+      const range = document.createRange();
+      range.selectNodeContents(nextEditable);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
     return true;
   };
 
@@ -5804,7 +5952,7 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
               <button
                 key={o.type}
                 className={`popover-item ${block.type === o.type ? "is-active" : ""}`}
-                onClick={() => { onUpdate({ type: o.type, content: block.content || "" }); onMenuClose(); }}
+                onClick={() => { onUpdate(defaultsForType(o.type, block.content || "")); onMenuClose(); }}
                 style={block.type === o.type ? { color: "var(--accent)", background: "var(--accent-softer)" } : undefined}
               >
                 <Icon name={o.icon} size={13} />{o.label}

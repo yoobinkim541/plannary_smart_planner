@@ -307,7 +307,7 @@
       case "divider":return { id, type: "delimiter", data: {} };
       case "ul":     return { id, type: "list",      data: { style: "unordered", items: b.items || [] } };
       case "ol":     return { id, type: "list",      data: { style: "ordered",   items: b.items || [] } };
-      case "todo":   return { id, type: "checklist", data: { items: (b.items || []).map(it => ({ text: it.text || "", checked: !!it.checked })) } };
+      case "todo":   return { id, type: "checklist", data: { items: (b.items || []).map(it => ({ text: it.text || "", checked: !!(it.checked ?? it.done) })) } };
       case "code":   return { id, type: "code",      data: { code: b.content || "", language: b.language || "plain" } };
       case "math":   return { id, type: "math",      data: { formula: b.content || "" } };
       case "table":  return { id, type: "table",     data: { content: b.rows || [], withHeadings: false } };
