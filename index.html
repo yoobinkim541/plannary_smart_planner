@@ -712,6 +712,15 @@
                                 <span class="stat-value" id="archive-total-items">0</span>
                             </div>
                         </div>
+                        <div class="archive-stat-card">
+                            <div class="archive-stat-icon tone-purple">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17c1.38 0 2-.5 2-1.5S12.38 14 11 14s-2-.5-2-1.5S9.62 11 11 11a2.5 2.5 0 0 1 2.5 2.5"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="m4.93 4.93 2.12 2.12"/><path d="m16.95 16.95 2.12 2.12"/><path d="M2 12h3"/><path d="M19 12h3"/><path d="m4.93 19.07 2.12-2.12"/><path d="m16.95 7.05 2.12-2.12"/></svg>
+                            </div>
+                            <div class="archive-stat-info">
+                                <span class="stat-label">연속 완료</span>
+                                <span class="stat-value" id="archive-current-streak">0일</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Inspiration Box (Random Note) -->
@@ -728,6 +737,14 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
                         </button>
                     </div>
+                </div>
+
+                <div class="archive-activity-section">
+                    <div class="section-header">
+                        <h3>활동 히트맵</h3>
+                        <span class="archive-activity-caption">최근 12주 완료 기록</span>
+                    </div>
+                    <div class="archive-heatmap" id="archive-activity-heatmap" aria-label="최근 12주 완료 활동"></div>
                 </div>
 
                 <div class="archive-list-section">
@@ -750,6 +767,7 @@
                     <p><strong data-i18n="nameLabel">이름:</strong> <span id="profile-view-name"></span></p>
                     <p><strong data-i18n="emailLabel">이메일:</strong> <span id="profile-view-email"></span></p>
                     <p><strong data-i18n="loginMethodsLabel">로그인 방식:</strong> <span id="profile-login-methods"></span></p>
+                    <p><strong data-i18n="joinedDaysLabel">가입 기간:</strong> <span id="profile-joined-days"></span></p>
 
                     <div class="profile-language-panel">
                         <label id="profile-language-label" for="app-language-select" data-i18n="languageLabel">UI 언어</label>

@@ -34,6 +34,28 @@
     d.setHours(0, 0, 0, 0);
     return d.toISOString().slice(0, 10);
   };
+  const localISODate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const dateFromBackendValue = (value) => {
+    if (!value) return null;
+    const d = value && typeof value.toDate === "function" ? value.toDate() : new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  const memberSinceText = (user, userDoc = null) => {
+    const joined = dateFromBackendValue(userDoc?.createdAt) || dateFromBackendValue(user?.metadata?.creationTime);
+    if (!joined) return "";
+    const start = new Date(joined);
+    const today = new Date();
+    start.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const days = Math.max(1, Math.floor((today - start) / 86400000) + 1);
+    return `가입 ${days}일째`;
+  };
   const tomorrowISO = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -126,6 +148,7 @@
       completed: !!task.done,
       completedAt: task.done ? ((existing && existing.completedAt) || firebase.firestore.FieldValue.serverTimestamp()) : null,
       archived: !!task.archived,
+      completedDate: task.done ? ((existing && existing.completedDate) || localISODate()) : null,
       orderIndex: typeof task.orderIndex === "number" ? task.orderIndex : 0,
       createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp(),
     };
@@ -171,20 +194,43 @@
     };
   }
 
+  function formatRelativeKo(ts) {
+    if (!ts) return "방금";
+    const ms = ts && ts.toMillis ? ts.toMillis() : (ts.seconds ? ts.seconds * 1000 : Number(ts));
+    if (!Number.isFinite(ms)) return "방금";
+    const diff = Math.max(0, Date.now() - ms);
+    if (diff < 60_000) return "방금";
+    if (diff < 3_600_000) return `${Math.round(diff / 60_000)}분 전`;
+    if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}시간 전`;
+    return `${Math.round(diff / 86_400_000)}일 전`;
+  }
+
   function projectDocToProject(doc, tasks) {
     const d = doc.data() || {};
+    const isEclass = d.source === "eclass";
     const projectTasks = tasks.filter(t => t.project === doc.id && !t.archived);
     const completed = projectTasks.filter(t => t.done).length;
     const progress = projectTasks.length ? Math.round((completed / projectTasks.length) * 100) : 0;
+    const courseCount = new Set(
+      projectTasks
+        .map(t => t.course || (t._raw && t._raw.courseTitle))
+        .filter(Boolean)
+    ).size;
+    const conn = window.Planary && window.Planary.ECLASS_CONNECTION;
     return {
       id: doc.id,
       name: d.name || "(이름 없음)",
       color: d.color || "#7f0df2",
-      icon: d.icon || "📁",
+      icon: d.icon === "eclass" ? "🎓" : (d.icon || "📁"),
       progress,
       members: [{ name: "나", avatar: null }],
       deadline: null,
-      isEclass: false,
+      isEclass,
+      ...(isEclass ? {
+        courses: courseCount,
+        lastSync: formatRelativeKo(conn && conn.lastSyncedAt),
+        school: (window.Planary && window.Planary.USER && window.Planary.USER.school) || "SeoulTech",
+      } : {}),
     };
   }
 
@@ -398,6 +444,7 @@
       await db.collection("todos").doc(id).update({
         completed,
         completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
+        completedDate: completed ? localISODate() : null,
       });
     },
     async deleteTask(id) {
@@ -651,6 +698,7 @@
       avatar: user.photoURL ? `url("${user.photoURL}")` : null,
       handle: user.email || "",
       initials: (user.displayName || user.email || "U").slice(0, 1).toUpperCase(),
+      memberSince: memberSinceText(user),
       school: "",
       studentId: "",
       bio: "",
@@ -685,6 +733,7 @@
             email: d.email || api.user.email,
             avatar: d.photoURL ? `url("${d.photoURL}")` : api.user.avatar,
             initials: (d.displayName || api.user.name || "U").slice(0, 1).toUpperCase(),
+            memberSince: memberSinceText(user, d),
             school: d.school || "",
             studentId: d.studentId || "",
             bio: d.bio || "",
@@ -701,7 +750,9 @@
     unsubs.push(
       db.collection("eclass_connections").doc(user.uid).onSnapshot(
         (snap) => {
-          window.dispatchEvent(new CustomEvent("planary:eclass-connection", { detail: snap.data() || null }));
+          const data = snap.data() || null;
+          window.Planary.ECLASS_CONNECTION = data;
+          window.dispatchEvent(new CustomEvent("planary:eclass-connection", { detail: data }));
         },
         (err) => console.error("[Planary] eclass connection snapshot error:", err)
       )
@@ -724,7 +775,12 @@
     unsubs.push(
       db.collection("projects").where("uid", "==", user.uid).onSnapshot(
         (snap) => {
-          const projects = snap.docs.map(d => projectDocToProject(d, latestTasks));
+          const projects = snap.docs
+            .filter(d => {
+              const data = d.data() || {};
+              return !data.archived && data.source !== "eclass-course-archived";
+            })
+            .map(d => projectDocToProject(d, latestTasks));
           window.Planary.PROJECTS = projects;
           window.dispatchEvent(new CustomEvent("planary:projects-loaded", { detail: projects }));
         },

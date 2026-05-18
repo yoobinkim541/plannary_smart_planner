@@ -356,9 +356,30 @@ function CreateProjectDialog({ onClose, onCreate }) {
 
 /* ---------- e-Class detail view ---------- */
 function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPage }) {
-  const { ECLASS_COURSES, USER } = window.Planary;
+  const { USER } = window.Planary;
   const [filter, setFilter] = useStateO("open"); // open | exam | done
   const [icon, setIcon] = useStateO(proj.icon);
+
+  // Derive course list from the actually-synced tasks (not the mock ECLASS_COURSES).
+  // Course title from e-class is usually "강의명(코드)"; parse it best-effort.
+  const coursePalette = ["#7f0df2", "#10b981", "#f59e0b", "#e11d48", "#3b82f6", "#a855f7"];
+  const courseMap = new Map();
+  projTasks.forEach((t) => {
+    const title = t.course || (t._raw && t._raw.courseTitle);
+    if (!title || courseMap.has(title)) return;
+    const m = String(title).match(/^(.*?)\(([^)]+)\)\s*$/);
+    const name = m ? m[1].trim() : String(title).trim();
+    const code = m ? m[2].trim() : "";
+    courseMap.set(title, {
+      id: title,
+      code,
+      name,
+      prof: "",
+      credits: 0,
+      color: coursePalette[courseMap.size % coursePalette.length],
+    });
+  });
+  const courses = [...courseMap.values()];
 
   const filteredTasks = projTasks.filter((t) => {
     if (filter === "open") return !t.done;
@@ -432,10 +453,10 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
       <section style={{ padding: 22, borderBottom: "1px solid var(--border-soft)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" }}>이번 학기 강의</h3>
-          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{ECLASS_COURSES.reduce((s, c) => s + c.credits, 0)}학점 · {ECLASS_COURSES.length}개 강의</span>
+          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{courses.length}개 강의</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
-          {ECLASS_COURSES.map((c) => {
+          {courses.map((c) => {
             const ct = projTasks.filter((t) => t.course === c.id);
             const ctOpen = ct.filter((t) => !t.done);
             const next = ctOpen.sort((a, b) => (a.due || "") < (b.due || "") ? -1 : 1)[0];
@@ -454,12 +475,14 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
                 onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
                 onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}>
                 
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--text-lo)", fontWeight: 700, letterSpacing: "0.04em" }}>{c.code}</span>
-                  <span style={{ fontSize: 10, color: "var(--text-faint)" }}>· {c.credits}학점</span>
-                </div>
+                {(c.code || c.credits > 0) && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    {c.code && <span className="mono" style={{ fontSize: 10, color: "var(--text-lo)", fontWeight: 700, letterSpacing: "0.04em" }}>{c.code}</span>}
+                    {c.credits > 0 && <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{c.code ? "· " : ""}{c.credits}학점</span>}
+                  </div>
+                )}
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)", letterSpacing: "-0.01em", marginBottom: 2 }}>{c.name}</div>
-                <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{c.prof}</div>
+                {c.prof && <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{c.prof}</div>}
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--border-soft)" }}>
                   {next ?
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -503,7 +526,7 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
             ))}
           </div>
         </div>
-        {ECLASS_COURSES.map((c) => {
+        {courses.map((c) => {
           const ct = projTasks.filter((t) => {
             if (t.course !== c.id) return false;
             if (filter === "open") return !t.done;
@@ -2462,7 +2485,7 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div className="profile-name-big">{user.name}</div>
             <div className="profile-email-md">{user.email}</div>
             <div style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
-              <span className="chip"><Icon name="clock" size={10} />가입 8개월</span>
+              {user.memberSince && <span className="chip"><Icon name="clock" size={10} />{user.memberSince}</span>}
             </div>
             {user.bio && <p style={{ fontSize: 12, color: "var(--text-md)", marginTop: 14, lineHeight: 1.5 }}>{user.bio}</p>}
             <button className="btn btn-ghost" style={{ marginTop: 16, width: "100%" }} onClick={() => setEditOpen(true)}>
@@ -2895,24 +2918,48 @@ function ProfileDropdownRow({ label, value, options, selected, onSelect, open, o
    e-CLASS CONNECTION CARD (Profile)
    =========================================================== */
 function EclassConnectionCard() {
-  const { USER, ECLASS_COURSES, PROJECTS } = window.Planary;
-  const pe = PROJECTS.find((p) => p.id === "pe");
-  const [connected, setConnected] = useStateO(false);
+  const { USER, PROJECTS, TASKS } = window.Planary;
+  const eclassProject = PROJECTS.find((p) => p.isEclass) || PROJECTS.find((p) => p.id === "pe");
+  const isConnectionLive = (d) => !!(d && d.enabled !== false && (d.encryptedSessionCookie || (d.encryptedUsername && d.encryptedPassword) || d.username || d.connected));
+  const initialConn = window.Planary.ECLASS_CONNECTION;
+  const [connection, setConnection] = useStateO(initialConn);
+  const [connected, setConnected] = useStateO(isConnectionLive(initialConn));
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
-  const [urlInput, setUrlInput] = useStateO("https://eclass.seoultech.ac.kr");
+  const [urlInput, setUrlInput] = useStateO((initialConn && initialConn.baseUrl) || "https://eclass.seoultech.ac.kr");
   const [idInput, setIdInput] = useStateO("");
   const [pwInput, setPwInput] = useStateO("");
 
   // Live-sync e-Class connection state from firebase-bridge
   useEffectO(() => {
     const onConn = (e) => {
-      const d = e.detail;
-      setConnected(!!(d && (d.username || d.connected || d.baseUrl)));
+      setConnection(e.detail);
+      setConnected(isConnectionLive(e.detail));
     };
     window.addEventListener("planary:eclass-connection", onConn);
     return () => window.removeEventListener("planary:eclass-connection", onConn);
   }, []);
+
+  // Derive real values from synced tasks for this user's eClass project.
+  const syncedTasks = eclassProject
+    ? TASKS.filter((t) => t.project === eclassProject.id && !t.archived)
+    : [];
+  const courseTitles = [...new Set(
+    syncedTasks.map((t) => t.course || (t._raw && t._raw.courseTitle)).filter(Boolean)
+  )];
+  const formatRelative = (ts) => {
+    if (!ts) return null;
+    const ms = ts && ts.toMillis ? ts.toMillis() : (ts.seconds ? ts.seconds * 1000 : Number(ts));
+    if (!Number.isFinite(ms)) return null;
+    const diff = Math.max(0, Date.now() - ms);
+    if (diff < 60_000) return "방금";
+    if (diff < 3_600_000) return `${Math.round(diff / 60_000)}분 전`;
+    if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}시간 전`;
+    return `${Math.round(diff / 86_400_000)}일 전`;
+  };
+  const lastSyncLabel = formatRelative(connection && connection.lastSyncedAt) || "기록 없음";
+  const schoolLabel = USER.school || (connection && connection.platform === "seoultech-moodle" ? "서울과학기술대학교" : "");
+  const studentIdLabel = USER.studentId || "";
 
   const handleSync = () => {
     setSyncing(true);
@@ -2977,7 +3024,7 @@ function EclassConnectionCard() {
             }
           </div>
           <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>
-            {USER.school} e-Class에서 강의·과제·시험 일정을 자동으로 가져옵니다
+            {schoolLabel ? `${schoolLabel} ` : ""}e-Class에서 강의·과제·시험 일정을 자동으로 가져옵니다
           </p>
         </div>
       </div>
@@ -2987,14 +3034,14 @@ function EclassConnectionCard() {
           <div className="field-row">
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>학교</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{USER.school}</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{schoolLabel || "—"}</div>
             </div>
-            <span className="mono" style={{ fontSize: 11, color: "var(--text-lo)" }}>학번 {USER.studentId}</span>
+            {studentIdLabel && <span className="mono" style={{ fontSize: 11, color: "var(--text-lo)" }}>학번 {studentIdLabel}</span>}
           </div>
           <div className="field-row">
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>동기화 대상</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{ECLASS_COURSES.length}개 강의 · {ECLASS_COURSES.reduce((s, c) => s + c.credits, 0)}학점</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{courseTitles.length}개 강의 · 작업 {syncedTasks.length}개</div>
             </div>
             <button className="btn btn-sm" onClick={() => {}}>강의 보기</button>
           </div>
@@ -3008,7 +3055,7 @@ function EclassConnectionCard() {
           <div className="field-row" style={{ borderBottom: 0 }}>
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>마지막 동기화</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{pe?.lastSync || "기록 없음"} · 항목 {window.Planary.TASKS.filter((t) => t.project === "pe").length}개</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{lastSyncLabel} · 항목 {syncedTasks.length}개</div>
             </div>
             <button className="btn btn-sm btn-primary" onClick={handleSync} disabled={syncing} style={{ minWidth: 120, justifyContent: "center" }}>
               <Icon name="refresh" size={13} style={{ animation: syncing ? "spin 1s linear infinite" : "none" }} />
@@ -5283,6 +5330,10 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   const [menuOpenId, setMenuOpenId] = useStateO(null);
   const [slashMenu, setSlashMenu] = useStateO(null); // { blockId, x, y } | null
   const lastSavedRef = useRefO("");
+  const liveBlocksRef = useRefO(blocks);
+  const liveSaveTimerRef = useRefO(null);
+  const undoStackRef = useRefO([]);
+  const isRestoringRef = useRefO(false);
 
   // Re-load blocks when switching pages — prefer live WIKI_PAGES from firebase-bridge
   useEffectO(() => {
@@ -5295,6 +5346,8 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     setSlashMenu(null);
     // Mark this load as "remote" so the save-effect below skips it
     lastSavedRef.current = JSON.stringify(initial);
+    liveBlocksRef.current = initial;
+    undoStackRef.current = [initial];
   }, [activeId]);
 
   // Refresh blocks when the bridge emits fresh wiki data for the current page
@@ -5319,19 +5372,102 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     onBlocksChange && onBlocksChange(blocks);
   }, [blocks]);
 
-  // Debounced auto-save to Firestore (~800ms after last edit)
+  // Keep a live ref of the latest blocks for ref-based reads (Ctrl+S, autosave from input).
+  useEffectO(() => {
+    liveBlocksRef.current = blocks;
+    if (!isRestoringRef.current) {
+      const last = undoStackRef.current[undoStackRef.current.length - 1];
+      const serialized = JSON.stringify(blocks);
+      if (!last || JSON.stringify(last) !== serialized) {
+        undoStackRef.current.push(blocks);
+        if (undoStackRef.current.length > 80) undoStackRef.current.shift();
+      }
+    }
+  }, [blocks]);
+
+  const flushSave = (sourceBlocks) => {
+    if (!activeId) return;
+    const data = sourceBlocks || liveBlocksRef.current;
+    const serialized = JSON.stringify(data);
+    if (serialized === lastSavedRef.current) return;
+    lastSavedRef.current = serialized;
+    window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
+      detail: { id: activeId, blocks: data },
+    }));
+  };
+
+  const scheduleAutoSave = () => {
+    clearTimeout(liveSaveTimerRef.current);
+    liveSaveTimerRef.current = setTimeout(() => flushSave(), 800);
+  };
+
+  // Debounced auto-save to Firestore when blocks state changes (structural ops, blur commits).
   useEffectO(() => {
     if (!activeId) return;
     const serialized = JSON.stringify(blocks);
     if (serialized === lastSavedRef.current) return;
-    const t = setTimeout(() => {
-      lastSavedRef.current = serialized;
-      window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
-        detail: { id: activeId, blocks },
-      }));
-    }, 800);
+    const t = setTimeout(() => flushSave(blocks), 800);
     return () => clearTimeout(t);
   }, [blocks, activeId]);
+
+  // Live edit from contenteditable onInput — updates the live ref without
+  // triggering re-render (avoids caret jump), and schedules autosave.
+  const onLiveEdit = (blockId, key, value) => {
+    liveBlocksRef.current = liveBlocksRef.current.map(b =>
+      b.id === blockId ? { ...b, [key]: value } : b
+    );
+    scheduleAutoSave();
+  };
+
+  // Ctrl+S to force save now, Ctrl+Z to undo.
+  useEffectO(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
+      const k = (e.key || "").toLowerCase();
+      if (k === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+        const active = document.activeElement;
+        if (active && active.isContentEditable) {
+          const editable = active;
+          // Find which block this belongs to by walking up to nearest [data-block-id]
+          const blockEl = editable.closest && editable.closest("[data-block-id]");
+          if (blockEl) {
+            onLiveEdit(blockEl.dataset.blockId, "content", editable.innerHTML);
+          }
+        }
+        clearTimeout(liveSaveTimerRef.current);
+        // Sync React state with live ref so blur won't overwrite, and snapshot for undo.
+        setBlocks(liveBlocksRef.current);
+        flushSave();
+        window.Planary?.toast?.({ type: "ok", title: "저장됨", ttl: 1200 });
+        return;
+      }
+      if (k === "z" && !e.shiftKey) {
+        const active = document.activeElement;
+        const inWiki = active && (active.isContentEditable || active.closest?.(".wiki-block"));
+        if (!inWiki) return;
+        if (undoStackRef.current.length < 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+        // If user typed since last commit, push current live state so undo lands on prior commit.
+        const liveSerialized = JSON.stringify(liveBlocksRef.current);
+        const topSerialized = JSON.stringify(undoStackRef.current[undoStackRef.current.length - 1]);
+        if (liveSerialized !== topSerialized) {
+          undoStackRef.current.push(liveBlocksRef.current);
+        }
+        undoStackRef.current.pop();
+        const prev = undoStackRef.current[undoStackRef.current.length - 1];
+        isRestoringRef.current = true;
+        setBlocks(prev);
+        liveBlocksRef.current = prev;
+        scheduleAutoSave();
+        setTimeout(() => { isRestoringRef.current = false; }, 0);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [activeId]);
 
   const updateBlock = (id, patch) =>
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
@@ -5424,6 +5560,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           }}
           onMenuToggle={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
           onMenuClose={() => setMenuOpenId(null)}
+          onLiveEdit={(key, value) => onLiveEdit(b.id, key, value)}
           onSlashCommand={(rect) => openSlashMenu(b.id, rect)}
           onDragStart={(e) => onDragStart(e, b.id)}
           onDragOver={(e) => onDragOver(e, b.id)}
@@ -5459,11 +5596,12 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   );
 }
 
-function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
+function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onLiveEdit, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const ref = useRefO(null);
   const bodyRef = useRefO(null);
 
   const commitContent = (key, val) => onUpdate({ [key]: val });
+  const handleInput = (e) => onLiveEdit && onLiveEdit("content", e.currentTarget.innerHTML);
 
   useEffectO(() => {
     if (!autoFocus || !bodyRef.current) return;
@@ -5485,7 +5623,36 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   // - "/" opens slash menu (works anywhere — like Notion)
   // - Enter creates a new block (instead of newline)
   // - Backspace at empty content removes block and focuses previous
+  // Markdown shorthand: when Space is pressed and the line so far matches
+  // a markdown prefix (e.g. "#", ">", "$$"), convert the block type.
+  const MD_PREFIX_MAP = {
+    "#": "h1",
+    "##": "h2",
+    "###": "h3",
+    ">": "quote",
+    "$$": "math",
+    "-": "ul",
+    "*": "ul",
+    "1.": "ol",
+    "[]": "todo",
+  };
+
+  const tryMarkdownShortcut = (e) => {
+    if (e.key !== " " || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return false;
+    const text = (e.currentTarget.textContent || "").trimEnd();
+    const nextType = MD_PREFIX_MAP[text];
+    if (!nextType) return false;
+    // Only convert from a plain text block — avoid re-converting an already-h1 etc.
+    if (block.type !== "p" && block.type !== "h1" && block.type !== "h2" && block.type !== "h3" && block.type !== "quote") return false;
+    e.preventDefault();
+    // Clear the visible prefix immediately so the caret resets.
+    e.currentTarget.innerHTML = "";
+    onUpdate({ type: nextType, content: "" });
+    return true;
+  };
+
   const handleKeyDown = (e) => {
+    if (tryMarkdownShortcut(e)) return;
     if (e.key === "/") {
       e.preventDefault();
       const rect = e.target.getBoundingClientRect();
@@ -5507,11 +5674,11 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
 
   const renderContent = () => {
     const t = block.type;
-    if (t === "h1") return <h1 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h2") return <h2 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h3") return <h3 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "p") return <p ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "quote") return <blockquote ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
     if (t === "ul" || t === "ol") {
       return <ListBlock block={block} onUpdate={onUpdate} />;
     }

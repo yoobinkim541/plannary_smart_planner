@@ -89,7 +89,8 @@ service cloud.firestore {
     function validTodo() {
       return hasOnlyKeys([
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
-        'imageUrl', 'completed', 'completedAt', 'archived', 'createdAt', 'orderIndex',
+        'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
+        'completedAt', 'completedDate',
         'dueTime', 'calendarReminderMinutes', 'calendarReminderMinutesList',
         'syncCalendar', 'calendarEventId',
         'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt',
@@ -115,10 +116,11 @@ service cloud.firestore {
       (!request.resource.data.keys().hasAny(['courseTitle']) || isStringOrNull(request.resource.data.courseTitle)) &&
       (!request.resource.data.keys().hasAny(['ddayText']) || isStringOrNull(request.resource.data.ddayText)) &&
       (!request.resource.data.keys().hasAny(['syncedAt']) || isTimestampOrNull(request.resource.data.syncedAt)) &&
+      (!request.resource.data.keys().hasAny(['completedAt']) || isTimestampOrNull(request.resource.data.completedAt)) &&
+      (!request.resource.data.keys().hasAny(['completedDate']) || isStringOrNull(request.resource.data.completedDate)) &&
       request.resource.data.priority is string &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&
       request.resource.data.completed is bool &&
-      (!request.resource.data.keys().hasAny(['completedAt']) || isTimestampOrNull(request.resource.data.completedAt)) &&
       request.resource.data.archived is bool &&
       isTimestampOrNull(request.resource.data.createdAt) &&
       isNumberOrNull(request.resource.data.orderIndex);

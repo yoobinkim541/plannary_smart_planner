@@ -125,6 +125,79 @@ const APP_FONT_OPTIONS = [
     { value: "'Georgia', serif", labelKey: 'serif' },
     { value: "'Comic Sans MS', cursive", labelKey: 'handwritten' }
 ];
+
+function localDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseTaskDateKey(value) {
+    if (!value) return null;
+    if (typeof value === 'string') return value.slice(0, 10);
+    const date = value && typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : localDateKey(date);
+}
+
+function getTaskCompletedDateKey(task) {
+    return parseTaskDateKey(task.completedDate) || parseTaskDateKey(task.completedAt) || parseTaskDateKey(task.createdAt);
+}
+
+function buildCompletedTaskActivity(tasks, days = 84) {
+    const counts = new Map();
+    tasks.forEach(task => {
+        if (!task.completed) return;
+        const key = getTaskCompletedDateKey(task);
+        if (!key) return;
+        counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(today.getDate() - (days - 1));
+    const dates = [];
+    for (let i = 0; i < days; i += 1) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        const key = localDateKey(date);
+        dates.push({ key, count: counts.get(key) || 0 });
+    }
+
+    let streak = 0;
+    for (let cursor = new Date(today); ; cursor.setDate(cursor.getDate() - 1)) {
+        if ((counts.get(localDateKey(cursor)) || 0) === 0) break;
+        streak += 1;
+    }
+
+    return { dates, streak };
+}
+
+function dateFromBackendValue(value) {
+    if (!value) return null;
+    const date = value && typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getJoinedDate(user, userDoc = null) {
+    return dateFromBackendValue(userDoc?.createdAt) || dateFromBackendValue(user?.metadata?.creationTime);
+}
+
+function getJoinedDays(user, userDoc = null) {
+    const joinedDate = getJoinedDate(user, userDoc);
+    if (!joinedDate) return null;
+    const joined = new Date(joinedDate);
+    const today = new Date();
+    joined.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return Math.max(1, Math.floor((today - joined) / 86400000) + 1);
+}
+
+function formatJoinedDays(user, userDoc = null) {
+    const days = getJoinedDays(user, userDoc);
+    return days == null ? '-' : formatText('joinedDaysValue', { days });
+}
 const GUIDE_STEPS = {
     taskCreate: {
         icon: 'tasks',
@@ -576,6 +649,9 @@ function applyLanguage(lang = currentLanguage) {
     const archiveStatLabels = document.querySelectorAll('#page-archive .archive-stat-card .stat-label');
     if (archiveStatLabels[0]) archiveStatLabels[0].textContent = t('totalAchievements');
     if (archiveStatLabels[1]) archiveStatLabels[1].textContent = t('itemsArchived');
+    if (archiveStatLabels[2]) archiveStatLabels[2].textContent = t('currentStreak');
+    setText('.archive-activity-section .section-header h3', t('activityHeatmap'));
+    setText('.archive-activity-caption', t('lastTwelveWeeksCompleted'));
     setText('.archive-list-section .section-header h3', t('archivedTasks'));
     setText('#empty-archive-btn', t('emptyArchive'));
     setText('.inspiration-header span', t('inspirationTitle'));
@@ -585,6 +661,7 @@ function applyLanguage(lang = currentLanguage) {
     if (profileLabels[0]) profileLabels[0].textContent = t('nameLabel');
     if (profileLabels[1]) profileLabels[1].textContent = t('emailLabel');
     if (profileLabels[2]) profileLabels[2].textContent = t('loginMethodsLabel');
+    if (profileLabels[3]) profileLabels[3].textContent = t('joinedDaysLabel');
     setText('#profile-language-label', t('languageLabel'));
     setText('#profile-font-label', t('appFontLabel'));
     setText('#profile-notification-title', t('notificationSettings'));
@@ -1048,6 +1125,7 @@ function updateProfileUI(user) {
     if (getEl('profile-login-methods')) {
         getEl('profile-login-methods').textContent = providerIds.map(id => providerLabels[id] || id).join(', ') || t('emailPasswordProvider');
     }
+    if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user);
     if (getEl('profile-password-help')) {
         getEl('profile-password-help').textContent = hasPasswordProvider
             ? t('emailPasswordAlreadyEnabled')
@@ -1962,11 +2040,13 @@ async function showOnboardingIfNeeded(user) {
             }, { merge: true });
             setAppleCalendarEnabled(false);
             onboardingState = buildOnboardingState({ onboardingProgress: progress, onboardingCurrentStep: GUIDE_STEP_IDS[0] });
+            if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user);
             openOnboarding();
             return;
         }
         const data = snapshot.data();
         setAppleCalendarEnabled(data?.notifPrefs?.apple === true);
+        if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user, data);
         const socialProfile = getSocialAuthProfile(user);
         const profileUpdates = {};
         if (!data.displayName && socialProfile.displayName) profileUpdates.displayName = socialProfile.displayName;
@@ -2113,11 +2193,13 @@ function renderTodos(todos) {
     });
 
     todoList.querySelectorAll('.btn-toggle').forEach(b => b.onclick = () => {
-        const t = allTodos.find(x => x.id === b.dataset.id);
-        const completed = !t.completed;
+        const task = allTodos.find(x => x.id === b.dataset.id);
+        if (!task) return;
+        const completed = !task.completed;
         db.collection('todos').doc(b.dataset.id).update({
             completed,
-            completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null
+            completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
+            completedDate: completed ? localDateKey() : null
         });
         markGuideStepComplete('taskManage');
     });
@@ -2456,8 +2538,13 @@ function scheduleReminderNotifications() {
 function renderArchive() {
     const archiveListEl = getEl('archive-tasks-list'); if (!archiveListEl) return;
     const archived = allTodos.filter(t => t.archived);
+    const completedTasks = allTodos.filter(t => t.completed);
+    const activity = buildCompletedTaskActivity(allTodos);
     if (getEl('archive-total-items')) getEl('archive-total-items').textContent = archived.length;
-    if (getEl('archive-total-completed')) getEl('archive-total-completed').textContent = allTodos.filter(t => t.completed).length;
+    if (getEl('archive-total-completed')) getEl('archive-total-completed').textContent = completedTasks.length;
+    const streakEl = getEl('archive-current-streak');
+    if (streakEl) streakEl.textContent = `${activity.streak}${t('daySuffix')}`;
+    renderArchiveHeatmap(activity.dates);
     archiveListEl.innerHTML = archived.length ? '' : `
         <div class="wiki-empty-container collection-empty-container archive-empty-container">
             <div class="wiki-empty-content collection-empty-content">
@@ -2505,6 +2592,17 @@ function renderArchive() {
         if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
     });
     window.refreshInspiration();
+}
+
+function renderArchiveHeatmap(dates) {
+    const heatmapEl = getEl('archive-activity-heatmap');
+    if (!heatmapEl) return;
+    const max = Math.max(1, ...dates.map(day => day.count));
+    heatmapEl.innerHTML = dates.map(day => {
+        const level = day.count === 0 ? 0 : Math.max(1, Math.ceil((day.count / max) * 4));
+        const label = `${day.key}: ${day.count}`;
+        return `<span class="archive-heatmap-cell level-${level}" title="${label}" aria-label="${label}"></span>`;
+    }).join('');
 }
 
 window.refreshInspiration = () => {
