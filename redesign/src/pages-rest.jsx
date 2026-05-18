@@ -28,7 +28,7 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
   const open = projTasks.filter((t) => !t.done);
   const done = projTasks.filter((t) => t.done);
 
-  const toggleTask = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
+  const toggleTask = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
 
   const handleCreate = (draft) => {
     const id = `p${Date.now()}`;
@@ -1021,6 +1021,37 @@ function WikiPage() {
   const active = tree.find((w) => w.id === activeId) || tree[0];
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
   const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
+  const currentPageMeta = useMemoO(() => {
+    const chain = [];
+    let cur = active;
+    while (cur) {
+      chain.unshift(cur);
+      cur = cur.parent ? tree.find(w => w.id === cur.parent) : null;
+    }
+    const headingText = docBlocks
+      .filter((b) => /^h[1-3]$/.test(b.type || ""))
+      .map((b) => String(b.content || "").replace(/<[^>]+>/g, "").trim())
+      .filter(Boolean);
+    const inferred = new Set([
+      ...chain.slice(0, -1).map((w) => w.title),
+      ...headingText.slice(0, 2),
+      ...(Array.isArray(active.tags) ? active.tags : []),
+    ]);
+    return {
+      section: chain.length > 1 ? chain[chain.length - 2].title : "워크스페이스",
+      tags: [...inferred].filter(Boolean).slice(0, 4),
+    };
+  }, [activeId, tree, docBlocks]);
+  const addPageTag = () => {
+    const value = window.prompt("태그를 입력하세요", "");
+    const tag = value && value.trim().replace(/^#/, "");
+    if (!tag) return;
+    const nextTags = [...new Set([...(Array.isArray(active.tags) ? active.tags : []), tag])];
+    setTree((prev) => prev.map((w) => w.id === activeId ? { ...w, tags: nextTags } : w));
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { tags: nextTags } },
+    }));
+  };
 
   const COVER_GALLERY = [
   { id: "g1", label: "Violet wash", style: { background: "linear-gradient(135deg, #7f0df2, #9b3ff7)" } },
@@ -1116,7 +1147,7 @@ function WikiPage() {
       okr:      { icon: "🎯", title: "OKR & 마일스톤", body: "분기 목표와 핵심 결과" },
     };
     const preset = presets[type] || presets.blank;
-    const newNode = { id, title: preset.title, icon: preset.icon, parent: parent || null };
+    const newNode = { id, title: preset.title, icon: preset.icon, parent: parent || null, tags: [], orderIndex: Date.now() };
     setTree((prev) => [...prev, newNode]);
     if (parent) setExpanded((prev) => ({ ...prev, [parent]: true }));
     setActiveId(id);
@@ -1786,11 +1817,9 @@ function WikiPage() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <span className="chip chip-accent"><Icon name="book" size={10} />디자인 시스템</span>
-            <span className="tag">tokens</span>
-            <span className="tag">color</span>
-            <span className="tag">v3</span>
-            <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }}><Icon name="plus" size={10} />태그</button>
+            <span className="chip chip-accent"><Icon name="book" size={10} />{currentPageMeta.section}</span>
+            {currentPageMeta.tags.map((tag) => <span key={tag} className="tag">#{tag}</span>)}
+            <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={addPageTag}><Icon name="plus" size={10} />태그</button>
           </div>
           <h1 className="wiki-doc-title">{active.title}</h1>
 
@@ -1924,6 +1953,7 @@ function BookmarksPage() {
   const [query, setQuery] = useStateO("");
   const [active, setActive] = useStateO("전체");
   const [urlDraft, setUrlDraft] = useStateO("");
+  const [tagDraft, setTagDraft] = useStateO("");
 
   // Live-sync bookmarks from firebase-bridge
   useEffectO(() => {
@@ -1934,20 +1964,36 @@ function BookmarksPage() {
     return () => window.removeEventListener("planary:bookmarks-loaded", onLoaded);
   }, []);
 
-  const allTags = ["전체", ...new Set(bookmarks.flatMap((b) => b.tags))];
+  const allTags = ["전체", ...new Set(bookmarks.flatMap((b) => Array.isArray(b.tags) ? b.tags : []))];
   const filtered = bookmarks.filter((b) =>
-  (active === "전체" || b.tags.includes(active)) && (
-  !query || b.title.toLowerCase().includes(query.toLowerCase()) || b.url.toLowerCase().includes(query.toLowerCase()))
+  (active === "전체" || (Array.isArray(b.tags) && b.tags.includes(active))) && (
+  !query || b.title.toLowerCase().includes(query.toLowerCase()) || b.url.toLowerCase().includes(query.toLowerCase()) || (b.tags || []).some((tag) => tag.toLowerCase().includes(query.toLowerCase())))
   );
+  const parseTags = (value) => [...new Set(String(value || "").split(",").map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean))];
 
   const submitBookmark = () => {
     const url = urlDraft.trim();
     if (!url) return;
+    const tags = parseTags(tagDraft);
     window.dispatchEvent(new CustomEvent("planary:create-bookmark", {
-      detail: { url, title: "", tags: [] },
+      detail: { url, title: "", tags },
     }));
     setUrlDraft("");
+    setTagDraft("");
     window.Planary.toast?.({ type: "ok", title: "북마크가 추가됐어요", sub: url });
+  };
+  const updateBookmarkTags = (bookmark, tags) => {
+    const nextTags = [...new Set(tags.map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean))];
+    setBookmarks((prev) => prev.map((b) => b.id === bookmark.id ? { ...b, tags: nextTags } : b));
+    window.dispatchEvent(new CustomEvent("planary:update-bookmark", {
+      detail: { id: bookmark.id, patch: { tags: nextTags } },
+    }));
+  };
+  const addBookmarkTag = (bookmark) => {
+    const value = window.prompt("추가할 태그를 입력하세요", "");
+    const tag = value && value.trim().replace(/^#/, "");
+    if (!tag) return;
+    updateBookmarkTags(bookmark, [...(bookmark.tags || []), tag]);
   };
 
   return (
@@ -1972,6 +2018,17 @@ function BookmarksPage() {
             onKeyDown={(e) => { if (e.key === "Enter") submitBookmark(); }}
           />
           <button className="btn btn-sm btn-primary" onClick={submitBookmark}>저장</button>
+        </div>
+        <div className="composer-tools">
+          <Icon name="hash" size={13} style={{ color: "var(--text-lo)" }} />
+          <input
+            className="composer-input"
+            placeholder="태그 추가 — 디자인, 자료, 개발"
+            value={tagDraft}
+            onChange={(e) => setTagDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submitBookmark(); }}
+            style={{ fontSize: 13 }}
+          />
         </div>
       </div>
 
@@ -1998,7 +2055,7 @@ function BookmarksPage() {
             
               <span className="tag-chip-hash">{t === "전체" ? "" : "#"}</span>
               <span>{t}</span>
-              <span className="tag-chip-count">{t === "전체" ? bookmarks.length : bookmarks.filter((b) => b.tags.includes(t)).length}</span>
+              <span className="tag-chip-count">{t === "전체" ? bookmarks.length : bookmarks.filter((b) => (b.tags || []).includes(t)).length}</span>
             </button>
           )}
         </div>
@@ -2012,7 +2069,19 @@ function BookmarksPage() {
               <div className="bookmark-title">{b.title}</div>
               <div className="bookmark-url">{b.url}</div>
               <div className="bookmark-tags">
-                {b.tags.map((t) => <span key={t} className="tag">#{t}</span>)}
+                {(b.tags || []).map((t) => (
+                  <button
+                    key={t}
+                    className="tag"
+                    title="태그 제거"
+                    onClick={() => updateBookmarkTags(b, (b.tags || []).filter((tag) => tag !== t))}
+                  >
+                    #{t}
+                  </button>
+                ))}
+                <button className="tag" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={() => addBookmarkTag(b)}>
+                  <Icon name="plus" size={9} />태그
+                </button>
               </div>
             </div>
             <button className="icon-btn" style={{ alignSelf: "start" }} onClick={() => window.open(b.url, "_blank", "noopener")}>
@@ -2046,12 +2115,55 @@ const ARCHIVE_QUOTES = [
   { text: "지금 한 작업은 미래의 자유 시간입니다.", date: "2024. 09. 22 메모에서" },
 ];
 
+function archiveTaskActivityDateKey(task) {
+  const value = task.completedAt || task.dueDate || task.due;
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString().slice(0, 10);
+  if (typeof value.seconds === "number") return new Date(value.seconds * 1000).toISOString().slice(0, 10);
+  if (typeof value._seconds === "number") return new Date(value._seconds * 1000).toISOString().slice(0, 10);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return null;
+}
+
+function buildArchiveTaskActivity(tasks, days = 371) {
+  const countsByDate = new Map();
+  tasks.filter(t => t.done).forEach(task => {
+    const key = archiveTaskActivityDateKey(task);
+    if (key) countsByDate.set(key, (countsByDate.get(key) || 0) + 1);
+  });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const counts = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    counts.push(countsByDate.get(d.toISOString().slice(0, 10)) || 0);
+  }
+  const levels = counts.map(count => Math.min(4, count));
+  let currentStreak = 0;
+  for (let i = counts.length - 1; i >= 0 && counts[i] > 0; i -= 1) currentStreak += 1;
+  let longestStreak = 0;
+  let run = 0;
+  counts.forEach(count => {
+    run = count > 0 ? run + 1 : 0;
+    longestStreak = Math.max(longestStreak, run);
+  });
+  return {
+    counts,
+    levels,
+    currentStreak,
+    longestStreak,
+    activeDays: counts.filter(Boolean).length,
+  };
+}
+
 /* ===========================================================
    ARCHIVE
    =========================================================== */
 function ArchivePage({ tasks }) {
   const completed = tasks.filter((t) => t.done);
-  const heat = window.Planary.WEEKLY_HEATMAP;
+  const activity = buildArchiveTaskActivity(tasks);
+  const heat = activity.levels;
   const [range, setRange] = useStateO("month"); // week | month | quarter | year | all
   const [archiveSearch, setArchiveSearch] = useStateO("");
   const [quoteIdx, setQuoteIdx] = useStateO(() => {
@@ -2112,9 +2224,9 @@ function ArchivePage({ tasks }) {
         </div>
         <div className="archive-stat">
           <div className="archive-stat-big" style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            12<span style={{ fontSize: 18, color: "var(--accent)", fontWeight: 700 }}>일 연속</span>
+            {activity.currentStreak}<span style={{ fontSize: 18, color: "var(--accent)", fontWeight: 700 }}>일 연속</span>
           </div>
-          <div className="archive-stat-label">최장 스트릭 24일</div>
+          <div className="archive-stat-label">최장 스트릭 {activity.longestStreak}일</div>
           <div style={{ marginTop: 22, display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ fontSize: 11, color: "var(--text-lo)" }}>이번 주</div>
             <div style={{ display: "flex", gap: 3, flex: 1 }}>
@@ -2132,7 +2244,7 @@ function ArchivePage({ tasks }) {
         <div style={{ display: "flex", alignItems: "start", justifyContent: "space-between", marginBottom: 18, gap: 14 }}>
           <div>
             <div className="kicker">활동 히트맵</div>
-            <h3 style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.015em", marginTop: 4 }}>지난 1년 · {heat.filter((v) => v > 0).length}일 활동</h3>
+            <h3 style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.015em", marginTop: 4 }}>지난 1년 · {activity.activeDays}일 활동</h3>
             <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 4 }}>매일 작업 1개 이상 완료한 날의 강도</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--text-faint)" }}>
@@ -2159,7 +2271,7 @@ function ArchivePage({ tasks }) {
                 <div
                   key={i}
                   className={`heat-cell ${v ? `l${v}` : ""}`}
-                  title={v ? `${v}개 완료` : "활동 없음"} />
+                  title={activity.counts[i] ? `${activity.counts[i]}개 완료` : "활동 없음"} />
 
                 )}
               </div>
@@ -2289,7 +2401,6 @@ function ProfilePage({ tasks, t, setTweak }) {
   const [editOpen, setEditOpen] = useStateO(false);
   const [signOutOpen, setSignOutOpen] = useStateO(false);
   const [switchOpen, setSwitchOpen] = useStateO(false);
-  const [plan, setPlan] = useStateO("pro");
   const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | "lang" | null
   const [lang, setLangState] = useStateO(() => window.PlanaryI18n?.getLang?.() || "ko");
   const [notifs, setNotifs] = useStateO({ email: true, push: true, gcal: true, apple: false, slack: false });
@@ -2308,7 +2419,6 @@ function ProfilePage({ tasks, t, setTweak }) {
         studentId: d.studentId || prev.studentId || "",
         bio: d.bio || prev.bio || "",
       }));
-      if (d.plan === "basic" || d.plan === "pro") setPlan(d.plan);
       if (d.notifPrefs && typeof d.notifPrefs === "object") {
         setNotifs((prev) => ({ ...prev, ...d.notifPrefs }));
       }
@@ -2321,7 +2431,13 @@ function ProfilePage({ tasks, t, setTweak }) {
   const isImage = user.avatar && typeof user.avatar === "string" && user.avatar.startsWith("url(");
   const theme = t ? t.theme : "dark";
   const setTheme = (v) => setTweak && setTweak("theme", v);
-  const fontOpts = [{ id: "jakarta", label: "Plus Jakarta Sans" }, { id: "pretendard", label: "Pretendard" }, { id: "inter", label: "Inter" }];
+  const fontOpts = [
+    { id: "nanum-gothic", label: "Nanum Gothic" },
+    { id: "nanum-myeongjo", label: "Nanum Myeongjo" },
+    { id: "jakarta", label: "Plus Jakarta Sans" },
+    { id: "pretendard", label: "Pretendard" },
+    { id: "inter", label: "Inter" }
+  ];
   const sidebarOpts = [{ id: "full", label: "풀 너비" }, { id: "compact", label: "컴팩트" }, { id: "icons", label: "아이콘만" }];
   const densityOpts = [{ id: "compact", label: "촘촘하게" }, { id: "regular", label: "보통" }, { id: "comfortable", label: "여유롭게" }];
   const langOpts = [
@@ -2334,9 +2450,6 @@ function ProfilePage({ tasks, t, setTweak }) {
   const fontLabel = (fontOpts.find((o) => o.id === (t && t.font)) || fontOpts[0]).label;
   const sidebarLabel = (sidebarOpts.find((o) => o.id === (t && t.sidebar)) || sidebarOpts[0]).label;
   const densityLabel = (densityOpts.find((o) => o.id === (t && t.density)) || densityOpts[1]).label;
-  const planMeta = plan === "pro" ?
-  { chip: "Pro 플랜", chipClass: "chip-accent", price: "월 5,900원", features: ["무제한 프로젝트", "e-Class 자동 동기화", "1년 활동 히트맵", "팀 협업 (베타)"] } :
-  { chip: "Basic 플랜", chipClass: "chip", price: "무료", features: ["프로젝트 3개", "수동 동기화", "30일 히트맵", "개인 사용 전용"] };
   const saveProfile = (draft) => {
     setUser(draft);
     window.Planary.USER = { ...window.Planary.USER, ...draft };
@@ -2378,53 +2491,12 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div className="profile-name-big">{user.name}</div>
             <div className="profile-email-md">{user.email}</div>
             <div style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
-              <span className={`chip ${planMeta.chipClass}`}>{planMeta.chip}</span>
               {user.memberSince && <span className="chip"><Icon name="clock" size={10} />{user.memberSince}</span>}
             </div>
             {user.bio && <p style={{ fontSize: 12, color: "var(--text-md)", marginTop: 14, lineHeight: 1.5 }}>{user.bio}</p>}
             <button className="btn btn-ghost" style={{ marginTop: 16, width: "100%" }} onClick={() => setEditOpen(true)}>
               <Icon name="edit" size={12} />프로필 편집
             </button>
-          </div>
-
-          <div className="card" style={{ marginTop: 12, padding: 0, overflow: "hidden" }}>
-            <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", gap: 10 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>플랜</h3>
-              <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-sm)", gap: 1 }}>
-                {["basic", "pro"].map((p) =>
-                <button
-                  key={p}
-                  onClick={() => { setPlan(p); window.dispatchEvent(new CustomEvent("planary:save-plan", { detail: p })); }}
-                  style={{
-                    height: 22, padding: "0 9px", borderRadius: 4,
-                    fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
-                    background: plan === p ? "var(--surface)" : "transparent",
-                    color: plan === p ? "var(--text-hi)" : "var(--text-lo)",
-                    boxShadow: plan === p ? "var(--shadow-sm)" : "none"
-                  }}>
-                  {p}</button>
-                )}
-              </div>
-            </div>
-            <div style={{ padding: "14px 18px 18px" }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
-                <span className={`chip ${planMeta.chipClass}`}>{planMeta.chip}</span>
-                <span style={{ fontSize: 13, color: "var(--text-md)", fontWeight: 600 }}>{planMeta.price}</span>
-              </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                {planMeta.features.map((f, i) =>
-                <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-md)" }}>
-                    <Icon name="check" size={11} stroke={3} style={{ color: plan === "pro" ? "var(--accent)" : "var(--text-mute)" }} />
-                    {f}
-                  </li>
-                )}
-              </ul>
-              {plan === "basic" &&
-              <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 14 }}>
-                  <Icon name="sparkles" size={12} />Pro로 업그레이드
-                </button>
-              }
-            </div>
           </div>
 
           <div className="card" style={{ marginTop: 12 }}>
@@ -2538,6 +2610,7 @@ function ProfilePage({ tasks, t, setTweak }) {
                     const next = !notifs[r.id];
                     setNotifs((prev) => ({ ...prev, [r.id]: next }));
                     window.dispatchEvent(new CustomEvent("planary:save-notif-prefs", { detail: { [r.id]: next } }));
+                    window.dispatchEvent(new CustomEvent("planary:notif-prefs-changed", { detail: { [r.id]: next } }));
                     window.Planary.toast({ type: "ok", title: `${r.label} ${next ? "켜짐" : "꺼짐"}` });
                   }} />
                 

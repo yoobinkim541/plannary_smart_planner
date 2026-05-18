@@ -114,6 +114,7 @@
       calendarReminderMinutes: reminderList[0] ?? null,
       calendarReminderMinutesList: reminderList,
       done: !!d.completed,
+      completedAt: d.completedAt || null,
       archived: !!d.archived,
       tags: d.courseTitle ? [d.courseTitle] : [],
       source: d.source || null,
@@ -145,8 +146,8 @@
       projectId: task.project || null,
       imageUrl: task.imageUrl || null,
       completed: !!task.done,
-      archived: !!task.archived,
       completedAt: task.done ? ((existing && existing.completedAt) || firebase.firestore.FieldValue.serverTimestamp()) : null,
+      archived: !!task.archived,
       completedDate: task.done ? ((existing && existing.completedDate) || localISODate()) : null,
       orderIndex: typeof task.orderIndex === "number" ? task.orderIndex : 0,
       createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp(),
@@ -335,7 +336,9 @@
       coverHeight: typeof d.coverHeight === "number" ? d.coverHeight : 180,
       coverZoom: typeof d.coverZoom === "number" ? d.coverZoom : 100,
       projectId: d.projectId || null,
+      tags: Array.isArray(d.tags) ? d.tags : [],
       blocks,
+      orderIndex: typeof d.orderIndex === "number" ? d.orderIndex : 0,
       updatedAt: d.updatedAt && d.updatedAt.toMillis ? d.updatedAt.toMillis() : 0,
     };
   }
@@ -566,14 +569,6 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
     },
-    async savePlan(plan) {
-      if (!this.uid) return;
-      await db.collection("users").doc(this.uid).set({
-        uid: this.uid,
-        plan,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-    },
     async saveOnboarding({ progress, currentStep, completed }) {
       if (!this.uid) return;
       const payload = {
@@ -639,6 +634,8 @@
         coverZoom: 100,
         coverCropMode: "cover",
         content: { time: Date.now(), blocks: [], version: "redesign-v1" },
+        tags: [],
+        orderIndex: Date.now(),
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
@@ -651,7 +648,7 @@
     async updateWikiPageMeta(id, patch) {
       if (!this.uid) return;
       const allowed = {};
-      ["title", "parentId", "projectId", "icon", "coverUrl", "coverPosition", "coverPositionX", "coverHeight", "coverZoom", "coverCropMode"].forEach(k => {
+      ["title", "parentId", "projectId", "icon", "coverUrl", "coverPosition", "coverPositionX", "coverHeight", "coverZoom", "coverCropMode", "tags", "orderIndex"].forEach(k => {
         if (patch[k] !== undefined) allowed[k] = patch[k];
       });
       allowed.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -803,16 +800,15 @@
       )
     );
 
-    // Wiki pages — tree metadata + decoded blocks. Sorted by updatedAt desc
-    // client-side to match legacy wiki.js (server orderBy filters out docs
-    // whose serverTimestamp hasn't been confirmed yet).
+    // Wiki pages — tree metadata + decoded blocks. Client-side order keeps
+    // newly created pages appended instead of jumping to the top.
     unsubs.push(
       db.collection("wiki_pages").where("uid", "==", user.uid).onSnapshot(
         (snap) => {
           const pages = snap.docs.map(wikiPageDocToEntry);
-          pages.sort((a, b) => b.updatedAt - a.updatedAt);
+          pages.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0) || a.title.localeCompare(b.title));
           // Public tree shape for sidebar / WikiPage (id, title, parent, icon)
-          const tree = pages.map(p => ({ id: p.id, title: p.title, parent: p.parent, icon: p.icon }));
+          const tree = pages.map(p => ({ id: p.id, title: p.title, parent: p.parent, icon: p.icon, tags: p.tags, orderIndex: p.orderIndex }));
           window.Planary.WIKI_TREE = tree;
           // Per-page content + cover info keyed by id (consumed by WikiBlocks)
           const byId = {};
@@ -1001,11 +997,6 @@
   window.addEventListener("planary:save-notif-prefs", (e) => {
     const patch = e.detail || {};
     api.saveNotifPrefs(patch).catch(err => console.error("[Planary] save-notif-prefs failed:", err));
-  });
-  window.addEventListener("planary:save-plan", (e) => {
-    const plan = e.detail;
-    if (!plan) return;
-    api.savePlan(plan).catch(err => console.error("[Planary] save-plan failed:", err));
   });
   window.addEventListener("planary:save-preferences", (e) => {
     const patch = e.detail || {};

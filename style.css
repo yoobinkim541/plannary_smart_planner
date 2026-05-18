@@ -13,7 +13,7 @@
 }
 
 :root {
-    --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font: 'Nanum Gothic', sans-serif;
     --bg:       #f5f5f7;
     --surface:  #ffffff;
     --border:   #e5e7eb;
@@ -5343,7 +5343,7 @@ body.onboarding-spotlight-active #main-area {
     left: 20px;
     font-size: 120px;
     color: rgba(255,255,255,0.05);
-    font-family: serif;
+    font-family: var(--font);
 }
 
 .inspiration-header {

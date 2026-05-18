@@ -167,7 +167,7 @@ service cloud.firestore {
 
     function validWikiPage() {
       return hasOnlyKeys([
-        'uid', 'title', 'parentId', 'projectId', 'content', 'createdAt', 'updatedAt',
+        'uid', 'title', 'parentId', 'projectId', 'content', 'tags', 'orderIndex', 'createdAt', 'updatedAt',
         'icon', 'coverUrl', 'coverPosition', 'coverPositionX', 'coverHeight', 'coverZoom', 'coverCropMode',
         'ogTried'
       ]) &&
@@ -175,6 +175,8 @@ service cloud.firestore {
       request.resource.data.title.size() > 0 &&
       isStringOrNull(request.resource.data.parentId) &&
       (!request.resource.data.keys().hasAny(['projectId']) || isStringOrNull(request.resource.data.projectId)) &&
+      (!request.resource.data.keys().hasAny(['tags']) || request.resource.data.tags is list) &&
+      (!request.resource.data.keys().hasAny(['orderIndex']) || isNumberOrNull(request.resource.data.orderIndex)) &&
       (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
       (!request.resource.data.keys().hasAny(['coverUrl']) || isStringOrNull(request.resource.data.coverUrl)) &&
       (!request.resource.data.keys().hasAny(['coverPosition']) || isNumberOrNull(request.resource.data.coverPosition)) &&
@@ -275,7 +277,7 @@ service cloud.firestore {
         hasOnlyKeys([
           'uid', 'email', 'displayName', 'onboardingCompleted',
           'onboardingCompletedAt', 'onboardingProgress', 'onboardingCurrentStep',
-          'photoURL', 'school', 'studentId', 'bio', 'plan', 'preferences', 'notifPrefs',
+          'photoURL', 'school', 'studentId', 'bio', 'preferences', 'notifPrefs',
           'createdAt', 'updatedAt'
         ]) &&
         isStringOrNull(request.resource.data.email) &&
@@ -284,7 +286,6 @@ service cloud.firestore {
         (!request.resource.data.keys().hasAny(['school']) || isStringOrNull(request.resource.data.school)) &&
         (!request.resource.data.keys().hasAny(['studentId']) || isStringOrNull(request.resource.data.studentId)) &&
         (!request.resource.data.keys().hasAny(['bio']) || isStringOrNull(request.resource.data.bio)) &&
-        (!request.resource.data.keys().hasAny(['plan']) || (request.resource.data.plan is string && request.resource.data.plan in ['basic', 'pro'])) &&
         (!request.resource.data.keys().hasAny(['onboardingCompleted']) || request.resource.data.onboardingCompleted is bool) &&
         (!request.resource.data.keys().hasAny(['onboardingCompletedAt']) || isTimestampOrNull(request.resource.data.onboardingCompletedAt)) &&
         (!request.resource.data.keys().hasAny(['onboardingProgress']) || validOnboardingProgress(request.resource.data.onboardingProgress)) &&

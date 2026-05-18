@@ -73,8 +73,10 @@ function resolveInitialLanguage() {
     return 'en';
 }
 let currentLanguage = resolveInitialLanguage();
-const DEFAULT_APP_FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
-let currentAppFont = localStorage.getItem('planary-app-font') || DEFAULT_APP_FONT;
+const DEFAULT_APP_FONT = "'Nanum Gothic', sans-serif";
+const LEGACY_DEFAULT_APP_FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
+const savedAppFont = localStorage.getItem('planary-app-font');
+let currentAppFont = (!savedAppFont || savedAppFont === LEGACY_DEFAULT_APP_FONT) ? DEFAULT_APP_FONT : savedAppFont;
 let onboardingState = null;
 let onboardingHighlightEl = null;
 let onboardingHighlightTimer = null;
@@ -90,6 +92,7 @@ let eclassStatus = null;
 let eclassForegroundSyncTimer = null;
 let taskCalendarAccessToken = null;
 let lastCalendarImportAt = null;
+let appleCalendarEnabled = false;
 const reminderNotificationTimers = new Map();
 const DEFAULT_NOTIFICATION_SETTINGS = {
     dailyTasks: false,
@@ -2037,12 +2040,14 @@ async function showOnboardingIfNeeded(user) {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
+            setAppleCalendarEnabled(false);
             onboardingState = buildOnboardingState({ onboardingProgress: progress, onboardingCurrentStep: GUIDE_STEP_IDS[0] });
             if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user);
             openOnboarding();
             return;
         }
         const data = snapshot.data();
+        setAppleCalendarEnabled(data?.notifPrefs?.apple === true);
         if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user, data);
         const socialProfile = getSocialAuthProfile(user);
         const profileUpdates = {};
@@ -2183,7 +2188,7 @@ function renderTodos(todos) {
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
                 <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">${t('edit')}</button>
-                ${todo.dueDate ? `<button class="tc-action-btn btn-apple-calendar" data-id="${todo.id}">Apple</button>` : ''}
+                ${appleCalendarEnabled && todo.dueDate ? `<button class="tc-action-btn btn-apple-calendar" data-id="${todo.id}">Apple</button>` : ''}
                 <button class="tc-action-btn btn-archive" data-id="${todo.id}">${todo.archived ? t('restore') : t('archiveVerb')}</button>
             </div>`;
         todoList.appendChild(card);
@@ -2459,6 +2464,13 @@ function notifyUser(title, body, tag) {
     } else {
         new Notification(title, options);
     }
+}
+
+function setAppleCalendarEnabled(enabled) {
+    appleCalendarEnabled = !!enabled;
+    const button = getEl('task-apple-calendar-btn');
+    if (button) button.hidden = !appleCalendarEnabled;
+    applyFilters();
 }
 
 const firedReminderKeys = new Set();
