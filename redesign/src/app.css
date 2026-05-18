@@ -1785,6 +1785,20 @@
   border-color: transparent;
 }
 .tag.is-active::before { color: rgba(255,255,255,0.7); }
+.bookmark-tag-add {
+  padding-left: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  border-color: var(--border-soft);
+  border-style: dashed;
+  font-weight: 600;
+}
+.bookmark-tag-add::before { content: none; }
+.bookmark-tag-add:hover {
+  background: var(--hover);
+  color: var(--text-md);
+  border-color: var(--border-strong);
+}
 
 /* ---------- ARCHIVE ---------- */
 .archive-hero {
