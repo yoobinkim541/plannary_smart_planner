@@ -1475,6 +1475,25 @@ function WikiPage() {
 
   };
 
+  if (tree.length === 0) {
+    return (
+      <div className="page-wide">
+        <div className="wiki-empty">
+          <div className="wiki-empty-icon" aria-hidden="true">📝</div>
+          <h2 className="wiki-empty-title">노트를 추가하세요!</h2>
+          <p className="wiki-empty-sub">아직 페이지가 없어요. 첫 번째 노트를 만들어 시작해 보세요.</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => addPage(null, "blank")}
+            type="button"
+          >
+            <Icon name="plus" size={14} />새 페이지 만들기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-wide">
       <div className="wiki-shell" data-tree={showTree ? "open" : "closed"} data-aside={showAside ? "open" : "closed"}>
