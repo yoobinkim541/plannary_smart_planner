@@ -1061,7 +1061,7 @@
 .note .note-foot {
   display: flex; align-items: center; justify-content: space-between;
   margin-top: 12px;
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-display);
   font-size: 10px;
   font-weight: 600;
   color: rgba(0,0,0,0.45);
@@ -1165,7 +1165,7 @@
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--font-display);
   transition: all var(--dur-fast);
 }
 .note-edit-btn:hover { background: rgba(255,255,255,0.95); color: rgba(0,0,0,0.95); }
@@ -1558,7 +1558,7 @@
   position: absolute;
   left: 16px;
   top: 0;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
   font-size: 48px;
   line-height: 1;
   color: var(--accent);

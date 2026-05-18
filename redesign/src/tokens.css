@@ -19,8 +19,7 @@
   --info:  #3b82f6;
 
   /* Type */
-  --font-display: "Plus Jakarta Sans", "Pretendard Variable", "Pretendard",
-                  ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Nanum Gothic", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono:    ui-monospace, "SF Mono", Menlo, monospace;
 
   --text-4xl: 40px;
@@ -137,6 +136,8 @@ a { color: inherit; text-decoration: none; }
 ::selection { background: var(--accent-soft); color: var(--text-hi); }
 
 /* Font choices via Tweaks */
+[data-font="nanum-gothic"] { --font-display: "Nanum Gothic", ui-sans-serif, system-ui, sans-serif; }
+[data-font="nanum-myeongjo"] { --font-display: "Nanum Myeongjo", ui-serif, Georgia, serif; }
 [data-font="jakarta"]  { --font-display: "Plus Jakarta Sans", system-ui, sans-serif; }
 [data-font="pretendard"] { --font-display: "Pretendard Variable", "Pretendard", system-ui, sans-serif; }
 [data-font="inter"]    { --font-display: "Inter", system-ui, sans-serif; }

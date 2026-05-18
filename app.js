@@ -73,8 +73,10 @@ function resolveInitialLanguage() {
     return 'en';
 }
 let currentLanguage = resolveInitialLanguage();
-const DEFAULT_APP_FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
-let currentAppFont = localStorage.getItem('planary-app-font') || DEFAULT_APP_FONT;
+const DEFAULT_APP_FONT = "'Nanum Gothic', sans-serif";
+const LEGACY_DEFAULT_APP_FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
+const savedAppFont = localStorage.getItem('planary-app-font');
+let currentAppFont = (!savedAppFont || savedAppFont === LEGACY_DEFAULT_APP_FONT) ? DEFAULT_APP_FONT : savedAppFont;
 let onboardingState = null;
 let onboardingHighlightEl = null;
 let onboardingHighlightTimer = null;

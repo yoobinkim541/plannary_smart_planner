@@ -2431,7 +2431,13 @@ function ProfilePage({ tasks, t, setTweak }) {
   const isImage = user.avatar && typeof user.avatar === "string" && user.avatar.startsWith("url(");
   const theme = t ? t.theme : "dark";
   const setTheme = (v) => setTweak && setTweak("theme", v);
-  const fontOpts = [{ id: "jakarta", label: "Plus Jakarta Sans" }, { id: "pretendard", label: "Pretendard" }, { id: "inter", label: "Inter" }];
+  const fontOpts = [
+    { id: "nanum-gothic", label: "Nanum Gothic" },
+    { id: "nanum-myeongjo", label: "Nanum Myeongjo" },
+    { id: "jakarta", label: "Plus Jakarta Sans" },
+    { id: "pretendard", label: "Pretendard" },
+    { id: "inter", label: "Inter" }
+  ];
   const sidebarOpts = [{ id: "full", label: "풀 너비" }, { id: "compact", label: "컴팩트" }, { id: "icons", label: "아이콘만" }];
   const densityOpts = [{ id: "compact", label: "촘촘하게" }, { id: "regular", label: "보통" }, { id: "comfortable", label: "여유롭게" }];
   const langOpts = [

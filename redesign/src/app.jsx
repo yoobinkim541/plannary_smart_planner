@@ -8,7 +8,7 @@ const { Rail, Sidebar, Topbar, MobileBar, MobileTabs,
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "theme": "dark",
   "accent": "violet",
-  "font": "jakarta",
+  "font": "nanum-gothic",
   "radius": 12,
   "sidebar": "full",
   "variant": "balanced",
@@ -345,6 +345,8 @@ function PlanaryTweaks({ t, setTweak }) {
         label="글꼴"
         value={t.font}
         options={[
+          { value: "nanum-gothic", label: "Nanum Gothic" },
+          { value: "nanum-myeongjo", label: "Nanum Myeongjo" },
           { value: "jakarta",    label: "Plus Jakarta Sans" },
           { value: "pretendard", label: "Pretendard" },
           { value: "inter",      label: "Inter" },
