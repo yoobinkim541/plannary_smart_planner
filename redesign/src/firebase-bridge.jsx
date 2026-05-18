@@ -169,20 +169,43 @@
     };
   }
 
+  function formatRelativeKo(ts) {
+    if (!ts) return "방금";
+    const ms = ts && ts.toMillis ? ts.toMillis() : (ts.seconds ? ts.seconds * 1000 : Number(ts));
+    if (!Number.isFinite(ms)) return "방금";
+    const diff = Math.max(0, Date.now() - ms);
+    if (diff < 60_000) return "방금";
+    if (diff < 3_600_000) return `${Math.round(diff / 60_000)}분 전`;
+    if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}시간 전`;
+    return `${Math.round(diff / 86_400_000)}일 전`;
+  }
+
   function projectDocToProject(doc, tasks) {
     const d = doc.data() || {};
+    const isEclass = d.source === "eclass";
     const projectTasks = tasks.filter(t => t.project === doc.id && !t.archived);
     const completed = projectTasks.filter(t => t.done).length;
     const progress = projectTasks.length ? Math.round((completed / projectTasks.length) * 100) : 0;
+    const courseCount = new Set(
+      projectTasks
+        .map(t => t.course || (t._raw && t._raw.courseTitle))
+        .filter(Boolean)
+    ).size;
+    const conn = window.Planary && window.Planary.ECLASS_CONNECTION;
     return {
       id: doc.id,
       name: d.name || "(이름 없음)",
       color: d.color || "#7f0df2",
-      icon: d.icon || "📁",
+      icon: d.icon === "eclass" ? "🎓" : (d.icon || "📁"),
       progress,
       members: [{ name: "나", avatar: null }],
       deadline: null,
-      isEclass: false,
+      isEclass,
+      ...(isEclass ? {
+        courses: courseCount,
+        lastSync: formatRelativeKo(conn && conn.lastSyncedAt),
+        school: (window.Planary && window.Planary.USER && window.Planary.USER.school) || "SeoulTech",
+      } : {}),
     };
   }
 
@@ -699,7 +722,9 @@
     unsubs.push(
       db.collection("eclass_connections").doc(user.uid).onSnapshot(
         (snap) => {
-          window.dispatchEvent(new CustomEvent("planary:eclass-connection", { detail: snap.data() || null }));
+          const data = snap.data() || null;
+          window.Planary.ECLASS_CONNECTION = data;
+          window.dispatchEvent(new CustomEvent("planary:eclass-connection", { detail: data }));
         },
         (err) => console.error("[Planary] eclass connection snapshot error:", err)
       )
@@ -722,7 +747,12 @@
     unsubs.push(
       db.collection("projects").where("uid", "==", user.uid).onSnapshot(
         (snap) => {
-          const projects = snap.docs.map(d => projectDocToProject(d, latestTasks));
+          const projects = snap.docs
+            .filter(d => {
+              const data = d.data() || {};
+              return !data.archived && data.source !== "eclass-course-archived";
+            })
+            .map(d => projectDocToProject(d, latestTasks));
           window.Planary.PROJECTS = projects;
           window.dispatchEvent(new CustomEvent("planary:projects-loaded", { detail: projects }));
         },

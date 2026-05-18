@@ -2830,18 +2830,18 @@ function ProfileDropdownRow({ label, value, options, selected, onSelect, open, o
 function EclassConnectionCard() {
   const { USER, ECLASS_COURSES, PROJECTS } = window.Planary;
   const pe = PROJECTS.find((p) => p.id === "pe");
-  const [connected, setConnected] = useStateO(false);
+  const isConnectionLive = (d) => !!(d && d.enabled !== false && (d.encryptedSessionCookie || (d.encryptedUsername && d.encryptedPassword) || d.username || d.connected));
+  const [connected, setConnected] = useStateO(isConnectionLive(window.Planary.ECLASS_CONNECTION));
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
-  const [urlInput, setUrlInput] = useStateO("https://eclass.seoultech.ac.kr");
+  const [urlInput, setUrlInput] = useStateO((window.Planary.ECLASS_CONNECTION && window.Planary.ECLASS_CONNECTION.baseUrl) || "https://eclass.seoultech.ac.kr");
   const [idInput, setIdInput] = useStateO("");
   const [pwInput, setPwInput] = useStateO("");
 
   // Live-sync e-Class connection state from firebase-bridge
   useEffectO(() => {
     const onConn = (e) => {
-      const d = e.detail;
-      setConnected(!!(d && (d.username || d.connected || d.baseUrl)));
+      setConnected(isConnectionLive(e.detail));
     };
     window.addEventListener("planary:eclass-connection", onConn);
     return () => window.removeEventListener("planary:eclass-connection", onConn);
