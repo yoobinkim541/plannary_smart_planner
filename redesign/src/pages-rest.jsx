@@ -356,9 +356,30 @@ function CreateProjectDialog({ onClose, onCreate }) {
 
 /* ---------- e-Class detail view ---------- */
 function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPage }) {
-  const { ECLASS_COURSES, USER } = window.Planary;
+  const { USER } = window.Planary;
   const [filter, setFilter] = useStateO("open"); // open | exam | done
   const [icon, setIcon] = useStateO(proj.icon);
+
+  // Derive course list from the actually-synced tasks (not the mock ECLASS_COURSES).
+  // Course title from e-class is usually "강의명(코드)"; parse it best-effort.
+  const coursePalette = ["#7f0df2", "#10b981", "#f59e0b", "#e11d48", "#3b82f6", "#a855f7"];
+  const courseMap = new Map();
+  projTasks.forEach((t) => {
+    const title = t.course || (t._raw && t._raw.courseTitle);
+    if (!title || courseMap.has(title)) return;
+    const m = String(title).match(/^(.*?)\(([^)]+)\)\s*$/);
+    const name = m ? m[1].trim() : String(title).trim();
+    const code = m ? m[2].trim() : "";
+    courseMap.set(title, {
+      id: title,
+      code,
+      name,
+      prof: "",
+      credits: 0,
+      color: coursePalette[courseMap.size % coursePalette.length],
+    });
+  });
+  const courses = [...courseMap.values()];
 
   const filteredTasks = projTasks.filter((t) => {
     if (filter === "open") return !t.done;
@@ -432,10 +453,10 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
       <section style={{ padding: 22, borderBottom: "1px solid var(--border-soft)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" }}>이번 학기 강의</h3>
-          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{ECLASS_COURSES.reduce((s, c) => s + c.credits, 0)}학점 · {ECLASS_COURSES.length}개 강의</span>
+          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{courses.length}개 강의</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
-          {ECLASS_COURSES.map((c) => {
+          {courses.map((c) => {
             const ct = projTasks.filter((t) => t.course === c.id);
             const ctOpen = ct.filter((t) => !t.done);
             const next = ctOpen.sort((a, b) => (a.due || "") < (b.due || "") ? -1 : 1)[0];
@@ -454,12 +475,14 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
                 onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
                 onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}>
                 
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--text-lo)", fontWeight: 700, letterSpacing: "0.04em" }}>{c.code}</span>
-                  <span style={{ fontSize: 10, color: "var(--text-faint)" }}>· {c.credits}학점</span>
-                </div>
+                {(c.code || c.credits > 0) && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    {c.code && <span className="mono" style={{ fontSize: 10, color: "var(--text-lo)", fontWeight: 700, letterSpacing: "0.04em" }}>{c.code}</span>}
+                    {c.credits > 0 && <span style={{ fontSize: 10, color: "var(--text-faint)" }}>{c.code ? "· " : ""}{c.credits}학점</span>}
+                  </div>
+                )}
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)", letterSpacing: "-0.01em", marginBottom: 2 }}>{c.name}</div>
-                <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{c.prof}</div>
+                {c.prof && <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{c.prof}</div>}
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--border-soft)" }}>
                   {next ?
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -503,7 +526,7 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
             ))}
           </div>
         </div>
-        {ECLASS_COURSES.map((c) => {
+        {courses.map((c) => {
           const ct = projTasks.filter((t) => {
             if (t.course !== c.id) return false;
             if (filter === "open") return !t.done;
