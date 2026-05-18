@@ -8,11 +8,8 @@
     "start": "node index.js",
     "once": "node index.js --once"
   },
-  "dependencies": {
-    "cheerio": "^1.2.0",
-    "firebase-admin": "^13.9.0",
-    "pdf-parse": "^1.1.1"
-  },
+  "comment": "Worker reuses the root node_modules (see ../package.json). Do NOT add dependencies here — installing them creates a second firebase-admin instance and breaks credential propagation through api/eclass/_admin.js.",
+  "dependencies": {},
   "engines": {
     "node": ">=20"
   }
