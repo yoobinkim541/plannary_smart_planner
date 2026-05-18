@@ -4,7 +4,8 @@ const { fetchSeoultechItems } = require('./_seoultech');
 const { fetchSyllabusExams, discoverCourseKjs } = require('./_syllabus');
 
 const ECLASS_SOURCES = ['eclass', 'eclass-exam'];
-const COURSE_PROJECT_COLORS = ['#7f0df2', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7'];
+const ECLASS_PROJECT_NAME = 'e-Class';
+const ECLASS_PROJECT_COLOR = '#3b82f6';
 const BATCH_LIMIT = 400;
 
 function hasSavedCredentials(connection = {}) {
@@ -101,46 +102,49 @@ async function loadExistingEclassTodos(db, uid) {
   return { byKey, allDocs: snapshot.docs };
 }
 
-function normalizeCourseTitle(courseTitle) {
-  return String(courseTitle || 'SeoulTech e-Class').trim() || 'SeoulTech e-Class';
-}
-
-async function loadCourseProjects(db, uid) {
+async function ensureEclassProject(db, uid, ts) {
   const snapshot = await db.collection('projects')
     .where('uid', '==', uid)
     .get();
-  const byCourse = new Map();
+
+  let masterRef = null;
+  const legacyCourseRefs = [];
   snapshot.docs.forEach(doc => {
     const data = doc.data();
-    if (data.source === 'eclass-course' && data.courseTitle) {
-      byCourse.set(normalizeCourseTitle(data.courseTitle), doc.ref);
+    if (data.source === 'eclass' && !masterRef) {
+      masterRef = doc.ref;
+    } else if (data.source === 'eclass-course') {
+      legacyCourseRefs.push(doc.ref);
     }
   });
-  return byCourse;
-}
 
-async function ensureCourseProjects(db, uid, courseTitles, ts) {
-  const byCourse = await loadCourseProjects(db, uid);
-  const missingTitles = courseTitles.filter(courseTitle => !byCourse.has(courseTitle));
   const ops = [];
-
-  const existingCount = byCourse.size;
-  missingTitles.forEach((courseTitle, index) => {
-    const ref = db.collection('projects').doc();
-    byCourse.set(courseTitle, ref);
-    ops.push(batch => batch.set(ref, {
+  let createdCount = 0;
+  if (!masterRef) {
+    masterRef = db.collection('projects').doc();
+    createdCount = 1;
+    ops.push(batch => batch.set(masterRef, {
       uid,
-      name: courseTitle,
-      color: COURSE_PROJECT_COLORS[(existingCount + index) % COURSE_PROJECT_COLORS.length],
+      name: ECLASS_PROJECT_NAME,
+      color: ECLASS_PROJECT_COLOR,
       icon: 'eclass',
-      source: 'eclass-course',
-      courseTitle,
+      source: 'eclass',
       createdAt: ts
     }));
+  }
+
+  // Archive any leftover per-course projects from the previous design so they
+  // no longer show up in the UI but stay recoverable.
+  legacyCourseRefs.forEach(ref => {
+    ops.push(batch => batch.set(ref, {
+      archived: true,
+      source: 'eclass-course-archived',
+      syncedAt: ts
+    }, { merge: true }));
   });
 
   await commitInChunks(db, ops);
-  return { byCourse, createdCount: ops.length };
+  return { masterRef, createdCount, archivedCount: legacyCourseRefs.length };
 }
 
 async function syncConnection(uid, connection, options = {}) {
@@ -178,18 +182,11 @@ async function syncConnection(uid, connection, options = {}) {
   }
 
   const { byKey, allDocs } = await loadExistingEclassTodos(db, uid);
-  const existingCourseTitles = allDocs
-    .map(doc => normalizeCourseTitle(doc.data().courseTitle))
-    .filter(Boolean);
-  const courseTitles = [...new Set([
-    ...items.map(item => normalizeCourseTitle(item.courseTitle)),
-    ...exams.map(exam => normalizeCourseTitle(exam.courseTitle)),
-    ...existingCourseTitles
-  ])];
-  const { byCourse: courseProjects, createdCount: projectCount } = await ensureCourseProjects(db, uid, courseTitles, ts);
+  const { masterRef: eclassProjectRef, createdCount: projectCount } = await ensureEclassProject(db, uid, ts);
+  const eclassProjectId = eclassProjectRef.id;
   const payloads = [
-    ...items.map(item => itemPayload(item, uid, ts, courseProjects.get(normalizeCourseTitle(item.courseTitle))?.id)),
-    ...exams.map(exam => examPayload(exam, uid, ts, courseProjects.get(normalizeCourseTitle(exam.courseTitle))?.id))
+    ...items.map(item => itemPayload(item, uid, ts, eclassProjectId)),
+    ...exams.map(exam => examPayload(exam, uid, ts, eclassProjectId))
   ];
   const activeKeys = new Set(payloads.map(p => `${p.source}:${p.sourceItemId}`));
 
@@ -223,13 +220,13 @@ async function syncConnection(uid, connection, options = {}) {
     }, { merge: true }));
   });
 
-  // Archive stale e-class todos (not in this sync's active set)
+  // Archive stale e-class todos + migrate any existing todos to the single
+  // e-Class project (handles older per-course projectIds and null projectIds).
   allDocs.forEach(doc => {
     const data = doc.data();
     const key = `${data.source}:${data.sourceItemId}`;
-    const projectRef = courseProjects.get(normalizeCourseTitle(data.courseTitle));
-    if (projectRef && data.projectId !== projectRef.id) {
-      ops.push(batch => batch.set(doc.ref, { projectId: projectRef.id, syncedAt: ts }, { merge: true }));
+    if (data.projectId !== eclassProjectId) {
+      ops.push(batch => batch.set(doc.ref, { projectId: eclassProjectId, syncedAt: ts }, { merge: true }));
     }
     if (!activeKeys.has(key) && !data.archived) {
       ops.push(batch => batch.set(doc.ref, { archived: true, syncedAt: ts }, { merge: true }));
