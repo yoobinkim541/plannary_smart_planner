@@ -34,6 +34,28 @@
     d.setHours(0, 0, 0, 0);
     return d.toISOString().slice(0, 10);
   };
+  const localISODate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const dateFromBackendValue = (value) => {
+    if (!value) return null;
+    const d = value && typeof value.toDate === "function" ? value.toDate() : new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  const memberSinceText = (user, userDoc = null) => {
+    const joined = dateFromBackendValue(userDoc?.createdAt) || dateFromBackendValue(user?.metadata?.creationTime);
+    if (!joined) return "";
+    const start = new Date(joined);
+    const today = new Date();
+    start.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const days = Math.max(1, Math.floor((today - start) / 86400000) + 1);
+    return `가입 ${days}일째`;
+  };
   const tomorrowISO = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -124,6 +146,8 @@
       imageUrl: task.imageUrl || null,
       completed: !!task.done,
       archived: !!task.archived,
+      completedAt: task.done ? ((existing && existing.completedAt) || firebase.firestore.FieldValue.serverTimestamp()) : null,
+      completedDate: task.done ? ((existing && existing.completedDate) || localISODate()) : null,
       orderIndex: typeof task.orderIndex === "number" ? task.orderIndex : 0,
       createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp(),
     };
@@ -390,7 +414,12 @@
       const snap = await db.collection("todos").doc(id).get();
       const data = snap.data();
       if (!data) return;
-      await db.collection("todos").doc(id).update({ completed: !data.completed });
+      const completed = !data.completed;
+      await db.collection("todos").doc(id).update({
+        completed,
+        completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
+        completedDate: completed ? localISODate() : null,
+      });
     },
     async deleteTask(id) {
       if (!this.uid) return;
@@ -649,6 +678,7 @@
       avatar: user.photoURL ? `url("${user.photoURL}")` : null,
       handle: user.email || "",
       initials: (user.displayName || user.email || "U").slice(0, 1).toUpperCase(),
+      memberSince: memberSinceText(user),
       school: "",
       studentId: "",
       bio: "",
@@ -683,6 +713,7 @@
             email: d.email || api.user.email,
             avatar: d.photoURL ? `url("${d.photoURL}")` : api.user.avatar,
             initials: (d.displayName || api.user.name || "U").slice(0, 1).toUpperCase(),
+            memberSince: memberSinceText(user, d),
             school: d.school || "",
             studentId: d.studentId || "",
             bio: d.bio || "",

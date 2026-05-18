@@ -76,6 +76,7 @@
         pasteUrl: '粘贴 URL', customTitle: '自定义标题', tagsPlaceholder: '标签...', newPage: '+ 新建页面',
         uploadingProgress: '正在上传... 0%', subpages: '子页面', newSubpage: '新建子页面', deletePage: '删除页面',
         archiveDescription: '回顾已完成的任务和过去的记录。', totalAchievements: '总成就', itemsArchived: '已归档项',
+        joinedDaysLabel: '加入时间:', joinedDaysValue: '第 {days} 天',
         monospace: '等宽', serif: '衬线', handwritten: '手写体', fontNanumGothic: 'Nanum Gothic',
         emptyTasksAllTitle: '来添加任务吧',
         emptyTasksAllBody: '在这里集中管理待办、截止日期和备忘。<br>从上方输入框添加第一个任务,开始你的流程。',

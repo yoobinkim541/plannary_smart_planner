@@ -2356,7 +2356,7 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div className="profile-email-md">{user.email}</div>
             <div style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
               <span className={`chip ${planMeta.chipClass}`}>{planMeta.chip}</span>
-              <span className="chip"><Icon name="clock" size={10} />가입 8개월</span>
+              {user.memberSince && <span className="chip"><Icon name="clock" size={10} />{user.memberSince}</span>}
             </div>
             {user.bio && <p style={{ fontSize: 12, color: "var(--text-md)", marginTop: 14, lineHeight: 1.5 }}>{user.bio}</p>}
             <button className="btn btn-ghost" style={{ marginTop: 16, width: "100%" }} onClick={() => setEditOpen(true)}>

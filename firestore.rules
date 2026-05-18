@@ -90,6 +90,7 @@ service cloud.firestore {
       return hasOnlyKeys([
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
         'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
+        'completedAt', 'completedDate',
         'dueTime', 'calendarReminderMinutes', 'calendarReminderMinutesList',
         'syncCalendar', 'calendarEventId',
         'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt',
@@ -115,6 +116,8 @@ service cloud.firestore {
       (!request.resource.data.keys().hasAny(['courseTitle']) || isStringOrNull(request.resource.data.courseTitle)) &&
       (!request.resource.data.keys().hasAny(['ddayText']) || isStringOrNull(request.resource.data.ddayText)) &&
       (!request.resource.data.keys().hasAny(['syncedAt']) || isTimestampOrNull(request.resource.data.syncedAt)) &&
+      (!request.resource.data.keys().hasAny(['completedAt']) || isTimestampOrNull(request.resource.data.completedAt)) &&
+      (!request.resource.data.keys().hasAny(['completedDate']) || isStringOrNull(request.resource.data.completedDate)) &&
       request.resource.data.priority is string &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&
       request.resource.data.completed is bool &&
