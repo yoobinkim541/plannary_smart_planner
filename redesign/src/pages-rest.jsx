@@ -2851,24 +2851,48 @@ function ProfileDropdownRow({ label, value, options, selected, onSelect, open, o
    e-CLASS CONNECTION CARD (Profile)
    =========================================================== */
 function EclassConnectionCard() {
-  const { USER, ECLASS_COURSES, PROJECTS } = window.Planary;
-  const pe = PROJECTS.find((p) => p.id === "pe");
+  const { USER, PROJECTS, TASKS } = window.Planary;
+  const eclassProject = PROJECTS.find((p) => p.isEclass) || PROJECTS.find((p) => p.id === "pe");
   const isConnectionLive = (d) => !!(d && d.enabled !== false && (d.encryptedSessionCookie || (d.encryptedUsername && d.encryptedPassword) || d.username || d.connected));
-  const [connected, setConnected] = useStateO(isConnectionLive(window.Planary.ECLASS_CONNECTION));
+  const initialConn = window.Planary.ECLASS_CONNECTION;
+  const [connection, setConnection] = useStateO(initialConn);
+  const [connected, setConnected] = useStateO(isConnectionLive(initialConn));
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
-  const [urlInput, setUrlInput] = useStateO((window.Planary.ECLASS_CONNECTION && window.Planary.ECLASS_CONNECTION.baseUrl) || "https://eclass.seoultech.ac.kr");
+  const [urlInput, setUrlInput] = useStateO((initialConn && initialConn.baseUrl) || "https://eclass.seoultech.ac.kr");
   const [idInput, setIdInput] = useStateO("");
   const [pwInput, setPwInput] = useStateO("");
 
   // Live-sync e-Class connection state from firebase-bridge
   useEffectO(() => {
     const onConn = (e) => {
+      setConnection(e.detail);
       setConnected(isConnectionLive(e.detail));
     };
     window.addEventListener("planary:eclass-connection", onConn);
     return () => window.removeEventListener("planary:eclass-connection", onConn);
   }, []);
+
+  // Derive real values from synced tasks for this user's eClass project.
+  const syncedTasks = eclassProject
+    ? TASKS.filter((t) => t.project === eclassProject.id && !t.archived)
+    : [];
+  const courseTitles = [...new Set(
+    syncedTasks.map((t) => t.course || (t._raw && t._raw.courseTitle)).filter(Boolean)
+  )];
+  const formatRelative = (ts) => {
+    if (!ts) return null;
+    const ms = ts && ts.toMillis ? ts.toMillis() : (ts.seconds ? ts.seconds * 1000 : Number(ts));
+    if (!Number.isFinite(ms)) return null;
+    const diff = Math.max(0, Date.now() - ms);
+    if (diff < 60_000) return "방금";
+    if (diff < 3_600_000) return `${Math.round(diff / 60_000)}분 전`;
+    if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}시간 전`;
+    return `${Math.round(diff / 86_400_000)}일 전`;
+  };
+  const lastSyncLabel = formatRelative(connection && connection.lastSyncedAt) || "기록 없음";
+  const schoolLabel = USER.school || (connection && connection.platform === "seoultech-moodle" ? "서울과학기술대학교" : "");
+  const studentIdLabel = USER.studentId || "";
 
   const handleSync = () => {
     setSyncing(true);
@@ -2933,7 +2957,7 @@ function EclassConnectionCard() {
             }
           </div>
           <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>
-            {USER.school} e-Class에서 강의·과제·시험 일정을 자동으로 가져옵니다
+            {schoolLabel ? `${schoolLabel} ` : ""}e-Class에서 강의·과제·시험 일정을 자동으로 가져옵니다
           </p>
         </div>
       </div>
@@ -2943,14 +2967,14 @@ function EclassConnectionCard() {
           <div className="field-row">
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>학교</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{USER.school}</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{schoolLabel || "—"}</div>
             </div>
-            <span className="mono" style={{ fontSize: 11, color: "var(--text-lo)" }}>학번 {USER.studentId}</span>
+            {studentIdLabel && <span className="mono" style={{ fontSize: 11, color: "var(--text-lo)" }}>학번 {studentIdLabel}</span>}
           </div>
           <div className="field-row">
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>동기화 대상</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{ECLASS_COURSES.length}개 강의 · {ECLASS_COURSES.reduce((s, c) => s + c.credits, 0)}학점</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{courseTitles.length}개 강의 · 작업 {syncedTasks.length}개</div>
             </div>
             <button className="btn btn-sm" onClick={() => {}}>강의 보기</button>
           </div>
@@ -2964,7 +2988,7 @@ function EclassConnectionCard() {
           <div className="field-row" style={{ borderBottom: 0 }}>
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>마지막 동기화</div>
-              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{pe?.lastSync || "기록 없음"} · 항목 {window.Planary.TASKS.filter((t) => t.project === "pe").length}개</div>
+              <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{lastSyncLabel} · 항목 {syncedTasks.length}개</div>
             </div>
             <button className="btn btn-sm btn-primary" onClick={handleSync} disabled={syncing} style={{ minWidth: 120, justifyContent: "center" }}>
               <Icon name="refresh" size={13} style={{ animation: syncing ? "spin 1s linear infinite" : "none" }} />
