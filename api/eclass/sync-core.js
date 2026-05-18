@@ -5,6 +5,44 @@ const { fetchSyllabusExams, discoverCourseKjs } = require('./_syllabus');
 
 const ECLASS_SOURCES = ['eclass', 'eclass-exam'];
 const BATCH_LIMIT = 400;
+const PROJECT_PALETTE = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
+
+async function ensureCourseProjects(db, admin, uid, courseTitles) {
+  const map = new Map();
+  const unique = [...new Set(courseTitles.filter(Boolean))];
+  if (!unique.length) return map;
+
+  const snapshot = await db.collection('projects').where('uid', '==', uid).get();
+  const byCourse = new Map();
+  let existingCount = 0;
+  snapshot.docs.forEach(doc => {
+    const data = doc.data();
+    existingCount++;
+    if (data.source === 'eclass' && data.eclassCourseTitle) {
+      byCourse.set(data.eclassCourseTitle, doc.id);
+    }
+  });
+
+  const ts = admin.firestore.FieldValue.serverTimestamp();
+  let created = 0;
+  for (const courseTitle of unique) {
+    const hit = byCourse.get(courseTitle);
+    if (hit) { map.set(courseTitle, hit); continue; }
+    const ref = db.collection('projects').doc();
+    const color = PROJECT_PALETTE[(existingCount + created) % PROJECT_PALETTE.length];
+    await ref.set({
+      uid,
+      name: courseTitle,
+      color,
+      source: 'eclass',
+      eclassCourseTitle: courseTitle,
+      createdAt: ts
+    });
+    map.set(courseTitle, ref.id);
+    created++;
+  }
+  return map;
+}
 
 function dueTimeFor(type) {
   return type === 'lecture' ? '09:00' : '23:59';
@@ -16,7 +54,7 @@ function defaultRemindersFor(type) {
   return [60];
 }
 
-function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, reminders, priority, memo, sourceUrl, courseTitle, ddayText, uid, ts }) {
+function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, reminders, priority, memo, sourceUrl, courseTitle, ddayText, uid, ts, projectId }) {
   return {
     uid, text,
     memo: memo || null,
@@ -26,7 +64,7 @@ function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, remind
     calendarReminderMinutesList: reminders,
     syncCalendar: false,
     priority,
-    projectId: null,
+    projectId: projectId || null,
     imageUrl: null,
     archived: false,
     source, sourceItemId,
@@ -37,7 +75,7 @@ function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, remind
   };
 }
 
-function itemPayload(item, uid, ts) {
+function itemPayload(item, uid, ts, projectId) {
   const reminders = defaultRemindersFor(item.type);
   return buildTodoPayload({
     uid, ts,
@@ -51,11 +89,12 @@ function itemPayload(item, uid, ts) {
     priority: item.type === 'assignment' ? 'high' : 'medium',
     sourceUrl: item.url,
     courseTitle: item.courseTitle,
-    ddayText: item.ddayText
+    ddayText: item.ddayText,
+    projectId
   });
 }
 
-function examPayload(exam, uid, ts) {
+function examPayload(exam, uid, ts, projectId) {
   const reminders = exam.reminderMinutes || [10080, 4320, 1440];
   const prefix = exam.confidence === 'high' ? '' : '[예상] ';
   return buildTodoPayload({
@@ -69,7 +108,8 @@ function examPayload(exam, uid, ts) {
     reminders,
     priority: exam.priority || 'high',
     sourceUrl: exam.sourceUrl,
-    courseTitle: exam.courseTitle
+    courseTitle: exam.courseTitle,
+    projectId
   });
 }
 
@@ -129,9 +169,14 @@ async function syncConnection(uid, connection, options = {}) {
   }
 
   const { byKey, allDocs } = await loadExistingEclassTodos(db, uid);
+  const courseTitles = [
+    ...items.map(i => i.courseTitle),
+    ...exams.map(e => e.courseTitle)
+  ];
+  const courseProjects = await ensureCourseProjects(db, admin, uid, courseTitles);
   const payloads = [
-    ...items.map(item => itemPayload(item, uid, ts)),
-    ...exams.map(exam => examPayload(exam, uid, ts))
+    ...items.map(item => itemPayload(item, uid, ts, courseProjects.get(item.courseTitle))),
+    ...exams.map(exam => examPayload(exam, uid, ts, courseProjects.get(exam.courseTitle)))
   ];
   const activeKeys = new Set(payloads.map(p => `${p.source}:${p.sourceItemId}`));
 

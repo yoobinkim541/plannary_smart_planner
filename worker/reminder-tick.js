@@ -1,7 +1,5 @@
 const { getAdmin } = require('../api/eclass/_admin');
 
-const WINDOW_MS = 5 * 60 * 1000;
-
 function buildBody(min, dueTime) {
   const abs = Math.abs(min);
   const label = abs >= 1440
@@ -61,14 +59,23 @@ async function reminderTick() {
 
     const sent = (todo.remindersSent && typeof todo.remindersSent === 'object') ? { ...todo.remindersSent } : {};
     const toFire = [];
+    const toSkip = [];
     for (const minRaw of reminders) {
       const min = Number(minRaw);
       if (!Number.isFinite(min)) continue;
       if (sent[String(min)]) continue;
       const fireAt = due - min * 60 * 1000;
-      if (fireAt <= now && fireAt > now - WINDOW_MS) toFire.push(min);
+      if (fireAt > now) continue;
+      if (due > now) toFire.push(min);
+      else toSkip.push(min);
+    }
+    if (toSkip.length && !toFire.length) {
+      toSkip.forEach(min => { sent[String(min)] = admin.firestore.Timestamp.now(); });
+      await doc.ref.set({ remindersSent: sent }, { merge: true });
+      continue;
     }
     if (!toFire.length) continue;
+    toSkip.forEach(min => { sent[String(min)] = admin.firestore.Timestamp.now(); });
 
     const tokenDocs = await getTokensForUid(todo.uid);
     if (!tokenDocs.length) {
