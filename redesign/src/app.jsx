@@ -38,6 +38,19 @@ const PAGE_CRUMBS = {
 
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  // Re-render the whole tree when the language changes so any `t()` calls
+  // refresh and the DOM translator gets a fresh pass.
+  const [, _bumpLang] = useState(0);
+  useEffect(() => {
+    if (!window.PlanaryI18n) return;
+    const unsub = window.PlanaryI18n.subscribe(() => _bumpLang(n => n + 1));
+    return unsub;
+  }, []);
+  // Start the phrase-level DOM translator once, on the React root.
+  useEffect(() => {
+    const root = document.getElementById("root") || document.body;
+    window.PlanaryI18n?.startDomTranslator?.(root);
+  }, []);
   const [page, setPage] = useState("home");
   const [tasks, setTasks] = useState(window.Planary.TASKS);
   const [taskFilter, setTaskFilter] = useState("all");

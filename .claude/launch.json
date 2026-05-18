@@ -4,8 +4,9 @@
     {
       "name": "planary-redesign",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "serve", "-l", "4173", "."],
-      "port": 4173
+      "runtimeArgs": ["--yes", "serve", "."],
+      "port": 4173,
+      "autoPort": true
     }
   ]
 }
