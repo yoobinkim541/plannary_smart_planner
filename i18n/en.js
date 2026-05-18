@@ -76,6 +76,8 @@
         pasteUrl: 'Paste URL here', customTitle: 'Custom Title', tagsPlaceholder: 'Tags...', newPage: '+ New Page',
         uploadingProgress: 'Uploading... 0%', subpages: 'Subpages', newSubpage: 'New Subpage', deletePage: 'Delete Page',
         archiveDescription: 'Review your achievements and past thoughts', totalAchievements: 'Total Achievements', itemsArchived: 'Items Archived',
+        currentStreak: 'Current Streak', activityHeatmap: 'Activity Heatmap', lastTwelveWeeksCompleted: 'Completed in the last 12 weeks', daySuffix: 'd',
+        joinedDaysLabel: 'Member for:', joinedDaysValue: '{days} days',
         monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', fontNanumGothic: 'Nanum Gothic',
         emptyTasksAllTitle: 'Fill your task list',
         emptyTasksAllBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',

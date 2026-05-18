@@ -76,6 +76,8 @@
         pasteUrl: 'URL 붙여넣기', customTitle: '사용자 지정 제목', tagsPlaceholder: '태그...', newPage: '+ 새 페이지',
         uploadingProgress: '업로드 중... 0%', subpages: '하위 페이지', newSubpage: '새 하위 페이지', deletePage: '페이지 삭제',
         archiveDescription: '완료한 작업과 지난 기록을 다시 확인하세요.', totalAchievements: '전체 성과', itemsArchived: '보관된 항목',
+        currentStreak: '연속 완료', activityHeatmap: '활동 히트맵', lastTwelveWeeksCompleted: '최근 12주 완료 기록', daySuffix: '일',
+        joinedDaysLabel: '가입 기간:', joinedDaysValue: '{days}일째',
         monospace: '고정폭', serif: '세리프', handwritten: '손글씨', fontNanumGothic: '나눔고딕',
         emptyTasksAllTitle: '할 일을 채워보세요',
         emptyTasksAllBody: '해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.',

@@ -76,6 +76,7 @@
         pasteUrl: 'Pega la URL', customTitle: 'Título personalizado', tagsPlaceholder: 'Etiquetas...', newPage: '+ Nueva página',
         uploadingProgress: 'Subiendo... 0%', subpages: 'Subpáginas', newSubpage: 'Nueva subpágina', deletePage: 'Eliminar página',
         archiveDescription: 'Revisa las tareas completadas y los registros pasados.', totalAchievements: 'Logros totales', itemsArchived: 'Elementos archivados',
+        joinedDaysLabel: 'Miembro desde:', joinedDaysValue: '{days} días',
         monospace: 'Monoespaciada', serif: 'Serif', handwritten: 'Manuscrita', fontNanumGothic: 'Nanum Gothic',
         emptyTasksAllTitle: 'Llena tu lista de tareas',
         emptyTasksAllBody: 'Reúne pendientes, fechas y notas en un mismo lugar.<br>Añade tu primera tarea arriba para empezar el flujo.',

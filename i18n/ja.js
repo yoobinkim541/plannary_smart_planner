@@ -76,6 +76,7 @@
         pasteUrl: 'URLを貼り付け', customTitle: 'カスタムタイトル', tagsPlaceholder: 'タグ...', newPage: '+ 新規ページ',
         uploadingProgress: 'アップロード中... 0%', subpages: 'サブページ', newSubpage: '新規サブページ', deletePage: 'ページを削除',
         archiveDescription: '完了したタスクや過去の記録を振り返ります。', totalAchievements: '達成数', itemsArchived: 'アーカイブ件数',
+        joinedDaysLabel: '利用期間:', joinedDaysValue: '{days}日目',
         monospace: '等幅', serif: 'セリフ', handwritten: '手書き', fontNanumGothic: 'ナヌムゴシック',
         emptyTasksAllTitle: 'タスクを追加しましょう',
         emptyTasksAllBody: 'やること、期限、メモを一か所で整理する場所です。<br>上の入力欄から最初のタスクを追加して流れを始めましょう。',
