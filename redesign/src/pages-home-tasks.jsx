@@ -2,6 +2,49 @@
 
 const { useState: useStateHT, useMemo: useMemoHT, useEffect: useEffectHT } = React;
 
+function taskActivityDateKey(task) {
+  const value = task.completedAt || task.dueDate || task.due;
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate().toISOString().slice(0, 10);
+  if (typeof value.seconds === "number") return new Date(value.seconds * 1000).toISOString().slice(0, 10);
+  if (typeof value._seconds === "number") return new Date(value._seconds * 1000).toISOString().slice(0, 10);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return null;
+}
+
+function buildTaskActivity(tasks, days = 140) {
+  const countsByDate = new Map();
+  tasks.filter(t => t.done).forEach(task => {
+    const key = taskActivityDateKey(task);
+    if (key) countsByDate.set(key, (countsByDate.get(key) || 0) + 1);
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const counts = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    counts.push(countsByDate.get(d.toISOString().slice(0, 10)) || 0);
+  }
+  const levels = counts.map(count => Math.min(4, count));
+  let currentStreak = 0;
+  for (let i = counts.length - 1; i >= 0 && counts[i] > 0; i -= 1) currentStreak += 1;
+  let longestStreak = 0;
+  let run = 0;
+  counts.forEach(count => {
+    run = count > 0 ? run + 1 : 0;
+    longestStreak = Math.max(longestStreak, run);
+  });
+  return {
+    counts,
+    levels,
+    currentStreak,
+    longestStreak,
+    activeDays: counts.filter(Boolean).length,
+  };
+}
+
 /* ===========================================================
    HOME / DASHBOARD
    variant = "conservative" | "balanced" | "bold"
@@ -18,7 +61,7 @@ function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter }) {
   const eclassSoon  = tasks.filter(t => t.project === "pe" && !t.done && (t.time === "내일" || t.time.startsWith("오늘") || t.time === "수요일 23:59"));
 
   const toggleTask = (id) =>
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
 
   const hour = new Date().getHours();
   const greet = hour < 12 ? "좋은 아침이에요" : hour < 18 ? "좋은 오후예요" : "수고하셨어요";
@@ -739,7 +782,8 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
   const hour = new Date().getHours();
   const min = new Date().getMinutes();
   const nowTop = ((hour - 8) * 60 + min) / (12 * 60) * 100; // 8am – 8pm scale, percent
-  const heat = window.Planary.WEEKLY_HEATMAP.slice(0, 140);
+  const activity = buildTaskActivity(tasks, 140);
+  const heat = activity.levels;
 
   return (
     <div className="page-wide">
@@ -817,12 +861,12 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
             </div>
             <div className="widget-body" style={{ padding: "10px 16px 18px" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: "var(--text-hi)" }}>12</span>
+                <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: "var(--text-hi)" }}>{activity.currentStreak}</span>
                 <span style={{ fontSize: 14, color: "var(--text-md)" }}>일 연속 완료</span>
               </div>
               <div className="heat">
                 {heat.map((v, i) => (
-                  <div key={i} className={`heat-cell ${v ? `l${v}` : ""}`} title={v ? `${v}개 완료` : "없음"} />
+                  <div key={i} className={`heat-cell ${v ? `l${v}` : ""}`} title={activity.counts[i] ? `${activity.counts[i]}개 완료` : "없음"} />
                 ))}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--text-faint)" }}>
@@ -871,7 +915,7 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
    TASKS PAGE
    =========================================================== */
 
-function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
+function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleCalendarEnabled = false }) {
   const { PROJECTS } = window.Planary;
   const [search, setSearch] = useStateHT("");
   const [composerOpen, setComposerOpen] = useStateHT(false);
@@ -916,6 +960,69 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
     e.target.value = "";
   };
 
+  const toISODate = (date) => {
+    const d = new Date(date);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+  const addDaysISO = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return toISODate(d);
+  };
+  const addMonthsISO = (months) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
+    return toISODate(d);
+  };
+  const dueDateISO = (option) => {
+    if (!option || option.id === "none") return null;
+    if (option.iso) return option.iso;
+    if (option.id === "today") return toISODate(new Date());
+    if (option.id === "tomorrow") return addDaysISO(1);
+    if (option.id === "after") return addDaysISO(2);
+    if (option.id === "1w") return addDaysISO(7);
+    if (option.id === "1m") return addMonthsISO(1);
+    return null;
+  };
+  const escapeIcs = (value) => String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+  const toIcsDate = (date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const downloadAppleCalendarDraft = () => {
+    if (!composerText.trim() || !dueDateISO(dueDate)) return;
+    const start = new Date(`${dueDateISO(dueDate)}T09:00:00`);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const title = escapeIcs(composerText.trim());
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Planary//Task//EN",
+      "BEGIN:VEVENT",
+      `UID:${Date.now()}@planary`,
+      `DTSTAMP:${toIcsDate(new Date())}`,
+      `DTSTART:${toIcsDate(start)}`,
+      `DTEND:${toIcsDate(end)}`,
+      `SUMMARY:${title}`,
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${composerText.trim().replace(/[\\/:*?"<>|]/g, "-") || "planary-task"}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    window.Planary.toast?.({ type: "ok", title: "Apple Calendar 파일을 만들었어요" });
+  };
+
   const resetComposer = () => {
     setComposerText("");
     setDueDate({ id: "today", label: "오늘" });
@@ -945,11 +1052,12 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
     completed: tasks.filter(t => t.done).length,
   };
 
-  const toggleTask = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const toggleTask = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
   const addTask = () => {
     if (!composerText.trim()) return;
     const id = "t" + Date.now();
     const time = dueDate && dueDate.id !== "none" ? dueDate.label : null;
+    const selectedDueDate = dueDateISO(dueDate);
     setTasks(prev => [{
       id,
       title: composerText.trim(),
@@ -957,6 +1065,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
       project: project?.id || null,
       priority: priority.id,
       due: null,
+      dueDate: selectedDueDate,
       time,
       reminder: !!reminder && reminder.id !== "off",
       reminderOffset: reminder && reminder.id !== "off" ? reminder.id : null,
@@ -1194,6 +1303,18 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
               onChange={onAttachPick}
             />
 
+            {appleCalendarEnabled && (
+              <button
+                className="tool-btn is-on"
+                onClick={downloadAppleCalendarDraft}
+                type="button"
+                disabled={!composerText.trim() || !dueDateISO(dueDate)}
+                title="Apple Calendar에 추가"
+              >
+                <Icon name="calendar" size={12} />Apple Calendar
+              </button>
+            )}
+
             <div style={{ flex: 1 }} />
             <button className="btn btn-sm" onClick={() => { resetComposer(); setComposerOpen(false); }} type="button">취소</button>
             <button className="btn btn-sm btn-primary" onClick={addTask} type="button">추가</button>
@@ -1232,7 +1353,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
                 <span className="kanban-col-count">{col.items.length}</span>
               </div>
               {col.items.map(t => (
-                <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} />
+                <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} appleCalendarEnabled={appleCalendarEnabled} />
               ))}
               {col.items.length === 0 && (
                 <div className="empty" style={{ padding: "24px 8px", fontSize: 12 }}>비어있음</div>
@@ -1248,7 +1369,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
               표시할 작업이 없어요.
             </div>
           ) : filtered.map(t => (
-            <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} />
+            <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} appleCalendarEnabled={appleCalendarEnabled} />
           ))}
         </div>
       ) : (
@@ -1276,7 +1397,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant }) {
               </div>
               <div className="task-list">
                 {group.items.map(t => (
-                  <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} />
+                  <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} appleCalendarEnabled={appleCalendarEnabled} />
                 ))}
               </div>
             </div>

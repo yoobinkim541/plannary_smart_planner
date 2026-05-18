@@ -69,6 +69,7 @@ function App() {
   const [editingTask, setEditingTask] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authedUser, setAuthedUser] = useState(null);
+  const [appleCalendarEnabled, setAppleCalendarEnabled] = useState(false);
 
   // Persist tweak edits to Firestore (no-op when bridge isn't loaded)
   const saveTweak = React.useCallback((keyOrEdits, val) => {
@@ -110,6 +111,9 @@ function App() {
       if (prefs && typeof prefs === "object") {
         setTweak(Object.fromEntries(Object.entries(prefs).filter(([, v]) => v !== undefined)));
         if (prefs.lang) window.PlanaryI18n?.setLang?.(prefs.lang);
+      }
+      if (doc.notifPrefs && typeof doc.notifPrefs === "object") {
+        setAppleCalendarEnabled(doc.notifPrefs.apple === true);
       }
       // Sync onboarding-completed flag from Firestore → localStorage so the
       // prompt doesn't reappear for returning users.
@@ -154,10 +158,14 @@ function App() {
   // Listen for "edit this task" requests from TaskCard buttons throughout the app
   useEffect(() => {
     const onEdit = (e) => setEditingTask(e.detail);
-    const onToggle = (e) => setTasks(prev => prev.map(t => t.id === e.detail ? { ...t, done: !t.done } : t));
+    const onToggle = (e) => setTasks(prev => prev.map(t => t.id === e.detail ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
     const onShortcuts = () => setShortcutsOpen(true);
     const onOpenGuide = () => setGuideOpen(true);
     const onOpenOnboarding = () => setOnboardingOpen(true);
+    const onNotifPrefsChanged = (e) => {
+      const patch = e.detail || {};
+      if (Object.prototype.hasOwnProperty.call(patch, "apple")) setAppleCalendarEnabled(patch.apple === true);
+    };
     const onPostpone = (e) => {
       const { id, time } = e.detail || {};
       setTasks(prev => prev.map(t => t.id === id ? { ...t, time } : t));
@@ -178,6 +186,7 @@ function App() {
     window.addEventListener("planary:unarchive-task", onUnarchiveTask);
     window.addEventListener("planary:enter-focus-mode", onEnterFocus);
     window.addEventListener("planary:create-task", onCreateTask);
+    window.addEventListener("planary:notif-prefs-changed", onNotifPrefsChanged);
     return () => {
       window.removeEventListener("planary:edit-task", onEdit);
       window.removeEventListener("planary:toggle-task", onToggle);
@@ -190,6 +199,7 @@ function App() {
       window.removeEventListener("planary:unarchive-task", onUnarchiveTask);
       window.removeEventListener("planary:enter-focus-mode", onEnterFocus);
       window.removeEventListener("planary:create-task", onCreateTask);
+      window.removeEventListener("planary:notif-prefs-changed", onNotifPrefsChanged);
     };
   }, []);
 
@@ -210,7 +220,7 @@ function App() {
   const renderPage = () => {
     switch (page) {
       case "home":      return <HomePage tasks={visibleTasks} setTasks={setTasks} variant={t.variant} setPage={setPage} setTaskFilter={setTaskFilter} />;
-      case "tasks":     return <TasksPage tasks={visibleTasks} setTasks={setTasks} taskFilter={taskFilter} setTaskFilter={setTaskFilter} variant={t.variant} />;
+      case "tasks":     return <TasksPage tasks={visibleTasks} setTasks={setTasks} taskFilter={taskFilter} setTaskFilter={setTaskFilter} variant={t.variant} appleCalendarEnabled={appleCalendarEnabled} />;
       case "projects":  return <ProjectsPage tasks={visibleTasks} setTasks={setTasks} setPage={setPage} setTaskFilter={setTaskFilter} />;
       case "notes":     return <NotesPage />;
       case "wiki":      return <WikiPage />;

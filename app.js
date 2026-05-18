@@ -90,6 +90,7 @@ let eclassStatus = null;
 let eclassForegroundSyncTimer = null;
 let taskCalendarAccessToken = null;
 let lastCalendarImportAt = null;
+let appleCalendarEnabled = false;
 const reminderNotificationTimers = new Map();
 const DEFAULT_NOTIFICATION_SETTINGS = {
     dailyTasks: false,
@@ -1952,7 +1953,6 @@ async function showOnboardingIfNeeded(user) {
                 email: user.email || null,
                 displayName: socialProfile.displayName || user.displayName || null,
                 photoURL: socialProfile.photoURL || null,
-                plan: 'basis',
                 onboardingCompleted: false,
                 onboardingCompletedAt: null,
                 onboardingProgress: progress,
@@ -1960,11 +1960,13 @@ async function showOnboardingIfNeeded(user) {
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
+            setAppleCalendarEnabled(false);
             onboardingState = buildOnboardingState({ onboardingProgress: progress, onboardingCurrentStep: GUIDE_STEP_IDS[0] });
             openOnboarding();
             return;
         }
         const data = snapshot.data();
+        setAppleCalendarEnabled(data?.notifPrefs?.apple === true);
         const socialProfile = getSocialAuthProfile(user);
         const profileUpdates = {};
         if (!data.displayName && socialProfile.displayName) profileUpdates.displayName = socialProfile.displayName;
@@ -2104,7 +2106,7 @@ function renderTodos(todos) {
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
                 <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">${t('edit')}</button>
-                ${todo.dueDate ? `<button class="tc-action-btn btn-apple-calendar" data-id="${todo.id}">Apple</button>` : ''}
+                ${appleCalendarEnabled && todo.dueDate ? `<button class="tc-action-btn btn-apple-calendar" data-id="${todo.id}">Apple</button>` : ''}
                 <button class="tc-action-btn btn-archive" data-id="${todo.id}">${todo.archived ? t('restore') : t('archiveVerb')}</button>
             </div>`;
         todoList.appendChild(card);
@@ -2112,7 +2114,11 @@ function renderTodos(todos) {
 
     todoList.querySelectorAll('.btn-toggle').forEach(b => b.onclick = () => {
         const t = allTodos.find(x => x.id === b.dataset.id);
-        db.collection('todos').doc(b.dataset.id).update({ completed: !t.completed });
+        const completed = !t.completed;
+        db.collection('todos').doc(b.dataset.id).update({
+            completed,
+            completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null
+        });
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.btn-archive').forEach(b => b.onclick = () => {
@@ -2374,6 +2380,13 @@ function notifyUser(title, body, tag) {
     } else {
         new Notification(title, options);
     }
+}
+
+function setAppleCalendarEnabled(enabled) {
+    appleCalendarEnabled = !!enabled;
+    const button = getEl('task-apple-calendar-btn');
+    if (button) button.hidden = !appleCalendarEnabled;
+    applyFilters();
 }
 
 const firedReminderKeys = new Set();

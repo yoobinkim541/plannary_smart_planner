@@ -84,22 +84,8 @@ const WIKI_TREE = [
   { id: "w9", title: "주간 회고", icon: "📓", depth: 0 },
 ];
 
-const WEEKLY_HEATMAP = (() => {
-  // 53 weeks × 7 days = 371 cells covering ~1 year; values 0..4
-  const out = [];
-  for (let i = 0; i < 371; i++) {
-    const r = Math.random();
-    if (r < 0.45) out.push(0);
-    else if (r < 0.7) out.push(1);
-    else if (r < 0.86) out.push(2);
-    else if (r < 0.96) out.push(3);
-    else out.push(4);
-  }
-  return out;
-})();
-
 window.Planary = {
-  PROJECTS, TASKS, NOTES, BOOKMARKS, WIKI_TREE, WEEKLY_HEATMAP, ECLASS_COURSES,
+  PROJECTS, TASKS, NOTES, BOOKMARKS, WIKI_TREE, ECLASS_COURSES,
   USER: { name: "도하 김", email: "doha@planary.app", initials: "DK", school: "서울과학기술대학교", studentId: "21900293" },
 };
 

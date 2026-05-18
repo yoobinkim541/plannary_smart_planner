@@ -1004,10 +1004,76 @@ function MobileDrawer({ open, onClose, page, setPage, taskFilter, setTaskFilter,
   );
 }
 
+function planaryTaskDateISO(task) {
+  if (task.dueDate) return task.dueDate;
+  const d = new Date();
+  if (task.time && task.time.startsWith("오늘")) return d.toISOString().slice(0, 10);
+  if (task.time === "내일") {
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+function escapePlanaryIcs(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function toPlanaryIcsDate(date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function downloadTaskAppleCalendar(task) {
+  const dueDate = planaryTaskDateISO(task);
+  if (!dueDate) return;
+  const startTime = task.due || "09:00";
+  const start = new Date(`${dueDate}T${startTime}:00`);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const alarms = task.calendarReminderMinutes != null && Number.isFinite(Number(task.calendarReminderMinutes))
+    ? [
+      "BEGIN:VALARM",
+      `TRIGGER:-PT${Number(task.calendarReminderMinutes)}M`,
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapePlanaryIcs(task.title)}`,
+      "END:VALARM"
+    ]
+    : [];
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Planary//Task//EN",
+    "BEGIN:VEVENT",
+    `UID:${task.id || Date.now()}@planary`,
+    `DTSTAMP:${toPlanaryIcsDate(new Date())}`,
+    `DTSTART:${toPlanaryIcsDate(start)}`,
+    `DTEND:${toPlanaryIcsDate(end)}`,
+    `SUMMARY:${escapePlanaryIcs(task.title)}`,
+    `DESCRIPTION:${escapePlanaryIcs(task.memo || "")}`,
+    ...alarms,
+    "END:VEVENT",
+    "END:VCALENDAR"
+  ].join("\r\n");
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${String(task.title || "planary-task").replace(/[\\/:*?"<>|]/g, "-")}.ics`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  window.Planary.toast?.({ type: "ok", title: "Apple Calendar 파일을 만들었어요", sub: task.title });
+}
+
 /* ---------- Reusable: Task Card ---------- */
-function TaskCard({ task, onToggle, projects }) {
+function TaskCard({ task, onToggle, projects, appleCalendarEnabled = false }) {
   const proj = projects.find(p => p.id === task.project);
   const prClass = task.priority === "high" ? "is-high" : task.priority === "med" ? "is-med" : "is-low";
+  const canExportAppleCalendar = appleCalendarEnabled && !!planaryTaskDateISO(task);
 
   // Due date urgency
   const isOverdue = task.time === "어제" && !task.done;
@@ -1088,6 +1154,18 @@ function TaskCard({ task, onToggle, projects }) {
         </div>
       </div>
       <div className="task-right">
+        {canExportAppleCalendar && (
+          <button
+            className="icon-btn"
+            title="Apple Calendar에 추가"
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadTaskAppleCalendar(task);
+            }}
+          >
+            <Icon name="calendar" size={13} />
+          </button>
+        )}
         <button
           className="icon-btn"
           title="편집"
