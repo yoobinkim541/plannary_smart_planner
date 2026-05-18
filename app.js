@@ -2823,9 +2823,72 @@ function bindNotificationSettings() {
             await Notification.requestPermission();
             syncNotificationSettingsUI();
             scheduleReminderNotifications();
+            registerFcmToken();
         };
     }
     syncNotificationSettingsUI();
+}
+
+let fcmRegistering = false;
+let fcmOnMessageBound = false;
+
+async function registerFcmToken() {
+    if (fcmRegistering) return;
+    if (!currentUser) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (typeof firebase === 'undefined' || !firebase.messaging) return;
+    if (typeof firebase.messaging.isSupported === 'function' && !firebase.messaging.isSupported()) return;
+    if (!navigator.serviceWorker) return;
+    const vapidKey = window.PLANARY_FCM_VAPID_KEY;
+    if (!vapidKey) return;
+
+    fcmRegistering = true;
+    try {
+        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const messaging = firebase.messaging();
+        const token = await messaging.getToken({ vapidKey, serviceWorkerRegistration: swReg });
+        if (!token) return;
+
+        const platform = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile-web' : 'desktop-web';
+        const ref = db.collection('fcm_tokens').doc(token);
+        const existing = await ref.get();
+        const ts = firebase.firestore.FieldValue.serverTimestamp();
+        const payload = {
+            uid: currentUser.uid,
+            token,
+            platform,
+            userAgent: navigator.userAgent.slice(0, 200),
+            lastSeenAt: ts
+        };
+        if (!existing.exists) payload.createdAt = ts;
+        await ref.set(payload, { merge: true });
+        localStorage.setItem('planary-fcm-token', token);
+
+        if (!fcmOnMessageBound) {
+            fcmOnMessageBound = true;
+            messaging.onMessage(payload => {
+                const title = (payload.notification && payload.notification.title) || 'Planary';
+                const body = (payload.notification && payload.notification.body) || '';
+                notifyUser(title, body, (payload.data && payload.data.todoId) || 'fcm');
+            });
+        }
+    } catch (error) {
+        console.warn('[fcm] register failed', error && error.message);
+    } finally {
+        fcmRegistering = false;
+    }
+}
+
+async function unregisterFcmToken() {
+    const token = localStorage.getItem('planary-fcm-token');
+    localStorage.removeItem('planary-fcm-token');
+    if (!token) return;
+    try { await db.collection('fcm_tokens').doc(token).delete(); } catch (e) {}
+    try {
+        if (firebase.messaging && (!firebase.messaging.isSupported || firebase.messaging.isSupported())) {
+            await firebase.messaging().deleteToken();
+        }
+    } catch (e) {}
 }
 
 async function ensureTaskCalendarAccess() {
@@ -3097,10 +3160,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUser = user;
                 updateProfileUI(user);
                 if (isAuthPage) window.location.replace('/');
-                else { 
+                else {
                     loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects(); loadEclassStatus();
                     startEclassForegroundSync();
                     showOnboardingIfNeeded(user);
+                    registerFcmToken();
                 }
             }
         });
@@ -3509,7 +3573,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const logout = () => confirm(t('logoutConfirm')) && auth.signOut().then(() => window.location.href = 'login.html');
+    const logout = () => confirm(t('logoutConfirm')) && unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html'));
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
     if (getEl('profile-delete-account-btn')) getEl('profile-delete-account-btn').onclick = deleteAccount;
