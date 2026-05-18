@@ -882,6 +882,26 @@
   padding-top: 10px;
   border-top: 1px dashed var(--border-soft);
 }
+.composer-tools input.composer-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  color: var(--text-hi);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.composer-tools input.composer-input::placeholder { color: var(--text-faint); }
+.bookmark-composer { padding: 16px 18px; }
+.bookmark-tag-composer {
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.bookmark-tag-composer input.composer-input {
+  height: 30px;
+  color: var(--text-md);
+}
 .tool-btn {
   display: inline-flex; align-items: center; gap: 5px;
   height: 28px; padding: 0 10px;
