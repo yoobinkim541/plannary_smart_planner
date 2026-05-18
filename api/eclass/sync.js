@@ -1,5 +1,5 @@
 const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('./_admin');
-const { syncAll } = require('./sync-core');
+const { syncAll, syncConnection } = require('./sync-core');
 
 module.exports = async function handler(req, res) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -19,9 +19,27 @@ module.exports = async function handler(req, res) {
     if (!snap.exists) return sendJson(res, 404, { error: 'E-class connection not found' });
     await ref.set({
       syncRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
-      syncStatus: 'pending'
+      syncStatus: 'running',
+      lastSyncStartedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-    return sendJson(res, 202, { ok: true, status: 'pending' });
+    try {
+      const result = await syncConnection(user.uid, snap.data());
+      await ref.set({
+        syncStatus: 'ok',
+        lastError: null,
+        lastTodoCount: result.todoCount,
+        lastExamCount: result.examCount,
+        lastProjectCount: result.projectCount,
+        lastSyncedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return sendJson(res, 200, { ok: true, status: 'ok', ...result });
+    } catch (syncError) {
+      await ref.set({
+        syncStatus: 'pending',
+        lastError: syncError.message || String(syncError)
+      }, { merge: true });
+      return sendJson(res, 202, { ok: true, status: 'pending', queued: true });
+    }
   } catch (error) {
     console.error('[eclass/sync]', error);
     return sendJson(res, error.statusCode || 500, { error: error.message || 'Sync failed' });

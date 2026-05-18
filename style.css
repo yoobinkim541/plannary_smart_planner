@@ -697,6 +697,58 @@ textarea.composer-input {
     list-style: none;
 }
 
+.eclass-course-divider {
+    display: grid;
+    grid-template-columns: 10px auto minmax(24px, max-content) 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin-bottom: -8px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface) 76%, transparent);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+}
+
+.eclass-course-divider::after {
+    content: "";
+    height: 1px;
+    background: var(--border);
+}
+
+.eclass-course-dot {
+    width: 5px;
+    height: 22px;
+    border-radius: 999px;
+}
+
+.eclass-course-divider strong {
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.eclass-course-divider em {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(127, 13, 242, 0.16);
+    color: var(--accent);
+    font-style: normal;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.eclass-course-divider span:last-child {
+    justify-self: end;
+    color: var(--text-3);
+    font-size: 12px;
+    letter-spacing: 0;
+}
+
 /* Task Card */
 .task-card {
     background: var(--surface);
@@ -3114,8 +3166,21 @@ body.onboarding-spotlight-active #main-area {
     font-weight: 600;
     border-radius: 6px;
     margin-bottom: 4px;
+    margin-right: 6px;
+    border: 1px solid var(--border);
 }
 
+.eclass-source-tag {
+    background: rgba(37, 99, 235, 0.14);
+    color: var(--blue);
+    border-color: rgba(37, 99, 235, 0.24);
+}
+
+.eclass-type-tag {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--red);
+    border-color: rgba(239, 68, 68, 0.24);
+}
 
 
 

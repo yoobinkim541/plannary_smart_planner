@@ -4,44 +4,11 @@ const { fetchSeoultechItems } = require('./_seoultech');
 const { fetchSyllabusExams, discoverCourseKjs } = require('./_syllabus');
 
 const ECLASS_SOURCES = ['eclass', 'eclass-exam'];
+const COURSE_PROJECT_COLORS = ['#7f0df2', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#a855f7'];
 const BATCH_LIMIT = 400;
-const PROJECT_PALETTE = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
 
-async function ensureCourseProjects(db, admin, uid, courseTitles) {
-  const map = new Map();
-  const unique = [...new Set(courseTitles.filter(Boolean))];
-  if (!unique.length) return map;
-
-  const snapshot = await db.collection('projects').where('uid', '==', uid).get();
-  const byCourse = new Map();
-  let existingCount = 0;
-  snapshot.docs.forEach(doc => {
-    const data = doc.data();
-    existingCount++;
-    if (data.source === 'eclass' && data.eclassCourseTitle) {
-      byCourse.set(data.eclassCourseTitle, doc.id);
-    }
-  });
-
-  const ts = admin.firestore.FieldValue.serverTimestamp();
-  let created = 0;
-  for (const courseTitle of unique) {
-    const hit = byCourse.get(courseTitle);
-    if (hit) { map.set(courseTitle, hit); continue; }
-    const ref = db.collection('projects').doc();
-    const color = PROJECT_PALETTE[(existingCount + created) % PROJECT_PALETTE.length];
-    await ref.set({
-      uid,
-      name: courseTitle,
-      color,
-      source: 'eclass',
-      eclassCourseTitle: courseTitle,
-      createdAt: ts
-    });
-    map.set(courseTitle, ref.id);
-    created++;
-  }
-  return map;
+function hasSavedCredentials(connection = {}) {
+  return !!connection.encryptedSessionCookie || (!!connection.encryptedUsername && !!connection.encryptedPassword);
 }
 
 function dueTimeFor(type) {
@@ -134,6 +101,48 @@ async function loadExistingEclassTodos(db, uid) {
   return { byKey, allDocs: snapshot.docs };
 }
 
+function normalizeCourseTitle(courseTitle) {
+  return String(courseTitle || 'SeoulTech e-Class').trim() || 'SeoulTech e-Class';
+}
+
+async function loadCourseProjects(db, uid) {
+  const snapshot = await db.collection('projects')
+    .where('uid', '==', uid)
+    .get();
+  const byCourse = new Map();
+  snapshot.docs.forEach(doc => {
+    const data = doc.data();
+    if (data.source === 'eclass-course' && data.courseTitle) {
+      byCourse.set(normalizeCourseTitle(data.courseTitle), doc.ref);
+    }
+  });
+  return byCourse;
+}
+
+async function ensureCourseProjects(db, uid, courseTitles, ts) {
+  const byCourse = await loadCourseProjects(db, uid);
+  const missingTitles = courseTitles.filter(courseTitle => !byCourse.has(courseTitle));
+  const ops = [];
+
+  const existingCount = byCourse.size;
+  missingTitles.forEach((courseTitle, index) => {
+    const ref = db.collection('projects').doc();
+    byCourse.set(courseTitle, ref);
+    ops.push(batch => batch.set(ref, {
+      uid,
+      name: courseTitle,
+      color: COURSE_PROJECT_COLORS[(existingCount + index) % COURSE_PROJECT_COLORS.length],
+      icon: 'eclass',
+      source: 'eclass-course',
+      courseTitle,
+      createdAt: ts
+    }));
+  });
+
+  await commitInChunks(db, ops);
+  return { byCourse, createdCount: ops.length };
+}
+
 async function syncConnection(uid, connection, options = {}) {
   const admin = getAdmin();
   const db = admin.firestore();
@@ -169,14 +178,18 @@ async function syncConnection(uid, connection, options = {}) {
   }
 
   const { byKey, allDocs } = await loadExistingEclassTodos(db, uid);
-  const courseTitles = [
-    ...items.map(i => i.courseTitle),
-    ...exams.map(e => e.courseTitle)
-  ];
-  const courseProjects = await ensureCourseProjects(db, admin, uid, courseTitles);
+  const existingCourseTitles = allDocs
+    .map(doc => normalizeCourseTitle(doc.data().courseTitle))
+    .filter(Boolean);
+  const courseTitles = [...new Set([
+    ...items.map(item => normalizeCourseTitle(item.courseTitle)),
+    ...exams.map(exam => normalizeCourseTitle(exam.courseTitle)),
+    ...existingCourseTitles
+  ])];
+  const { byCourse: courseProjects, createdCount: projectCount } = await ensureCourseProjects(db, uid, courseTitles, ts);
   const payloads = [
-    ...items.map(item => itemPayload(item, uid, ts, courseProjects.get(item.courseTitle))),
-    ...exams.map(exam => examPayload(exam, uid, ts, courseProjects.get(exam.courseTitle)))
+    ...items.map(item => itemPayload(item, uid, ts, courseProjects.get(normalizeCourseTitle(item.courseTitle))?.id)),
+    ...exams.map(exam => examPayload(exam, uid, ts, courseProjects.get(normalizeCourseTitle(exam.courseTitle))?.id))
   ];
   const activeKeys = new Set(payloads.map(p => `${p.source}:${p.sourceItemId}`));
 
@@ -214,6 +227,10 @@ async function syncConnection(uid, connection, options = {}) {
   allDocs.forEach(doc => {
     const data = doc.data();
     const key = `${data.source}:${data.sourceItemId}`;
+    const projectRef = courseProjects.get(normalizeCourseTitle(data.courseTitle));
+    if (projectRef && data.projectId !== projectRef.id) {
+      ops.push(batch => batch.set(doc.ref, { projectId: projectRef.id, syncedAt: ts }, { merge: true }));
+    }
     if (!activeKeys.has(key) && !data.archived) {
       ops.push(batch => batch.set(doc.ref, { archived: true, syncedAt: ts }, { merge: true }));
     }
@@ -225,25 +242,30 @@ async function syncConnection(uid, connection, options = {}) {
     lastError: null,
     lastItemCount: items.length,
     lastExamCount: exams.length,
+    lastProjectCount: projectCount,
     lastCourseCount,
     lastSyllabusMetrics: syllabusMetrics || null
   }, { merge: true }));
 
   await commitInChunks(db, ops);
-  return { todoCount: items.length, examCount: exams.length };
+  return { todoCount: items.length, examCount: exams.length, projectCount };
 }
 
 async function syncAll(options = {}) {
   const admin = getAdmin();
   const db = admin.firestore();
-  const snapshot = await db.collection('eclass_connections').where('enabled', '==', true).get();
+  const snapshot = await db.collection('eclass_connections').get();
   let todoCount = 0;
   let examCount = 0;
+  let projectCount = 0;
   for (const doc of snapshot.docs) {
     try {
-      const result = await syncConnection(doc.id, doc.data(), options);
+      const connection = doc.data();
+      if (connection.enabled === false || !hasSavedCredentials(connection)) continue;
+      const result = await syncConnection(doc.id, connection, options);
       todoCount += result.todoCount;
       examCount += result.examCount;
+      projectCount += result.projectCount || 0;
     } catch (error) {
       await doc.ref.set({
         lastError: error.message || String(error),
@@ -251,7 +273,7 @@ async function syncAll(options = {}) {
       }, { merge: true });
     }
   }
-  return { todoCount, examCount };
+  return { todoCount, examCount, projectCount };
 }
 
 module.exports = { syncAll, syncConnection };

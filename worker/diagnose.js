@@ -67,6 +67,7 @@ function fmt(ts) {
       console.log(`  lastStartedAt : ${fmt(d.lastSyncStartedAt)}`);
       console.log(`  lastTodoCount : ${d.lastTodoCount ?? d.lastItemCount ?? '-'}`);
       console.log(`  lastExamCount : ${d.lastExamCount ?? '-'}`);
+      console.log(`  lastProjectCount: ${d.lastProjectCount ?? '-'}`);
       console.log(`  lastCourseCount: ${d.lastCourseCount ?? '-'}  (unique kj codes seen)`);
       console.log(`  syllabus      : discovered=${sm.urlsDiscovered ?? '-'} probed=${sm.urlsProbed ?? '-'} withText=${sm.urlsWithText ?? '-'} httpErr=${sm.urlsHttpErrors ?? '-'} loginWall=${sm.urlsLoginRedirect ?? '-'} extracted=${sm.examsExtracted ?? '-'}`);
       if (sm.lastError) console.log(`  syllabus.error: ${sm.lastError}`);
