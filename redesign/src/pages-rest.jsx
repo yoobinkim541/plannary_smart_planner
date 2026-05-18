@@ -5189,6 +5189,10 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   const [menuOpenId, setMenuOpenId] = useStateO(null);
   const [slashMenu, setSlashMenu] = useStateO(null); // { blockId, x, y } | null
   const lastSavedRef = useRefO("");
+  const liveBlocksRef = useRefO(blocks);
+  const liveSaveTimerRef = useRefO(null);
+  const undoStackRef = useRefO([]);
+  const isRestoringRef = useRefO(false);
 
   // Re-load blocks when switching pages — prefer live WIKI_PAGES from firebase-bridge
   useEffectO(() => {
@@ -5201,6 +5205,8 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     setSlashMenu(null);
     // Mark this load as "remote" so the save-effect below skips it
     lastSavedRef.current = JSON.stringify(initial);
+    liveBlocksRef.current = initial;
+    undoStackRef.current = [initial];
   }, [activeId]);
 
   // Refresh blocks when the bridge emits fresh wiki data for the current page
@@ -5225,19 +5231,102 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     onBlocksChange && onBlocksChange(blocks);
   }, [blocks]);
 
-  // Debounced auto-save to Firestore (~800ms after last edit)
+  // Keep a live ref of the latest blocks for ref-based reads (Ctrl+S, autosave from input).
+  useEffectO(() => {
+    liveBlocksRef.current = blocks;
+    if (!isRestoringRef.current) {
+      const last = undoStackRef.current[undoStackRef.current.length - 1];
+      const serialized = JSON.stringify(blocks);
+      if (!last || JSON.stringify(last) !== serialized) {
+        undoStackRef.current.push(blocks);
+        if (undoStackRef.current.length > 80) undoStackRef.current.shift();
+      }
+    }
+  }, [blocks]);
+
+  const flushSave = (sourceBlocks) => {
+    if (!activeId) return;
+    const data = sourceBlocks || liveBlocksRef.current;
+    const serialized = JSON.stringify(data);
+    if (serialized === lastSavedRef.current) return;
+    lastSavedRef.current = serialized;
+    window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
+      detail: { id: activeId, blocks: data },
+    }));
+  };
+
+  const scheduleAutoSave = () => {
+    clearTimeout(liveSaveTimerRef.current);
+    liveSaveTimerRef.current = setTimeout(() => flushSave(), 800);
+  };
+
+  // Debounced auto-save to Firestore when blocks state changes (structural ops, blur commits).
   useEffectO(() => {
     if (!activeId) return;
     const serialized = JSON.stringify(blocks);
     if (serialized === lastSavedRef.current) return;
-    const t = setTimeout(() => {
-      lastSavedRef.current = serialized;
-      window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
-        detail: { id: activeId, blocks },
-      }));
-    }, 800);
+    const t = setTimeout(() => flushSave(blocks), 800);
     return () => clearTimeout(t);
   }, [blocks, activeId]);
+
+  // Live edit from contenteditable onInput — updates the live ref without
+  // triggering re-render (avoids caret jump), and schedules autosave.
+  const onLiveEdit = (blockId, key, value) => {
+    liveBlocksRef.current = liveBlocksRef.current.map(b =>
+      b.id === blockId ? { ...b, [key]: value } : b
+    );
+    scheduleAutoSave();
+  };
+
+  // Ctrl+S to force save now, Ctrl+Z to undo.
+  useEffectO(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
+      const k = (e.key || "").toLowerCase();
+      if (k === "s") {
+        e.preventDefault();
+        e.stopPropagation();
+        const active = document.activeElement;
+        if (active && active.isContentEditable) {
+          const editable = active;
+          // Find which block this belongs to by walking up to nearest [data-block-id]
+          const blockEl = editable.closest && editable.closest("[data-block-id]");
+          if (blockEl) {
+            onLiveEdit(blockEl.dataset.blockId, "content", editable.innerHTML);
+          }
+        }
+        clearTimeout(liveSaveTimerRef.current);
+        // Sync React state with live ref so blur won't overwrite, and snapshot for undo.
+        setBlocks(liveBlocksRef.current);
+        flushSave();
+        window.Planary?.toast?.({ type: "ok", title: "저장됨", ttl: 1200 });
+        return;
+      }
+      if (k === "z" && !e.shiftKey) {
+        const active = document.activeElement;
+        const inWiki = active && (active.isContentEditable || active.closest?.(".wiki-block"));
+        if (!inWiki) return;
+        if (undoStackRef.current.length < 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+        // If user typed since last commit, push current live state so undo lands on prior commit.
+        const liveSerialized = JSON.stringify(liveBlocksRef.current);
+        const topSerialized = JSON.stringify(undoStackRef.current[undoStackRef.current.length - 1]);
+        if (liveSerialized !== topSerialized) {
+          undoStackRef.current.push(liveBlocksRef.current);
+        }
+        undoStackRef.current.pop();
+        const prev = undoStackRef.current[undoStackRef.current.length - 1];
+        isRestoringRef.current = true;
+        setBlocks(prev);
+        liveBlocksRef.current = prev;
+        scheduleAutoSave();
+        setTimeout(() => { isRestoringRef.current = false; }, 0);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [activeId]);
 
   const updateBlock = (id, patch) =>
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
@@ -5330,6 +5419,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           }}
           onMenuToggle={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
           onMenuClose={() => setMenuOpenId(null)}
+          onLiveEdit={(key, value) => onLiveEdit(b.id, key, value)}
           onSlashCommand={(rect) => openSlashMenu(b.id, rect)}
           onDragStart={(e) => onDragStart(e, b.id)}
           onDragOver={(e) => onDragOver(e, b.id)}
@@ -5365,11 +5455,12 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   );
 }
 
-function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
+function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onLiveEdit, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const ref = useRefO(null);
   const bodyRef = useRefO(null);
 
   const commitContent = (key, val) => onUpdate({ [key]: val });
+  const handleInput = (e) => onLiveEdit && onLiveEdit("content", e.currentTarget.innerHTML);
 
   useEffectO(() => {
     if (!autoFocus || !bodyRef.current) return;
@@ -5391,7 +5482,36 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   // - "/" opens slash menu (works anywhere — like Notion)
   // - Enter creates a new block (instead of newline)
   // - Backspace at empty content removes block and focuses previous
+  // Markdown shorthand: when Space is pressed and the line so far matches
+  // a markdown prefix (e.g. "#", ">", "$$"), convert the block type.
+  const MD_PREFIX_MAP = {
+    "#": "h1",
+    "##": "h2",
+    "###": "h3",
+    ">": "quote",
+    "$$": "math",
+    "-": "ul",
+    "*": "ul",
+    "1.": "ol",
+    "[]": "todo",
+  };
+
+  const tryMarkdownShortcut = (e) => {
+    if (e.key !== " " || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return false;
+    const text = (e.currentTarget.textContent || "").trimEnd();
+    const nextType = MD_PREFIX_MAP[text];
+    if (!nextType) return false;
+    // Only convert from a plain text block — avoid re-converting an already-h1 etc.
+    if (block.type !== "p" && block.type !== "h1" && block.type !== "h2" && block.type !== "h3" && block.type !== "quote") return false;
+    e.preventDefault();
+    // Clear the visible prefix immediately so the caret resets.
+    e.currentTarget.innerHTML = "";
+    onUpdate({ type: nextType, content: "" });
+    return true;
+  };
+
   const handleKeyDown = (e) => {
+    if (tryMarkdownShortcut(e)) return;
     if (e.key === "/") {
       e.preventDefault();
       const rect = e.target.getBoundingClientRect();
@@ -5413,11 +5533,11 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
 
   const renderContent = () => {
     const t = block.type;
-    if (t === "h1") return <h1 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h2") return <h2 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h3") return <h3 ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "p") return <p ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "quote") return <blockquote ref={ref} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
     if (t === "ul" || t === "ol") {
       return <ListBlock block={block} onUpdate={onUpdate} />;
     }
