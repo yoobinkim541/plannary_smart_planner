@@ -1018,7 +1018,7 @@ function WikiPage() {
   const [infoOpen, setInfoOpen] = useStateO(false);
   const [favorites, setFavorites] = useStateO(() => new Set());
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
-  const active = tree.find((w) => w.id === activeId) || tree[0];
+  const active = tree.find((w) => w.id === activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
   const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
   const currentPageMeta = useMemoO(() => {
