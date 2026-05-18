@@ -339,6 +339,7 @@
       tags: Array.isArray(d.tags) ? d.tags : [],
       blocks,
       orderIndex: typeof d.orderIndex === "number" ? d.orderIndex : 0,
+      createdAt: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0,
       updatedAt: d.updatedAt && d.updatedAt.toMillis ? d.updatedAt.toMillis() : 0,
     };
   }
@@ -626,16 +627,7 @@
         title,
         parentId,
         projectId: null,
-        icon: "📄",
-        coverUrl: null,
-        coverPosition: 50,
-        coverPositionX: 50,
-        coverHeight: 180,
-        coverZoom: 100,
-        coverCropMode: "cover",
         content: { time: Date.now(), blocks: [], version: "redesign-v1" },
-        tags: [],
-        orderIndex: Date.now(),
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
@@ -806,7 +798,11 @@
       db.collection("wiki_pages").where("uid", "==", user.uid).onSnapshot(
         (snap) => {
           const pages = snap.docs.map(wikiPageDocToEntry);
-          pages.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0) || a.title.localeCompare(b.title));
+          pages.sort((a, b) => {
+            const aOrder = a.orderIndex || a.createdAt || a.updatedAt || 0;
+            const bOrder = b.orderIndex || b.createdAt || b.updatedAt || 0;
+            return aOrder - bOrder || a.title.localeCompare(b.title);
+          });
           // Public tree shape for sidebar / WikiPage (id, title, parent, icon)
           const tree = pages.map(p => ({ id: p.id, title: p.title, parent: p.parent, icon: p.icon, tags: p.tags, orderIndex: p.orderIndex }));
           window.Planary.WIKI_TREE = tree;
