@@ -2026,7 +2026,7 @@ function BookmarksPage() {
         <button className="btn btn-primary" onClick={submitBookmark}><Icon name="plus" size={14} />새 북마크</button>
       </div>
 
-      <div className="composer">
+      <div className="composer bookmark-composer">
         <div className="composer-row">
           <Icon name="link" size={16} style={{ color: "var(--accent)" }} />
           <input
@@ -2038,7 +2038,7 @@ function BookmarksPage() {
           />
           <button className="btn btn-sm btn-primary" onClick={submitBookmark}>저장</button>
         </div>
-        <div className="composer-tools">
+        <div className="composer-tools bookmark-tag-composer">
           <Icon name="hash" size={13} style={{ color: "var(--text-lo)" }} />
           <input
             className="composer-input"
@@ -2046,7 +2046,6 @@ function BookmarksPage() {
             value={tagDraft}
             onChange={(e) => setTagDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") submitBookmark(); }}
-            style={{ fontSize: 13 }}
           />
         </div>
       </div>
