@@ -2095,11 +2095,11 @@ function BookmarksPage() {
                     title="태그 제거"
                     onClick={() => updateBookmarkTags(b, (b.tags || []).filter((tag) => tag !== t))}
                   >
-                    #{t}
+                    {t}
                   </button>
                 ))}
-                <button className="tag" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={() => addBookmarkTag(b)}>
-                  <Icon name="plus" size={9} />태그
+                <button className="tag bookmark-tag-add" onClick={() => addBookmarkTag(b)} title="태그 추가">
+                  <Icon name="plus" size={9} />추가
                 </button>
               </div>
             </div>
