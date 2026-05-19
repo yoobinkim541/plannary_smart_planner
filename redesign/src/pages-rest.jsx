@@ -569,6 +569,8 @@ function NotesPage() {
   const [boardW, setBoardW] = useStateO(0);
   const [editing, setEditing] = useStateO(null); // { id, text, color } | null
   const [colorMenuFor, setColorMenuFor] = useStateO(null); // note id whose color menu is open
+  const [search, setSearch] = useStateO("");
+  const [colorFilter, setColorFilter] = useStateO(null); // null = all
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
   const editAreaRef = useRefO(null);
@@ -734,6 +736,14 @@ function NotesPage() {
 
   const colors = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
 
+  const filteredNotes = notes.filter(n => {
+    if (colorFilter && n.color !== colorFilter) return false;
+    if (search && !n.text.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const boardH = notes.length === 0 ? 320 : Math.max(480, Math.max(...notes.map(n => (n.y || 0) + 200)));
+
   return (
     <div className="page-wide">
       <div className="page-head" style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
@@ -741,25 +751,51 @@ function NotesPage() {
           <div className="kicker">WORKSPACE · 포스트잇 보드</div>
           <div className="page-title">포스트잇
 </div>
-          <div className="page-sub">{notes.length}개 · 드래그해 자유롭게 배치하거나 그리드로 정렬하세요</div>
+          <div className="page-sub">{filteredNotes.length !== notes.length ? `${filteredNotes.length} / ${notes.length}개` : `${notes.length}개`} · 드래그해 자유롭게 배치하거나 그리드로 정렬하세요</div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ position: "relative" }}>
+            <Icon name="search" size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="메모 검색…"
+              style={{
+                height: 32, paddingLeft: 30, paddingRight: search ? 28 : 10,
+                background: "var(--surface-2)", border: "1px solid var(--border-soft)",
+                borderRadius: "var(--r-md)", fontSize: 13, color: "var(--text-hi)",
+                outline: "none", width: 160,
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--text-faint)" }}>
+                <Icon name="x" size={12} />
+              </button>
+            )}
+          </div>
           <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-md)", gap: 2 }}>
             <button onClick={() => setView("board")}
             className="btn btn-sm"
             style={{ height: 28, background: view === "board" ? "var(--surface)" : "transparent", color: view === "board" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "board" ? "var(--shadow-sm)" : "none" }}>
-              
               <Icon name="layers" size={13} />보드
             </button>
             <button
               onClick={() => setView("grid")}
               className="btn btn-sm"
               style={{ height: 28, background: view === "grid" ? "var(--surface)" : "transparent", color: view === "grid" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "grid" ? "var(--shadow-sm)" : "none" }}>
-              
               <Icon name="grid" size={13} />그리드
             </button>
           </div>
-          <button className="btn btn-ghost"><Icon name="download" size={14} />내보내기</button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              if (!notes.length) return;
+              const text = notes.map(n => `[${n.color}] ${n.text}`).join("\n\n");
+              navigator.clipboard?.writeText(text).then(() =>
+                window.Planary.toast?.({ type: "ok", title: "클립보드에 복사됨" })
+              );
+            }}
+          ><Icon name="download" size={14} />내보내기</button>
         </div>
       </div>
 
@@ -803,9 +839,51 @@ function NotesPage() {
         </div>
       </div>
 
+      {/* Color filter chips */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <button
+          className={`chip ${!colorFilter ? "chip-accent" : ""}`}
+          style={{ cursor: "pointer", height: 26, padding: "0 10px", fontSize: 12 }}
+          onClick={() => setColorFilter(null)}
+        >전체 <span style={{ fontSize: 11, opacity: 0.7 }}>{notes.length}</span></button>
+        {colors.map(c => {
+          const cnt = notes.filter(n => n.color === c).length;
+          if (!cnt) return null;
+          return (
+            <button
+              key={c}
+              className={`chip ${colorFilter === c ? "chip-accent" : ""}`}
+              style={{ cursor: "pointer", height: 26, padding: "0 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
+              onClick={() => setColorFilter(colorFilter === c ? null : c)}
+            >
+              <span className={`note-color-swatch note-${c}`} style={{ width: 10, height: 10, borderRadius: 3, display: "inline-block" }} />
+              {cnt}
+            </button>
+          );
+        })}
+      </div>
+
+      {filteredNotes.length === 0 && (
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          {notes.length === 0 ? (
+            <>
+              <Icon name="note" size={28} style={{ color: "var(--text-faint)", marginBottom: 12 }} />
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-lo)" }}>첫 메모를 작성해보세요</div>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 6 }}>위 입력창에 생각을 적고 메모 추가를 눌러요</div>
+            </>
+          ) : (
+            <>
+              <Icon name="search" size={24} style={{ color: "var(--text-faint)", marginBottom: 10 }} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-lo)" }}>검색 결과가 없어요</div>
+              <button className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => { setSearch(""); setColorFilter(null); }}>필터 초기화</button>
+            </>
+          )}
+        </div>
+      )}
+
       {view === "board" ?
-      <div className="board" ref={boardRef} style={{ height: 620, touchAction: "none" }}>
-          {notes.map((n) => {
+      <div className="board" ref={boardRef} style={{ height: boardH, touchAction: "none" }}>
+          {filteredNotes.map((n) => {
         const NOTE_W = 200, NOTE_H = 144, PAD = 8;
         const maxX = Math.max(0, boardW - NOTE_W - PAD);
         const safeX = boardW > 0 ? Math.min(n.x, maxX) : n.x;
@@ -866,7 +944,7 @@ function NotesPage() {
         </div> :
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-          {notes.map((n) => {
+          {filteredNotes.map((n) => {
             const isEditing = editing && editing.id === n.id;
             const displayColor = isEditing ? editing.color : n.color;
             return (
@@ -1012,6 +1090,7 @@ function WikiPage() {
   const [coverHeight, setCoverHeight] = useStateO(180); // 120-360
   const [coverZoom, setCoverZoom] = useStateO(100); // 100-220
   const fileInputRef = useRefO(null);
+  const docScrollRef = useRefO(null);
   const [favorite, setFavorite] = useStateO(false);
   const [moreMenuOpen, setMoreMenuOpen] = useStateO(false);
   const [historyOpen, setHistoryOpen] = useStateO(false);
@@ -1020,7 +1099,13 @@ function WikiPage() {
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
   const active = tree.find((w) => w.id === activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
-  const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
+  const setActiveIcon = (v) => {
+    setPageIcons(prev => ({ ...prev, [activeId]: v }));
+    setTree(prev => prev.map(w => w.id === activeId ? { ...w, icon: v } : w));
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { icon: v } },
+    }));
+  };
   const currentPageMeta = useMemoO(() => {
     const chain = [];
     let cur = active;
@@ -1062,13 +1147,21 @@ function WikiPage() {
   { id: "g6", label: "Sky", style: { background: "linear-gradient(135deg, #60a5fa, #34d399)" } }];
 
 
+  const persistCoverMeta = (patch) => {
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch },
+    }));
+  };
+
   const handleFilePick = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setCoverImage(`url("${reader.result}")`);
+      const img = `url("${reader.result}")`;
+      setCoverImage(img);
       setCoverMenuOpen(false);
+      persistCoverMeta({ coverImage: img });
     };
     reader.readAsDataURL(file);
   };
@@ -1076,19 +1169,22 @@ function WikiPage() {
   const handleAddByUrl = () => {
     const url = window.prompt("이미지 URL을 입력하세요", "");
     if (!url) return;
-    setCoverImage(`url("${url.replace(/"/g, '\\"')}")`);
+    const img = `url("${url.replace(/"/g, '\\"')}")`;
+    setCoverImage(img);
     setCoverMenuOpen(false);
+    persistCoverMeta({ coverImage: img });
   };
 
   const handlePickGallery = (g) => {
-    // for gallery use the CSS background directly
     setCoverImage(g.style.background);
     setCoverMenuOpen(false);
+    persistCoverMeta({ coverImage: g.style.background });
   };
 
   const handleRemoveCover = () => {
     setCoverImage(null);
     setCoverPanelOpen(false);
+    persistCoverMeta({ coverImage: null });
   };
 
   // Build tree: roots and children
@@ -1116,6 +1212,11 @@ function WikiPage() {
     window.addEventListener("planary:wiki-loaded", onLoaded);
     return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
   }, []);
+
+  // Scroll doc area to top on page change
+  useEffectO(() => {
+    if (docScrollRef.current) docScrollRef.current.scrollTop = 0;
+  }, [activeId]);
 
   // Collect a page and all its descendants
   const collectDescendants = (id) => {
@@ -1537,7 +1638,7 @@ function WikiPage() {
           </button>
         </aside>}
 
-        <div className="wiki-doc">
+        <div className="wiki-doc" ref={docScrollRef}>
           <div
             className={`wiki-cover ${coverPanelOpen ? "is-editing" : ""}`}
             style={{ height: coverHeight, "--cover-pos-x": `${coverPosX}%`, "--cover-pos-y": `${coverPosY}%`, "--cover-zoom": `${coverZoom}%` }}>
@@ -1656,19 +1757,19 @@ function WikiPage() {
                 </div>
                 <div className="cover-slider-row">
                   <label>가로 위치 <span className="val">{coverPosX}%</span></label>
-                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosX} onChange={(e) => setCoverPosX(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosX} onChange={(e) => setCoverPosX(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverPosX: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>세로 위치 <span className="val">{coverPosY}%</span></label>
-                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosY} onChange={(e) => setCoverPosY(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosY} onChange={(e) => setCoverPosY(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverPosY: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>면적 (높이) <span className="val">{coverHeight}px</span></label>
-                  <input className="cover-slider" type="range" min="120" max="360" value={coverHeight} onChange={(e) => setCoverHeight(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="120" max="360" value={coverHeight} onChange={(e) => setCoverHeight(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverHeight: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>확대 <span className="val">{coverZoom}%</span></label>
-                  <input className="cover-slider" type="range" min="100" max="220" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="100" max="220" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverZoom: Number(e.target.value) })} />
                 </div>
                 <button className="btn btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => setCoverPanelOpen(false)}>
                   완료
@@ -1790,7 +1891,7 @@ function WikiPage() {
                       <Icon name="star" size={14} style={favorites.has(activeId) ? { color: "var(--warn)", fill: "var(--warn)" } : undefined} />
                       <span style={{ flex: 1 }}>{favorites.has(activeId) ? "즐겨찾기에서 제거" : "즐겨찾기에 추가"}</span>
                     </div>
-                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); window.Planary.toast?.({ type: "ok", title: "복제됨", sub: `"${active.title}의 사본"이 만들어졌어요` }); }}>
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); setDuplicating({ node: active }); }}>
                       <Icon name="copy" size={14} />페이지 복제
                     </div>
                     <div className="popover-item" onClick={() => { setMoreMenuOpen(false); navigator.clipboard?.writeText(`https://planary.app/w/${active.id}`); window.Planary.toast?.({ type: "ok", title: "링크가 복사됐어요" }); }}>
@@ -1821,12 +1922,7 @@ function WikiPage() {
                     <div className="popover-sep" />
                     <div
                       className="popover-item is-danger"
-                      onClick={() => {
-                        setMoreMenuOpen(false);
-                        if (window.confirm(`"${active.title}" 페이지를 삭제할까요?`)) {
-                          window.Planary.toast?.({ type: "err", title: "페이지가 삭제됐어요", sub: "30일 후 영구 삭제됩니다" });
-                        }
-                      }}
+                      onClick={() => { setMoreMenuOpen(false); setPendingDelete(active); }}
                     >
                       <Icon name="trash" size={14} />페이지 삭제
                     </div>
@@ -1840,7 +1936,25 @@ function WikiPage() {
             {currentPageMeta.tags.map((tag) => <span key={tag} className="tag">#{tag}</span>)}
             <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={addPageTag}><Icon name="plus" size={10} />태그</button>
           </div>
-          <h1 className="wiki-doc-title">{active.title}</h1>
+          <h1
+            className="wiki-doc-title"
+            contentEditable
+            suppressContentEditableWarning
+            key={activeId}
+            onBlur={(e) => {
+              const v = e.currentTarget.textContent.trim();
+              if (!v || v === active.title) return;
+              setTree(prev => prev.map(w => w.id === activeId ? { ...w, title: v } : w));
+              window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+                detail: { id: activeId, patch: { title: v } },
+              }));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+              if (e.key === "Escape") { e.currentTarget.textContent = active.title; e.currentTarget.blur(); }
+            }}
+            dangerouslySetInnerHTML={{ __html: active.title }}
+          />
 
           <WikiBlocks activeId={activeId} onBlocksChange={setDocBlocks} />
         </div>
@@ -5666,7 +5780,10 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           slashMenu={slashMenu}
           onClose={() => setSlashMenu(null)}
           onPick={(type) => {
-            updateBlock(slashMenu.blockId, { type, content: "" });
+            // Preserve existing content (strip any trailing "/" that opened the menu)
+            const cur = liveBlocksRef.current.find(b => b.id === slashMenu.blockId);
+            const content = cur ? cur.content.replace(/\/\s*$/, "").trimEnd() : "";
+            updateBlock(slashMenu.blockId, { type, content });
             setFocusBlockId(slashMenu.blockId);
             setSlashMenu(null);
           }}
