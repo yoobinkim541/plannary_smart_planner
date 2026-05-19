@@ -80,6 +80,217 @@ html, body {
     transition: font-family 0.3s ease;
 }
 
+body.app-booting #app-shell,
+body.app-booting .fab-container,
+body.app-booting .modal,
+body.app-booting .onboarding-modal {
+    visibility: hidden;
+}
+
+.app-boot-skeleton {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    grid-template-columns: 72px 280px 1fr;
+    background: var(--bg);
+}
+
+body:not(.app-booting) .app-boot-skeleton {
+    display: none;
+}
+
+.app-boot-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 26px 0;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.app-boot-sidebar {
+    padding: 28px 22px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.app-boot-main {
+    min-width: 0;
+    padding: 46px min(6vw, 72px);
+}
+
+.app-boot-rail span,
+.app-boot-profile,
+.app-boot-nav span,
+.app-boot-line,
+.app-boot-grid span,
+.app-boot-block {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--border) 54%, var(--surface));
+}
+
+.app-boot-rail span::before,
+.app-boot-profile::before,
+.app-boot-nav span::before,
+.app-boot-line::before,
+.app-boot-grid span::before,
+.app-boot-block::before {
+    content: "";
+    position: absolute;
+    inset: -42%;
+    background:
+        radial-gradient(circle at 34% 44%, rgba(255, 255, 255, 0.56), transparent 28%),
+        linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.5) 42%, transparent 66%);
+    animation: appBootFluidSkeleton 1.9s ease-in-out infinite;
+}
+
+.app-boot-rail span {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+}
+
+.app-boot-profile {
+    width: 100%;
+    height: 64px;
+    border-radius: 16px;
+    margin-bottom: 28px;
+}
+
+.app-boot-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.app-boot-nav span {
+    height: 38px;
+    border-radius: 12px;
+}
+
+.app-boot-nav span:nth-child(2) { width: 86%; }
+.app-boot-nav span:nth-child(3) { width: 72%; }
+.app-boot-nav span:nth-child(4) { width: 80%; }
+.app-boot-nav span:nth-child(5) { width: 68%; }
+
+.app-boot-header {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 34px;
+}
+
+.app-boot-line {
+    display: block;
+    width: min(580px, 88%);
+    height: 14px;
+    border-radius: 999px;
+}
+
+.app-boot-title {
+    width: min(420px, 70%);
+    height: 38px;
+    border-radius: 12px;
+}
+
+.app-boot-subtitle {
+    width: min(340px, 56%);
+}
+
+.app-boot-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.app-boot-grid span {
+    height: 116px;
+    border-radius: var(--radius);
+}
+
+.app-boot-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 860px;
+    padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.app-boot-wide { width: 94%; }
+.app-boot-mid { width: 68%; }
+.app-boot-short { width: 42%; }
+
+.app-boot-block {
+    width: 100%;
+    height: 120px;
+    border-radius: 16px;
+    margin: 4px 0;
+}
+
+[data-theme="dark"] .app-boot-rail span,
+[data-theme="dark"] .app-boot-profile,
+[data-theme="dark"] .app-boot-nav span,
+[data-theme="dark"] .app-boot-line,
+[data-theme="dark"] .app-boot-grid span,
+[data-theme="dark"] .app-boot-block {
+    background: color-mix(in srgb, var(--border) 45%, var(--surface));
+}
+
+[data-theme="dark"] .app-boot-rail span::before,
+[data-theme="dark"] .app-boot-profile::before,
+[data-theme="dark"] .app-boot-nav span::before,
+[data-theme="dark"] .app-boot-line::before,
+[data-theme="dark"] .app-boot-grid span::before,
+[data-theme="dark"] .app-boot-block::before {
+    background:
+        radial-gradient(circle at 34% 44%, rgba(255, 255, 255, 0.16), transparent 28%),
+        linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.12) 42%, transparent 66%);
+}
+
+@keyframes appBootFluidSkeleton {
+    0% { transform: translateX(-42%) translateY(3%) scale(1); opacity: 0.58; }
+    50% { transform: translateX(8%) translateY(-4%) scale(1.04); opacity: 1; }
+    100% { transform: translateX(48%) translateY(2%) scale(1); opacity: 0.58; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-boot-rail span::before,
+    .app-boot-profile::before,
+    .app-boot-nav span::before,
+    .app-boot-line::before,
+    .app-boot-grid span::before,
+    .app-boot-block::before {
+        animation: none;
+        opacity: 0.45;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-boot-skeleton {
+        grid-template-columns: 1fr;
+    }
+
+    .app-boot-rail,
+    .app-boot-sidebar {
+        display: none;
+    }
+
+    .app-boot-main {
+        padding: 86px 20px 28px;
+    }
+
+    .app-boot-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 #app-shell,
 #app-shell * {
     font-family: inherit;
@@ -4479,6 +4690,132 @@ body.onboarding-spotlight-active #main-area {
     min-height: 300px;
     margin-bottom: 20px;
     flex: 0 0 auto; /* Don't force flex grow, let content define height */
+}
+
+.wiki-editor-container.is-loading #editorjs,
+.wiki-editor-container.is-loading .wiki-subpages-section,
+.wiki-editor-container.is-loading .wiki-actions {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.wiki-loading-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 20px;
+}
+
+.wiki-loading-skeleton[hidden] {
+    display: none;
+}
+
+.wiki-loading-cover,
+.wiki-loading-icon,
+.wiki-loading-line,
+.wiki-loading-block {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--border) 54%, var(--surface));
+}
+
+.wiki-loading-cover::before,
+.wiki-loading-icon::before,
+.wiki-loading-line::before,
+.wiki-loading-block::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    background:
+        radial-gradient(circle at 32% 42%, rgba(255, 255, 255, 0.56), transparent 28%),
+        linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.5) 42%, transparent 66%);
+    animation: wikiFluidSkeleton 1.9s ease-in-out infinite;
+}
+
+.wiki-loading-cover {
+    height: 150px;
+    margin: -30px -40px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.wiki-loading-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.wiki-loading-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    flex: 0 0 auto;
+}
+
+.wiki-loading-title-stack,
+.wiki-loading-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.wiki-loading-line {
+    display: block;
+    height: 14px;
+    width: min(620px, 88%);
+    border-radius: 999px;
+}
+
+.wiki-loading-line-title {
+    height: 34px;
+    width: min(520px, 72%);
+    border-radius: 12px;
+}
+
+.wiki-loading-line-wide { width: min(720px, 96%); }
+.wiki-loading-line-mid { width: min(560px, 74%); }
+.wiki-loading-line-short { width: min(360px, 52%); }
+.wiki-loading-line-sm { width: 170px; height: 12px; }
+.wiki-loading-line-xs { width: 230px; height: 11px; opacity: 0.76; }
+
+.wiki-loading-block {
+    display: block;
+    width: min(680px, 92%);
+    height: 86px;
+    border-radius: 14px;
+    margin: 4px 0;
+}
+
+[data-theme="dark"] .wiki-loading-cover,
+[data-theme="dark"] .wiki-loading-icon,
+[data-theme="dark"] .wiki-loading-line,
+[data-theme="dark"] .wiki-loading-block {
+    background: color-mix(in srgb, var(--border) 45%, var(--surface));
+}
+
+[data-theme="dark"] .wiki-loading-cover::before,
+[data-theme="dark"] .wiki-loading-icon::before,
+[data-theme="dark"] .wiki-loading-line::before,
+[data-theme="dark"] .wiki-loading-block::before {
+    background:
+        radial-gradient(circle at 32% 42%, rgba(255, 255, 255, 0.16), transparent 28%),
+        linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.12) 42%, transparent 66%);
+}
+
+@keyframes wikiFluidSkeleton {
+    0% { transform: translateX(-42%) translateY(3%) scale(1); opacity: 0.58; }
+    50% { transform: translateX(8%) translateY(-4%) scale(1.04); opacity: 1; }
+    100% { transform: translateX(48%) translateY(2%) scale(1); opacity: 0.58; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wiki-loading-cover::before,
+    .wiki-loading-icon::before,
+    .wiki-loading-line::before,
+    .wiki-loading-block::before {
+        animation: none;
+        opacity: 0.45;
+    }
 }
 
 .wiki-actions {

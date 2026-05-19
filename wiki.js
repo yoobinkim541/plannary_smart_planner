@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const widgetNewSubpageBtn = document.getElementById('wiki-widget-new-subpage-btn');
     const calendarConnectBtn = document.getElementById('wiki-calendar-connect-btn');
     const calendarCreateBtn = document.getElementById('wiki-calendar-create-btn');
+    const wikiLoadingSkeleton = document.getElementById('wiki-loading-skeleton');
 
     if (!pageWiki) return;
 
@@ -758,6 +759,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveWikiBtn) saveWikiBtn.disabled = false;
         if (saveStateEl) saveStateEl.textContent = tr('unsavedChanges');
     };
+    const setWikiLoading = (isLoading) => {
+        if (wikiEditorView) wikiEditorView.classList.toggle('is-loading', isLoading);
+        if (wikiLoadingSkeleton) wikiLoadingSkeleton.hidden = !isLoading;
+    };
     const getCurrentPage = () => allPages.find(page => page.id === currentPageId);
     const getProjectName = (projectId) => {
         const project = allProjects.find(item => item.id === projectId);
@@ -1137,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     holder.addEventListener('keydown', editorKeydownHandler);
                 }
                 installWikiBlockDragHandles();
+                setWikiLoading(false);
             },
             onChange: () => {
                 // Proactively enable save button if disabled
@@ -1644,6 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPageId === page.id) return;
         cleanupPendingWikiUploads();
         currentPageId = page.id;
+        renderPageList();
 
         // Notion-like: Hide list on small screens, show editor as full page
         pageWiki.classList.add('editor-active');
@@ -1678,13 +1685,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (saveWikiBtn) saveWikiBtn.disabled = true;
         if (saveStateEl) saveStateEl.textContent = tr('saved');
+        setWikiLoading(true);
         initEditor(page.content);
         resetMetaUndoHistory();
         renderSubpages(page.id);
         renderWidgets();
         setTimeout(() => { if (saveWikiBtn) saveWikiBtn.disabled = false; }, 500);
-
-        renderPageList();
     };
 
     const closeEditor = () => {
@@ -1698,6 +1704,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pageWiki.classList.remove('editor-active');
         wikiEditorView.style.display = 'none';
         wikiEmptyView.style.display = 'flex';
+        setWikiLoading(false);
         if (wikiProjectSelect) wikiProjectSelect.value = '';
         currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverPositionX: 50, coverHeight: 180, coverZoom: 100, coverCropMode: 'cover' };
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
