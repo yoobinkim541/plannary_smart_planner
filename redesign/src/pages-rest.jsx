@@ -2519,6 +2519,8 @@ function ProfilePage({ tasks, t, setTweak }) {
   const [editOpen, setEditOpen] = useStateO(false);
   const [signOutOpen, setSignOutOpen] = useStateO(false);
   const [switchOpen, setSwitchOpen] = useStateO(false);
+  const [sessionsOpen, setSessionsOpen] = useStateO(false);
+  const [tfaOpen, setTfaOpen] = useStateO(false);
   const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | "lang" | null
   const [lang, setLangState] = useStateO(() => window.PlanaryI18n?.getLang?.() || "ko");
   const [notifs, setNotifs] = useStateO({ email: true, push: true, gcal: true, apple: false, slack: false });
@@ -2759,14 +2761,17 @@ function ProfilePage({ tasks, t, setTweak }) {
                   <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>2단계 인증</div>
                   <div style={{ fontSize: 11, color: "var(--text-lo)" }}>로그인 시 추가 인증을 요청합니다</div>
                 </div>
-                <span className="chip">설정 안 됨</span>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span className="chip">설정 안 됨</span>
+                  <button className="btn btn-sm" onClick={() => setTfaOpen(true)}>설정하기</button>
+                </div>
               </div>
               <div className="field-row" style={{ borderBottom: 0 }}>
                 <div>
                   <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>활성 세션</div>
-                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>현재 이 기기 포함 2개 기기에서 로그인됨</div>
+                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>현재 이 기기 포함 1개 이상 기기에서 로그인됨</div>
                 </div>
-                <button className="btn btn-sm">전체 보기</button>
+                <button className="btn btn-sm" onClick={() => setSessionsOpen(true)}>전체 보기</button>
               </div>
             </div>
           </div>
@@ -2791,6 +2796,8 @@ function ProfilePage({ tasks, t, setTweak }) {
       {editOpen && <ProfileEditDialog user={user} onClose={() => setEditOpen(false)} onSave={saveProfile} />}
       {signOutOpen && <SignOutDialog onClose={() => setSignOutOpen(false)} user={user} />}
       {switchOpen && <window.Planary.AccountSwitcherDialog onClose={() => setSwitchOpen(false)} />}
+      {sessionsOpen && <SessionsDialog onClose={() => setSessionsOpen(false)} />}
+      {tfaOpen && <TwoFactorSetupDialog onClose={() => setTfaOpen(false)} userEmail={user.email} />}
     </div>);
 
 }
@@ -2983,7 +2990,12 @@ function PasswordCard() {
             type="button"
             className="btn btn-sm"
             style={{ color: "var(--text-lo)" }}
-            onClick={() => window.Planary.toast?.({ type: "info", title: "비밀번호 재설정 메일을 발송했어요", sub: "받은편지함을 확인하세요" })}
+            onClick={() => {
+              const email = window.Planary.USER?.email;
+              if (!email) { window.Planary.toast?.({ type: "err", title: "이메일 정보가 없어요" }); return; }
+              window.dispatchEvent(new CustomEvent("planary:reset-password-email", { detail: { email } }));
+              window.Planary.toast?.({ type: "ok", title: "재설정 메일을 발송했어요", sub: email });
+            }}
           >
             <Icon name="send" size={12} />이메일로 재설정
           </button>
@@ -3061,6 +3073,7 @@ function EclassConnectionCard() {
   const [connected, setConnected] = useStateO(isConnectionLive(initialConn));
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
+  const [showCourses, setShowCourses] = useStateO(false);
   const [urlInput, setUrlInput] = useStateO((initialConn && initialConn.baseUrl) || "https://eclass.seoultech.ac.kr");
   const [idInput, setIdInput] = useStateO("");
   const [pwInput, setPwInput] = useStateO("");
@@ -3178,8 +3191,24 @@ function EclassConnectionCard() {
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>동기화 대상</div>
               <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{courseTitles.length}개 강의 · 작업 {syncedTasks.length}개</div>
             </div>
-            <button className="btn btn-sm" onClick={() => {}}>강의 보기</button>
+            <button className="btn btn-sm" onClick={() => setShowCourses(s => !s)}>
+              강의 {showCourses ? "접기" : "보기"}
+            </button>
           </div>
+          {showCourses && (
+            <div style={{ background: "var(--surface-2)", borderRadius: "var(--r-md)", padding: "10px 14px", marginBottom: 8 }}>
+              {courseTitles.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", padding: "8px 0" }}>
+                  동기화된 강의가 없어요
+                </div>
+              ) : courseTitles.map((title, i) => (
+                <div key={title} style={{ fontSize: 12, color: "var(--text-hi)", padding: "6px 0", borderBottom: i < courseTitles.length - 1 ? "1px solid var(--border-soft)" : "none", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon name="book" size={11} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+                  {title}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="field-row">
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>자동 동기화</div>
@@ -5195,6 +5224,138 @@ function PropPopover({ children, onClose }) {
 }
 
 /* ===========================================================
+   SESSIONS DIALOG
+   =========================================================== */
+function SessionsDialog({ onClose }) {
+  const ua = navigator.userAgent;
+  const browser = /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "브라우저";
+  const os = /Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : "기기";
+  const today = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>활성 세션</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>로그인된 기기 목록입니다</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: "16px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Icon name="globe" size={18} style={{ color: "var(--accent)" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{browser} · {os}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>{today} 로그인</div>
+              </div>
+            </div>
+            <span className="chip chip-ok" style={{ height: 20, fontSize: 10, padding: "0 7px" }}>현재 기기</span>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 14, padding: "10px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)" }}>
+            <Icon name="info" size={11} style={{ verticalAlign: -2, marginRight: 5 }} />
+            다른 기기의 세션을 강제로 종료하려면 비밀번호를 변경하세요.
+          </div>
+        </div>
+        <div className="dialog-foot">
+          <button
+            className="btn btn-sm btn-ghost"
+            style={{ color: "var(--err)" }}
+            onClick={() => { window.dispatchEvent(new CustomEvent("planary:sign-out")); onClose(); }}
+          >
+            <Icon name="logout" size={12} />이 기기에서 로그아웃
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-sm btn-primary" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
+   2FA SETUP DIALOG
+   =========================================================== */
+function TwoFactorSetupDialog({ onClose, userEmail }) {
+  const [method, setMethod] = useStateO("email");
+  const [sent, setSent] = useStateO(false);
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const handleSetup = () => {
+    window.dispatchEvent(new CustomEvent("planary:setup-2fa", { detail: { method, email: userEmail } }));
+    setSent(true);
+    if (method === "email") {
+      window.Planary.toast?.({ type: "ok", title: "인증 코드를 이메일로 발송했어요", sub: userEmail });
+    } else {
+      window.Planary.toast?.({ type: "info", title: "준비 중인 기능이에요" });
+    }
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(460px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>2단계 인증 설정</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>로그인 시 추가 인증 방법을 선택하세요</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: "16px 22px" }}>
+          {[
+            { id: "email", icon: "send", label: "이메일 인증", desc: `${userEmail || "등록된 이메일"}로 코드 전송` },
+            { id: "totp",  icon: "clock", label: "인증 앱 (TOTP)", desc: "Google Authenticator 등 사용 (준비 중)" },
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => m.id !== "totp" && setMethod(m.id)}
+              style={{
+                width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 14,
+                padding: "12px 14px", borderRadius: "var(--r-md)", marginBottom: 8, cursor: m.id === "totp" ? "not-allowed" : "pointer",
+                background: method === m.id ? "var(--accent-soft)" : "var(--surface-2)",
+                border: `1.5px solid ${method === m.id ? "var(--accent)" : "transparent"}`,
+                opacity: m.id === "totp" ? 0.5 : 1,
+              }}
+            >
+              <Icon name={m.icon} size={18} style={{ color: method === m.id ? "var(--accent)" : "var(--text-lo)", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{m.label}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>{m.desc}</div>
+              </div>
+              {method === m.id && <Icon name="check" size={14} stroke={3} style={{ marginLeft: "auto", color: "var(--accent)" }} />}
+            </button>
+          ))}
+          {sent && (
+            <div style={{ fontSize: 12, color: "var(--ok)", display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+              <Icon name="check" size={12} stroke={3} />코드가 발송됐어요. 받은편지함을 확인하세요.
+            </div>
+          )}
+        </div>
+        <div className="dialog-foot">
+          <button className="btn btn-sm" onClick={onClose}>취소</button>
+          <button className="btn btn-sm btn-primary" onClick={handleSetup} disabled={sent}>
+            <Icon name="send" size={12} />{sent ? "발송됨" : "코드 발송"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
    SIGN OUT / DELETE ACCOUNT DIALOG
    =========================================================== */
 function SignOutDialog({ onClose, user }) {
@@ -5445,9 +5606,9 @@ function ProfileEditDialog({ user, onClose, onSave }) {
                 placeholder="이름" />
               
             </FormField>
-            <FormField label="이메일" hint="변경하려면 인증이 필요합니다">
+            <FormField label="이메일" hint="이메일은 변경할 수 없습니다">
               <div style={{ position: "relative" }}>
-                <input value={draft.email} onChange={(e) => update("email", e.target.value)} className="form-input" placeholder="email@example.com" />
+                <input value={draft.email} readOnly className="form-input" style={{ cursor: "default", color: "var(--text-lo)" }} placeholder="email@example.com" />
                 <span className="chip chip-ok" style={{ position: "absolute", right: 6, top: 6, height: 22, fontSize: 10 }}>
                   <Icon name="check" size={9} stroke={3} />인증됨
                 </span>
