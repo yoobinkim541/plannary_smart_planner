@@ -46,13 +46,23 @@ function discoverCourseKjs(pages) {
   const codes = new Set();
   pages.forEach(page => {
     if (!page.html) return;
-    for (const m of String(page.html).matchAll(/goLecture\(\s*['"]([^'"]+)['"]/g)) {
+    const html = String(page.html);
+    // Pattern 1: goLecture('kjKey', ...)
+    for (const m of html.matchAll(/goLecture\(\s*['"]([^'"]+)['"]/g)) {
       const kj = m[1].trim();
       if (kj && /^[A-Za-z0-9._-]+$/.test(kj) && kj.length < 64) codes.add(kj);
     }
-    for (const m of String(page.html).matchAll(/data-kj\s*=\s*["']([^"']+)["']/g)) {
+    // Pattern 2: data-kj="..."
+    for (const m of html.matchAll(/data-kj\s*=\s*["']([^"']+)["']/g)) {
       const kj = m[1].trim();
       if (kj && kj.length < 64) codes.add(kj);
+    }
+    // Pattern 3: URL query param KJKEY=... (course list pages, submain links)
+    for (const m of html.matchAll(/[?&]KJKEY=([A-Za-z0-9._%-]+)/gi)) {
+      try {
+        const kj = decodeURIComponent(m[1]).trim();
+        if (kj && /^[A-Za-z0-9._-]+$/.test(kj) && kj.length < 64) codes.add(kj);
+      } catch (_) {}
     }
   });
   return [...codes];
