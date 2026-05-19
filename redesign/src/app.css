@@ -1046,14 +1046,6 @@
   background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.04) 100%);
   pointer-events: none;
 }
-.note::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(120% 60% at 50% 100%, rgba(0,0,0,0.04), transparent 70%);
-  pointer-events: none;
-}
 .note:hover {
   box-shadow:
     0 1px 1px rgba(0,0,0,0.06),
@@ -1380,8 +1372,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 10px;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
+  overflow: visible;
 }
 .wiki-tree-item {
   display: flex; align-items: center; gap: 6px;

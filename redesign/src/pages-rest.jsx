@@ -567,7 +567,18 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
    NOTES (drag-and-drop sticky board)
    =========================================================== */
 function NotesPage() {
-  const initialNotes = Array.isArray(window.Planary.NOTES) ? window.Planary.NOTES : [];
+  // Merge Firestore notes with localStorage-cached positions so positions
+  // survive navigation without waiting for a Firestore round-trip.
+  const initialNotes = (() => {
+    const base = Array.isArray(window.Planary.NOTES) ? window.Planary.NOTES : [];
+    try {
+      const cached = JSON.parse(localStorage.getItem("planary.note-positions") || "{}");
+      if (cached && typeof cached === "object") {
+        return base.map(n => cached[n.id] ? { ...n, x: cached[n.id].x, y: cached[n.id].y } : n);
+      }
+    } catch (_) {}
+    return base;
+  })();
   const [notes, setNotes] = useStateO(initialNotes);
   const [draftColor, setDraftColor] = useStateO("yellow");
   const [draft, setDraft] = useStateO("");
@@ -706,6 +717,16 @@ function NotesPage() {
           window.dispatchEvent(new CustomEvent("planary:update-note", {
             detail: { id: d.id, patch: finalPos },
           }));
+          // Cache all positions in localStorage for instant restore on navigation
+          setNotes((prev) => {
+            try {
+              const posMap = {};
+              prev.forEach(n => { posMap[n.id] = { x: n.x, y: n.y }; });
+              posMap[d.id] = finalPos;
+              localStorage.setItem("planary.note-positions", JSON.stringify(posMap));
+            } catch (_) {}
+            return prev;
+          });
         }
         dragRef.current = null;
       }
@@ -1079,6 +1100,21 @@ function WikiPage() {
   const renameInputRef = useRefO(null);
   const [duplicating, setDuplicating] = useStateO(null); // { node } | null
   const [addMenuFor, setAddMenuFor] = useStateO(null); // node id whose + add menu is open
+  const [addMenuPos, setAddMenuPos] = useStateO({ top: 0, right: 0 });
+  const [treeMenuPos, setTreeMenuPos] = useStateO({ top: 0, right: 0 });
+
+  // Close tree/add popovers when clicking outside them
+  useEffectO(() => {
+    if (!addMenuFor && !treeMenuFor) return;
+    const handler = (e) => {
+      if (!e.target.closest(".popover") && !e.target.closest(".wiki-tree-action-btn")) {
+        setAddMenuFor(null);
+        setTreeMenuFor(null);
+      }
+    };
+    document.addEventListener("mousedown", handler, true);
+    return () => document.removeEventListener("mousedown", handler, true);
+  }, [addMenuFor, treeMenuFor]);
   // Drag-and-drop reordering
   const [dragId, setDragId] = useStateO(null);
   const [dropTarget, setDropTarget] = useStateO(null); // { id, pos: "before"|"after"|"inside" }
@@ -1146,15 +1182,19 @@ function WikiPage() {
     setTagDraft("");
   }, [activeId, active.title]);
 
-  // Sync cover state from Firestore data when active page changes
+  // Sync cover state from Firestore data when active page changes.
+  // For local file covers (data: URLs too large for Firestore), fall back to localStorage.
   useEffectO(() => {
     coverLoadingRef.current = true;
-    setCoverImage(active.cover || null);
+    let coverVal = active.cover || null;
+    if (!coverVal && activeId) {
+      try { coverVal = localStorage.getItem(`planary.wiki-cover.${activeId}`) || null; } catch (_) {}
+    }
+    setCoverImage(coverVal);
     setCoverPosX(active.coverPosX ?? 50);
     setCoverPosY(active.coverPosY ?? 50);
     setCoverHeight(active.coverHeight ?? 180);
     setCoverZoom(active.coverZoom ?? 100);
-    // Allow one animation frame before enabling slider save-effects
     requestAnimationFrame(() => { coverLoadingRef.current = false; });
   }, [activeId]);
 
@@ -1208,6 +1248,19 @@ function WikiPage() {
 
 
   const saveCoverUrl = (url) => {
+    if (!activeId) return;
+    // data: URLs can be multi-MB — save to localStorage only to stay under Firestore 1MB limit
+    if (url && url.includes("data:")) {
+      try {
+        if (url) localStorage.setItem(`planary.wiki-cover.${activeId}`, url);
+        else localStorage.removeItem(`planary.wiki-cover.${activeId}`);
+      } catch (_) {}
+      return;
+    }
+    // For null (remove), clear localStorage cache too
+    if (!url) {
+      try { localStorage.removeItem(`planary.wiki-cover.${activeId}`); } catch (_) {}
+    }
     window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
       detail: { id: activeId, patch: { coverUrl: url } },
     }));
@@ -1525,6 +1578,8 @@ function WikiPage() {
               title="페이지 추가"
               onClick={(e) => {
                 e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setAddMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
                 setAddMenuFor(addMenuFor === node.id ? null : node.id);
                 setTreeMenuFor(null);
               }}
@@ -1537,6 +1592,8 @@ function WikiPage() {
               title="더 보기"
               onClick={(e) => {
                 e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setTreeMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
                 setTreeMenuFor(isMenuOpen ? null : node.id);
                 setAddMenuFor(null);
               }}
@@ -1554,7 +1611,7 @@ function WikiPage() {
           {addMenuFor === node.id && (
             <div
               className="popover"
-              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 220 }}
+              style={{ position: "fixed", top: addMenuPos.top, right: addMenuPos.right, zIndex: 300, minWidth: 220 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="popover-header" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 4px" }}>
@@ -1599,7 +1656,7 @@ function WikiPage() {
           {isMenuOpen && (
             <div
               className="popover"
-              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 160 }}
+              style={{ position: "fixed", top: treeMenuPos.top, right: treeMenuPos.right, zIndex: 300, minWidth: 160 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="popover-item" onClick={() => { setActiveId(node.id); setTreeMenuFor(null); }}>
