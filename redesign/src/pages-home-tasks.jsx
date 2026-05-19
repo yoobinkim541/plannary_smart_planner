@@ -833,6 +833,16 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
   const nowTop = ((hour - 8) * 60 + min) / (12 * 60) * 100; // 8am – 8pm scale, percent
   const activity = buildTaskActivity(tasks, 140);
   const heat = activity.levels;
+  const [quickNote, setQuickNote] = useStateHT("");
+  const saveQuickNote = () => {
+    const text = quickNote.trim();
+    if (!text) return;
+    window.dispatchEvent(new CustomEvent("planary:create-note", {
+      detail: { text, color: "yellow", x: 60 + Math.random() * 200, y: 60 + Math.random() * 100 },
+    }));
+    window.Planary.toast?.({ type: "ok", title: "메모 저장됨", sub: text.slice(0, 30) });
+    setQuickNote("");
+  };
 
   return (
     <div className="page-wide">
@@ -940,6 +950,9 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
                 </div>
                 <div className="widget-body" style={{ padding: "10px 16px 16px" }}>
                   <textarea
+                    value={quickNote}
+                    onChange={(e) => setQuickNote(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveQuickNote(); }}
                     placeholder="떠오른 생각을 적어두세요…"
                     rows={3}
                     style={{
@@ -953,7 +966,7 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
                   />
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "var(--text-faint)" }}>⌘ + Enter — 저장</span>
-                    <button className="btn btn-sm btn-primary"><Icon name="send" size={12} />보관</button>
+                    <button className="btn btn-sm btn-primary" onClick={saveQuickNote} disabled={!quickNote.trim()}><Icon name="send" size={12} />보관</button>
                   </div>
                 </div>
               </div>
