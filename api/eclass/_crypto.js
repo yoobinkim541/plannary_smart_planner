@@ -24,4 +24,22 @@ function decrypt(value) {
   ]).toString('utf8');
 }
 
-module.exports = { encrypt, decrypt };
+// Deterministic key derived from e-Class credentials (base URL + username).
+// Used to detect and deduplicate connections that share the same e-Class account
+// across multiple Planary users, so the sync fetch runs only once per unique
+// e-Class identity.
+function hashCredentialKey(baseUrl, username) {
+  let normalizedBase;
+  try {
+    const u = new URL(baseUrl || 'https://eclass.seoultech.ac.kr');
+    normalizedBase = `${u.protocol}//${u.host}`;
+  } catch (_) {
+    normalizedBase = 'https://eclass.seoultech.ac.kr';
+  }
+  return crypto
+    .createHash('sha256')
+    .update(`${normalizedBase}:${String(username || '').toLowerCase().trim()}`)
+    .digest('hex');
+}
+
+module.exports = { encrypt, decrypt, hashCredentialKey };

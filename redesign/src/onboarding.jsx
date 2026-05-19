@@ -23,6 +23,9 @@ function OnboardingFlow({ onComplete }) {
     school: "",
     studentId: "",
     eclassConnect: false,
+    eclassUrl: "https://eclass.seoultech.ac.kr",
+    eclassId: "",
+    eclassPassword: "",
     accent: "violet",
     theme: "dark",
     interests: new Set(),
@@ -69,19 +72,44 @@ function OnboardingFlow({ onComplete }) {
       const timeLabel = draft.firstTaskDue === "today" ? "오늘"
         : draft.firstTaskDue === "tomorrow" ? "내일"
         : draft.firstTaskDue === "week" ? "이번 주" : null;
+      let dueDate = null;
+      if (draft.firstTaskDue === "today") {
+        dueDate = new Date().toISOString().slice(0, 10);
+      } else if (draft.firstTaskDue === "tomorrow") {
+        const d = new Date(); d.setDate(d.getDate() + 1);
+        dueDate = d.toISOString().slice(0, 10);
+      } else if (draft.firstTaskDue === "week") {
+        const d = new Date();
+        const daysToSunday = (7 - d.getDay()) % 7 || 7;
+        d.setDate(d.getDate() + daysToSunday);
+        dueDate = d.toISOString().slice(0, 10);
+      }
       const newTask = {
         id: "t" + Date.now(),
         title: draft.firstTask.trim(),
         memo: null,
         project: null,
         priority: draft.firstTaskPriority,
-        due: null,
+        due: dueDate,
+        dueDate: dueDate,
         time: timeLabel,
         reminder: false,
         done: false,
+        completed: false,
         tags: [],
       };
       window.dispatchEvent(new CustomEvent("planary:create-task", { detail: newTask }));
+    }
+
+    // Kick off e-Class connection if credentials were provided
+    if (draft.eclassConnect && draft.eclassId && draft.eclassPassword) {
+      window.dispatchEvent(new CustomEvent("planary:eclass-connect", {
+        detail: {
+          url: draft.eclassUrl || "https://eclass.seoultech.ac.kr",
+          id: draft.eclassId,
+          password: draft.eclassPassword,
+        },
+      }));
     }
 
     // Persist profile + preferences to Firestore via firebase-bridge
@@ -181,7 +209,7 @@ function OnbWelcome() {
   return (
     <div className="onb-step onb-step-center">
       <div className="onb-hero-logo">
-        <img src="assets/icons/icon-512.png" alt="Planary" className="onb-logo" />
+        <img src="/redesign/assets/icons/planary-logo.png" alt="Planary" className="onb-logo" />
         <div className="onb-spark onb-spark-1" />
         <div className="onb-spark onb-spark-2" />
         <div className="onb-spark onb-spark-3" />
@@ -243,6 +271,35 @@ function OnbSchool({ draft, update }) {
     "한양대학교", "성균관대학교", "이화여자대학교", "중앙대학교",
     "건국대학교", "동국대학교",
   ];
+  const SCHOOL_ECLASS = {
+    "서울과학기술대학교": "https://eclass.seoultech.ac.kr",
+    "서울대학교":         "https://etl.snu.ac.kr",
+    "연세대학교":         "https://yscec.yonsei.ac.kr",
+    "고려대학교":         "https://kulms.korea.ac.kr",
+    "한양대학교":         "https://eclass.hanyang.ac.kr",
+    "성균관대학교":       "https://canvas.skku.edu",
+    "이화여자대학교":     "https://eclass.ewha.ac.kr",
+    "중앙대학교":         "https://cls.cau.ac.kr",
+    "건국대학교":         "https://ecampus.konkuk.ac.kr",
+    "동국대학교":         "https://eclass.dongguk.edu",
+  };
+  const [customMode, setCustomMode] = useStateOB(
+    !SCHOOLS.includes(draft.school) && draft.school !== ""
+  );
+
+  const handleSchoolChange = (e) => {
+    const v = e.target.value;
+    if (v === "__custom__") {
+      setCustomMode(true);
+      update("school", "");
+    } else {
+      setCustomMode(false);
+      update("school", v);
+      const url = SCHOOL_ECLASS[v];
+      if (url) update("eclassUrl", url);
+    }
+  };
+
   return (
     <div className="onb-step">
       <div className="onb-step-icon"><Icon name="globe" size={20} /></div>
@@ -251,15 +308,27 @@ function OnbSchool({ draft, update }) {
       <div className="onb-form">
         <label className="onb-label">학교</label>
         <select
-          value={draft.school}
-          onChange={(e) => update("school", e.target.value)}
+          value={customMode ? "__custom__" : draft.school}
+          onChange={handleSchoolChange}
           className="onb-input"
         >
           <option value="">선택하지 않음</option>
           {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+          <option value="__custom__">직접 입력 (기타)</option>
         </select>
 
-        {draft.school && (
+        {customMode && (
+          <input
+            autoFocus
+            value={draft.school}
+            onChange={(e) => update("school", e.target.value)}
+            placeholder="학교 이름을 입력하세요"
+            className="onb-input"
+            style={{ marginTop: 8 }}
+          />
+        )}
+
+        {(draft.school || customMode) && (
           <>
             <label className="onb-label" style={{ marginTop: 14 }}>학번</label>
             <input
@@ -284,6 +353,37 @@ function OnbSchool({ draft, update }) {
                 <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>5분마다 자동 동기화 · 비밀번호는 AES-256 암호화</div>
               </div>
             </label>
+
+            {draft.eclassConnect && (
+              <>
+                <label className="onb-label" style={{ marginTop: 14 }}>e-Class 주소</label>
+                <input
+                  value={draft.eclassUrl}
+                  onChange={(e) => update("eclassUrl", e.target.value)}
+                  placeholder="https://eclass.yourschool.ac.kr"
+                  className="onb-input"
+                />
+                <label className="onb-label" style={{ marginTop: 10 }}>아이디</label>
+                <input
+                  value={draft.eclassId}
+                  onChange={(e) => update("eclassId", e.target.value)}
+                  placeholder="학번 또는 아이디"
+                  className="onb-input"
+                />
+                <label className="onb-label" style={{ marginTop: 10 }}>비밀번호</label>
+                <input
+                  type="password"
+                  value={draft.eclassPassword}
+                  onChange={(e) => update("eclassPassword", e.target.value)}
+                  placeholder="비밀번호"
+                  className="onb-input"
+                />
+                <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                  <Icon name="check" size={10} stroke={3} style={{ color: "var(--ok)" }} />
+                  비밀번호는 AES-256으로 암호화되어 저장됩니다
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -428,6 +528,19 @@ function OnbFeatures({ draft, update }) {
 }
 
 function OnbReady({ draft }) {
+  const ACCENT_LABELS = {
+    violet: "보라", blue: "블루", emerald: "에메랄드",
+    amber: "앰버", rose: "로즈", slate: "슬레이트",
+  };
+  const ACCENT_COLORS = {
+    violet: "#7f0df2", blue: "#2563eb", emerald: "#10b981",
+    amber: "#f59e0b", rose: "#e11d48", slate: "#475569",
+  };
+  const FEATURE_LABELS = {
+    tasks: "작업 관리", wiki: "노트 작성", notes: "포스트잇",
+    projects: "프로젝트", eclass: "e-Class", calendar: "캘린더",
+  };
+  const interestList = Array.from(draft.interests);
   return (
     <div className="onb-step onb-step-center">
       <div className="onb-ready-icon">
@@ -453,7 +566,7 @@ function OnbReady({ draft }) {
             <span style={{ color: "var(--text-hi)", fontWeight: 600 }}>{draft.school}</span>
           </div>
         )}
-        {draft.eclassConnect && (
+        {draft.eclassConnect && draft.eclassId && (
           <div className="onb-summary-row">
             <Icon name="check" size={13} style={{ color: "var(--ok)" }} stroke={3} />
             <span style={{ flex: 1, color: "var(--text-lo)" }}>e-Class</span>
@@ -461,10 +574,44 @@ function OnbReady({ draft }) {
           </div>
         )}
         <div className="onb-summary-row">
-          <Icon name="sparkles" size={13} />
-          <span style={{ flex: 1, color: "var(--text-lo)" }}>관심 기능</span>
-          <span style={{ color: "var(--text-hi)", fontWeight: 600 }}>{draft.interests.size}개</span>
+          <Icon name={draft.theme === "light" ? "sun" : "moon"} size={13} />
+          <span style={{ flex: 1, color: "var(--text-lo)" }}>테마</span>
+          <span style={{ color: "var(--text-hi)", fontWeight: 600 }}>
+            {draft.theme === "light" ? "라이트 모드" : "다크 모드"}
+          </span>
         </div>
+        {draft.accent && (
+          <div className="onb-summary-row">
+            <Icon name="edit" size={13} />
+            <span style={{ flex: 1, color: "var(--text-lo)" }}>색상</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 12, height: 12, borderRadius: 3, background: ACCENT_COLORS[draft.accent] || "var(--accent)", display: "inline-block" }} />
+              <span style={{ color: "var(--text-hi)", fontWeight: 600 }}>
+                {ACCENT_LABELS[draft.accent] || draft.accent}
+              </span>
+            </span>
+          </div>
+        )}
+        {interestList.length > 0 && (
+          <div className="onb-summary-row" style={{ alignItems: "flex-start" }}>
+            <Icon name="sparkles" size={13} style={{ marginTop: 3 }} />
+            <span style={{ flex: 1, color: "var(--text-lo)" }}>관심 기능</span>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end", maxWidth: 180 }}>
+              {interestList.map(id => (
+                <span key={id} className="chip" style={{ fontSize: 10, height: 20, padding: "0 7px", lineHeight: "20px" }}>
+                  {FEATURE_LABELS[id] || id}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {interestList.length === 0 && (
+          <div className="onb-summary-row">
+            <Icon name="sparkles" size={13} />
+            <span style={{ flex: 1, color: "var(--text-lo)" }}>관심 기능</span>
+            <span style={{ color: "var(--text-faint)", fontWeight: 600 }}>나중에 설정</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -310,6 +310,13 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     pages.push(...variants);
   }
 
+  // Discover enrolled courses from the pages fetched so far, then crawl
+  // per-course assignment/quiz list pages so items not in the main todo_list
+  // (no D-day, or already visible only on course pages) are also captured.
+  const enrolledCourses = discoverEnrolledCourses(pages);
+  const coursePages = await fetchCourseAssignmentPages(normalizedBase, enrolledCourses, cookie, 12);
+  pages.push(...coursePages);
+
   const items = new Map();
   pages.forEach(page => {
     if (!page.html) return;
@@ -317,6 +324,17 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     const bodyText = $('body').text();
     const isLoginForm = $('input[name="usr_id"], input[name="usr_pwd"], form[action*="/ilos/lo/login"]').length > 0;
     if (isLoginForm || (/login|로그인/.test(bodyText) && !/과제|강의|수강|lecture|assignment/i.test(bodyText))) return;
+
+    // For course-specific pages (assignment/quiz lists): use date-based parser
+    // that does not require D-day labels.
+    if (page.courseKj && /reportList|quizList/.test(page.url || '')) {
+      const courseItems = parseCoursePageItems($, page.url, page.courseName);
+      courseItems.forEach(item => {
+        if (!items.has(item.externalId)) items.set(item.externalId, item);
+      });
+      return;
+    }
+
     const todoWraps = $('.todo_wrap');
     todoWraps.each((_, element) => {
       const item = normalizeTodoWrap($, element, page.url);
@@ -336,11 +354,173 @@ async function fetchSeoultechItems({ baseUrl = DEFAULT_BASE_URL, sessionCookie, 
     });
   });
 
-  const collected = [...items.values()].slice(0, 80);
+  const collected = [...items.values()].slice(0, 120);
   if (returnPages) {
-    return { items: collected, pages, cookie };
+    return { items: collected, pages, cookie, enrolledCourses };
   }
-  return collected;
+  return { items: collected, enrolledCourses };
 }
 
-module.exports = { DEFAULT_BASE_URL, fetchSeoultechItems, loginSeoultech, normalizeBaseUrl, fetchText, toAbsoluteUrl, parseDate, parseKoreanDate };
+// Discover enrolled courses and their KJ codes from any already-fetched pages.
+// Returns [{ kj, name }] — name may be null if not recoverable from page text.
+function discoverEnrolledCourses(pages) {
+  const courses = new Map(); // kj → name
+  pages.forEach(page => {
+    if (!page.html) return;
+    const $ = cheerio.load(page.html);
+    const html = String(page.html);
+
+    // Pattern A: goLecture('kj', 'courseName', ...)
+    for (const m of html.matchAll(/goLecture\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]/g)) {
+      const kj = m[1].trim();
+      const name = cleanText(m[2]);
+      if (kj && /^[A-Za-z0-9._-]+$/.test(kj) && kj.length < 64) {
+        if (!courses.has(kj) && name && name.length > 1) courses.set(kj, name);
+        else if (!courses.get(kj)) courses.set(kj, name || null);
+      }
+    }
+
+    // Pattern B: <a href="...KJKEY=kj...">Course Name</a>
+    $('a[href*="KJKEY"], a[href*="kjkey"]').each((_, el) => {
+      const href = $(el).attr('href') || '';
+      const m = href.match(/[?&][Kk][Jj][Kk][Ee][Yy]=([A-Za-z0-9._%-]+)/);
+      if (!m) return;
+      let kj;
+      try { kj = decodeURIComponent(m[1]).trim(); } catch (_) { return; }
+      if (!kj || kj.length >= 64 || !/^[A-Za-z0-9._-]+$/.test(kj)) return;
+      if (!courses.has(kj)) {
+        const name = cleanText($(el).text());
+        courses.set(kj, (name && name.length > 1 && name.length < 80) ? name : null);
+      }
+    });
+
+    // Pattern C: data-kj attribute with nearby text
+    $('[data-kj]').each((_, el) => {
+      const kj = ($(el).attr('data-kj') || '').trim();
+      if (!kj || kj.length >= 64 || !/^[A-Za-z0-9._-]+$/.test(kj)) return;
+      if (!courses.has(kj)) {
+        const name = cleanText(
+          $(el).closest('.coursebox, .course-item, .subject-item, li').find('.course-name, .title, a').first().text()
+          || $(el).text()
+        );
+        courses.set(kj, (name && name.length > 1 && name.length < 80) ? name : null);
+      }
+    });
+
+    // Pattern D: SeoulTech ilos my_lecture_container — iterate every course div
+    // directly so we never miss a course even if its onclick/href format is unusual.
+    $('.my_lecture_container .container_body > div').each((_, el) => {
+      const itemHtml = $.html(el);
+      if (!itemHtml) return;
+      let kj = null, name = null;
+
+      // goLecture('kjKey') or goLecture('kjKey', 'name', ...)
+      const glm = itemHtml.match(/goLecture\(\s*['"]([A-Za-z0-9._-]+)['"]\s*(?:,\s*['"]([^'"]*)['"]\s*)?/);
+      if (glm) {
+        kj = glm[1].trim();
+        name = (glm[2] !== undefined && glm[2] !== '') ? cleanText(glm[2]) || null : null;
+      }
+
+      // KJKEY= in any href or JS string
+      if (!kj) {
+        const km = itemHtml.match(/[?&]KJKEY=([A-Za-z0-9._%-]{1,63})/i);
+        if (km) {
+          try { kj = decodeURIComponent(km[1]).trim(); } catch (_) {}
+        }
+      }
+
+      if (!kj || !/^[A-Za-z0-9._-]+$/.test(kj) || kj.length >= 64) return;
+
+      // Derive name from visible text when goLecture didn't provide one
+      if (!name || name.length < 2) {
+        const item = $(el);
+        const candidate = cleanText(
+          item.find('.course_name, .courseName, .name, h4, h3, a').first().text()
+          || item.text().split(/[\n\r|·–]/)[0]
+        ).slice(0, 80);
+        name = (candidate && candidate.length >= 2) ? candidate : null;
+      }
+
+      if (!courses.has(kj)) courses.set(kj, name);
+      else if (!courses.get(kj) && name) courses.set(kj, name);
+    });
+  });
+  return [...courses.entries()].map(([kj, name]) => ({ kj, name }));
+}
+
+// Fetch per-course assignment and quiz list pages for courses whose items
+// may not appear in the main todo_list (no D-day or already submitted).
+// Returns additional pages to merge into the main pages array.
+async function fetchCourseAssignmentPages(normalizedBase, courses, cookie, limit = 12) {
+  const extraPages = [];
+  for (const course of courses.slice(0, limit)) {
+    for (const path of [
+      `/ilos/st/course/reportList_form.acl?KJKEY=${encodeURIComponent(course.kj)}`,
+      `/ilos/st/course/quizList_form.acl?KJKEY=${encodeURIComponent(course.kj)}`,
+    ]) {
+      try {
+        const url = toAbsoluteUrl(normalizedBase, path);
+        const html = await fetchText(url, cookie);
+        extraPages.push({ url, html, courseKj: course.kj, courseName: course.name });
+      } catch (_) {
+        extraPages.push({ url: toAbsoluteUrl(normalizedBase, path), error: 'fetch failed', courseKj: course.kj });
+      }
+    }
+  }
+  return extraPages;
+}
+
+// Parse assignment/quiz items from a course-specific list page.
+// Unlike normalizeTodoWrap/normalizeTodoItem, this does NOT require a D-day
+// label — it accepts explicit date strings directly.
+function parseCoursePageItems($, pageUrl, courseName) {
+  const items = new Map();
+  const isReport = /reportList/.test(pageUrl);
+  const isQuiz = /quizList/.test(pageUrl);
+  const defaultType = isReport ? 'assignment' : isQuiz ? 'quiz' : null;
+
+  $('tr').each((_, tr) => {
+    const row = $(tr);
+    const cells = row.find('td');
+    if (cells.length < 2) return;
+
+    // Title is usually in the first or second cell
+    const titleEl = cells.eq(0).find('a').first().length
+      ? cells.eq(0).find('a').first()
+      : cells.eq(1).find('a').first();
+    const title = cleanText(titleEl.text() || cells.eq(0).text() || cells.eq(1).text());
+    if (!title || title.length < 3 || title === '제목' || title === 'Title') return;
+
+    const href = titleEl.attr('href') || '';
+    const type = classify(title, href) || defaultType;
+    if (!type) return;
+
+    // Scan all cells for a date value
+    let dueDate = null;
+    let dueTime = null;
+    cells.each((_, cell) => {
+      if (dueDate) return;
+      const text = cleanText($(cell).text());
+      const d = parseDate(text) || parseKoreanDate(text);
+      if (d) { dueDate = d; dueTime = parseKoreanTime(text); }
+    });
+
+    const url = href && !href.startsWith('javascript:') ? toAbsoluteUrl(pageUrl, href) : pageUrl;
+    const externalId = `${type}:${courseName || 'course'}:${title}:${dueDate || url}`;
+    if (!items.has(externalId)) {
+      items.set(externalId, {
+        externalId, type, title,
+        courseTitle: courseName || 'SeoulTech e-Class',
+        dueDate, dueTime, ddayText: null, url,
+      });
+    }
+  });
+  return [...items.values()];
+}
+
+module.exports = {
+  DEFAULT_BASE_URL,
+  fetchSeoultechItems, loginSeoultech, normalizeBaseUrl,
+  fetchText, toAbsoluteUrl, parseDate, parseKoreanDate,
+  discoverEnrolledCourses, fetchCourseAssignmentPages, parseCoursePageItems,
+};

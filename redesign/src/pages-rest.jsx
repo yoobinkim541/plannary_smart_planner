@@ -55,25 +55,31 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
 
   const triggerSync = () => {
     setSyncing(true);
-    setTimeout(() => {
+    let resolved = false;
+    const handler = (e) => {
+      if (resolved) return;
+      resolved = true;
       setSyncing(false);
-      // Random success/failure for prototype demo (90% success)
-      const success = Math.random() > 0.1;
-      if (success) {
+      window.removeEventListener("planary:eclass-sync-done", handler);
+      if (e.detail?.error) {
+        window.Planary.toast({ type: "err", title: "동기화 실패", sub: e.detail.error, ttl: 4200 });
+      } else {
         window.Planary.toast({
           type: "ok",
           title: "동기화 완료",
-          sub: `${ECLASS_COURSES.length}개 강의에서 ${projTasks.length}개 항목 확인`
-        });
-      } else {
-        window.Planary.toast({
-          type: "err",
-          title: "동기화 실패",
-          sub: "e-Class 응답이 늦어요. 잠시 후 다시 시도해주세요.",
-          ttl: 4200
+          sub: `${ECLASS_COURSES.length}개 강의에서 항목 확인`,
         });
       }
-    }, 1400);
+    };
+    window.addEventListener("planary:eclass-sync-done", handler);
+    window.dispatchEvent(new CustomEvent("planary:eclass-sync"));
+    setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      setSyncing(false);
+      window.removeEventListener("planary:eclass-sync-done", handler);
+      window.Planary.toast({ type: "err", title: "동기화 시간 초과", sub: "e-Class 응답이 늦어요. 잠시 후 다시 시도해주세요.", ttl: 4200 });
+    }, 15000);
   };
 
   return (
@@ -561,7 +567,18 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
    NOTES (drag-and-drop sticky board)
    =========================================================== */
 function NotesPage() {
-  const initialNotes = Array.isArray(window.Planary.NOTES) ? window.Planary.NOTES : [];
+  // Merge Firestore notes with localStorage-cached positions so positions
+  // survive navigation without waiting for a Firestore round-trip.
+  const initialNotes = (() => {
+    const base = Array.isArray(window.Planary.NOTES) ? window.Planary.NOTES : [];
+    try {
+      const cached = JSON.parse(localStorage.getItem("planary.note-positions") || "{}");
+      if (cached && typeof cached === "object") {
+        return base.map(n => cached[n.id] ? { ...n, x: cached[n.id].x, y: cached[n.id].y } : n);
+      }
+    } catch (_) {}
+    return base;
+  })();
   const [notes, setNotes] = useStateO(initialNotes);
   const [draftColor, setDraftColor] = useStateO("yellow");
   const [draft, setDraft] = useStateO("");
@@ -569,6 +586,8 @@ function NotesPage() {
   const [boardW, setBoardW] = useStateO(0);
   const [editing, setEditing] = useStateO(null); // { id, text, color } | null
   const [colorMenuFor, setColorMenuFor] = useStateO(null); // note id whose color menu is open
+  const [search, setSearch] = useStateO("");
+  const [colorFilter, setColorFilter] = useStateO(null); // null = all
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
   const editAreaRef = useRefO(null);
@@ -631,13 +650,13 @@ function NotesPage() {
   };
 
   const duplicateNote = (n) => {
-    const id = "n" + Date.now();
+    const id = window.Planary?.generateId?.() || "n" + Date.now();
     setNotes((prev) => [
       { ...n, id, x: n.x + 24, y: n.y + 24, rot: (Math.random() - 0.5) * 4, date: "방금 복제" },
       ...prev,
     ]);
     window.dispatchEvent(new CustomEvent("planary:create-note", {
-      detail: { text: n.text, color: n.color, x: n.x + 24, y: n.y + 24 },
+      detail: { id, text: n.text, color: n.color, x: n.x + 24, y: n.y + 24 },
     }));
   };
 
@@ -698,6 +717,16 @@ function NotesPage() {
           window.dispatchEvent(new CustomEvent("planary:update-note", {
             detail: { id: d.id, patch: finalPos },
           }));
+          // Cache all positions in localStorage for instant restore on navigation
+          setNotes((prev) => {
+            try {
+              const posMap = {};
+              prev.forEach(n => { posMap[n.id] = { x: n.x, y: n.y }; });
+              posMap[d.id] = finalPos;
+              localStorage.setItem("planary.note-positions", JSON.stringify(posMap));
+            } catch (_) {}
+            return prev;
+          });
         }
         dragRef.current = null;
       }
@@ -718,7 +747,7 @@ function NotesPage() {
 
   const addNote = () => {
     if (!draft.trim()) return;
-    const id = "n" + Date.now();
+    const id = window.Planary?.generateId?.() || "n" + Date.now();
     const x = 60 + Math.random() * 200;
     const y = 60 + Math.random() * 100;
     const text = draft.trim();
@@ -727,12 +756,20 @@ function NotesPage() {
     ...prev]
     );
     window.dispatchEvent(new CustomEvent("planary:create-note", {
-      detail: { text, color: draftColor, x, y },
+      detail: { id, text, color: draftColor, x, y },
     }));
     setDraft("");
   };
 
   const colors = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
+
+  const filteredNotes = notes.filter(n => {
+    if (colorFilter && n.color !== colorFilter) return false;
+    if (search && !n.text.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const boardH = notes.length === 0 ? 320 : Math.max(480, Math.max(...notes.map(n => (n.y || 0) + 200)));
 
   return (
     <div className="page-wide">
@@ -741,25 +778,51 @@ function NotesPage() {
           <div className="kicker">WORKSPACE · 포스트잇 보드</div>
           <div className="page-title">포스트잇
 </div>
-          <div className="page-sub">{notes.length}개 · 드래그해 자유롭게 배치하거나 그리드로 정렬하세요</div>
+          <div className="page-sub">{filteredNotes.length !== notes.length ? `${filteredNotes.length} / ${notes.length}개` : `${notes.length}개`} · 드래그해 자유롭게 배치하거나 그리드로 정렬하세요</div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ position: "relative" }}>
+            <Icon name="search" size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="메모 검색…"
+              style={{
+                height: 32, paddingLeft: 30, paddingRight: search ? 28 : 10,
+                background: "var(--surface-2)", border: "1px solid var(--border-soft)",
+                borderRadius: "var(--r-md)", fontSize: 13, color: "var(--text-hi)",
+                outline: "none", width: 160,
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--text-faint)" }}>
+                <Icon name="x" size={12} />
+              </button>
+            )}
+          </div>
           <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-md)", gap: 2 }}>
             <button onClick={() => setView("board")}
             className="btn btn-sm"
             style={{ height: 28, background: view === "board" ? "var(--surface)" : "transparent", color: view === "board" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "board" ? "var(--shadow-sm)" : "none" }}>
-              
               <Icon name="layers" size={13} />보드
             </button>
             <button
               onClick={() => setView("grid")}
               className="btn btn-sm"
               style={{ height: 28, background: view === "grid" ? "var(--surface)" : "transparent", color: view === "grid" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "grid" ? "var(--shadow-sm)" : "none" }}>
-              
               <Icon name="grid" size={13} />그리드
             </button>
           </div>
-          <button className="btn btn-ghost"><Icon name="download" size={14} />내보내기</button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              if (!notes.length) return;
+              const text = notes.map(n => `[${n.color}] ${n.text}`).join("\n\n");
+              navigator.clipboard?.writeText(text).then(() =>
+                window.Planary.toast?.({ type: "ok", title: "클립보드에 복사됨" })
+              );
+            }}
+          ><Icon name="download" size={14} />내보내기</button>
         </div>
       </div>
 
@@ -803,9 +866,51 @@ function NotesPage() {
         </div>
       </div>
 
+      {/* Color filter chips */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <button
+          className={`chip ${!colorFilter ? "chip-accent" : ""}`}
+          style={{ cursor: "pointer", height: 26, padding: "0 10px", fontSize: 12 }}
+          onClick={() => setColorFilter(null)}
+        >전체 <span style={{ fontSize: 11, opacity: 0.7 }}>{notes.length}</span></button>
+        {colors.map(c => {
+          const cnt = notes.filter(n => n.color === c).length;
+          if (!cnt) return null;
+          return (
+            <button
+              key={c}
+              className={`chip ${colorFilter === c ? "chip-accent" : ""}`}
+              style={{ cursor: "pointer", height: 26, padding: "0 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
+              onClick={() => setColorFilter(colorFilter === c ? null : c)}
+            >
+              <span className={`note-color-swatch note-${c}`} style={{ width: 10, height: 10, borderRadius: 3, display: "inline-block" }} />
+              {cnt}
+            </button>
+          );
+        })}
+      </div>
+
+      {filteredNotes.length === 0 && (
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          {notes.length === 0 ? (
+            <>
+              <Icon name="note" size={28} style={{ color: "var(--text-faint)", marginBottom: 12 }} />
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-lo)" }}>첫 메모를 작성해보세요</div>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 6 }}>위 입력창에 생각을 적고 메모 추가를 눌러요</div>
+            </>
+          ) : (
+            <>
+              <Icon name="search" size={24} style={{ color: "var(--text-faint)", marginBottom: 10 }} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-lo)" }}>검색 결과가 없어요</div>
+              <button className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => { setSearch(""); setColorFilter(null); }}>필터 초기화</button>
+            </>
+          )}
+        </div>
+      )}
+
       {view === "board" ?
-      <div className="board" ref={boardRef} style={{ height: 620, touchAction: "none" }}>
-          {notes.map((n) => {
+      <div className="board" ref={boardRef} style={{ height: boardH, touchAction: "none" }}>
+          {filteredNotes.map((n) => {
         const NOTE_W = 200, NOTE_H = 144, PAD = 8;
         const maxX = Math.max(0, boardW - NOTE_W - PAD);
         const safeX = boardW > 0 ? Math.min(n.x, maxX) : n.x;
@@ -866,7 +971,7 @@ function NotesPage() {
         </div> :
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-          {notes.map((n) => {
+          {filteredNotes.map((n) => {
             const isEditing = editing && editing.id === n.id;
             const displayColor = isEditing ? editing.color : n.color;
             return (
@@ -995,6 +1100,21 @@ function WikiPage() {
   const renameInputRef = useRefO(null);
   const [duplicating, setDuplicating] = useStateO(null); // { node } | null
   const [addMenuFor, setAddMenuFor] = useStateO(null); // node id whose + add menu is open
+  const [addMenuPos, setAddMenuPos] = useStateO({ top: 0, right: 0 });
+  const [treeMenuPos, setTreeMenuPos] = useStateO({ top: 0, right: 0 });
+
+  // Close tree/add popovers when clicking outside them
+  useEffectO(() => {
+    if (!addMenuFor && !treeMenuFor) return;
+    const handler = (e) => {
+      if (!e.target.closest(".popover") && !e.target.closest(".wiki-tree-action-btn")) {
+        setAddMenuFor(null);
+        setTreeMenuFor(null);
+      }
+    };
+    document.addEventListener("mousedown", handler, true);
+    return () => document.removeEventListener("mousedown", handler, true);
+  }, [addMenuFor, treeMenuFor]);
   // Drag-and-drop reordering
   const [dragId, setDragId] = useStateO(null);
   const [dropTarget, setDropTarget] = useStateO(null); // { id, pos: "before"|"after"|"inside" }
@@ -1011,7 +1131,10 @@ function WikiPage() {
   const [coverPosY, setCoverPosY] = useStateO(50);
   const [coverHeight, setCoverHeight] = useStateO(180); // 120-360
   const [coverZoom, setCoverZoom] = useStateO(100); // 100-220
+  const coverSaveTimerRef = useRefO(null);
+  const coverLoadingRef = useRefO(false); // true while syncing from Firestore
   const fileInputRef = useRefO(null);
+  const docScrollRef = useRefO(null);
   const [favorite, setFavorite] = useStateO(false);
   const [moreMenuOpen, setMoreMenuOpen] = useStateO(false);
   const [historyOpen, setHistoryOpen] = useStateO(false);
@@ -1034,7 +1157,18 @@ function WikiPage() {
   }, [tree]);
   const active = pageIndex.byId.get(activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
-  const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
+  const [tagInputOpen, setTagInputOpen] = useStateO(false);
+  const [tagDraft, setTagDraft] = useStateO("");
+  const [titleDraft, setTitleDraft] = useStateO("");
+  const tagInputRef = useRefO(null);
+  const titleInputRef = useRefO(null);
+  const setActiveIcon = (v) => {
+    setPageIcons(prev => ({ ...prev, [activeId]: v }));
+    setTree(prev => prev.map(w => w.id === activeId ? { ...w, icon: v } : w));
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { icon: v } },
+    }));
+  };
   useEffectO(() => { activeIdRef.current = activeId; }, [activeId]);
   const selectWikiPage = React.useCallback((id) => {
     if (!id || id === activeIdRef.current) return;
@@ -1073,8 +1207,57 @@ function WikiPage() {
       tags: [...inferred].filter(Boolean).slice(0, 4),
     };
   }, [activeId, tree, docBlocks]);
-  const addPageTag = () => {
-    const value = window.prompt("태그를 입력하세요", "");
+  useEffectO(() => {
+    setTitleDraft(active.title || "");
+    setTagInputOpen(false);
+    setTagDraft("");
+  }, [activeId, active.title]);
+
+  // Sync cover state from Firestore data when active page changes.
+  // For local file covers (data: URLs too large for Firestore), fall back to localStorage.
+  useEffectO(() => {
+    coverLoadingRef.current = true;
+    let coverVal = active.cover || null;
+    if (!coverVal && activeId) {
+      try { coverVal = localStorage.getItem(`planary.wiki-cover.${activeId}`) || null; } catch (_) {}
+    }
+    setCoverImage(coverVal);
+    setCoverPosX(active.coverPosX ?? 50);
+    setCoverPosY(active.coverPosY ?? 50);
+    setCoverHeight(active.coverHeight ?? 180);
+    setCoverZoom(active.coverZoom ?? 100);
+    requestAnimationFrame(() => { coverLoadingRef.current = false; });
+  }, [activeId]);
+
+  // Save cover position/size slider changes (debounced)
+  useEffectO(() => {
+    if (coverLoadingRef.current || !activeId) return;
+    clearTimeout(coverSaveTimerRef.current);
+    coverSaveTimerRef.current = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+        detail: { id: activeId, patch: {
+          coverPositionX: coverPosX,
+          coverPosition: coverPosY,
+          coverHeight,
+          coverZoom,
+        }},
+      }));
+    }, 400);
+    return () => clearTimeout(coverSaveTimerRef.current);
+  }, [coverPosX, coverPosY, coverHeight, coverZoom]);
+
+  useEffectO(() => {
+    if (tagInputOpen) tagInputRef.current?.focus();
+  }, [tagInputOpen]);
+  const commitTitle = () => {
+    const title = titleDraft.trim() || "제목 없음";
+    if (title === active.title) return;
+    setTree((prev) => prev.map((w) => w.id === activeId ? { ...w, title } : w));
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { title } },
+    }));
+  };
+  const addPageTag = (value = tagDraft) => {
     const tag = value && value.trim().replace(/^#/, "");
     if (!tag) return;
     const nextTags = [...new Set([...(Array.isArray(active.tags) ? active.tags : []), tag])];
@@ -1082,6 +1265,8 @@ function WikiPage() {
     window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
       detail: { id: activeId, patch: { tags: nextTags } },
     }));
+    setTagDraft("");
+    setTagInputOpen(false);
   };
 
   const COVER_GALLERY = [
@@ -1093,13 +1278,34 @@ function WikiPage() {
   { id: "g6", label: "Sky", style: { background: "linear-gradient(135deg, #60a5fa, #34d399)" } }];
 
 
+  const saveCoverUrl = (url) => {
+    if (!activeId) return;
+    // data: URLs can be multi-MB — save to localStorage only to stay under Firestore 1MB limit
+    if (url && url.includes("data:")) {
+      try {
+        if (url) localStorage.setItem(`planary.wiki-cover.${activeId}`, url);
+        else localStorage.removeItem(`planary.wiki-cover.${activeId}`);
+      } catch (_) {}
+      return;
+    }
+    // For null (remove), clear localStorage cache too
+    if (!url) {
+      try { localStorage.removeItem(`planary.wiki-cover.${activeId}`); } catch (_) {}
+    }
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { coverUrl: url } },
+    }));
+  };
+
   const handleFilePick = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setCoverImage(`url("${reader.result}")`);
+      const cssUrl = `url("${reader.result}")`;
+      setCoverImage(cssUrl);
       setCoverMenuOpen(false);
+      saveCoverUrl(cssUrl);
     };
     reader.readAsDataURL(file);
   };
@@ -1107,19 +1313,22 @@ function WikiPage() {
   const handleAddByUrl = () => {
     const url = window.prompt("이미지 URL을 입력하세요", "");
     if (!url) return;
-    setCoverImage(`url("${url.replace(/"/g, '\\"')}")`);
+    const cssUrl = `url("${url.replace(/"/g, '\\"')}")`;
+    setCoverImage(cssUrl);
     setCoverMenuOpen(false);
+    saveCoverUrl(cssUrl);
   };
 
   const handlePickGallery = (g) => {
-    // for gallery use the CSS background directly
     setCoverImage(g.style.background);
     setCoverMenuOpen(false);
+    saveCoverUrl(g.style.background);
   };
 
   const handleRemoveCover = () => {
     setCoverImage(null);
     setCoverPanelOpen(false);
+    saveCoverUrl(null);
   };
 
   // Build tree: roots and children
@@ -1147,6 +1356,11 @@ function WikiPage() {
     window.addEventListener("planary:wiki-loaded", onLoaded);
     return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
   }, []);
+
+  // Scroll doc area to top on page change
+  useEffectO(() => {
+    if (docScrollRef.current) docScrollRef.current.scrollTop = 0;
+  }, [activeId]);
 
   // Collect a page and all its descendants
   const collectDescendants = (id) => {
@@ -1407,6 +1621,8 @@ function WikiPage() {
               title="페이지 추가"
               onClick={(e) => {
                 e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setAddMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
                 setAddMenuFor(addMenuFor === node.id ? null : node.id);
                 setTreeMenuFor(null);
               }}
@@ -1419,6 +1635,8 @@ function WikiPage() {
               title="더 보기"
               onClick={(e) => {
                 e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setTreeMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
                 setTreeMenuFor(isMenuOpen ? null : node.id);
                 setAddMenuFor(null);
               }}
@@ -1436,7 +1654,7 @@ function WikiPage() {
           {addMenuFor === node.id && (
             <div
               className="popover"
-              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 220 }}
+              style={{ position: "fixed", top: addMenuPos.top, right: addMenuPos.right, zIndex: 300, minWidth: 220 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="popover-header" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 4px" }}>
@@ -1481,7 +1699,7 @@ function WikiPage() {
           {isMenuOpen && (
             <div
               className="popover"
-              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 160 }}
+              style={{ position: "fixed", top: treeMenuPos.top, right: treeMenuPos.right, zIndex: 300, minWidth: 160 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="popover-item" onClick={() => { selectWikiPage(node.id); setTreeMenuFor(null); }}>
@@ -1580,7 +1798,7 @@ function WikiPage() {
           </button>
         </aside>}
 
-        <div className={`wiki-doc ${pageSwitching ? "is-switching" : ""}`}>
+        <div className={`wiki-doc ${pageSwitching ? "is-switching" : ""}`} ref={docScrollRef}>
           <div
             className={`wiki-cover ${coverPanelOpen ? "is-editing" : ""}`}
             style={{ height: coverHeight, "--cover-pos-x": `${coverPosX}%`, "--cover-pos-y": `${coverPosY}%`, "--cover-zoom": `${coverZoom}%` }}>
@@ -1699,19 +1917,19 @@ function WikiPage() {
                 </div>
                 <div className="cover-slider-row">
                   <label>가로 위치 <span className="val">{coverPosX}%</span></label>
-                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosX} onChange={(e) => setCoverPosX(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosX} onChange={(e) => setCoverPosX(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverPosX: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>세로 위치 <span className="val">{coverPosY}%</span></label>
-                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosY} onChange={(e) => setCoverPosY(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosY} onChange={(e) => setCoverPosY(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverPosY: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>면적 (높이) <span className="val">{coverHeight}px</span></label>
-                  <input className="cover-slider" type="range" min="120" max="360" value={coverHeight} onChange={(e) => setCoverHeight(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="120" max="360" value={coverHeight} onChange={(e) => setCoverHeight(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverHeight: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>확대 <span className="val">{coverZoom}%</span></label>
-                  <input className="cover-slider" type="range" min="100" max="220" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="100" max="220" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverZoom: Number(e.target.value) })} />
                 </div>
                 <button className="btn btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => setCoverPanelOpen(false)}>
                   완료
@@ -1837,7 +2055,7 @@ function WikiPage() {
                       <Icon name="star" size={14} style={favorites.has(activeId) ? { color: "var(--warn)", fill: "var(--warn)" } : undefined} />
                       <span style={{ flex: 1 }}>{favorites.has(activeId) ? "즐겨찾기에서 제거" : "즐겨찾기에 추가"}</span>
                     </div>
-                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); window.Planary.toast?.({ type: "ok", title: "복제됨", sub: `"${active.title}의 사본"이 만들어졌어요` }); }}>
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); setDuplicating({ node: active }); }}>
                       <Icon name="copy" size={14} />페이지 복제
                     </div>
                     <div className="popover-item" onClick={() => { setMoreMenuOpen(false); navigator.clipboard?.writeText(`https://planary.app/w/${active.id}`); window.Planary.toast?.({ type: "ok", title: "링크가 복사됐어요" }); }}>
@@ -1868,12 +2086,7 @@ function WikiPage() {
                     <div className="popover-sep" />
                     <div
                       className="popover-item is-danger"
-                      onClick={() => {
-                        setMoreMenuOpen(false);
-                        if (window.confirm(`"${active.title}" 페이지를 삭제할까요?`)) {
-                          window.Planary.toast?.({ type: "err", title: "페이지가 삭제됐어요", sub: "30일 후 영구 삭제됩니다" });
-                        }
-                      }}
+                      onClick={() => { setMoreMenuOpen(false); setPendingDelete(active); }}
                     >
                       <Icon name="trash" size={14} />페이지 삭제
                     </div>
@@ -1885,9 +2098,37 @@ function WikiPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <span className="chip chip-accent"><Icon name="book" size={10} />{currentPageMeta.section}</span>
             {currentPageMeta.tags.map((tag) => <span key={tag} className="tag">#{tag}</span>)}
-            <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={addPageTag}><Icon name="plus" size={10} />태그</button>
+            {tagInputOpen ? (
+              <span className="wiki-tag-input-chip">
+                <Icon name="hash" size={10} />
+                <input
+                  ref={tagInputRef}
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addPageTag();
+                    if (e.key === "Escape") { setTagDraft(""); setTagInputOpen(false); }
+                  }}
+                  onBlur={() => { if (tagDraft.trim()) addPageTag(); else setTagInputOpen(false); }}
+                  placeholder="태그"
+                />
+              </span>
+            ) : (
+              <button className="chip wiki-tag-add-btn" onClick={() => setTagInputOpen(true)}><Icon name="plus" size={10} />태그</button>
+            )}
           </div>
-          <h1 className="wiki-doc-title">{active.title}</h1>
+          <input
+            ref={titleInputRef}
+            className="wiki-doc-title wiki-doc-title-input"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commitTitle(); titleInputRef.current?.blur(); }
+              if (e.key === "Escape") { setTitleDraft(active.title || ""); titleInputRef.current?.blur(); }
+            }}
+            placeholder="제목 없음"
+          />
 
           <WikiBlocks key={activeId} activeId={activeId} onBlocksChange={setDocBlocks} />
         </div>
@@ -1928,7 +2169,9 @@ function WikiPage() {
           </aside>}
       </div>
       {shareOpen && <ShareDialog onClose={() => setShareOpen(false)} title={active.title} />}
-      {historyOpen && <VersionHistoryDialog onClose={() => setHistoryOpen(false)} page={active} />}
+      {historyOpen && <VersionHistoryDialog onClose={() => setHistoryOpen(false)} page={active} onRestore={(blocks) => {
+        window.dispatchEvent(new CustomEvent("planary:wiki-restore", { detail: { id: active.id, blocks } }));
+      }} />}
       {infoOpen && <PageInfoDialog onClose={() => setInfoOpen(false)} page={active} favorites={favorites} />}
       {exportMenuOpen && <ExportDialog onClose={() => setExportMenuOpen(false)} page={active} />}
       {duplicating && (
@@ -2073,7 +2316,7 @@ function BookmarksPage() {
         <button className="btn btn-primary" onClick={submitBookmark}><Icon name="plus" size={14} />새 북마크</button>
       </div>
 
-      <div className="composer">
+      <div className="composer bookmark-composer">
         <div className="composer-row">
           <Icon name="link" size={16} style={{ color: "var(--accent)" }} />
           <input
@@ -2085,7 +2328,7 @@ function BookmarksPage() {
           />
           <button className="btn btn-sm btn-primary" onClick={submitBookmark}>저장</button>
         </div>
-        <div className="composer-tools">
+        <div className="composer-tools bookmark-tag-composer">
           <Icon name="hash" size={13} style={{ color: "var(--text-lo)" }} />
           <input
             className="composer-input"
@@ -2093,7 +2336,6 @@ function BookmarksPage() {
             value={tagDraft}
             onChange={(e) => setTagDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") submitBookmark(); }}
-            style={{ fontSize: 13 }}
           />
         </div>
       </div>
@@ -2459,6 +2701,50 @@ function ArchivePage({ tasks }) {
 }
 
 /* ===========================================================
+   WIDGET VISIBILITY MANAGER
+   =========================================================== */
+function WidgetVisibilityManager({ t, setTweak }) {
+  const defs = window.Planary.WIDGET_DEFS || [];
+  const variant = t?.variant || 'balanced';
+  const visibleWidgets = window.Planary.computeVisibleWidgets
+    ? window.Planary.computeVisibleWidgets(t?.interests || [], t?.widgetVisibility || null)
+    : Object.fromEntries(defs.map(w => [w.id, true]));
+
+  const variantDefs = defs.filter(w => w.variants.includes(variant));
+  const otherDefs   = defs.filter(w => !w.variants.includes(variant));
+
+  const toggle = (id) => {
+    const next = { ...visibleWidgets, [id]: !visibleWidgets[id] };
+    setTweak('widgetVisibility', next);
+    window.Planary.toast({ type: 'ok', title: `위젯 ${next[id] ? '켜짐' : '꺼짐'}` });
+  };
+
+  const variantLabel = { balanced: 'balanced', conservative: 'conservative', bold: 'bold' }[variant] || variant;
+
+  return (
+    <>
+      {variantDefs.map(w => (
+        <ProfileRow key={w.id} label={w.label} sub={`현재 레이아웃(${variantLabel})에서 사용`}>
+          <div className={`switch ${visibleWidgets[w.id] ? 'is-on' : ''}`} onClick={() => toggle(w.id)} />
+        </ProfileRow>
+      ))}
+      {otherDefs.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, color: 'var(--text-faint)', margin: '12px 0 4px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            다른 레이아웃
+          </div>
+          {otherDefs.map(w => (
+            <ProfileRow key={w.id} label={w.label} sub={w.variants.join(', ') + ' 레이아웃에서 사용됨'}>
+              <div className={`switch ${visibleWidgets[w.id] ? 'is-on' : ''}`} onClick={() => toggle(w.id)} />
+            </ProfileRow>
+          ))}
+        </>
+      )}
+    </>
+  );
+}
+
+/* ===========================================================
    PROFILE
    =========================================================== */
 function ProfilePage({ tasks, t, setTweak }) {
@@ -2467,6 +2753,8 @@ function ProfilePage({ tasks, t, setTweak }) {
   const [editOpen, setEditOpen] = useStateO(false);
   const [signOutOpen, setSignOutOpen] = useStateO(false);
   const [switchOpen, setSwitchOpen] = useStateO(false);
+  const [sessionsOpen, setSessionsOpen] = useStateO(false);
+  const [tfaOpen, setTfaOpen] = useStateO(false);
   const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | "lang" | null
   const [lang, setLangState] = useStateO(() => window.PlanaryI18n?.getLang?.() || "ko");
   const [notifs, setNotifs] = useStateO({ email: true, push: true, gcal: true, apple: false, slack: false });
@@ -2657,6 +2945,17 @@ function ProfilePage({ tasks, t, setTweak }) {
 
           <PasswordCard />
 
+          {/* HOME WIDGETS */}
+          <div className="card" style={{ marginTop: 12, padding: 0 }}>
+            <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-soft)" }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>홈 위젯</h3>
+              <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>홈 화면에 표시할 위젯을 선택하세요</p>
+            </div>
+            <div style={{ padding: "4px 22px 22px" }}>
+              <WidgetVisibilityManager t={t} setTweak={setTweak} />
+            </div>
+          </div>
+
           <div className="card" style={{ marginTop: 12, padding: 0 }}>
             <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-soft)" }}>
               <h3 style={{ fontSize: 15, fontWeight: 700 }}>알림 & 동기화</h3>
@@ -2664,7 +2963,7 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div style={{ padding: "4px 22px 22px" }}>
               {[
               { id: "email", label: "이메일 알림", sub: notifs.email ? "주간 요약 발송" : "발송 안 함" },
-              { id: "push", label: "데스크톱 푸시", sub: notifs.push ? "리마인더만" : "꺼짐" },
+              { id: "push", label: "백그라운드 푸시 알림", sub: (() => { const p = window.Planary?.getPushPermission?.(); if (!notifs.push) return "꺼짐"; if (p === "granted") return "켜짐 · 리마인더 및 e-Class 새 항목"; if (p === "denied") return "브라우저에서 알림이 차단됨"; return "켜짐 (권한 대기 중)"; })() },
               { id: "gcal", label: "Google Calendar", sub: notifs.gcal ? "연결됨 · 양방향 동기화" : "연결 안 됨" },
               { id: "apple", label: "Apple Calendar", sub: notifs.apple ? "연결됨" : "연결 안 됨" },
               { id: "slack", label: "Slack 통합", sub: notifs.slack ? "연결됨" : "연결 안 됨" }].
@@ -2696,14 +2995,17 @@ function ProfilePage({ tasks, t, setTweak }) {
                   <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>2단계 인증</div>
                   <div style={{ fontSize: 11, color: "var(--text-lo)" }}>로그인 시 추가 인증을 요청합니다</div>
                 </div>
-                <span className="chip">설정 안 됨</span>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span className="chip">설정 안 됨</span>
+                  <button className="btn btn-sm" onClick={() => setTfaOpen(true)}>설정하기</button>
+                </div>
               </div>
               <div className="field-row" style={{ borderBottom: 0 }}>
                 <div>
                   <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>활성 세션</div>
-                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>현재 이 기기 포함 2개 기기에서 로그인됨</div>
+                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>현재 이 기기 포함 1개 이상 기기에서 로그인됨</div>
                 </div>
-                <button className="btn btn-sm">전체 보기</button>
+                <button className="btn btn-sm" onClick={() => setSessionsOpen(true)}>전체 보기</button>
               </div>
             </div>
           </div>
@@ -2728,6 +3030,8 @@ function ProfilePage({ tasks, t, setTweak }) {
       {editOpen && <ProfileEditDialog user={user} onClose={() => setEditOpen(false)} onSave={saveProfile} />}
       {signOutOpen && <SignOutDialog onClose={() => setSignOutOpen(false)} user={user} />}
       {switchOpen && <window.Planary.AccountSwitcherDialog onClose={() => setSwitchOpen(false)} />}
+      {sessionsOpen && <SessionsDialog onClose={() => setSessionsOpen(false)} />}
+      {tfaOpen && <TwoFactorSetupDialog onClose={() => setTfaOpen(false)} userEmail={user.email} />}
     </div>);
 
 }
@@ -2920,7 +3224,12 @@ function PasswordCard() {
             type="button"
             className="btn btn-sm"
             style={{ color: "var(--text-lo)" }}
-            onClick={() => window.Planary.toast?.({ type: "info", title: "비밀번호 재설정 메일을 발송했어요", sub: "받은편지함을 확인하세요" })}
+            onClick={() => {
+              const email = window.Planary.USER?.email;
+              if (!email) { window.Planary.toast?.({ type: "err", title: "이메일 정보가 없어요" }); return; }
+              window.dispatchEvent(new CustomEvent("planary:reset-password-email", { detail: { email } }));
+              window.Planary.toast?.({ type: "ok", title: "재설정 메일을 발송했어요", sub: email });
+            }}
           >
             <Icon name="send" size={12} />이메일로 재설정
           </button>
@@ -2998,6 +3307,7 @@ function EclassConnectionCard() {
   const [connected, setConnected] = useStateO(isConnectionLive(initialConn));
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
+  const [showCourses, setShowCourses] = useStateO(false);
   const [urlInput, setUrlInput] = useStateO((initialConn && initialConn.baseUrl) || "https://eclass.seoultech.ac.kr");
   const [idInput, setIdInput] = useStateO("");
   const [pwInput, setPwInput] = useStateO("");
@@ -3115,8 +3425,24 @@ function EclassConnectionCard() {
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>동기화 대상</div>
               <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{courseTitles.length}개 강의 · 작업 {syncedTasks.length}개</div>
             </div>
-            <button className="btn btn-sm" onClick={() => {}}>강의 보기</button>
+            <button className="btn btn-sm" onClick={() => setShowCourses(s => !s)}>
+              강의 {showCourses ? "접기" : "보기"}
+            </button>
           </div>
+          {showCourses && (
+            <div style={{ background: "var(--surface-2)", borderRadius: "var(--r-md)", padding: "10px 14px", marginBottom: 8 }}>
+              {courseTitles.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", padding: "8px 0" }}>
+                  동기화된 강의가 없어요
+                </div>
+              ) : courseTitles.map((title, i) => (
+                <div key={title} style={{ fontSize: 12, color: "var(--text-hi)", padding: "6px 0", borderBottom: i < courseTitles.length - 1 ? "1px solid var(--border-soft)" : "none", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon name="book" size={11} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+                  {title}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="field-row">
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>자동 동기화</div>
@@ -3409,73 +3735,22 @@ function CodeBlock({ anchor }) {
 /* ===========================================================
    VERSION HISTORY DIALOG — wiki page revisions with restore
    =========================================================== */
-function VersionHistoryDialog({ onClose, page }) {
-  // Synthetic history. In production this would come from Firestore.
-  const VERSIONS = useMemoO(() => [
-    { id: "v12", ago: "방금", author: "도하 김", initials: "DK", current: true,
-      changes: [{ kind: "add", count: 8 }, { kind: "remove", count: 2 }],
-      summary: "악센트 팔레트 섹션 보강 + 코드 예시 추가",
-      preview: [
-        { type: "h3", text: "악센트 팔레트" },
-        { type: "p", text: "사용자는 6가지 악센트 중 자신의 워크스페이스 톤을 선택할 수 있습니다. 모두 같은 시각적 무게를 가지도록 조정되어 있습니다." },
-        { type: "code", text: ".btn-soft { background: color-mix(in oklab, var(--accent) 14%, transparent); }" },
-      ],
-    },
-    { id: "v11", ago: "12분 전", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 3 }, { kind: "remove", count: 0 }],
-      summary: "텍스트 스택 5단계 설명 추가",
-      preview: [
-        { type: "h3", text: "텍스트 스택" },
-        { type: "p", text: "슬레이트 5단계로 위계를 만듭니다. 본문 안에 --text-md, 헤딩에 --text-hi." },
-      ],
-    },
-    { id: "v10", ago: "1시간 전", author: "박서연", initials: "SY",
-      changes: [{ kind: "add", count: 12 }, { kind: "remove", count: 1 }],
-      summary: "코어 토큰 표 형식으로 정리",
-      preview: [
-        { type: "h2", text: "코어 토큰" },
-        { type: "table", text: "토큰 / 다크 / 라이트 / 용도" },
-      ],
-    },
-    { id: "v9", ago: "오늘 09:14", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 0 }, { kind: "remove", count: 4 }],
-      summary: "중복 문장 정리",
-      preview: [
-        { type: "p", text: "Planary는 단일 악센트 컬러 위에 풍부한 중성색 스택을 쌓아 정보 위계를 만듭니다." },
-      ],
-    },
-    { id: "v8", ago: "어제", author: "정민재", initials: "JM",
-      changes: [{ kind: "add", count: 24 }, { kind: "remove", count: 0 }],
-      summary: "그림자 & 글로우 섹션 신규 작성",
-      preview: [
-        { type: "h2", text: "그림자 & 글로우" },
-        { type: "p", text: "물리적 그림자 3단계 + 악센트 글로우 1종. 활성 CTA·로고에만 사용해 브랜드 시그니처로 살립니다." },
-      ],
-    },
-    { id: "v7", ago: "어제", author: "박서연", initials: "SY",
-      changes: [{ kind: "add", count: 6 }, { kind: "remove", count: 2 }],
-      summary: "설계 원칙 콜아웃 추가",
-      preview: [
-        { type: "callout", text: "새로운 hex를 추가하지 마세요. 악센트의 투명도 단계로 충분히 표현 가능합니다." },
-      ],
-    },
-    { id: "v6", ago: "3일 전", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 1 }, { kind: "remove", count: 0 }],
-      summary: "페이지 아이콘 변경: 🎨 → 🟣",
-      preview: [{ type: "meta", text: "아이콘 변경" }],
-    },
-    { id: "v5", ago: "1주 전", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 42 }, { kind: "remove", count: 0 }],
-      summary: "초기 작성",
-      preview: [
-        { type: "h2", text: "코어 토큰" },
-        { type: "p", text: "모든 컬러는 var(--*)로만 접근합니다." },
-      ],
-    },
-  ], []);
+function VersionHistoryDialog({ onClose, page, onRestore }) {
+  const [versions, setVersions] = useStateO(null); // null = loading
+  const [selectedIdx, setSelectedIdx] = useStateO(0);
+  const [restoring, setRestoring] = useStateO(false);
 
-  const [selectedId, setSelectedId] = useStateO(VERSIONS[0].id);
-  const selected = VERSIONS.find(v => v.id === selectedId) || VERSIONS[0];
+  // Load revisions from Firestore on open
+  useEffectO(() => {
+    let cancelled = false;
+    window.Planary.api.loadWikiRevisions(page.id).then(revs => {
+      if (!cancelled) setVersions(revs);
+    }).catch(err => {
+      console.error("[Planary] loadWikiRevisions failed:", err);
+      if (!cancelled) setVersions([]);
+    });
+    return () => { cancelled = true; };
+  }, [page.id]);
 
   useEffectO(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -3483,16 +3758,55 @@ function VersionHistoryDialog({ onClose, page }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const restore = () => {
-    if (selected.current) return;
-    if (window.confirm(`${selected.ago} 버전으로 되돌릴까요? 현재 변경 사항은 새 버전으로 보존됩니다.`)) {
+  const selected = versions && versions.length ? versions[selectedIdx] : null;
+
+  const formatAgo = (ms) => {
+    if (!ms) return "알 수 없음";
+    const diff = Date.now() - ms;
+    if (diff < 60000)  return "방금";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+    if (diff < 172800000) return "어제";
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}일 전`;
+    return new Date(ms).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+  };
+
+  const restore = async () => {
+    if (!selected || selectedIdx === 0) return;
+    if (!window.confirm(`이 버전으로 되돌릴까요? 현재 내용은 새 버전으로 보존됩니다.`)) return;
+    setRestoring(true);
+    try {
+      // Dispatch as if the user saved these blocks (auto-saves + creates new revision)
+      window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
+        detail: { id: page.id, blocks: selected.blocks },
+      }));
+      if (onRestore) onRestore(selected.blocks);
       window.Planary.toast({
         type: "ok",
-        title: `${selected.ago} 버전으로 되돌렸어요`,
-        sub: `${selected.author}님의 편집 · ${selected.summary}`,
+        title: "이전 버전으로 되돌렸어요",
+        sub: `${formatAgo(selected.savedAt)} · ${selected.authorName}`,
       });
       onClose();
+    } catch (err) {
+      console.error("[Planary] restore failed:", err);
+      window.Planary.toast({ type: "err", title: "되돌리기 실패", sub: String(err.message) });
+    } finally {
+      setRestoring(false);
     }
+  };
+
+  const renderBlockPreview = (blocks) => {
+    if (!blocks || !blocks.length) return <div style={{ fontSize: 12, color: "var(--text-faint)" }}>내용 없음</div>;
+    return blocks.slice(0, 8).map((b, i) => {
+      const text = b.content || "";
+      if (b.type === "h1") return <h2 key={i} style={{ fontSize: 17, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 6px" }}>{text}</h2>;
+      if (b.type === "h2") return <h3 key={i} style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)", margin: "8px 0 4px" }}>{text}</h3>;
+      if (b.type === "h3") return <h3 key={i} style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", margin: "6px 0 4px" }}>{text}</h3>;
+      if (b.type === "code") return <pre key={i} className="mono" style={{ fontSize: 11.5, padding: 10, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", margin: "6px 0", overflowX: "auto" }}>{text}</pre>;
+      if (b.type === "callout") return <div key={i} className="callout callout-ok" style={{ fontSize: 13 }}><Icon name="sparkles" size={16} style={{ color: "var(--ok)", flexShrink: 0, marginTop: 2 }} />{text}</div>;
+      if (b.type === "divider") return <hr key={i} style={{ border: "none", borderTop: "1px solid var(--border-soft)", margin: "8px 0" }} />;
+      return <p key={i} style={{ fontSize: 13, color: "var(--text-md)", lineHeight: 1.6, margin: "4px 0" }}>{text}</p>;
+    });
   };
 
   return (
@@ -3505,100 +3819,103 @@ function VersionHistoryDialog({ onClose, page }) {
               수정 이력
             </h3>
             <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>
-              <span style={{ color: "var(--text-md)", fontWeight: 600 }}>{page.title}</span> · {VERSIONS.length}개 버전
+              <span style={{ color: "var(--text-md)", fontWeight: 600 }}>{page.title}</span>
+              {versions !== null && ` · ${versions.length}개 버전`}
             </p>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          {/* Left: version list */}
-          <div style={{ borderRight: "1px solid var(--border-soft)", overflowY: "auto", padding: "10px 8px" }}>
-            <div className="version-thread">
-              {VERSIONS.map((v, i) => {
-                const active = v.id === selectedId;
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    className={`version-item ${active ? "is-active" : ""} ${v.current ? "is-current" : ""}`}
-                    onClick={() => setSelectedId(v.id)}
-                  >
-                    <span className="version-dot" />
-                    <div className="version-meta">
-                      <div className="version-row">
-                        <span className="version-time">{v.ago}</span>
-                        {v.current && <span className="version-now">현재</span>}
+        {versions === null ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>불러오는 중...</div>
+          </div>
+        ) : versions.length === 0 ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 48, gap: 8 }}>
+            <Icon name="clock" size={28} style={{ color: "var(--text-faint)" }} />
+            <div style={{ fontSize: 14, fontWeight: 700 }}>아직 저장된 이력이 없어요</div>
+            <div style={{ fontSize: 12, color: "var(--text-lo)" }}>문서를 편집하면 자동으로 이력이 쌓입니다</div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", flex: 1, minHeight: 0, overflow: "hidden" }}>
+            {/* Left: version list */}
+            <div style={{ borderRight: "1px solid var(--border-soft)", overflowY: "auto", padding: "10px 8px" }}>
+              <div className="version-thread">
+                {versions.map((v, i) => {
+                  const active = i === selectedIdx;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      className={`version-item ${active ? "is-active" : ""} ${i === 0 ? "is-current" : ""}`}
+                      onClick={() => setSelectedIdx(i)}
+                    >
+                      <span className="version-dot" />
+                      <div className="version-meta">
+                        <div className="version-row">
+                          <span className="version-time">{formatAgo(v.savedAt)}</span>
+                          {i === 0 && <span className="version-now">현재</span>}
+                        </div>
+                        <div className="version-row" style={{ marginTop: 4 }}>
+                          <div className="avatar avatar-xs" style={{ width: 16, height: 16, fontSize: 9 }}>{v.authorInitials}</div>
+                          <span className="version-author">{v.authorName}</span>
+                        </div>
+                        <div className="version-summary">{v.blocks.length}개 블록</div>
                       </div>
-                      <div className="version-row" style={{ marginTop: 4 }}>
-                        <div className="avatar avatar-xs" style={{ width: 16, height: 16, fontSize: 9 }}>{v.initials}</div>
-                        <span className="version-author">{v.author}</span>
-                      </div>
-                      <div className="version-summary">{v.summary}</div>
-                      <div className="version-diff">
-                        {v.changes[0]?.count > 0 && <span className="diff-add">+{v.changes[0].count}</span>}
-                        {v.changes[1]?.count > 0 && <span className="diff-rem">−{v.changes[1].count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right: preview */}
+            <div style={{ overflowY: "auto", padding: "18px 22px 8px" }}>
+              {selected && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <div className="avatar" style={{ width: 30, height: 30, fontSize: 11 }}>{selected.authorInitials}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{selected.authorName}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-lo)" }}>
+                        {formatAgo(selected.savedAt)} · {new Date(selected.savedAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </div>
                     </div>
-                  </button>
-                );
-              })}
+                    <span className="chip">{selected.blocks.length}블록</span>
+                  </div>
+
+                  <div className="kicker" style={{ marginBottom: 8 }}>내용 미리보기</div>
+                  <div className="version-preview">
+                    {renderBlockPreview(selected.blocks)}
+                    {selected.blocks.length > 8 && (
+                      <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
+                        … 외 {selected.blocks.length - 8}개 블록
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-
-          {/* Right: preview */}
-          <div style={{ overflowY: "auto", padding: "18px 22px 8px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <div className="avatar" style={{ width: 30, height: 30, fontSize: 11 }}>{selected.initials}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{selected.author}</div>
-                <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{selected.ago} · 버전 {selected.id.replace("v", "#")}</div>
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {selected.changes[0]?.count > 0 && <span className="chip" style={{ background: "color-mix(in oklab, var(--ok) 14%, transparent)", color: "var(--ok)", borderColor: "transparent" }}>+{selected.changes[0].count}줄</span>}
-                {selected.changes[1]?.count > 0 && <span className="chip" style={{ background: "color-mix(in oklab, var(--err) 14%, transparent)", color: "var(--err)", borderColor: "transparent" }}>−{selected.changes[1].count}줄</span>}
-              </div>
-            </div>
-
-            <div style={{ padding: "12px 14px", background: "var(--accent-softer)", border: "1px solid var(--accent-ring)", borderRadius: "var(--r-md)", marginBottom: 16 }}>
-              <div className="kicker" style={{ marginBottom: 4 }}>요약</div>
-              <div style={{ fontSize: 13, color: "var(--text-hi)" }}>{selected.summary}</div>
-            </div>
-
-            <div className="kicker" style={{ marginBottom: 8 }}>변경 내용 미리보기</div>
-            <div className="version-preview">
-              {selected.preview.map((b, i) => {
-                if (b.type === "h2") return <h2 key={i} style={{ fontSize: 17, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 6px" }}>{b.text}</h2>;
-                if (b.type === "h3") return <h3 key={i} style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 4px" }}>{b.text}</h3>;
-                if (b.type === "p")  return <p key={i} style={{ fontSize: 13, color: "var(--text-md)", lineHeight: 1.6, margin: "4px 0" }}>{b.text}</p>;
-                if (b.type === "code") return <pre key={i} className="mono" style={{ fontSize: 11.5, padding: 10, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", margin: "6px 0", overflowX: "auto" }}>{b.text}</pre>;
-                if (b.type === "table") return <div key={i} style={{ padding: 10, background: "var(--surface-2)", borderRadius: "var(--r-sm)", fontSize: 12, color: "var(--text-md)", marginTop: 6 }}><Icon name="grid" size={11} style={{ marginRight: 6, verticalAlign: -2 }} />{b.text}</div>;
-                if (b.type === "callout") return <div key={i} className="callout callout-ok" style={{ fontSize: 13 }}><Icon name="sparkles" size={16} style={{ color: "var(--ok)", flexShrink: 0, marginTop: 2 }} />{b.text}</div>;
-                if (b.type === "meta") return <div key={i} style={{ fontSize: 12, color: "var(--text-lo)", fontStyle: "italic" }}><Icon name="edit" size={11} style={{ marginRight: 6, verticalAlign: -2 }} />{b.text}</div>;
-                return null;
-              })}
-            </div>
-          </div>
-        </div>
+        )}
 
         <div className="dialog-foot" style={{ flexShrink: 0 }}>
-          {selected.current ? (
+          {selectedIdx === 0 ? (
             <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
               현재 버전입니다. 다른 버전을 선택하면 되돌릴 수 있어요.
             </span>
           ) : (
             <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
-              되돌리기 전 현재 변경 사항은 새 버전으로 자동 보존돼요.
+              되돌리기 전 현재 내용은 새 버전으로 자동 보존돼요.
             </span>
           )}
           <button className="btn btn-sm" onClick={onClose}>닫기</button>
           <button
             className="btn btn-sm btn-primary"
             onClick={restore}
-            disabled={selected.current}
-            style={selected.current ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+            disabled={selectedIdx === 0 || restoring || !selected}
+            style={(selectedIdx === 0 || !selected) ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
           >
-            <Icon name="refresh" size={12} />이 버전으로 되돌리기
+            <Icon name="refresh" size={12} />{restoring ? "되돌리는 중..." : "이 버전으로 되돌리기"}
           </button>
         </div>
       </div>
@@ -4252,18 +4569,36 @@ function ListBlock({ block, onUpdate }) {
   const items = block.items || [""];
   const isOrdered = block.type === "ol";
   const Tag = isOrdered ? "ol" : "ul";
+  const focusItem = (index) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-list-block-id="${block.id}"][data-list-index="${index}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const updateItem = (i, val) => {
     const next = [...items];
     next[i] = val;
     onUpdate({ items: next });
   };
-  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), "", ...items.slice(afterIdx + 1)] });
+  const addItem = (afterIdx) => {
+    onUpdate({ items: [...items.slice(0, afterIdx + 1), "", ...items.slice(afterIdx + 1)] });
+    focusItem(afterIdx + 1);
+  };
   const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
   return (
     <Tag style={{ paddingLeft: 22, margin: "8px 0", color: "var(--text-md)", lineHeight: 1.6 }}>
       {items.map((item, i) => (
         <li key={i} style={{ margin: "3px 0" }}>
           <span
+            data-list-block-id={block.id}
+            data-list-index={i}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => updateItem(i, e.currentTarget.innerHTML)}
@@ -4281,9 +4616,25 @@ function ListBlock({ block, onUpdate }) {
 }
 
 function ChecklistBlock({ block, onUpdate }) {
-  const items = block.items || [{ text: "", done: false }];
+  const items = (block.items || [{ text: "", checked: false }]).map((it) => ({ ...it, checked: !!(it.checked ?? it.done) }));
+  const focusItem = (index) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-checklist-block-id="${block.id}"][data-checklist-index="${index}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const update = (i, patch) => onUpdate({ items: items.map((x, idx) => idx === i ? { ...x, ...patch } : x) });
-  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", done: false }, ...items.slice(afterIdx + 1)] });
+  const addItem = (afterIdx) => {
+    onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", checked: false }, ...items.slice(afterIdx + 1)] });
+    focusItem(afterIdx + 1);
+  };
   const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
   return (
     <div style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -4291,13 +4642,15 @@ function ChecklistBlock({ block, onUpdate }) {
         <div key={i} style={{ display: "flex", alignItems: "start", gap: 8, padding: "4px 0" }}>
           <button
             type="button"
-            className={`checkbox ${it.done ? "is-checked" : ""}`}
+            className={`checkbox ${it.checked ? "is-checked" : ""}`}
             style={{ marginTop: 3, flexShrink: 0 }}
-            onClick={() => update(i, { done: !it.done })}
+            onClick={() => update(i, { checked: !it.checked })}
           >
-            {it.done && <Icon name="check" size={11} stroke={3} />}
+            {it.checked && <Icon name="check" size={11} stroke={3} />}
           </button>
           <span
+            data-checklist-block-id={block.id}
+            data-checklist-index={i}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => update(i, { text: e.currentTarget.innerHTML })}
@@ -4307,8 +4660,8 @@ function ChecklistBlock({ block, onUpdate }) {
             }}
             style={{
               outline: "none", flex: 1, minHeight: 22,
-              color: it.done ? "var(--text-lo)" : "var(--text-md)",
-              textDecoration: it.done ? "line-through" : "none",
+              color: it.checked ? "var(--text-lo)" : "var(--text-md)",
+              textDecoration: it.checked ? "line-through" : "none",
               textDecorationColor: "var(--text-faint)",
             }}
             dangerouslySetInnerHTML={{ __html: it.text || "" }}
@@ -4405,14 +4758,35 @@ function MathBlock({ block, onUpdate }) {
 }
 
 function TableBlock({ block, onUpdate }) {
-  const rows = block.rows || [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]];
+  const rows = Array.isArray(block.rows) && block.rows.length
+    ? block.rows.map((row) => Array.isArray(row) && row.length ? row : [""])
+    : [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]];
+  const focusCell = (r, c) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-table-block-id="${block.id}"][data-row="${r}"][data-col="${c}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const updateCell = (r, c, val) => {
     const next = rows.map(row => [...row]);
     next[r][c] = val;
     onUpdate({ rows: next });
   };
-  const addRow = () => onUpdate({ rows: [...rows, Array(rows[0].length).fill("")] });
-  const addCol = () => onUpdate({ rows: rows.map(r => [...r, ""]) });
+  const addRow = (focusCol = 0) => {
+    onUpdate({ rows: [...rows, Array(rows[0].length).fill("")] });
+    focusCell(rows.length, focusCol);
+  };
+  const addCol = () => {
+    onUpdate({ rows: rows.map(r => [...r, ""]) });
+    focusCell(0, rows[0].length);
+  };
   return (
     <div style={{ margin: "10px 0", overflow: "auto", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -4425,9 +4799,25 @@ function TableBlock({ block, onUpdate }) {
                 return (
                   <Tag
                     key={c}
+                    data-table-block-id={block.id}
+                    data-row={r}
+                    data-col={c}
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) => updateCell(r, c, e.currentTarget.textContent)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); addRow(c); }
+                      if (e.key === "Tab") {
+                        e.preventDefault();
+                        if (c === row.length - 1 && r === rows.length - 1) {
+                          addRow(c);
+                        } else {
+                          const nextRow = c === row.length - 1 ? r + 1 : r;
+                          const nextCol = c === row.length - 1 ? 0 : c + 1;
+                          focusCell(nextRow, nextCol);
+                        }
+                      }
+                    }}
                     style={{
                       padding: "8px 10px",
                       border: "1px solid var(--border-soft)",
@@ -4445,7 +4835,7 @@ function TableBlock({ block, onUpdate }) {
         </tbody>
       </table>
       <div style={{ display: "flex", gap: 6, padding: 6, borderTop: "1px solid var(--border-soft)", background: "var(--surface-2)" }}>
-        <button type="button" className="btn btn-sm" onClick={addRow}><Icon name="plus" size={11} />행 추가</button>
+        <button type="button" className="btn btn-sm" onClick={() => addRow()}><Icon name="plus" size={11} />행 추가</button>
         <button type="button" className="btn btn-sm" onClick={addCol}><Icon name="plus" size={11} />열 추가</button>
       </div>
     </div>
@@ -5059,6 +5449,138 @@ function PropPopover({ children, onClose }) {
 }
 
 /* ===========================================================
+   SESSIONS DIALOG
+   =========================================================== */
+function SessionsDialog({ onClose }) {
+  const ua = navigator.userAgent;
+  const browser = /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "브라우저";
+  const os = /Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : "기기";
+  const today = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>활성 세션</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>로그인된 기기 목록입니다</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: "16px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Icon name="globe" size={18} style={{ color: "var(--accent)" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{browser} · {os}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>{today} 로그인</div>
+              </div>
+            </div>
+            <span className="chip chip-ok" style={{ height: 20, fontSize: 10, padding: "0 7px" }}>현재 기기</span>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 14, padding: "10px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)" }}>
+            <Icon name="info" size={11} style={{ verticalAlign: -2, marginRight: 5 }} />
+            다른 기기의 세션을 강제로 종료하려면 비밀번호를 변경하세요.
+          </div>
+        </div>
+        <div className="dialog-foot">
+          <button
+            className="btn btn-sm btn-ghost"
+            style={{ color: "var(--err)" }}
+            onClick={() => { window.dispatchEvent(new CustomEvent("planary:sign-out")); onClose(); }}
+          >
+            <Icon name="logout" size={12} />이 기기에서 로그아웃
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-sm btn-primary" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
+   2FA SETUP DIALOG
+   =========================================================== */
+function TwoFactorSetupDialog({ onClose, userEmail }) {
+  const [method, setMethod] = useStateO("email");
+  const [sent, setSent] = useStateO(false);
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const handleSetup = () => {
+    window.dispatchEvent(new CustomEvent("planary:setup-2fa", { detail: { method, email: userEmail } }));
+    setSent(true);
+    if (method === "email") {
+      window.Planary.toast?.({ type: "ok", title: "인증 코드를 이메일로 발송했어요", sub: userEmail });
+    } else {
+      window.Planary.toast?.({ type: "info", title: "준비 중인 기능이에요" });
+    }
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(460px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>2단계 인증 설정</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>로그인 시 추가 인증 방법을 선택하세요</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: "16px 22px" }}>
+          {[
+            { id: "email", icon: "send", label: "이메일 인증", desc: `${userEmail || "등록된 이메일"}로 코드 전송` },
+            { id: "totp",  icon: "clock", label: "인증 앱 (TOTP)", desc: "Google Authenticator 등 사용 (준비 중)" },
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => m.id !== "totp" && setMethod(m.id)}
+              style={{
+                width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 14,
+                padding: "12px 14px", borderRadius: "var(--r-md)", marginBottom: 8, cursor: m.id === "totp" ? "not-allowed" : "pointer",
+                background: method === m.id ? "var(--accent-soft)" : "var(--surface-2)",
+                border: `1.5px solid ${method === m.id ? "var(--accent)" : "transparent"}`,
+                opacity: m.id === "totp" ? 0.5 : 1,
+              }}
+            >
+              <Icon name={m.icon} size={18} style={{ color: method === m.id ? "var(--accent)" : "var(--text-lo)", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{m.label}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>{m.desc}</div>
+              </div>
+              {method === m.id && <Icon name="check" size={14} stroke={3} style={{ marginLeft: "auto", color: "var(--accent)" }} />}
+            </button>
+          ))}
+          {sent && (
+            <div style={{ fontSize: 12, color: "var(--ok)", display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+              <Icon name="check" size={12} stroke={3} />코드가 발송됐어요. 받은편지함을 확인하세요.
+            </div>
+          )}
+        </div>
+        <div className="dialog-foot">
+          <button className="btn btn-sm" onClick={onClose}>취소</button>
+          <button className="btn btn-sm btn-primary" onClick={handleSetup} disabled={sent}>
+            <Icon name="send" size={12} />{sent ? "발송됨" : "코드 발송"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
    SIGN OUT / DELETE ACCOUNT DIALOG
    =========================================================== */
 function SignOutDialog({ onClose, user }) {
@@ -5309,9 +5831,9 @@ function ProfileEditDialog({ user, onClose, onSave }) {
                 placeholder="이름" />
               
             </FormField>
-            <FormField label="이메일" hint="변경하려면 인증이 필요합니다">
+            <FormField label="이메일" hint="이메일은 변경할 수 없습니다">
               <div style={{ position: "relative" }}>
-                <input value={draft.email} onChange={(e) => update("email", e.target.value)} className="form-input" placeholder="email@example.com" />
+                <input value={draft.email} readOnly className="form-input" style={{ cursor: "default", color: "var(--text-lo)" }} placeholder="email@example.com" />
                 <span className="chip chip-ok" style={{ position: "absolute", right: 6, top: 6, height: 22, fontSize: 10 }}>
                   <Icon name="check" size={9} stroke={3} />인증됨
                 </span>
@@ -5420,6 +5942,18 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     lastSavedRef.current = JSON.stringify(initial);
     liveBlocksRef.current = initial;
     undoStackRef.current = [initial];
+    return () => {
+      // Force-save any pending unsaved typing before switching to another page
+      clearTimeout(liveSaveTimerRef.current);
+      const data = liveBlocksRef.current;
+      const serialized = JSON.stringify(data);
+      if (activeId && serialized !== lastSavedRef.current) {
+        lastSavedRef.current = serialized;
+        window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
+          detail: { id: activeId, blocks: data },
+        }));
+      }
+    };
   }, [activeId]);
 
   // Refresh blocks when the bridge emits fresh wiki data for the current page
@@ -5437,6 +5971,20 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     };
     window.addEventListener("planary:wiki-loaded", onLoaded);
     return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
+  }, [activeId]);
+
+  // Apply restored blocks from VersionHistoryDialog
+  useEffectO(() => {
+    const onRestore = (e) => {
+      const d = e.detail || {};
+      if (d.id !== activeId || !Array.isArray(d.blocks)) return;
+      setBlocks(d.blocks);
+      liveBlocksRef.current = d.blocks;
+      lastSavedRef.current = JSON.stringify(d.blocks);
+      undoStackRef.current = [d.blocks];
+    };
+    window.addEventListener("planary:wiki-restore", onRestore);
+    return () => window.removeEventListener("planary:wiki-restore", onRestore);
   }, [activeId]);
 
   // Notify parent of block changes (for TOC etc.)
@@ -5544,10 +6092,17 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   const updateBlock = (id, patch) =>
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
 
+  const defaultsForType = (type, content = "") => {
+    if (type === "ul" || type === "ol") return { type, items: [content] };
+    if (type === "todo") return { type, items: [{ text: content, checked: false }] };
+    if (type === "table") return { type, rows: [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]] };
+    if (type === "callout") return { type, variant: "ok", title: "포인트", body: content };
+    return { type, content };
+  };
+
   const addBlockAfter = (afterId, type = "p", { focus = true } = {}) => {
     const newId = `b${Date.now()}${Math.random().toString(36).slice(2, 5)}`;
-    const newBlock = { id: newId, type, content: "" };
-    if (type === "callout") { newBlock.variant = "ok"; newBlock.title = "포인트"; newBlock.body = ""; }
+    const newBlock = { id: newId, ...defaultsForType(type, "") };
     setBlocks(prev => {
       const idx = prev.findIndex(b => b.id === afterId);
       if (idx < 0) return [...prev, newBlock];
@@ -5658,7 +6213,9 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           slashMenu={slashMenu}
           onClose={() => setSlashMenu(null)}
           onPick={(type) => {
-            updateBlock(slashMenu.blockId, { type, content: "" });
+            const cur = liveBlocksRef.current.find(b => b.id === slashMenu.blockId);
+            const content = cur ? (cur.content || "").replace(/\/\s*$/, "").trimEnd() : "";
+            updateBlock(slashMenu.blockId, defaultsForType(type, content));
             setFocusBlockId(slashMenu.blockId);
             setSlashMenu(null);
           }}
@@ -5673,6 +6230,13 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   const bodyRef = useRefO(null);
 
   const commitContent = (key, val) => onUpdate({ [key]: val });
+  const defaultsForType = (type, content = "") => {
+    if (type === "ul" || type === "ol") return { type, items: [content] };
+    if (type === "todo") return { type, items: [{ text: content, checked: false }] };
+    if (type === "table") return { type, rows: [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]] };
+    if (type === "callout") return { type, variant: "ok", title: "포인트", body: content };
+    return { type, content };
+  };
   const handleInput = (e) => onLiveEdit && onLiveEdit("content", e.currentTarget.innerHTML);
 
   useEffectO(() => {
@@ -5719,7 +6283,18 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
     e.preventDefault();
     // Clear the visible prefix immediately so the caret resets.
     e.currentTarget.innerHTML = "";
-    onUpdate({ type: nextType, content: "" });
+    onUpdate(defaultsForType(nextType, ""));
+    window.setTimeout(() => {
+      const nextEditable = document.querySelector(`.wiki-block-row[data-block-id="${block.id}"] [contenteditable]`);
+      if (!nextEditable) return;
+      nextEditable.focus();
+      const range = document.createRange();
+      range.selectNodeContents(nextEditable);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
     return true;
   };
 
@@ -5852,7 +6427,7 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
               <button
                 key={o.type}
                 className={`popover-item ${block.type === o.type ? "is-active" : ""}`}
-                onClick={() => { onUpdate({ type: o.type, content: block.content || "" }); onMenuClose(); }}
+                onClick={() => { onUpdate(defaultsForType(o.type, block.content || "")); onMenuClose(); }}
                 style={block.type === o.type ? { color: "var(--accent)", background: "var(--accent-softer)" } : undefined}
               >
                 <Icon name={o.icon} size={13} />{o.label}

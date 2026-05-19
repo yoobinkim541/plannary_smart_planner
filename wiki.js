@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const widgetNewSubpageBtn = document.getElementById('wiki-widget-new-subpage-btn');
     const calendarConnectBtn = document.getElementById('wiki-calendar-connect-btn');
     const calendarCreateBtn = document.getElementById('wiki-calendar-create-btn');
+    const wikiLoadingSkeleton = document.getElementById('wiki-loading-skeleton');
 
     if (!pageWiki) return;
 
@@ -758,6 +759,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveWikiBtn) saveWikiBtn.disabled = false;
         if (saveStateEl) saveStateEl.textContent = tr('unsavedChanges');
     };
+    const setWikiLoading = (isLoading) => {
+        if (wikiEditorView) wikiEditorView.classList.toggle('is-loading', isLoading);
+        if (wikiLoadingSkeleton) wikiLoadingSkeleton.hidden = !isLoading;
+    };
     const getCurrentPage = () => allPages.find(page => page.id === currentPageId);
     const getProjectName = (projectId) => {
         const project = allProjects.find(item => item.id === projectId);
@@ -1137,12 +1142,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     holder.addEventListener('keydown', editorKeydownHandler);
                 }
                 installWikiBlockDragHandles();
+                setWikiLoading(false);
             },
             onChange: () => {
                 // Proactively enable save button if disabled
                 if (saveWikiBtn) saveWikiBtn.disabled = false;
                 scheduleMarkdownMathConversion();
                 scheduleUndoSnapshot();
+                scheduleAutosave();
                 setTimeout(installWikiBlockDragHandles, 0);
                 renderTocWidget();
             }
@@ -1643,6 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPageId === page.id) return;
         cleanupPendingWikiUploads();
         currentPageId = page.id;
+        renderPageList();
 
         // Notion-like: Hide list on small screens, show editor as full page
         pageWiki.classList.add('editor-active');
@@ -1677,13 +1685,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (saveWikiBtn) saveWikiBtn.disabled = true;
         if (saveStateEl) saveStateEl.textContent = tr('saved');
+        setWikiLoading(true);
         initEditor(page.content);
         resetMetaUndoHistory();
         renderSubpages(page.id);
         renderWidgets();
         setTimeout(() => { if (saveWikiBtn) saveWikiBtn.disabled = false; }, 500);
-
-        renderPageList();
     };
 
     const closeEditor = () => {
@@ -1697,6 +1704,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pageWiki.classList.remove('editor-active');
         wikiEditorView.style.display = 'none';
         wikiEmptyView.style.display = 'flex';
+        setWikiLoading(false);
         if (wikiProjectSelect) wikiProjectSelect.value = '';
         currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverPositionX: 50, coverHeight: 180, coverZoom: 100, coverCropMode: 'cover' };
         if (pageIconBtn) pageIconBtn.textContent = currentPageMeta.icon;
@@ -1961,10 +1969,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- SAVE FUNCTION ---
-    const savePage = async () => {
+    let autosaveTimer = null;
+    let autosaveInFlight = false;
+    const scheduleAutosave = () => {
+        if (!currentPageId) return;
+        clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(async () => {
+            if (autosaveInFlight) { scheduleAutosave(); return; }
+            autosaveInFlight = true;
+            try { await savePage({ silent: true }); }
+            catch (err) { console.warn('[Wiki] autosave failed:', err); }
+            finally { autosaveInFlight = false; }
+        }, 1500);
+    };
+
+    const savePage = async (options = {}) => {
+        const { silent = false } = options;
         if (!editor || !currentPageId || !currentUser) {
             console.warn('[Wiki] Save aborted: editor or pageId missing', { editor: !!editor, currentPageId, currentUser: !!currentUser });
-            window.showToast(tr('cannotSaveNotReady'), 'error');
+            if (!silent) window.showToast(tr('cannotSaveNotReady'), 'error');
             return;
         }
         const title = wikiTitleInput ? wikiTitleInput.value.trim() || tr('untitledDocument') : tr('untitledDocument');
@@ -2002,11 +2025,11 @@ document.addEventListener('DOMContentLoaded', () => {
             resetUndoHistory(contentData);
             resetMetaUndoHistory();
             if (saveStateEl) saveStateEl.textContent = tr('saved');
-            window.showToast(tr('pageSaved'), 'success');
+            if (!silent) window.showToast(tr('pageSaved'), 'success');
         } catch (err) {
             console.error('[Wiki] Save error:', err);
-            // Show actual error message for diagnosis
-            window.showToast(tr('saveFailed') + ': ' + (err.message || err), 'error');
+            if (!silent) window.showToast(tr('saveFailed') + ': ' + (err.message || err), 'error');
+            throw err;
         } finally {
             if (saveWikiBtn) { saveWikiBtn.textContent = tr('saveChanges'); saveWikiBtn.disabled = false; }
         }

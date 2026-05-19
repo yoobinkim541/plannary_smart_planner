@@ -69,6 +69,7 @@ function App() {
   const [editingTask, setEditingTask] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authedUser, setAuthedUser] = useState(null);
+  const [dataReady, setDataReady] = useState(!window.Planary.LIVE_DATA_SHELL);
   const [appleCalendarEnabled, setAppleCalendarEnabled] = useState(false);
 
   // Persist tweak edits to Firestore (no-op when bridge isn't loaded)
@@ -99,7 +100,10 @@ function App() {
 
   // Firestore data → state
   useEffect(() => {
-    const onTasks = (e) => setTasks(e.detail || []);
+    const onTasks = (e) => {
+      setTasks(e.detail || []);
+      setDataReady(true);
+    };
     window.addEventListener("planary:tasks-loaded", onTasks);
     return () => window.removeEventListener("planary:tasks-loaded", onTasks);
   }, []);
@@ -216,10 +220,15 @@ function App() {
     window.Planary.toast({ type: "ok", title: "작업이 삭제됐어요" });
   };
   const visibleTasks = tasks.filter(t => !t.archived);
+  const showLiveSkeleton = window.Planary.LIVE_DATA_SHELL && (!authChecked || (authedUser && !dataReady));
+
+  if (showLiveSkeleton) {
+    return <AppSkeleton />;
+  }
 
   const renderPage = () => {
     switch (page) {
-      case "home":      return <HomePage tasks={visibleTasks} setTasks={setTasks} variant={t.variant} setPage={setPage} setTaskFilter={setTaskFilter} />;
+      case "home":      return <HomePage tasks={visibleTasks} setTasks={setTasks} variant={t.variant} setPage={setPage} setTaskFilter={setTaskFilter} interests={t.interests || []} widgetVisibility={t.widgetVisibility || null} />;
       case "tasks":     return <TasksPage tasks={visibleTasks} setTasks={setTasks} taskFilter={taskFilter} setTaskFilter={setTaskFilter} variant={t.variant} appleCalendarEnabled={appleCalendarEnabled} />;
       case "projects":  return <ProjectsPage tasks={visibleTasks} setTasks={setTasks} setPage={setPage} setTaskFilter={setTaskFilter} />;
       case "notes":     return <NotesPage />;
@@ -290,10 +299,22 @@ function App() {
 
       {onboardingOpen && window.Planary.OnboardingFlow && (
         <window.Planary.OnboardingFlow
-          onComplete={() => {
+          onComplete={(draft) => {
             setOnboardingOpen(false);
             try { localStorage.setItem("planary.onboarding.done", "1"); } catch (_) {}
             window.Planary?.api?.saveOnboarding?.({ completed: true }).catch(err => console.error("[Planary] saveOnboarding failed:", err));
+            // Apply onboarding choices to live React state immediately.
+            // (onboarding.jsx already dispatches planary:save-preferences for Firestore;
+            //  saveTweak here updates the in-memory tweaks without a second Firestore write)
+            if (draft) {
+              const prefs = {};
+              if (draft.accent) prefs.accent = draft.accent;
+              if (draft.theme)  prefs.theme  = draft.theme;
+              prefs.interests = draft.interests instanceof Set
+                ? Array.from(draft.interests)
+                : (Array.isArray(draft.interests) ? draft.interests : []);
+              setTweak(prefs);
+            }
             setTimeout(() => setGuideOpen(true), 500);
           }}
         />
@@ -374,6 +395,70 @@ function PlanaryTweaks({ t, setTweak }) {
         onChange={(v) => setTweak("density", v)}
       />
     </TweaksPanel>
+  );
+}
+
+function AppSkeleton() {
+  const navRows = [0, 1, 2, 3, 4, 5];
+  const taskRows = [0, 1, 2, 3, 4];
+  return (
+    <div className="app-shell app-skeleton" data-sidebar="full" aria-busy="true">
+      <div className="skeleton-rail">
+        <div className="skeleton-logo" />
+        {navRows.slice(0, 5).map((i) => <div className="skeleton-rail-btn" key={i} />)}
+        <div className="skeleton-spacer" />
+        <div className="skeleton-rail-btn" />
+      </div>
+      <aside className="skeleton-sidebar">
+        <div className="skeleton-user">
+          <div className="skeleton-avatar" />
+          <div>
+            <div className="skeleton-line w-120" />
+            <div className="skeleton-line w-80" />
+          </div>
+        </div>
+        <div className="skeleton-search" />
+        <div className="skeleton-stack">
+          {navRows.map((i) => <div className="skeleton-nav-row" key={i} />)}
+        </div>
+      </aside>
+      <main className="main">
+        <div className="topbar skeleton-topbar">
+          <div>
+            <div className="skeleton-line w-160" />
+            <div className="skeleton-line w-96" />
+          </div>
+          <div className="topbar-spacer" />
+          <div className="skeleton-pill" />
+          <div className="skeleton-circle" />
+        </div>
+        <div className="page page-wide skeleton-page">
+          <section className="skeleton-hero">
+            <div>
+              <div className="skeleton-line w-220 h-22" />
+              <div className="skeleton-line w-300" />
+              <div className="skeleton-line w-260" />
+            </div>
+            <div className="skeleton-stat-grid">
+              <div className="skeleton-stat" />
+              <div className="skeleton-stat" />
+              <div className="skeleton-stat" />
+            </div>
+          </section>
+          <section className="skeleton-content-grid">
+            <div className="skeleton-panel">
+              <div className="skeleton-panel-head" />
+              {taskRows.map((i) => <div className="skeleton-task-row" key={i} />)}
+            </div>
+            <div className="skeleton-panel">
+              <div className="skeleton-panel-head" />
+              <div className="skeleton-card-block" />
+              <div className="skeleton-card-block small" />
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
   );
 }
 

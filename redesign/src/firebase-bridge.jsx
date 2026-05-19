@@ -307,7 +307,7 @@
       case "divider":return { id, type: "delimiter", data: {} };
       case "ul":     return { id, type: "list",      data: { style: "unordered", items: b.items || [] } };
       case "ol":     return { id, type: "list",      data: { style: "ordered",   items: b.items || [] } };
-      case "todo":   return { id, type: "checklist", data: { items: (b.items || []).map(it => ({ text: it.text || "", checked: !!it.checked })) } };
+      case "todo":   return { id, type: "checklist", data: { items: (b.items || []).map(it => ({ text: it.text || "", checked: !!(it.checked ?? it.done) })) } };
       case "code":   return { id, type: "code",      data: { code: b.content || "", language: b.language || "plain" } };
       case "math":   return { id, type: "math",      data: { formula: b.content || "" } };
       case "table":  return { id, type: "table",     data: { content: b.rows || [], withHeadings: false } };
@@ -470,7 +470,7 @@
 
     async createNote(note) {
       if (!this.uid) return null;
-      const ref = await db.collection("notes").add({
+      const docData = {
         uid: this.uid,
         text: (note.text || "").trim() || "(빈 메모)",
         color: note.color || "yellow",
@@ -478,24 +478,25 @@
         y: typeof note.y === "number" ? note.y : 80,
         archived: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+      if (note.id) {
+        await db.collection("notes").doc(note.id).set(docData);
+        return note.id;
+      }
+      const ref = await db.collection("notes").add(docData);
       return ref.id;
     },
     async updateNote(id, patch) {
       if (!this.uid) return;
-      const snap = await db.collection("notes").doc(id).get();
-      const data = snap.data();
-      if (!data) return;
-      const next = {
-        uid: this.uid,
-        text: patch.text ?? data.text,
-        color: patch.color ?? data.color,
-        x: typeof patch.x === "number" ? patch.x : data.x,
-        y: typeof patch.y === "number" ? patch.y : data.y,
-        archived: patch.archived ?? data.archived ?? false,
-        createdAt: data.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
-      };
-      await db.collection("notes").doc(id).set(next);
+      const updates = {};
+      if (patch.text !== undefined) updates.text = patch.text;
+      if (patch.color !== undefined) updates.color = patch.color;
+      if (typeof patch.x === "number") updates.x = patch.x;
+      if (typeof patch.y === "number") updates.y = patch.y;
+      if (patch.archived !== undefined) updates.archived = patch.archived;
+      if (typeof patch.rot === "number") updates.rot = patch.rot;
+      if (!Object.keys(updates).length) return;
+      await db.collection("notes").doc(id).set(updates, { merge: true });
     },
     async deleteNote(id) {
       if (!this.uid) return;
@@ -556,19 +557,32 @@
 
     async savePreferences(patch) {
       if (!this.uid) return;
-      await db.collection("users").doc(this.uid).set({
-        uid: this.uid,
-        preferences: patch || {},
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      const ref = db.collection("users").doc(this.uid);
+      const updates = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      for (const [key, val] of Object.entries(patch || {})) {
+        updates[`preferences.${key}`] = val;
+      }
+      try {
+        await ref.update(updates);
+      } catch (err) {
+        if (err.code === "not-found") {
+          await ref.set({ uid: this.uid, preferences: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        } else throw err;
+      }
     },
     async saveNotifPrefs(patch) {
       if (!this.uid) return;
-      await db.collection("users").doc(this.uid).set({
-        uid: this.uid,
-        notifPrefs: patch || {},
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      const dotPatch = {};
+      Object.entries(patch || {}).forEach(([k, v]) => { dotPatch[`notifPrefs.${k}`] = v; });
+      dotPatch.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = db.collection("users").doc(this.uid);
+      try {
+        await ref.update(dotPatch);
+      } catch (err) {
+        if (err.code === "not-found") {
+          await ref.set({ uid: this.uid, notifPrefs: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        } else throw err;
+      }
     },
     async saveOnboarding({ progress, currentStep, completed }) {
       if (!this.uid) return;
@@ -648,13 +662,40 @@
     },
     async saveWikiBlocks(id, blocks) {
       if (!this.uid) return;
+      const encoded = (blocks || []).map(encodeEditorJSBlock);
+      const now = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection("wiki_pages").doc(id).update({
-        content: {
-          time: Date.now(),
-          blocks: (blocks || []).map(encodeEditorJSBlock),
-          version: "redesign-v1",
-        },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        content: { time: Date.now(), blocks: encoded, version: "redesign-v1" },
+        updatedAt: now,
+      });
+      // Save a revision snapshot (latest 50 kept)
+      const user = auth.currentUser;
+      const authorName = (user && (user.displayName || (user.email || "").split("@")[0])) || "나";
+      const authorInitials = authorName.slice(0, 1).toUpperCase();
+      await db.collection("wiki_pages").doc(id).collection("revisions").add({
+        blocks: encoded,
+        authorName,
+        authorInitials,
+        savedAt: now,
+      });
+    },
+    async loadWikiRevisions(id) {
+      if (!this.uid) return [];
+      const snap = await db.collection("wiki_pages").doc(id)
+        .collection("revisions")
+        .orderBy("savedAt", "desc")
+        .limit(50)
+        .get();
+      return snap.docs.map(doc => {
+        const d = doc.data();
+        const ms = d.savedAt && d.savedAt.toMillis ? d.savedAt.toMillis() : 0;
+        return {
+          id: doc.id,
+          blocks: (d.blocks || []).map(decodeEditorJSBlock),
+          authorName: d.authorName || "사용자",
+          authorInitials: d.authorInitials || "U",
+          savedAt: ms,
+        };
       });
     },
     async deleteWikiPage(id) {
@@ -665,6 +706,43 @@
 
   window.Planary = window.Planary || {};
   window.Planary.api = api;
+  window.Planary.generateId = () => db.collection("notes").doc().id;
+
+  // ── FCM push notification helpers ────────────────────────────────────
+  async function registerFCMToken() {
+    try {
+      if (!("Notification" in window) || Notification.permission === "denied") return;
+      if (typeof firebase.messaging !== "function") return;
+      if (!("serviceWorker" in navigator)) return;
+      const swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      const messaging = firebase.messaging();
+      const vapidKey = window.PLANARY_FCM_VAPID_KEY;
+      const token = await messaging.getToken({ vapidKey, serviceWorkerRegistration: swReg });
+      if (token && api.uid) {
+        await db.collection("users").doc(api.uid).update({
+          fcmTokens: firebase.firestore.FieldValue.arrayUnion(token),
+        });
+        window.Planary.FCM_TOKEN = token;
+      }
+    } catch (err) {
+      console.warn("[Planary] FCM token registration failed:", err.message);
+    }
+  }
+
+  window.Planary.requestPushPermission = async () => {
+    if (!("Notification" in window)) return false;
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      await registerFCMToken();
+      return true;
+    }
+    return false;
+  };
+
+  window.Planary.getPushPermission = () => {
+    if (!("Notification" in window)) return "unsupported";
+    return Notification.permission; // "default" | "granted" | "denied"
+  };
 
   // ────────────────────────────────────────────────────────────────────
   // Auth + Firestore listeners
@@ -698,6 +776,11 @@
     // Update USER mock so existing components pick it up on next render
     window.Planary.USER = api.user;
     window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: api.user }));
+
+    // Auto-register FCM token if permission was already granted
+    if (window.Planary.getPushPermission() === "granted") {
+      registerFCMToken();
+    }
 
     // Tasks
     unsubs.push(
@@ -993,6 +1076,14 @@
   window.addEventListener("planary:save-notif-prefs", (e) => {
     const patch = e.detail || {};
     api.saveNotifPrefs(patch).catch(err => console.error("[Planary] save-notif-prefs failed:", err));
+    // When the user turns push on, request OS permission and register FCM token
+    if (patch.push === true) {
+      window.Planary.requestPushPermission().then(granted => {
+        if (!granted) {
+          window.Planary?.toast?.({ type: "err", title: "알림 권한이 필요해요", sub: "브라우저 설정에서 알림을 허용해주세요" });
+        }
+      });
+    }
   });
   window.addEventListener("planary:save-preferences", (e) => {
     const patch = e.detail || {};

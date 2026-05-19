@@ -773,7 +773,24 @@ function applyLanguage(lang = currentLanguage) {
 function loadTodos() {
     if (!currentUser || !db) return;
     db.collection('todos').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
-        allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        allTodos = snapshot.docs.map(doc => {
+            const data = doc.data();
+            let dueDate = data.dueDate || null;
+            if (dueDate && typeof dueDate !== 'string' && typeof dueDate.toDate === 'function') {
+                dueDate = dueDate.toDate().toISOString().slice(0, 10);
+            }
+            if (dueDate === '') dueDate = null;
+            return {
+                id: doc.id,
+                ...data,
+                completed: typeof data.completed === 'boolean' ? data.completed : false,
+                archived: typeof data.archived === 'boolean' ? data.archived : false,
+                dueDate,
+                priority: data.priority || 'medium',
+                memo: data.memo || '',
+                createdAt: data.createdAt || { toMillis: () => Date.now() }
+            };
+        });
         applyFilters();
         updateDashboardUI();
         renderProjectManagementList();
@@ -3253,6 +3270,10 @@ function openEditModal(type, id) {
     if (next && next.trim()) db.collection(type === 'todo' ? 'todos' : 'notes').doc(id).update({ text: next.trim() }).then(() => showToast(t('updated')));
 }
 
+function finishAppBoot() {
+    document.body.classList.remove('app-booting');
+}
+
 // --- INITIALIZATION ---
 try {
     if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
@@ -3270,6 +3291,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isAuthPage = path.includes('login') || path.includes('signup') || path.includes('landing');
             if (!user) {
                 if (!isAuthPage) window.location.href = 'landing.html';
+                else finishAppBoot();
             } else {
                 currentUser = user;
                 updateProfileUI(user);
@@ -3279,9 +3301,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     startEclassForegroundSync();
                     showOnboardingIfNeeded(user);
                     registerFcmToken();
+                    finishAppBoot();
                 }
             }
         });
+    } else {
+        finishAppBoot();
     }
 
     // Theme & Navigation Init

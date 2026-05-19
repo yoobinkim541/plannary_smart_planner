@@ -8,6 +8,11 @@
         if (window.location.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
+        try {
+            document.documentElement.setAttribute('data-theme', localStorage.getItem('app-theme') || 'light');
+        } catch (error) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
     </script>
     <title>Planary — 생각을 정리하는 워크스페이스</title>
 
@@ -65,10 +70,47 @@
     <!-- Highlight.js for Code block Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 
-    <link rel="stylesheet" href="style.css?v=v5">
+    <link rel="stylesheet" href="style.css?v=v6">
 </head>
 
-<body>
+<body class="app-booting">
+    <div id="app-boot-skeleton" class="app-boot-skeleton" aria-hidden="true">
+        <div class="app-boot-rail">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="app-boot-sidebar">
+            <div class="app-boot-profile"></div>
+            <div class="app-boot-nav">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        <main class="app-boot-main">
+            <div class="app-boot-header">
+                <span class="app-boot-line app-boot-title"></span>
+                <span class="app-boot-line app-boot-subtitle"></span>
+            </div>
+            <div class="app-boot-grid">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="app-boot-panel">
+                <span class="app-boot-line app-boot-wide"></span>
+                <span class="app-boot-line"></span>
+                <span class="app-boot-line app-boot-mid"></span>
+                <span class="app-boot-block"></span>
+                <span class="app-boot-line app-boot-short"></span>
+            </div>
+        </main>
+    </div>
     <!-- App Shell -->
     <div id="app-shell">
         <!-- Mobile Header (Visible only on mobile) -->
@@ -607,6 +649,25 @@
                             </div>
                             <span id="wiki-upload-text" class="progress-text">업로드 중... 0%</span>
                         </div>
+                        <div id="wiki-loading-skeleton" class="wiki-loading-skeleton" hidden aria-hidden="true">
+                            <div class="wiki-loading-cover"></div>
+                            <div class="wiki-loading-header">
+                                <span class="wiki-loading-icon"></span>
+                                <div class="wiki-loading-title-stack">
+                                    <span class="wiki-loading-line wiki-loading-line-sm"></span>
+                                    <span class="wiki-loading-line wiki-loading-line-title"></span>
+                                    <span class="wiki-loading-line wiki-loading-line-xs"></span>
+                                </div>
+                            </div>
+                            <div class="wiki-loading-body">
+                                <span class="wiki-loading-line wiki-loading-line-wide"></span>
+                                <span class="wiki-loading-line"></span>
+                                <span class="wiki-loading-line wiki-loading-line-mid"></span>
+                                <span class="wiki-loading-block"></span>
+                                <span class="wiki-loading-line wiki-loading-line-wide"></span>
+                                <span class="wiki-loading-line wiki-loading-line-short"></span>
+                            </div>
+                        </div>
                         <div id="editorjs"></div>
                         <section class="wiki-subpages-section" id="wiki-subpages-section">
                             <div class="wiki-subpages-header">
@@ -1115,7 +1176,7 @@
     <script src="i18n/zh.js?v=v1"></script>
     <script src="i18n/es.js?v=v1"></script>
     <script src="app.js?v=v34"></script>
-    <script src="wiki.js?v=v19"></script>
+    <script src="wiki.js?v=v20"></script>
 </body>
 
 </html>

@@ -1,5 +1,5 @@
 const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('./_admin');
-const { encrypt } = require('./_crypto');
+const { encrypt, hashCredentialKey } = require('./_crypto');
 const { DEFAULT_BASE_URL, loginSeoultech, normalizeBaseUrl } = require('./_seoultech');
 
 function hasSavedCredentials(data = {}) {
@@ -46,8 +46,20 @@ module.exports = async function handler(req, res) {
     const baseUrl = normalizeBaseUrl(body.baseUrl || DEFAULT_BASE_URL);
     await loginSeoultech({ baseUrl, username, password });
 
+    const credentialKey = hashCredentialKey(baseUrl, username);
+
+    // Find other Planary accounts already connected with the same e-Class credentials
+    // so syncAll can deduplicate the network fetch.
+    const sharedQuery = await db.collection('eclass_connections')
+      .where('credentialKey', '==', credentialKey)
+      .get();
+    const sharedUids = sharedQuery.docs
+      .filter(d => d.id !== user.uid && d.data().enabled !== false)
+      .map(d => d.id);
+
     await ref.set({
       uid: user.uid,
+      credentialKey,
       enabled: true,
       baseUrl,
       platform: 'seoultech-moodle',
@@ -58,7 +70,10 @@ module.exports = async function handler(req, res) {
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    return sendJson(res, 200, { connected: true, baseUrl, platform: 'seoultech-moodle' });
+    return sendJson(res, 200, {
+      connected: true, baseUrl, platform: 'seoultech-moodle',
+      sharedAccountCount: sharedUids.length,
+    });
   } catch (error) {
     console.error('[eclass/connection]', error);
     return sendJson(res, error.statusCode || 500, { error: error.message || 'Connection failed' });

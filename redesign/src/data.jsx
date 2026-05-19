@@ -84,9 +84,21 @@ const WIKI_TREE = [
   { id: "w9", title: "주간 회고", icon: "📓", depth: 0 },
 ];
 
+const hasFirebaseRuntime = typeof firebase !== "undefined" && firebase.apps && firebase.apps.length > 0;
+const isLocalPrototype = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+const useLiveDataShell = hasFirebaseRuntime && !isLocalPrototype;
+
 window.Planary = {
-  PROJECTS, TASKS, NOTES, BOOKMARKS, WIKI_TREE, ECLASS_COURSES,
-  USER: { name: "도하 김", email: "doha@planary.app", initials: "DK", school: "서울과학기술대학교", studentId: "21900293" },
+  LIVE_DATA_SHELL: useLiveDataShell,
+  PROJECTS: useLiveDataShell ? [] : PROJECTS,
+  TASKS: useLiveDataShell ? [] : TASKS,
+  NOTES: useLiveDataShell ? [] : NOTES,
+  BOOKMARKS: useLiveDataShell ? [] : BOOKMARKS,
+  WIKI_TREE: useLiveDataShell ? [] : WIKI_TREE,
+  ECLASS_COURSES: useLiveDataShell ? [] : ECLASS_COURSES,
+  USER: useLiveDataShell
+    ? { name: "사용자", email: "", initials: "U", school: "", studentId: "" }
+    : { name: "도하 김", email: "doha@planary.app", initials: "DK", school: "서울과학기술대학교", studentId: "21900293" },
 };
 
 // Compute e-Class progress from synced tasks
