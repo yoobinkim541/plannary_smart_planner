@@ -107,22 +107,24 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
   const date = new Date();
   const dateLabel = date.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
 
-  // Mini week calendar
+  // Mini week calendar — use real task counts per day
   const weekData = [];
   for (let i = -3; i <= 3; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    const dayTasks = i === 0 ? today : i === 1 ? tasks.filter(t => t.time === "내일") : tasks.filter(t => false);
+    const dateStr = d.toISOString().slice(0, 10);
+    let count;
+    if (i === 0) count = today.filter(t => !t.done).length;
+    else if (i === 1) count = tasks.filter(t => !t.done && t.time === "내일").length;
+    else count = tasks.filter(t => !t.done && t.dueDate === dateStr).length;
     weekData.push({
       offset: i,
       label: ["일","월","화","수","목","금","토"][d.getDay()],
       num: d.getDate(),
-      count: Math.max(0, Math.round(Math.random() * 4 + (i === 0 ? today.length : 0))),
+      count,
       isToday: i === 0,
     });
   }
-  // Make today's count accurate
-  weekData[3].count = today.length;
 
   return (
     <div className="page-wide">
@@ -137,7 +139,15 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
             <strong style={{ color: "var(--text-hi)" }}>e-Class에서 오늘 마감 {eclassToday.length}개</strong>
             <span style={{ color: "var(--text-lo)" }}> · {eclassToday[0].title}{eclassToday.length > 1 ? ` 외 ${eclassToday.length - 1}개` : ""}</span>
           </div>
-          <span className="notice-meta">12분 전 동기화</span>
+          <span className="notice-meta">{(() => {
+            const ts = window.Planary?.ECLASS_CONNECTION?.lastSyncedAt;
+            if (!ts) return "방금 동기화";
+            const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
+            if (diff < 1) return "방금 동기화";
+            if (diff < 60) return `${diff}분 전 동기화`;
+            const h = Math.floor(diff / 60);
+            return `${h}시간 전 동기화`;
+          })()}</span>
           <Icon name="arrowRight" size={14} style={{ color: "var(--text-lo)" }} />
         </div>
       )}
@@ -861,7 +871,7 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
           {focusTask ? "포커스 모드로 들어가면 다른 알림이 잠시 꺼집니다." : "오늘 마감 작업이 없어요. 충분히 쉬셔도 좋아요."}
         </div>
         <div className="hero-actions" style={{ marginTop: 22 }}>
-          <button className="btn btn-primary btn-lg">
+          <button className="btn btn-primary btn-lg" onClick={() => { setTaskFilter("today"); setPage("tasks"); }}>
             <Icon name="target" size={16} />포커스 모드 시작
           </button>
           <button className="btn btn-ghost btn-lg" onClick={() => setPage("tasks")}>
@@ -885,14 +895,12 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
           </div>
           <div className="widget-body" style={{ padding: "12px 16px 18px", position: "relative" }}>
             <div className="timeline">
-              {[
-                { time: "09:00", title: "스탠드업", meta: "팀 미팅 · 15분" },
-                { time: "10:30", title: today[0]?.title || "딥워크", meta: "포커스 · 90분", isHighlight: true },
-                { time: "13:00", title: today[1]?.title || "런치 & 산책", meta: "휴식" },
-                { time: "14:30", title: today[2]?.title || "디자인 리뷰", meta: "프로젝트 · 60분" },
-                { time: "16:00", title: today[3]?.title || "월간 리포트", meta: "혼자 작업" },
-                { time: "18:00", title: "운동 30분", meta: "루틴" },
-              ].map((row, i) => (
+              {today.length > 0 ? today.slice(0, 6).map((t, i) => ({
+                time: t.dueDate ? new Date(t.dueDate + "T09:00").toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : `${String(9 + i * 2).padStart(2,"0")}:00`,
+                title: t.title,
+                meta: t.project ? `${t.project} · ${t.priority === "high" ? "중요" : "일반"}` : (t.priority === "high" ? "중요 작업" : "일반 작업"),
+                isHighlight: t.priority === "high",
+              })).map((row, i) => (
                 <div key={i} className="tl-row">
                   <div className="tl-time">{row.time}</div>
                   <div className="tl-card">
@@ -906,7 +914,11 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="empty" style={{ padding: "24px 8px", fontSize: 12, textAlign: "center" }}>
+                  오늘 예정된 작업이 없어요
+                </div>
+              )}
             </div>
           </div>
         </div>}
@@ -981,6 +993,45 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
 
 
 /* ===========================================================
+   BULK ACTION DIALOG
+   =========================================================== */
+
+function BulkActionDialog({ action, onClose, onConfirm }) {
+  const { kind, items, label } = action;
+  const [target, setTarget] = useStateHT(kind === "postpone" ? "내일" : "오늘");
+  const opts = kind === "postpone"
+    ? ["내일", "이번 주", "다음 주", "보관"]
+    : ["오늘", "내일", "이번 주"];
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} onClick={onClose} />
+      <div className="card" style={{ position: "relative", zIndex: 1, width: 340, padding: 28 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
+          {kind === "postpone" ? "모두 미루기" : "재예약"}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text-lo)", marginBottom: 20 }}>
+          {label} 그룹 작업 {items.length}개를 언제로 옮길까요?
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+          {opts.map(o => (
+            <button key={o}
+              className={`tool-popover-item ${target === o ? "is-active" : ""}`}
+              onClick={() => setTarget(o)}
+              style={{ textAlign: "left" }}>
+              {o}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>취소</button>
+          <button className="btn btn-primary btn-sm" onClick={() => onConfirm(target)}>확인</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
    TASKS PAGE
    =========================================================== */
 
@@ -990,6 +1041,9 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
   const [composerOpen, setComposerOpen] = useStateHT(false);
   const [composerText, setComposerText] = useStateHT("");
   const [bulkAction, setBulkAction] = useStateHT(null); // { kind: "postpone"|"reschedule", items, label }
+  const [groupBy, setGroupBy] = useStateHT("time"); // "time" | "priority" | "project"
+  const [filterOpen, setFilterOpen] = useStateHT(false);
+  const [groupOpen, setGroupOpen] = useStateHT(false);
 
   // Composer tools state
   const [openPop, setOpenPop] = useStateHT(null); // "date" | "reminder" | "priority" | "project" | null
@@ -1181,9 +1235,49 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
           </div>
           <div className="page-sub">{filtered.length}개 표시 · {tasks.length}개 전체</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost"><Icon name="filter" size={14} />필터</button>
-          <button className="btn btn-ghost"><Icon name="grid" size={14} />그룹</button>
+        <div style={{ display: "flex", gap: 8, position: "relative" }}>
+          <button className="btn btn-ghost" onClick={() => { setFilterOpen(o => !o); setGroupOpen(false); }}>
+            <Icon name="filter" size={14} />필터
+          </button>
+          {filterOpen && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setFilterOpen(false)} />
+              <div className="tool-popover" style={{ position: "absolute", top: "calc(100% + 6px)", right: 80, minWidth: 160, zIndex: 50 }}>
+                {[
+                  { id: "all", label: "전체" },
+                  { id: "today", label: "오늘" },
+                  { id: "important", label: "중요" },
+                  { id: "reminders", label: "리마인더" },
+                  { id: "completed", label: "완료됨" },
+                ].map(f => (
+                  <button key={f.id} className={`tool-popover-item ${taskFilter === f.id ? "is-active" : ""}`}
+                    onClick={() => { setTaskFilter(f.id); setFilterOpen(false); }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <button className="btn btn-ghost" onClick={() => { setGroupOpen(o => !o); setFilterOpen(false); }}>
+            <Icon name="grid" size={14} />그룹
+          </button>
+          {groupOpen && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setGroupOpen(false)} />
+              <div className="tool-popover" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 160, zIndex: 50 }}>
+                {[
+                  { id: "time", label: "시간순" },
+                  { id: "priority", label: "우선순위" },
+                  { id: "project", label: "프로젝트" },
+                ].map(g => (
+                  <button key={g.id} className={`tool-popover-item ${groupBy === g.id ? "is-active" : ""}`}
+                    onClick={() => { setGroupBy(g.id); setGroupOpen(false); }}>
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <button className="btn btn-primary" onClick={() => setComposerOpen(true)}><Icon name="plus" size={14} />새 작업</button>
         </div>
       </div>
@@ -1206,7 +1300,14 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
             </button>
           ))}
         </div>
-        <button className="tag-filter-action">
+        <button className="tag-filter-action" onClick={() => {
+          const order = { high: 0, med: 1, low: 2 };
+          setTasks(prev => [...prev].sort((a, b) => {
+            if (a.done !== b.done) return a.done ? 1 : -1;
+            return (order[a.priority] ?? 1) - (order[b.priority] ?? 1);
+          }));
+          window.Planary.toast?.({ type: "ok", title: "AI가 작업을 중요도 순으로 정리했어요" });
+        }}>
           <Icon name="sparkles" size={12} />AI 정리
         </button>
       </div>
@@ -1442,14 +1543,25 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
           ))}
         </div>
       ) : (
-        // Balanced: grouped by time bucket with sticky group headers
+        // Balanced: grouped
         <div>
-          {[
+          {(groupBy === "priority" ? [
+            { id: "high",  label: "높음",  items: filtered.filter(t => !t.done && t.priority === "high") },
+            { id: "med",   label: "보통",  items: filtered.filter(t => !t.done && (t.priority === "med" || !t.priority)) },
+            { id: "low",   label: "낮음",  items: filtered.filter(t => !t.done && t.priority === "low") },
+            { id: "done",  label: "완료",  items: filtered.filter(t => t.done) },
+          ] : groupBy === "project" ? [
+            ...([...new Set(filtered.filter(t => !t.done && t.project).map(t => t.project))]).map(proj => ({
+              id: proj, label: proj, items: filtered.filter(t => !t.done && t.project === proj),
+            })),
+            { id: "none", label: "프로젝트 없음", items: filtered.filter(t => !t.done && !t.project) },
+            { id: "done", label: "완료", items: filtered.filter(t => t.done) },
+          ] : [
             { id: "overdue", label: "지연", items: filtered.filter(t => !t.done && t.time === "어제"), action: "재예약", actionKind: "reschedule" },
             { id: "today",   label: "오늘", items: filtered.filter(t => t.time && t.time.startsWith("오늘") && !t.done), action: "모두 미루기", actionKind: "postpone" },
             { id: "week",    label: "이번 주", items: filtered.filter(t => !t.done && t.time && !t.time.startsWith("오늘") && t.time !== "어제") },
             { id: "done",    label: "완료", items: filtered.filter(t => t.done) },
-          ].map(group => group.items.length > 0 && (
+          ]).map(group => group.items.length > 0 && (
             <div key={group.id} style={{ marginBottom: 4 }}>
               <div className="group-head">
                 <span className="group-label">{group.label}</span>

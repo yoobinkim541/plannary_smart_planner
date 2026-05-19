@@ -1,5 +1,6 @@
 const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('./_admin');
 const { syncAll, syncConnection } = require('./sync-core');
+const { sendPushToUser } = require('../notifications/_send-fcm');
 
 module.exports = async function handler(req, res) {
   if (!allowMethods(req, res, ['GET', 'POST'])) return;
@@ -32,6 +33,18 @@ module.exports = async function handler(req, res) {
         lastProjectCount: result.projectCount,
         lastSyncedAt: admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
+
+      // Notify user about newly added tasks (fire-and-forget)
+      if (result.newTodoCount > 0) {
+        sendPushToUser(user.uid, {
+          title: 'e-Class 동기화 완료',
+          body: `새로운 항목 ${result.newTodoCount}개가 추가됐어요`,
+          tag: 'eclass-sync',
+          url: '/redesign/',
+          data: { type: 'eclass-sync', newCount: String(result.newTodoCount) },
+        }).catch(err => console.warn('[eclass/sync] push failed:', err.message));
+      }
+
       return sendJson(res, 200, { ok: true, status: 'ok', ...result });
     } catch (syncError) {
       await ref.set({

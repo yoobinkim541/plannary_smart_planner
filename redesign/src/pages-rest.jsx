@@ -55,25 +55,31 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
 
   const triggerSync = () => {
     setSyncing(true);
-    setTimeout(() => {
+    let resolved = false;
+    const handler = (e) => {
+      if (resolved) return;
+      resolved = true;
       setSyncing(false);
-      // Random success/failure for prototype demo (90% success)
-      const success = Math.random() > 0.1;
-      if (success) {
+      window.removeEventListener("planary:eclass-sync-done", handler);
+      if (e.detail?.error) {
+        window.Planary.toast({ type: "err", title: "동기화 실패", sub: e.detail.error, ttl: 4200 });
+      } else {
         window.Planary.toast({
           type: "ok",
           title: "동기화 완료",
-          sub: `${ECLASS_COURSES.length}개 강의에서 ${projTasks.length}개 항목 확인`
-        });
-      } else {
-        window.Planary.toast({
-          type: "err",
-          title: "동기화 실패",
-          sub: "e-Class 응답이 늦어요. 잠시 후 다시 시도해주세요.",
-          ttl: 4200
+          sub: `${ECLASS_COURSES.length}개 강의에서 항목 확인`,
         });
       }
-    }, 1400);
+    };
+    window.addEventListener("planary:eclass-sync-done", handler);
+    window.dispatchEvent(new CustomEvent("planary:eclass-sync"));
+    setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      setSyncing(false);
+      window.removeEventListener("planary:eclass-sync-done", handler);
+      window.Planary.toast({ type: "err", title: "동기화 시간 초과", sub: "e-Class 응답이 늦어요. 잠시 후 다시 시도해주세요.", ttl: 4200 });
+    }, 15000);
   };
 
   return (
@@ -633,13 +639,13 @@ function NotesPage() {
   };
 
   const duplicateNote = (n) => {
-    const id = "n" + Date.now();
+    const id = window.Planary?.generateId?.() || "n" + Date.now();
     setNotes((prev) => [
       { ...n, id, x: n.x + 24, y: n.y + 24, rot: (Math.random() - 0.5) * 4, date: "방금 복제" },
       ...prev,
     ]);
     window.dispatchEvent(new CustomEvent("planary:create-note", {
-      detail: { text: n.text, color: n.color, x: n.x + 24, y: n.y + 24 },
+      detail: { id, text: n.text, color: n.color, x: n.x + 24, y: n.y + 24 },
     }));
   };
 
@@ -720,7 +726,7 @@ function NotesPage() {
 
   const addNote = () => {
     if (!draft.trim()) return;
-    const id = "n" + Date.now();
+    const id = window.Planary?.generateId?.() || "n" + Date.now();
     const x = 60 + Math.random() * 200;
     const y = 60 + Math.random() * 100;
     const text = draft.trim();
@@ -729,7 +735,7 @@ function NotesPage() {
     ...prev]
     );
     window.dispatchEvent(new CustomEvent("planary:create-note", {
-      detail: { text, color: draftColor, x, y },
+      detail: { id, text, color: draftColor, x, y },
     }));
     setDraft("");
   };
@@ -1097,6 +1103,11 @@ function WikiPage() {
   const [infoOpen, setInfoOpen] = useStateO(false);
   const [favorites, setFavorites] = useStateO(() => new Set());
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
+  const [tagInputOpen, setTagInputOpen] = useStateO(false);
+  const [tagDraft, setTagDraft] = useStateO("");
+  const [titleDraft, setTitleDraft] = useStateO("");
+  const tagInputRef = useRefO(null);
+  const titleInputRef = useRefO(null);
   const active = tree.find((w) => w.id === activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
   const setActiveIcon = (v) => {
@@ -1127,8 +1138,23 @@ function WikiPage() {
       tags: [...inferred].filter(Boolean).slice(0, 4),
     };
   }, [activeId, tree, docBlocks]);
-  const addPageTag = () => {
-    const value = window.prompt("태그를 입력하세요", "");
+  useEffectO(() => {
+    setTitleDraft(active.title || "");
+    setTagInputOpen(false);
+    setTagDraft("");
+  }, [activeId, active.title]);
+  useEffectO(() => {
+    if (tagInputOpen) tagInputRef.current?.focus();
+  }, [tagInputOpen]);
+  const commitTitle = () => {
+    const title = titleDraft.trim() || "제목 없음";
+    if (title === active.title) return;
+    setTree((prev) => prev.map((w) => w.id === activeId ? { ...w, title } : w));
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { title } },
+    }));
+  };
+  const addPageTag = (value = tagDraft) => {
     const tag = value && value.trim().replace(/^#/, "");
     if (!tag) return;
     const nextTags = [...new Set([...(Array.isArray(active.tags) ? active.tags : []), tag])];
@@ -1136,6 +1162,8 @@ function WikiPage() {
     window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
       detail: { id: activeId, patch: { tags: nextTags } },
     }));
+    setTagDraft("");
+    setTagInputOpen(false);
   };
 
   const COVER_GALLERY = [
@@ -1934,26 +1962,36 @@ function WikiPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <span className="chip chip-accent"><Icon name="book" size={10} />{currentPageMeta.section}</span>
             {currentPageMeta.tags.map((tag) => <span key={tag} className="tag">#{tag}</span>)}
-            <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={addPageTag}><Icon name="plus" size={10} />태그</button>
+            {tagInputOpen ? (
+              <span className="wiki-tag-input-chip">
+                <Icon name="hash" size={10} />
+                <input
+                  ref={tagInputRef}
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addPageTag();
+                    if (e.key === "Escape") { setTagDraft(""); setTagInputOpen(false); }
+                  }}
+                  onBlur={() => { if (tagDraft.trim()) addPageTag(); else setTagInputOpen(false); }}
+                  placeholder="태그"
+                />
+              </span>
+            ) : (
+              <button className="chip wiki-tag-add-btn" onClick={() => setTagInputOpen(true)}><Icon name="plus" size={10} />태그</button>
+            )}
           </div>
-          <h1
-            className="wiki-doc-title"
-            contentEditable
-            suppressContentEditableWarning
-            key={activeId}
-            onBlur={(e) => {
-              const v = e.currentTarget.textContent.trim();
-              if (!v || v === active.title) return;
-              setTree(prev => prev.map(w => w.id === activeId ? { ...w, title: v } : w));
-              window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
-                detail: { id: activeId, patch: { title: v } },
-              }));
-            }}
+          <input
+            ref={titleInputRef}
+            className="wiki-doc-title wiki-doc-title-input"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
             onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-              if (e.key === "Escape") { e.currentTarget.textContent = active.title; e.currentTarget.blur(); }
+              if (e.key === "Enter") { e.preventDefault(); commitTitle(); titleInputRef.current?.blur(); }
+              if (e.key === "Escape") { setTitleDraft(active.title || ""); titleInputRef.current?.blur(); }
             }}
-            dangerouslySetInnerHTML={{ __html: active.title }}
+            placeholder="제목 없음"
           />
 
           <WikiBlocks activeId={activeId} onBlocksChange={setDocBlocks} />
@@ -2140,7 +2178,7 @@ function BookmarksPage() {
         <button className="btn btn-primary" onClick={submitBookmark}><Icon name="plus" size={14} />새 북마크</button>
       </div>
 
-      <div className="composer">
+      <div className="composer bookmark-composer">
         <div className="composer-row">
           <Icon name="link" size={16} style={{ color: "var(--accent)" }} />
           <input
@@ -2152,7 +2190,7 @@ function BookmarksPage() {
           />
           <button className="btn btn-sm btn-primary" onClick={submitBookmark}>저장</button>
         </div>
-        <div className="composer-tools">
+        <div className="composer-tools bookmark-tag-composer">
           <Icon name="hash" size={13} style={{ color: "var(--text-lo)" }} />
           <input
             className="composer-input"
@@ -2160,7 +2198,6 @@ function BookmarksPage() {
             value={tagDraft}
             onChange={(e) => setTagDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") submitBookmark(); }}
-            style={{ fontSize: 13 }}
           />
         </div>
       </div>
@@ -2578,6 +2615,8 @@ function ProfilePage({ tasks, t, setTweak }) {
   const [editOpen, setEditOpen] = useStateO(false);
   const [signOutOpen, setSignOutOpen] = useStateO(false);
   const [switchOpen, setSwitchOpen] = useStateO(false);
+  const [sessionsOpen, setSessionsOpen] = useStateO(false);
+  const [tfaOpen, setTfaOpen] = useStateO(false);
   const [openMenu, setOpenMenu] = useStateO(null); // "font" | "sidebar" | "density" | "lang" | null
   const [lang, setLangState] = useStateO(() => window.PlanaryI18n?.getLang?.() || "ko");
   const [notifs, setNotifs] = useStateO({ email: true, push: true, gcal: true, apple: false, slack: false });
@@ -2786,7 +2825,7 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div style={{ padding: "4px 22px 22px" }}>
               {[
               { id: "email", label: "이메일 알림", sub: notifs.email ? "주간 요약 발송" : "발송 안 함" },
-              { id: "push", label: "데스크톱 푸시", sub: notifs.push ? "리마인더만" : "꺼짐" },
+              { id: "push", label: "백그라운드 푸시 알림", sub: (() => { const p = window.Planary?.getPushPermission?.(); if (!notifs.push) return "꺼짐"; if (p === "granted") return "켜짐 · 리마인더 및 e-Class 새 항목"; if (p === "denied") return "브라우저에서 알림이 차단됨"; return "켜짐 (권한 대기 중)"; })() },
               { id: "gcal", label: "Google Calendar", sub: notifs.gcal ? "연결됨 · 양방향 동기화" : "연결 안 됨" },
               { id: "apple", label: "Apple Calendar", sub: notifs.apple ? "연결됨" : "연결 안 됨" },
               { id: "slack", label: "Slack 통합", sub: notifs.slack ? "연결됨" : "연결 안 됨" }].
@@ -2818,14 +2857,17 @@ function ProfilePage({ tasks, t, setTweak }) {
                   <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>2단계 인증</div>
                   <div style={{ fontSize: 11, color: "var(--text-lo)" }}>로그인 시 추가 인증을 요청합니다</div>
                 </div>
-                <span className="chip">설정 안 됨</span>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span className="chip">설정 안 됨</span>
+                  <button className="btn btn-sm" onClick={() => setTfaOpen(true)}>설정하기</button>
+                </div>
               </div>
               <div className="field-row" style={{ borderBottom: 0 }}>
                 <div>
                   <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>활성 세션</div>
-                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>현재 이 기기 포함 2개 기기에서 로그인됨</div>
+                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>현재 이 기기 포함 1개 이상 기기에서 로그인됨</div>
                 </div>
-                <button className="btn btn-sm">전체 보기</button>
+                <button className="btn btn-sm" onClick={() => setSessionsOpen(true)}>전체 보기</button>
               </div>
             </div>
           </div>
@@ -2850,6 +2892,8 @@ function ProfilePage({ tasks, t, setTweak }) {
       {editOpen && <ProfileEditDialog user={user} onClose={() => setEditOpen(false)} onSave={saveProfile} />}
       {signOutOpen && <SignOutDialog onClose={() => setSignOutOpen(false)} user={user} />}
       {switchOpen && <window.Planary.AccountSwitcherDialog onClose={() => setSwitchOpen(false)} />}
+      {sessionsOpen && <SessionsDialog onClose={() => setSessionsOpen(false)} />}
+      {tfaOpen && <TwoFactorSetupDialog onClose={() => setTfaOpen(false)} userEmail={user.email} />}
     </div>);
 
 }
@@ -3042,7 +3086,12 @@ function PasswordCard() {
             type="button"
             className="btn btn-sm"
             style={{ color: "var(--text-lo)" }}
-            onClick={() => window.Planary.toast?.({ type: "info", title: "비밀번호 재설정 메일을 발송했어요", sub: "받은편지함을 확인하세요" })}
+            onClick={() => {
+              const email = window.Planary.USER?.email;
+              if (!email) { window.Planary.toast?.({ type: "err", title: "이메일 정보가 없어요" }); return; }
+              window.dispatchEvent(new CustomEvent("planary:reset-password-email", { detail: { email } }));
+              window.Planary.toast?.({ type: "ok", title: "재설정 메일을 발송했어요", sub: email });
+            }}
           >
             <Icon name="send" size={12} />이메일로 재설정
           </button>
@@ -3120,6 +3169,7 @@ function EclassConnectionCard() {
   const [connected, setConnected] = useStateO(isConnectionLive(initialConn));
   const [autoSync, setAutoSync] = useStateO(true);
   const [syncing, setSyncing] = useStateO(false);
+  const [showCourses, setShowCourses] = useStateO(false);
   const [urlInput, setUrlInput] = useStateO((initialConn && initialConn.baseUrl) || "https://eclass.seoultech.ac.kr");
   const [idInput, setIdInput] = useStateO("");
   const [pwInput, setPwInput] = useStateO("");
@@ -3237,8 +3287,24 @@ function EclassConnectionCard() {
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>동기화 대상</div>
               <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{courseTitles.length}개 강의 · 작업 {syncedTasks.length}개</div>
             </div>
-            <button className="btn btn-sm" onClick={() => {}}>강의 보기</button>
+            <button className="btn btn-sm" onClick={() => setShowCourses(s => !s)}>
+              강의 {showCourses ? "접기" : "보기"}
+            </button>
           </div>
+          {showCourses && (
+            <div style={{ background: "var(--surface-2)", borderRadius: "var(--r-md)", padding: "10px 14px", marginBottom: 8 }}>
+              {courseTitles.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", padding: "8px 0" }}>
+                  동기화된 강의가 없어요
+                </div>
+              ) : courseTitles.map((title, i) => (
+                <div key={title} style={{ fontSize: 12, color: "var(--text-hi)", padding: "6px 0", borderBottom: i < courseTitles.length - 1 ? "1px solid var(--border-soft)" : "none", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon name="book" size={11} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+                  {title}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="field-row">
             <div>
               <div className="field-label" style={{ fontWeight: 600, color: "var(--text-hi)" }}>자동 동기화</div>
@@ -4374,18 +4440,36 @@ function ListBlock({ block, onUpdate }) {
   const items = block.items || [""];
   const isOrdered = block.type === "ol";
   const Tag = isOrdered ? "ol" : "ul";
+  const focusItem = (index) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-list-block-id="${block.id}"][data-list-index="${index}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const updateItem = (i, val) => {
     const next = [...items];
     next[i] = val;
     onUpdate({ items: next });
   };
-  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), "", ...items.slice(afterIdx + 1)] });
+  const addItem = (afterIdx) => {
+    onUpdate({ items: [...items.slice(0, afterIdx + 1), "", ...items.slice(afterIdx + 1)] });
+    focusItem(afterIdx + 1);
+  };
   const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
   return (
     <Tag style={{ paddingLeft: 22, margin: "8px 0", color: "var(--text-md)", lineHeight: 1.6 }}>
       {items.map((item, i) => (
         <li key={i} style={{ margin: "3px 0" }}>
           <span
+            data-list-block-id={block.id}
+            data-list-index={i}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => updateItem(i, e.currentTarget.innerHTML)}
@@ -4403,9 +4487,25 @@ function ListBlock({ block, onUpdate }) {
 }
 
 function ChecklistBlock({ block, onUpdate }) {
-  const items = block.items || [{ text: "", done: false }];
+  const items = (block.items || [{ text: "", checked: false }]).map((it) => ({ ...it, checked: !!(it.checked ?? it.done) }));
+  const focusItem = (index) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-checklist-block-id="${block.id}"][data-checklist-index="${index}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const update = (i, patch) => onUpdate({ items: items.map((x, idx) => idx === i ? { ...x, ...patch } : x) });
-  const addItem = (afterIdx) => onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", done: false }, ...items.slice(afterIdx + 1)] });
+  const addItem = (afterIdx) => {
+    onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", checked: false }, ...items.slice(afterIdx + 1)] });
+    focusItem(afterIdx + 1);
+  };
   const removeItem = (i) => onUpdate({ items: items.length > 1 ? items.filter((_, idx) => idx !== i) : items });
   return (
     <div style={{ margin: "8px 0", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -4413,13 +4513,15 @@ function ChecklistBlock({ block, onUpdate }) {
         <div key={i} style={{ display: "flex", alignItems: "start", gap: 8, padding: "4px 0" }}>
           <button
             type="button"
-            className={`checkbox ${it.done ? "is-checked" : ""}`}
+            className={`checkbox ${it.checked ? "is-checked" : ""}`}
             style={{ marginTop: 3, flexShrink: 0 }}
-            onClick={() => update(i, { done: !it.done })}
+            onClick={() => update(i, { checked: !it.checked })}
           >
-            {it.done && <Icon name="check" size={11} stroke={3} />}
+            {it.checked && <Icon name="check" size={11} stroke={3} />}
           </button>
           <span
+            data-checklist-block-id={block.id}
+            data-checklist-index={i}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => update(i, { text: e.currentTarget.innerHTML })}
@@ -4429,8 +4531,8 @@ function ChecklistBlock({ block, onUpdate }) {
             }}
             style={{
               outline: "none", flex: 1, minHeight: 22,
-              color: it.done ? "var(--text-lo)" : "var(--text-md)",
-              textDecoration: it.done ? "line-through" : "none",
+              color: it.checked ? "var(--text-lo)" : "var(--text-md)",
+              textDecoration: it.checked ? "line-through" : "none",
               textDecorationColor: "var(--text-faint)",
             }}
             dangerouslySetInnerHTML={{ __html: it.text || "" }}
@@ -4527,14 +4629,35 @@ function MathBlock({ block, onUpdate }) {
 }
 
 function TableBlock({ block, onUpdate }) {
-  const rows = block.rows || [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]];
+  const rows = Array.isArray(block.rows) && block.rows.length
+    ? block.rows.map((row) => Array.isArray(row) && row.length ? row : [""])
+    : [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]];
+  const focusCell = (r, c) => {
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-table-block-id="${block.id}"][data-row="${r}"][data-col="${c}"]`);
+      if (!el) return;
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
+  };
   const updateCell = (r, c, val) => {
     const next = rows.map(row => [...row]);
     next[r][c] = val;
     onUpdate({ rows: next });
   };
-  const addRow = () => onUpdate({ rows: [...rows, Array(rows[0].length).fill("")] });
-  const addCol = () => onUpdate({ rows: rows.map(r => [...r, ""]) });
+  const addRow = (focusCol = 0) => {
+    onUpdate({ rows: [...rows, Array(rows[0].length).fill("")] });
+    focusCell(rows.length, focusCol);
+  };
+  const addCol = () => {
+    onUpdate({ rows: rows.map(r => [...r, ""]) });
+    focusCell(0, rows[0].length);
+  };
   return (
     <div style={{ margin: "10px 0", overflow: "auto", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -4547,9 +4670,25 @@ function TableBlock({ block, onUpdate }) {
                 return (
                   <Tag
                     key={c}
+                    data-table-block-id={block.id}
+                    data-row={r}
+                    data-col={c}
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) => updateCell(r, c, e.currentTarget.textContent)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); addRow(c); }
+                      if (e.key === "Tab") {
+                        e.preventDefault();
+                        if (c === row.length - 1 && r === rows.length - 1) {
+                          addRow(c);
+                        } else {
+                          const nextRow = c === row.length - 1 ? r + 1 : r;
+                          const nextCol = c === row.length - 1 ? 0 : c + 1;
+                          focusCell(nextRow, nextCol);
+                        }
+                      }
+                    }}
                     style={{
                       padding: "8px 10px",
                       border: "1px solid var(--border-soft)",
@@ -4567,7 +4706,7 @@ function TableBlock({ block, onUpdate }) {
         </tbody>
       </table>
       <div style={{ display: "flex", gap: 6, padding: 6, borderTop: "1px solid var(--border-soft)", background: "var(--surface-2)" }}>
-        <button type="button" className="btn btn-sm" onClick={addRow}><Icon name="plus" size={11} />행 추가</button>
+        <button type="button" className="btn btn-sm" onClick={() => addRow()}><Icon name="plus" size={11} />행 추가</button>
         <button type="button" className="btn btn-sm" onClick={addCol}><Icon name="plus" size={11} />열 추가</button>
       </div>
     </div>
@@ -5181,6 +5320,138 @@ function PropPopover({ children, onClose }) {
 }
 
 /* ===========================================================
+   SESSIONS DIALOG
+   =========================================================== */
+function SessionsDialog({ onClose }) {
+  const ua = navigator.userAgent;
+  const browser = /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "브라우저";
+  const os = /Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "macOS" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : "기기";
+  const today = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(480px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>활성 세션</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>로그인된 기기 목록입니다</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: "16px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Icon name="globe" size={18} style={{ color: "var(--accent)" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{browser} · {os}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>{today} 로그인</div>
+              </div>
+            </div>
+            <span className="chip chip-ok" style={{ height: 20, fontSize: 10, padding: "0 7px" }}>현재 기기</span>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 14, padding: "10px 14px", background: "var(--surface-2)", borderRadius: "var(--r-md)" }}>
+            <Icon name="info" size={11} style={{ verticalAlign: -2, marginRight: 5 }} />
+            다른 기기의 세션을 강제로 종료하려면 비밀번호를 변경하세요.
+          </div>
+        </div>
+        <div className="dialog-foot">
+          <button
+            className="btn btn-sm btn-ghost"
+            style={{ color: "var(--err)" }}
+            onClick={() => { window.dispatchEvent(new CustomEvent("planary:sign-out")); onClose(); }}
+          >
+            <Icon name="logout" size={12} />이 기기에서 로그아웃
+          </button>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-sm btn-primary" onClick={onClose}>닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
+   2FA SETUP DIALOG
+   =========================================================== */
+function TwoFactorSetupDialog({ onClose, userEmail }) {
+  const [method, setMethod] = useStateO("email");
+  const [sent, setSent] = useStateO(false);
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const handleSetup = () => {
+    window.dispatchEvent(new CustomEvent("planary:setup-2fa", { detail: { method, email: userEmail } }));
+    setSent(true);
+    if (method === "email") {
+      window.Planary.toast?.({ type: "ok", title: "인증 코드를 이메일로 발송했어요", sub: userEmail });
+    } else {
+      window.Planary.toast?.({ type: "info", title: "준비 중인 기능이에요" });
+    }
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(460px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700 }}>2단계 인증 설정</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>로그인 시 추가 인증 방법을 선택하세요</p>
+          </div>
+          <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: "16px 22px" }}>
+          {[
+            { id: "email", icon: "send", label: "이메일 인증", desc: `${userEmail || "등록된 이메일"}로 코드 전송` },
+            { id: "totp",  icon: "clock", label: "인증 앱 (TOTP)", desc: "Google Authenticator 등 사용 (준비 중)" },
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => m.id !== "totp" && setMethod(m.id)}
+              style={{
+                width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 14,
+                padding: "12px 14px", borderRadius: "var(--r-md)", marginBottom: 8, cursor: m.id === "totp" ? "not-allowed" : "pointer",
+                background: method === m.id ? "var(--accent-soft)" : "var(--surface-2)",
+                border: `1.5px solid ${method === m.id ? "var(--accent)" : "transparent"}`,
+                opacity: m.id === "totp" ? 0.5 : 1,
+              }}
+            >
+              <Icon name={m.icon} size={18} style={{ color: method === m.id ? "var(--accent)" : "var(--text-lo)", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>{m.label}</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>{m.desc}</div>
+              </div>
+              {method === m.id && <Icon name="check" size={14} stroke={3} style={{ marginLeft: "auto", color: "var(--accent)" }} />}
+            </button>
+          ))}
+          {sent && (
+            <div style={{ fontSize: 12, color: "var(--ok)", display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+              <Icon name="check" size={12} stroke={3} />코드가 발송됐어요. 받은편지함을 확인하세요.
+            </div>
+          )}
+        </div>
+        <div className="dialog-foot">
+          <button className="btn btn-sm" onClick={onClose}>취소</button>
+          <button className="btn btn-sm btn-primary" onClick={handleSetup} disabled={sent}>
+            <Icon name="send" size={12} />{sent ? "발송됨" : "코드 발송"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================================================
    SIGN OUT / DELETE ACCOUNT DIALOG
    =========================================================== */
 function SignOutDialog({ onClose, user }) {
@@ -5431,9 +5702,9 @@ function ProfileEditDialog({ user, onClose, onSave }) {
                 placeholder="이름" />
               
             </FormField>
-            <FormField label="이메일" hint="변경하려면 인증이 필요합니다">
+            <FormField label="이메일" hint="이메일은 변경할 수 없습니다">
               <div style={{ position: "relative" }}>
-                <input value={draft.email} onChange={(e) => update("email", e.target.value)} className="form-input" placeholder="email@example.com" />
+                <input value={draft.email} readOnly className="form-input" style={{ cursor: "default", color: "var(--text-lo)" }} placeholder="email@example.com" />
                 <span className="chip chip-ok" style={{ position: "absolute", right: 6, top: 6, height: 22, fontSize: 10 }}>
                   <Icon name="check" size={9} stroke={3} />인증됨
                 </span>
@@ -5666,10 +5937,17 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   const updateBlock = (id, patch) =>
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
 
+  const defaultsForType = (type, content = "") => {
+    if (type === "ul" || type === "ol") return { type, items: [content] };
+    if (type === "todo") return { type, items: [{ text: content, checked: false }] };
+    if (type === "table") return { type, rows: [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]] };
+    if (type === "callout") return { type, variant: "ok", title: "포인트", body: content };
+    return { type, content };
+  };
+
   const addBlockAfter = (afterId, type = "p", { focus = true } = {}) => {
     const newId = `b${Date.now()}${Math.random().toString(36).slice(2, 5)}`;
-    const newBlock = { id: newId, type, content: "" };
-    if (type === "callout") { newBlock.variant = "ok"; newBlock.title = "포인트"; newBlock.body = ""; }
+    const newBlock = { id: newId, ...defaultsForType(type, "") };
     setBlocks(prev => {
       const idx = prev.findIndex(b => b.id === afterId);
       if (idx < 0) return [...prev, newBlock];
@@ -5780,10 +6058,9 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           slashMenu={slashMenu}
           onClose={() => setSlashMenu(null)}
           onPick={(type) => {
-            // Preserve existing content (strip any trailing "/" that opened the menu)
             const cur = liveBlocksRef.current.find(b => b.id === slashMenu.blockId);
-            const content = cur ? cur.content.replace(/\/\s*$/, "").trimEnd() : "";
-            updateBlock(slashMenu.blockId, { type, content });
+            const content = cur ? (cur.content || "").replace(/\/\s*$/, "").trimEnd() : "";
+            updateBlock(slashMenu.blockId, defaultsForType(type, content));
             setFocusBlockId(slashMenu.blockId);
             setSlashMenu(null);
           }}
@@ -5798,6 +6075,13 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   const bodyRef = useRefO(null);
 
   const commitContent = (key, val) => onUpdate({ [key]: val });
+  const defaultsForType = (type, content = "") => {
+    if (type === "ul" || type === "ol") return { type, items: [content] };
+    if (type === "todo") return { type, items: [{ text: content, checked: false }] };
+    if (type === "table") return { type, rows: [["헤더 1", "헤더 2", "헤더 3"], ["", "", ""]] };
+    if (type === "callout") return { type, variant: "ok", title: "포인트", body: content };
+    return { type, content };
+  };
   const handleInput = (e) => onLiveEdit && onLiveEdit("content", e.currentTarget.innerHTML);
 
   useEffectO(() => {
@@ -5844,7 +6128,18 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
     e.preventDefault();
     // Clear the visible prefix immediately so the caret resets.
     e.currentTarget.innerHTML = "";
-    onUpdate({ type: nextType, content: "" });
+    onUpdate(defaultsForType(nextType, ""));
+    window.setTimeout(() => {
+      const nextEditable = document.querySelector(`.wiki-block-row[data-block-id="${block.id}"] [contenteditable]`);
+      if (!nextEditable) return;
+      nextEditable.focus();
+      const range = document.createRange();
+      range.selectNodeContents(nextEditable);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }, 0);
     return true;
   };
 
@@ -5977,7 +6272,7 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
               <button
                 key={o.type}
                 className={`popover-item ${block.type === o.type ? "is-active" : ""}`}
-                onClick={() => { onUpdate({ type: o.type, content: block.content || "" }); onMenuClose(); }}
+                onClick={() => { onUpdate(defaultsForType(o.type, block.content || "")); onMenuClose(); }}
                 style={block.type === o.type ? { color: "var(--accent)", background: "var(--accent-softer)" } : undefined}
               >
                 <Icon name={o.icon} size={13} />{o.label}
