@@ -1095,6 +1095,8 @@ function WikiPage() {
   const [coverPosY, setCoverPosY] = useStateO(50);
   const [coverHeight, setCoverHeight] = useStateO(180); // 120-360
   const [coverZoom, setCoverZoom] = useStateO(100); // 100-220
+  const coverSaveTimerRef = useRefO(null);
+  const coverLoadingRef = useRefO(false); // true while syncing from Firestore
   const fileInputRef = useRefO(null);
   const docScrollRef = useRefO(null);
   const [favorite, setFavorite] = useStateO(false);
@@ -1143,6 +1145,36 @@ function WikiPage() {
     setTagInputOpen(false);
     setTagDraft("");
   }, [activeId, active.title]);
+
+  // Sync cover state from Firestore data when active page changes
+  useEffectO(() => {
+    coverLoadingRef.current = true;
+    setCoverImage(active.cover || null);
+    setCoverPosX(active.coverPosX ?? 50);
+    setCoverPosY(active.coverPosY ?? 50);
+    setCoverHeight(active.coverHeight ?? 180);
+    setCoverZoom(active.coverZoom ?? 100);
+    // Allow one animation frame before enabling slider save-effects
+    requestAnimationFrame(() => { coverLoadingRef.current = false; });
+  }, [activeId]);
+
+  // Save cover position/size slider changes (debounced)
+  useEffectO(() => {
+    if (coverLoadingRef.current || !activeId) return;
+    clearTimeout(coverSaveTimerRef.current);
+    coverSaveTimerRef.current = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+        detail: { id: activeId, patch: {
+          coverPositionX: coverPosX,
+          coverPosition: coverPosY,
+          coverHeight,
+          coverZoom,
+        }},
+      }));
+    }, 400);
+    return () => clearTimeout(coverSaveTimerRef.current);
+  }, [coverPosX, coverPosY, coverHeight, coverZoom]);
+
   useEffectO(() => {
     if (tagInputOpen) tagInputRef.current?.focus();
   }, [tagInputOpen]);
@@ -1175,9 +1207,9 @@ function WikiPage() {
   { id: "g6", label: "Sky", style: { background: "linear-gradient(135deg, #60a5fa, #34d399)" } }];
 
 
-  const persistCoverMeta = (patch) => {
+  const saveCoverUrl = (url) => {
     window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
-      detail: { id: activeId, patch },
+      detail: { id: activeId, patch: { coverUrl: url } },
     }));
   };
 
@@ -1186,10 +1218,10 @@ function WikiPage() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const img = `url("${reader.result}")`;
-      setCoverImage(img);
+      const cssUrl = `url("${reader.result}")`;
+      setCoverImage(cssUrl);
       setCoverMenuOpen(false);
-      persistCoverMeta({ coverImage: img });
+      saveCoverUrl(cssUrl);
     };
     reader.readAsDataURL(file);
   };
@@ -1197,22 +1229,22 @@ function WikiPage() {
   const handleAddByUrl = () => {
     const url = window.prompt("이미지 URL을 입력하세요", "");
     if (!url) return;
-    const img = `url("${url.replace(/"/g, '\\"')}")`;
-    setCoverImage(img);
+    const cssUrl = `url("${url.replace(/"/g, '\\"')}")`;
+    setCoverImage(cssUrl);
     setCoverMenuOpen(false);
-    persistCoverMeta({ coverImage: img });
+    saveCoverUrl(cssUrl);
   };
 
   const handlePickGallery = (g) => {
     setCoverImage(g.style.background);
     setCoverMenuOpen(false);
-    persistCoverMeta({ coverImage: g.style.background });
+    saveCoverUrl(g.style.background);
   };
 
   const handleRemoveCover = () => {
     setCoverImage(null);
     setCoverPanelOpen(false);
-    persistCoverMeta({ coverImage: null });
+    saveCoverUrl(null);
   };
 
   // Build tree: roots and children
@@ -5813,6 +5845,18 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     lastSavedRef.current = JSON.stringify(initial);
     liveBlocksRef.current = initial;
     undoStackRef.current = [initial];
+    return () => {
+      // Force-save any pending unsaved typing before switching to another page
+      clearTimeout(liveSaveTimerRef.current);
+      const data = liveBlocksRef.current;
+      const serialized = JSON.stringify(data);
+      if (activeId && serialized !== lastSavedRef.current) {
+        lastSavedRef.current = serialized;
+        window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
+          detail: { id: activeId, blocks: data },
+        }));
+      }
+    };
   }, [activeId]);
 
   // Refresh blocks when the bridge emits fresh wiki data for the current page
