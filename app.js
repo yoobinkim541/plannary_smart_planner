@@ -3253,6 +3253,10 @@ function openEditModal(type, id) {
     if (next && next.trim()) db.collection(type === 'todo' ? 'todos' : 'notes').doc(id).update({ text: next.trim() }).then(() => showToast(t('updated')));
 }
 
+function finishAppBoot() {
+    document.body.classList.remove('app-booting');
+}
+
 // --- INITIALIZATION ---
 try {
     if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
@@ -3270,6 +3274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isAuthPage = path.includes('login') || path.includes('signup') || path.includes('landing');
             if (!user) {
                 if (!isAuthPage) window.location.href = 'landing.html';
+                else finishAppBoot();
             } else {
                 currentUser = user;
                 updateProfileUI(user);
@@ -3279,9 +3284,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     startEclassForegroundSync();
                     showOnboardingIfNeeded(user);
                     registerFcmToken();
+                    finishAppBoot();
                 }
             }
         });
+    } else {
+        finishAppBoot();
     }
 
     // Theme & Navigation Init

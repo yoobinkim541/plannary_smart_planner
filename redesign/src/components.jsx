@@ -58,7 +58,8 @@ function Rail({ page, setPage, onToggleSidebar }) {
 
 /* ---------- Sidebar (left, ~248px) ---------- */
 function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
-  const { PROJECTS, USER, WIKI_TREE } = window.Planary;
+  const { PROJECTS, WIKI_TREE } = window.Planary;
+  const [USER, setUSER] = useState(() => window.Planary.USER);
   const [projOpen, setProjOpen] = useState(true);
   const [favOpen, setFavOpen] = useState(true);
   const [recentOpen, setRecentOpen] = useState(true);
@@ -75,6 +76,11 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
   useEffect(() => {
     try { localStorage.setItem("planary.sidebar.favorites", JSON.stringify(favorites)); } catch (_) {}
   }, [favorites]);
+  useEffect(() => {
+    const syncUser = (event) => setUSER(event.detail || window.Planary.USER);
+    window.addEventListener("planary:auth-changed", syncUser);
+    return () => window.removeEventListener("planary:auth-changed", syncUser);
+  }, []);
 
   const counts = useMemo(() => ({
     all: tasks.filter(t => !t.done).length,
@@ -139,7 +145,7 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
     <aside className="sidebar">
       <div className="sidebar-head">
         <div className="sidebar-context" onClick={() => setUserMenuOpen(!userMenuOpen)} style={{ position: "relative" }}>
-          <div className="sidebar-context-icon">P</div>
+          <UserAvatar user={USER} size={36} className="sidebar-context-icon" />
           <div className="sidebar-context-meta">
             <div className="sidebar-context-title">Planary</div>
             <div className="sidebar-context-sub">{USER.name}님의 작업 공간</div>
