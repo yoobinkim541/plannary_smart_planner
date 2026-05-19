@@ -22,12 +22,24 @@ function defaultRemindersFor(type) {
   return [60];
 }
 
+function normalizeDueDate(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return value.trim() || null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  if (typeof value.toDate === 'function') {
+    const d = value.toDate();
+    return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, reminders, priority, memo, sourceUrl, courseTitle, ddayText, uid, ts, projectId }) {
+  const normalizedDueDate = normalizeDueDate(dueDate);
   return {
     uid, text,
     memo: memo || null,
-    dueDate: dueDate || null,
-    dueTime: dueDate ? (dueTime || null) : null,
+    dueDate: normalizedDueDate,
+    dueTime: normalizedDueDate ? (dueTime || null) : null,
     calendarReminderMinutes: reminders[0],
     calendarReminderMinutesList: reminders,
     syncCalendar: false,
@@ -35,6 +47,7 @@ function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, remind
     projectId: projectId || null,
     imageUrl: null,
     archived: false,
+    completed: false,
     source, sourceItemId,
     sourceUrl: sourceUrl || null,
     courseTitle: courseTitle || null,

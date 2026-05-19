@@ -1143,6 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (saveWikiBtn) saveWikiBtn.disabled = false;
                 scheduleMarkdownMathConversion();
                 scheduleUndoSnapshot();
+                scheduleAutosave();
                 setTimeout(installWikiBlockDragHandles, 0);
                 renderTocWidget();
             }
@@ -1961,10 +1962,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- SAVE FUNCTION ---
-    const savePage = async () => {
+    let autosaveTimer = null;
+    let autosaveInFlight = false;
+    const scheduleAutosave = () => {
+        if (!currentPageId) return;
+        clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(async () => {
+            if (autosaveInFlight) { scheduleAutosave(); return; }
+            autosaveInFlight = true;
+            try { await savePage({ silent: true }); }
+            catch (err) { console.warn('[Wiki] autosave failed:', err); }
+            finally { autosaveInFlight = false; }
+        }, 1500);
+    };
+
+    const savePage = async (options = {}) => {
+        const { silent = false } = options;
         if (!editor || !currentPageId || !currentUser) {
             console.warn('[Wiki] Save aborted: editor or pageId missing', { editor: !!editor, currentPageId, currentUser: !!currentUser });
-            window.showToast(tr('cannotSaveNotReady'), 'error');
+            if (!silent) window.showToast(tr('cannotSaveNotReady'), 'error');
             return;
         }
         const title = wikiTitleInput ? wikiTitleInput.value.trim() || tr('untitledDocument') : tr('untitledDocument');
@@ -2002,11 +2018,11 @@ document.addEventListener('DOMContentLoaded', () => {
             resetUndoHistory(contentData);
             resetMetaUndoHistory();
             if (saveStateEl) saveStateEl.textContent = tr('saved');
-            window.showToast(tr('pageSaved'), 'success');
+            if (!silent) window.showToast(tr('pageSaved'), 'success');
         } catch (err) {
             console.error('[Wiki] Save error:', err);
-            // Show actual error message for diagnosis
-            window.showToast(tr('saveFailed') + ': ' + (err.message || err), 'error');
+            if (!silent) window.showToast(tr('saveFailed') + ': ' + (err.message || err), 'error');
+            throw err;
         } finally {
             if (saveWikiBtn) { saveWikiBtn.textContent = tr('saveChanges'); saveWikiBtn.disabled = false; }
         }

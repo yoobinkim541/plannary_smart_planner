@@ -2,6 +2,24 @@
 
 const { useState: useStateHT, useMemo: useMemoHT, useEffect: useEffectHT } = React;
 
+const WIDGET_DEFS = [
+  { id: 'tasks',       label: '오늘 할 일',       icon: 'list',     interest: 'tasks',    variants: ['balanced', 'conservative'] },
+  { id: 'projects',    label: '프로젝트',          icon: 'layers',   interest: 'projects', variants: ['balanced', 'conservative'] },
+  { id: 'notes',       label: '최근 메모',         icon: 'note',     interest: 'notes',    variants: ['balanced'] },
+  { id: 'reminders',   label: '다가오는 리마인더',  icon: 'bell',     interest: 'calendar', variants: ['balanced'] },
+  { id: 'calendar',    label: '이번 주',           icon: 'calendar', interest: 'calendar', variants: ['balanced'] },
+  { id: 'timeline',    label: '오늘의 타임라인',    icon: 'clock',    interest: 'tasks',    variants: ['bold'] },
+  { id: 'streak',      label: '이번 주 스트릭',     icon: 'fire',     interest: 'tasks',    variants: ['bold'] },
+  { id: 'quick-note',  label: '빠른 메모',          icon: 'sparkles', interest: 'notes',    variants: ['bold'] },
+];
+
+function computeVisibleWidgets(interests, widgetVisibility) {
+  if (widgetVisibility && typeof widgetVisibility === 'object') return widgetVisibility;
+  if (!interests || interests.length === 0) return Object.fromEntries(WIDGET_DEFS.map(w => [w.id, true]));
+  const set = new Set(interests);
+  return Object.fromEntries(WIDGET_DEFS.map(w => [w.id, set.has(w.interest)]));
+}
+
 function taskActivityDateKey(task) {
   const value = task.completedAt || task.dueDate || task.due;
   if (!value) return null;
@@ -50,7 +68,7 @@ function buildTaskActivity(tasks, days = 140) {
    variant = "conservative" | "balanced" | "bold"
    =========================================================== */
 
-function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter }) {
+function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter, interests, widgetVisibility }) {
   const { PROJECTS, USER } = window.Planary;
 
   const today = tasks.filter(t => t.time && t.time.startsWith("오늘"));
@@ -66,11 +84,13 @@ function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter }) {
   const hour = new Date().getHours();
   const greet = hour < 12 ? "좋은 아침이에요" : hour < 18 ? "좋은 오후예요" : "수고하셨어요";
 
+  const visibleWidgets = computeVisibleWidgets(interests, widgetVisibility);
+
   const sharedProps = {
     greet, user: USER, today, important,
     projects: PROJECTS, tasks, toggleTask,
     completionPct, eclassToday, eclassSoon,
-    setPage, setTaskFilter,
+    setPage, setTaskFilter, visibleWidgets,
   };
 
   if (variant === "conservative") return <HomeConservative {...sharedProps} />;
@@ -79,7 +99,7 @@ function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter }) {
 }
 
 /* ---------- BALANCED (default) — refined ---------- */
-function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTask, completionPct, eclassToday, eclassSoon, setPage, setTaskFilter }) {
+function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTask, completionPct, eclassToday, eclassSoon, setPage, setTaskFilter, visibleWidgets }) {
   const [focusMoreOpen, setFocusMoreOpen] = useStateHT(false);
   const todayOpen = today.filter(t => !t.done);
   const todayDone = today.filter(t => t.done);
@@ -152,9 +172,10 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
       <QuickCapture />
 
       {/* Focus card + week strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16, marginTop: 18 }}>
+      {(visibleWidgets.tasks || visibleWidgets.calendar) && (
+      <div style={{ display: "grid", gridTemplateColumns: visibleWidgets.tasks && visibleWidgets.calendar ? "1.5fr 1fr" : "1fr", gap: 16, marginTop: 18 }}>
         {/* Now focus */}
-        {focusTask ? (
+        {visibleWidgets.tasks && (focusTask ? (
           <div
             className="card"
             style={{ padding: 0, overflow: "hidden", position: "relative", cursor: "pointer" }}
@@ -249,10 +270,10 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-hi)" }}>오늘 일정이 비어있어요</div>
             <div style={{ fontSize: 13, color: "var(--text-lo)", marginTop: 4 }}>새 작업을 추가하거나 내일 일정을 미리 확인하세요.</div>
           </div>
-        )}
+        ))}
 
         {/* This week strip */}
-        <div className="card" style={{ padding: "20px 18px" }}>
+        {visibleWidgets.calendar && <div className="card" style={{ padding: "20px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <span className="kicker">이번 주</span>
             <button className="btn btn-sm" onClick={() => setPage("tasks")} style={{ height: 24, padding: "0 8px", fontSize: 11 }}>
@@ -286,124 +307,147 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
               </div>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
+      )}
 
       {/* Today's list + projects, side by side, refined */}
-      <div className="dash" style={{ marginTop: 16 }}>
-        <div className="widget-card">
-          <div className="widget-head">
-            <div className="widget-title">
-              <Icon name="list" size={15} />
-              오늘
-              <span style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, marginLeft: 4 }}>
-                {todayDone.length} / {today.length}
-              </span>
+      {(visibleWidgets.tasks || visibleWidgets.projects) && (
+        <div className="dash" style={{ marginTop: 16 }}>
+          {visibleWidgets.tasks && (
+            <div className="widget-card">
+              <div className="widget-head">
+                <div className="widget-title">
+                  <Icon name="list" size={15} />
+                  오늘
+                  <span style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, marginLeft: 4 }}>
+                    {todayDone.length} / {today.length}
+                  </span>
+                </div>
+                <button className="btn btn-sm" onClick={() => setPage("tasks")}>
+                  모두 보기 <Icon name="arrowRight" size={11} />
+                </button>
+              </div>
+              <div className="widget-body" style={{ padding: "4px 8px 12px" }}>
+                {today.length === 0
+                  ? <div className="empty" style={{ padding: 32 }}><Icon name="check" size={20} style={{ color: "var(--text-faint)", marginBottom: 8 }} />여유로운 하루네요</div>
+                  : today.slice(0, 6).map(t => (
+                      <div key={t.id} className="focus-row" onClick={() => toggleTask(t.id)}>
+                        <button className={`checkbox ${t.done ? "is-checked" : ""}`} onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}>
+                          {t.done && <Icon name="check" size={12} stroke={3} />}
+                        </button>
+                        <span className={`focus-text ${t.done ? "is-done" : ""}`}>{t.title}</span>
+                        <div className="focus-meta">
+                          {t.source === "eclass" && <Icon name="globe" size={11} style={{ color: "var(--info)" }} />}
+                          {t.priority === "high" && !t.done && <span className="dot dot-high" />}
+                          {t.reminder && <Icon name="bell" size={11} style={{ color: "var(--text-lo)" }} />}
+                        </div>
+                      </div>
+                    ))
+                }
+              </div>
             </div>
-            <button className="btn btn-sm" onClick={() => setPage("tasks")}>
-              모두 보기 <Icon name="arrowRight" size={11} />
-            </button>
-          </div>
-          <div className="widget-body" style={{ padding: "4px 8px 12px" }}>
-            {today.length === 0
-              ? <div className="empty" style={{ padding: 32 }}><Icon name="check" size={20} style={{ color: "var(--text-faint)", marginBottom: 8 }} />여유로운 하루네요</div>
-              : today.slice(0, 6).map(t => (
-                  <div key={t.id} className="focus-row" onClick={() => toggleTask(t.id)}>
-                    <button className={`checkbox ${t.done ? "is-checked" : ""}`} onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}>
-                      {t.done && <Icon name="check" size={12} stroke={3} />}
-                    </button>
-                    <span className={`focus-text ${t.done ? "is-done" : ""}`}>{t.title}</span>
-                    <div className="focus-meta">
-                      {t.source === "eclass" && <Icon name="globe" size={11} style={{ color: "var(--info)" }} />}
-                      {t.priority === "high" && !t.done && <span className="dot dot-high" />}
-                      {t.reminder && <Icon name="bell" size={11} style={{ color: "var(--text-lo)" }} />}
+          )}
+          {visibleWidgets.projects && (
+            <div className="widget-card">
+              <div className="widget-head">
+                <div className="widget-title">
+                  <Icon name="layers" size={15} />
+                  프로젝트
+                </div>
+                <button className="btn btn-sm" onClick={() => setPage("projects")}>
+                  모두 보기 <Icon name="arrowRight" size={11} />
+                </button>
+              </div>
+              <div className="widget-body" style={{ padding: "4px 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {projects.slice(0, 4).map(p => (
+                  <div
+                    key={p.id}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer" }}
+                    onClick={() => setPage("projects")}
+                  >
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: p.color, display: "grid", placeItems: "center", fontSize: 13, flexShrink: 0 }}>{p.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-lo)", fontWeight: 600, marginLeft: 8 }}>{p.progress}%</span>
+                      </div>
+                      <div className="bar"><span style={{ width: `${p.progress}%` }} /></div>
                     </div>
                   </div>
-                ))
-            }
-          </div>
-        </div>
-
-        <div className="widget-card">
-          <div className="widget-head">
-            <div className="widget-title">
-              <Icon name="layers" size={15} />
-              프로젝트
-            </div>
-            <button className="btn btn-sm" onClick={() => setPage("projects")}>
-              모두 보기 <Icon name="arrowRight" size={11} />
-            </button>
-          </div>
-          <div className="widget-body" style={{ padding: "4px 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-            {projects.slice(0, 4).map(p => (
-              <div
-                key={p.id}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer" }}
-                onClick={() => setPage("projects")}
-              >
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: p.color, display: "grid", placeItems: "center", fontSize: 13, flexShrink: 0 }}>{p.icon}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</span>
-                    <span style={{ fontSize: 11, color: "var(--text-lo)", fontWeight: 600, marginLeft: 8 }}>{p.progress}%</span>
-                  </div>
-                  <div className="bar"><span style={{ width: `${p.progress}%` }} /></div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Bottom row: recent notes + reminders */}
-      <div className="dash" style={{ marginTop: 16 }}>
-        <div className="widget-card">
-          <div className="widget-head">
-            <div className="widget-title">
-              <Icon name="note" size={15} />최근 메모
-            </div>
-            <button className="btn btn-sm" onClick={() => setPage("notes")}>전체 <Icon name="arrowRight" size={11} /></button>
-          </div>
-          <div className="widget-body" style={{ padding: "8px 14px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-            {window.Planary.NOTES.slice(0, 3).map(n => (
-              <div
-                key={n.id}
-                className={`note note-${n.color}`}
-                style={{ position: "relative", width: "auto", transform: "rotate(-0.5deg)", minHeight: 96, padding: 10, boxShadow: "var(--shadow-sm)", fontSize: 11 }}
-                onClick={() => setPage("notes")}
-              >
-                <div className="note-text" style={{ fontSize: 11, lineHeight: 1.4 }}>{n.text}</div>
-                <div className="note-foot" style={{ fontSize: 9, marginTop: 8 }}>{n.date}</div>
+      {(visibleWidgets.notes || visibleWidgets.reminders) && (
+        <div className="dash" style={{ marginTop: 16 }}>
+          {visibleWidgets.notes && (
+            <div className="widget-card">
+              <div className="widget-head">
+                <div className="widget-title">
+                  <Icon name="note" size={15} />최근 메모
+                </div>
+                <button className="btn btn-sm" onClick={() => setPage("notes")}>전체 <Icon name="arrowRight" size={11} /></button>
               </div>
-            ))}
-          </div>
+              <div className="widget-body" style={{ padding: "8px 14px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                {window.Planary.NOTES.slice(0, 3).map(n => (
+                  <div
+                    key={n.id}
+                    className={`note note-${n.color}`}
+                    style={{ position: "relative", width: "auto", transform: "rotate(-0.5deg)", minHeight: 96, padding: 10, boxShadow: "var(--shadow-sm)", fontSize: 11 }}
+                    onClick={() => setPage("notes")}
+                  >
+                    <div className="note-text" style={{ fontSize: 11, lineHeight: 1.4 }}>{n.text}</div>
+                    <div className="note-foot" style={{ fontSize: 9, marginTop: 8 }}>{n.date}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {visibleWidgets.reminders && (
+            <div className="widget-card">
+              <div className="widget-head">
+                <div className="widget-title">
+                  <Icon name="bell" size={15} />다가오는 리마인더
+                </div>
+                <button className="btn btn-sm" onClick={() => { setPage("tasks"); setTaskFilter("reminders"); }}>전체 <Icon name="arrowRight" size={11} /></button>
+              </div>
+              <div className="widget-body" style={{ padding: "4px 8px 12px" }}>
+                {tasks.filter(t => t.reminder && !t.done).slice(0, 4).map(t => (
+                  <div key={t.id} className="focus-row" style={{ padding: "8px 10px" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent-softer)", color: "var(--accent)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                      <Icon name="bell" size={13} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{t.time}</div>
+                    </div>
+                  </div>
+                ))}
+                {tasks.filter(t => t.reminder && !t.done).length === 0 && (
+                  <div className="empty" style={{ padding: 24, fontSize: 12 }}>리마인더 없음</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+      )}
 
-        <div className="widget-card">
-          <div className="widget-head">
-            <div className="widget-title">
-              <Icon name="bell" size={15} />다가오는 리마인더
-            </div>
-            <button className="btn btn-sm" onClick={() => { setPage("tasks"); setTaskFilter("reminders"); }}>전체 <Icon name="arrowRight" size={11} /></button>
-          </div>
-          <div className="widget-body" style={{ padding: "4px 8px 12px" }}>
-            {tasks.filter(t => t.reminder && !t.done).slice(0, 4).map(t => (
-              <div key={t.id} className="focus-row" style={{ padding: "8px 10px" }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent-softer)", color: "var(--accent)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-                  <Icon name="bell" size={13} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.title}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{t.time}</div>
-                </div>
-              </div>
-            ))}
-            {tasks.filter(t => t.reminder && !t.done).length === 0 && (
-              <div className="empty" style={{ padding: 24, fontSize: 12 }}>리마인더 없음</div>
-            )}
-          </div>
+      {/* Empty state — all balanced widgets hidden */}
+      {!WIDGET_DEFS.filter(w => w.variants.includes('balanced')).some(w => visibleWidgets[w.id]) && (
+        <div className="card" style={{ padding: 48, textAlign: 'center', marginTop: 24 }}>
+          <Icon name="layers" size={28} style={{ color: 'var(--text-faint)', marginBottom: 12 }} />
+          <div style={{ fontSize: 15, fontWeight: 700 }}>표시할 위젯이 없어요</div>
+          <div style={{ fontSize: 12, color: 'var(--text-lo)', marginTop: 6 }}>마이페이지에서 위젯을 켜보세요</div>
+          <button className="btn btn-sm" style={{ marginTop: 16 }} onClick={() => setPage('profile')}>
+            위젯 관리 <Icon name="arrowRight" size={11} />
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -702,7 +746,7 @@ function QuickCapture() {
 }
 
 /* ---------- CONSERVATIVE — clean stat row + classic 2-col widgets ---------- */
-function HomeConservative({ greet, user, today, important, projects, tasks, toggleTask, completionPct, setPage, setTaskFilter }) {
+function HomeConservative({ greet, user, today, important, projects, tasks, toggleTask, completionPct, setPage, setTaskFilter, visibleWidgets }) {
   return (
     <div className="page-wide">
       <div className="page-head" style={{ display: "flex", alignItems: "end", justifyContent: "space-between" }}>
@@ -734,50 +778,55 @@ function HomeConservative({ greet, user, today, important, projects, tasks, togg
         ))}
       </div>
 
-      <div className="dash">
-        <div className="widget-card">
-          <div className="widget-head">
-            <div className="widget-title">오늘의 포커스</div>
-            <button className="btn btn-sm" onClick={() => setPage("tasks")}>모두 보기 <Icon name="arrowRight" size={12} /></button>
-          </div>
-          <div className="widget-body">
-            {today.slice(0, 6).map(t => (
-              <div key={t.id} className="focus-row" onClick={() => toggleTask(t.id)}>
-                <button className={`checkbox ${t.done ? "is-checked" : ""}`}>
-                  {t.done && <Icon name="check" size={12} stroke={3} />}
-                </button>
-                <span className={`focus-text ${t.done ? "is-done" : ""}`}>{t.title}</span>
-                <span className="chip" style={{ background: "transparent", borderColor: "var(--border-soft)" }}>{t.time}</span>
+      {(visibleWidgets.tasks || visibleWidgets.projects) && (
+        <div className="dash">
+          {visibleWidgets.tasks && (
+            <div className="widget-card">
+              <div className="widget-head">
+                <div className="widget-title">오늘의 포커스</div>
+                <button className="btn btn-sm" onClick={() => setPage("tasks")}>모두 보기 <Icon name="arrowRight" size={12} /></button>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="widget-card">
-          <div className="widget-head">
-            <div className="widget-title">프로젝트 진행률</div>
-            <button className="btn btn-sm" onClick={() => setPage("projects")}>전체 <Icon name="arrowRight" size={12} /></button>
-          </div>
-          <div className="widget-body" style={{ padding: "0 14px 14px" }}>
-            {projects.map(p => (
-              <div key={p.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--border-soft)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <span className="proj-color" style={{ background: p.color, width: 10, height: 10, borderRadius: 3 }} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{p.name}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-lo)", fontWeight: 600 }}>{p.progress}%</span>
-                </div>
-                <div className="bar"><span style={{ width: `${p.progress}%` }} /></div>
+              <div className="widget-body">
+                {today.slice(0, 6).map(t => (
+                  <div key={t.id} className="focus-row" onClick={() => toggleTask(t.id)}>
+                    <button className={`checkbox ${t.done ? "is-checked" : ""}`}>
+                      {t.done && <Icon name="check" size={12} stroke={3} />}
+                    </button>
+                    <span className={`focus-text ${t.done ? "is-done" : ""}`}>{t.title}</span>
+                    <span className="chip" style={{ background: "transparent", borderColor: "var(--border-soft)" }}>{t.time}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+          {visibleWidgets.projects && (
+            <div className="widget-card">
+              <div className="widget-head">
+                <div className="widget-title">프로젝트 진행률</div>
+                <button className="btn btn-sm" onClick={() => setPage("projects")}>전체 <Icon name="arrowRight" size={12} /></button>
+              </div>
+              <div className="widget-body" style={{ padding: "0 14px 14px" }}>
+                {projects.map(p => (
+                  <div key={p.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--border-soft)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      <span className="proj-color" style={{ background: p.color, width: 10, height: 10, borderRadius: 3 }} />
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{p.name}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-lo)", fontWeight: 600 }}>{p.progress}%</span>
+                    </div>
+                    <div className="bar"><span style={{ width: `${p.progress}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 /* ---------- BOLD — Hourly timeline + giant focus card + heatmap ---------- */
-function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, completionPct, setPage, setTaskFilter }) {
+function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, completionPct, setPage, setTaskFilter, visibleWidgets }) {
   const focusTask = today.find(t => !t.done && t.priority === "high") || today.find(t => !t.done) || important[0];
   const hour = new Date().getHours();
   const min = new Date().getMinutes();
@@ -811,9 +860,10 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 18 }}>
+      {(visibleWidgets.timeline || visibleWidgets.streak || visibleWidgets['quick-note']) && (
+      <div style={{ display: "grid", gridTemplateColumns: visibleWidgets.timeline && (visibleWidgets.streak || visibleWidgets['quick-note']) ? "1.4fr 1fr" : "1fr", gap: 18 }}>
         {/* Hourly timeline */}
-        <div className="widget-card">
+        {visibleWidgets.timeline && <div className="widget-card">
           <div className="widget-head">
             <div className="widget-title">
               <Icon name="clock" size={16} style={{ color: "var(--accent)" }} />
@@ -849,63 +899,69 @@ function HomeBold({ greet, user, today, important, projects, tasks, toggleTask, 
               ))}
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Side stack */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div className="widget-card">
-            <div className="widget-head">
-              <div className="widget-title">
-                <Icon name="fire" size={16} style={{ color: "var(--accent)" }} />이번 주 스트릭
-              </div>
-            </div>
-            <div className="widget-body" style={{ padding: "10px 16px 18px" }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: "var(--text-hi)" }}>{activity.currentStreak}</span>
-                <span style={{ fontSize: 14, color: "var(--text-md)" }}>일 연속 완료</span>
-              </div>
-              <div className="heat">
-                {heat.map((v, i) => (
-                  <div key={i} className={`heat-cell ${v ? `l${v}` : ""}`} title={activity.counts[i] ? `${activity.counts[i]}개 완료` : "없음"} />
-                ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--text-faint)" }}>
-                <span>20주 전</span>
-                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                  적게
-                  {[0,1,2,3,4].map(l => <div key={l} className={`heat-cell l${l}`} style={{ width: 10, height: 10 }} />)}
-                  많이
+        {(visibleWidgets.streak || visibleWidgets['quick-note']) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {visibleWidgets.streak && (
+              <div className="widget-card">
+                <div className="widget-head">
+                  <div className="widget-title">
+                    <Icon name="fire" size={16} style={{ color: "var(--accent)" }} />이번 주 스트릭
+                  </div>
                 </div>
-                <span>이번 주</span>
+                <div className="widget-body" style={{ padding: "10px 16px 18px" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1, color: "var(--text-hi)" }}>{activity.currentStreak}</span>
+                    <span style={{ fontSize: 14, color: "var(--text-md)" }}>일 연속 완료</span>
+                  </div>
+                  <div className="heat">
+                    {heat.map((v, i) => (
+                      <div key={i} className={`heat-cell ${v ? `l${v}` : ""}`} title={activity.counts[i] ? `${activity.counts[i]}개 완료` : "없음"} />
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 11, color: "var(--text-faint)" }}>
+                    <span>20주 전</span>
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      적게
+                      {[0,1,2,3,4].map(l => <div key={l} className={`heat-cell l${l}`} style={{ width: 10, height: 10 }} />)}
+                      많이
+                    </div>
+                    <span>이번 주</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="widget-card">
-            <div className="widget-head">
-              <div className="widget-title"><Icon name="sparkles" size={16} style={{ color: "var(--accent)" }} />빠른 메모</div>
-            </div>
-            <div className="widget-body" style={{ padding: "10px 16px 16px" }}>
-              <textarea
-                placeholder="떠오른 생각을 적어두세요…"
-                rows={3}
-                style={{
-                  width: "100%", resize: "none",
-                  background: "var(--bg-elev)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--r-md)",
-                  padding: 12, color: "var(--text-hi)",
-                  fontFamily: "var(--font-display)", fontSize: 13, outline: "none"
-                }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "var(--text-faint)" }}>⌘ + Enter — 저장</span>
-                <button className="btn btn-sm btn-primary"><Icon name="send" size={12} />보관</button>
+            )}
+            {visibleWidgets['quick-note'] && (
+              <div className="widget-card">
+                <div className="widget-head">
+                  <div className="widget-title"><Icon name="sparkles" size={16} style={{ color: "var(--accent)" }} />빠른 메모</div>
+                </div>
+                <div className="widget-body" style={{ padding: "10px 16px 16px" }}>
+                  <textarea
+                    placeholder="떠오른 생각을 적어두세요…"
+                    rows={3}
+                    style={{
+                      width: "100%", resize: "none",
+                      background: "var(--bg-elev)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--r-md)",
+                      padding: 12, color: "var(--text-hi)",
+                      fontFamily: "var(--font-display)", fontSize: 13, outline: "none"
+                    }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "var(--text-faint)" }}>⌘ + Enter — 저장</span>
+                    <button className="btn btn-sm btn-primary"><Icon name="send" size={12} />보관</button>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
+      )}
     </div>
   );
 }
@@ -1432,4 +1488,8 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
   );
 }
 
-window.Planary = Object.assign(window.Planary || {}, { HomePage, TasksPage });
+window.Planary = Object.assign(window.Planary || {}, {
+  HomePage, TasksPage,
+  WIDGET_DEFS,
+  computeVisibleWidgets,
+});
