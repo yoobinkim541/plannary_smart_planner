@@ -290,10 +290,22 @@ function App() {
 
       {onboardingOpen && window.Planary.OnboardingFlow && (
         <window.Planary.OnboardingFlow
-          onComplete={() => {
+          onComplete={(draft) => {
             setOnboardingOpen(false);
             try { localStorage.setItem("planary.onboarding.done", "1"); } catch (_) {}
             window.Planary?.api?.saveOnboarding?.({ completed: true }).catch(err => console.error("[Planary] saveOnboarding failed:", err));
+            // Apply onboarding choices to live React state immediately.
+            // (onboarding.jsx already dispatches planary:save-preferences for Firestore;
+            //  saveTweak here updates the in-memory tweaks without a second Firestore write)
+            if (draft) {
+              const prefs = {};
+              if (draft.accent) prefs.accent = draft.accent;
+              if (draft.theme)  prefs.theme  = draft.theme;
+              prefs.interests = draft.interests instanceof Set
+                ? Array.from(draft.interests)
+                : (Array.isArray(draft.interests) ? draft.interests : []);
+              setTweak(prefs);
+            }
             setTimeout(() => setGuideOpen(true), 500);
           }}
         />
