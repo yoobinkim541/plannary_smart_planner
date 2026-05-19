@@ -2412,6 +2412,50 @@ function ArchivePage({ tasks }) {
 }
 
 /* ===========================================================
+   WIDGET VISIBILITY MANAGER
+   =========================================================== */
+function WidgetVisibilityManager({ t, setTweak }) {
+  const defs = window.Planary.WIDGET_DEFS || [];
+  const variant = t?.variant || 'balanced';
+  const visibleWidgets = window.Planary.computeVisibleWidgets
+    ? window.Planary.computeVisibleWidgets(t?.interests || [], t?.widgetVisibility || null)
+    : Object.fromEntries(defs.map(w => [w.id, true]));
+
+  const variantDefs = defs.filter(w => w.variants.includes(variant));
+  const otherDefs   = defs.filter(w => !w.variants.includes(variant));
+
+  const toggle = (id) => {
+    const next = { ...visibleWidgets, [id]: !visibleWidgets[id] };
+    setTweak('widgetVisibility', next);
+    window.Planary.toast({ type: 'ok', title: `위젯 ${next[id] ? '켜짐' : '꺼짐'}` });
+  };
+
+  const variantLabel = { balanced: 'balanced', conservative: 'conservative', bold: 'bold' }[variant] || variant;
+
+  return (
+    <>
+      {variantDefs.map(w => (
+        <ProfileRow key={w.id} label={w.label} sub={`현재 레이아웃(${variantLabel})에서 사용`}>
+          <div className={`switch ${visibleWidgets[w.id] ? 'is-on' : ''}`} onClick={() => toggle(w.id)} />
+        </ProfileRow>
+      ))}
+      {otherDefs.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, color: 'var(--text-faint)', margin: '12px 0 4px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            다른 레이아웃
+          </div>
+          {otherDefs.map(w => (
+            <ProfileRow key={w.id} label={w.label} sub={w.variants.join(', ') + ' 레이아웃에서 사용됨'}>
+              <div className={`switch ${visibleWidgets[w.id] ? 'is-on' : ''}`} onClick={() => toggle(w.id)} />
+            </ProfileRow>
+          ))}
+        </>
+      )}
+    </>
+  );
+}
+
+/* ===========================================================
    PROFILE
    =========================================================== */
 function ProfilePage({ tasks, t, setTweak }) {
@@ -2609,6 +2653,17 @@ function ProfilePage({ tasks, t, setTweak }) {
           </div>
 
           <PasswordCard />
+
+          {/* HOME WIDGETS */}
+          <div className="card" style={{ marginTop: 12, padding: 0 }}>
+            <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-soft)" }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>홈 위젯</h3>
+              <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>홈 화면에 표시할 위젯을 선택하세요</p>
+            </div>
+            <div style={{ padding: "4px 22px 22px" }}>
+              <WidgetVisibilityManager t={t} setTweak={setTweak} />
+            </div>
+          </div>
 
           <div className="card" style={{ marginTop: 12, padding: 0 }}>
             <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border-soft)" }}>
