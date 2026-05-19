@@ -569,6 +569,8 @@ function NotesPage() {
   const [boardW, setBoardW] = useStateO(0);
   const [editing, setEditing] = useStateO(null); // { id, text, color } | null
   const [colorMenuFor, setColorMenuFor] = useStateO(null); // note id whose color menu is open
+  const [search, setSearch] = useStateO("");
+  const [colorFilter, setColorFilter] = useStateO(null); // null = all
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
   const editAreaRef = useRefO(null);
@@ -734,6 +736,14 @@ function NotesPage() {
 
   const colors = ["yellow", "pink", "blue", "green", "purple", "orange", "mint"];
 
+  const filteredNotes = notes.filter(n => {
+    if (colorFilter && n.color !== colorFilter) return false;
+    if (search && !n.text.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const boardH = notes.length === 0 ? 320 : Math.max(480, Math.max(...notes.map(n => (n.y || 0) + 200)));
+
   return (
     <div className="page-wide">
       <div className="page-head" style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
@@ -741,25 +751,51 @@ function NotesPage() {
           <div className="kicker">WORKSPACE · 포스트잇 보드</div>
           <div className="page-title">포스트잇
 </div>
-          <div className="page-sub">{notes.length}개 · 드래그해 자유롭게 배치하거나 그리드로 정렬하세요</div>
+          <div className="page-sub">{filteredNotes.length !== notes.length ? `${filteredNotes.length} / ${notes.length}개` : `${notes.length}개`} · 드래그해 자유롭게 배치하거나 그리드로 정렬하세요</div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ position: "relative" }}>
+            <Icon name="search" size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="메모 검색…"
+              style={{
+                height: 32, paddingLeft: 30, paddingRight: search ? 28 : 10,
+                background: "var(--surface-2)", border: "1px solid var(--border-soft)",
+                borderRadius: "var(--r-md)", fontSize: 13, color: "var(--text-hi)",
+                outline: "none", width: 160,
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{ position: "absolute", right: 7, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--text-faint)" }}>
+                <Icon name="x" size={12} />
+              </button>
+            )}
+          </div>
           <div style={{ display: "inline-flex", padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-md)", gap: 2 }}>
             <button onClick={() => setView("board")}
             className="btn btn-sm"
             style={{ height: 28, background: view === "board" ? "var(--surface)" : "transparent", color: view === "board" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "board" ? "var(--shadow-sm)" : "none" }}>
-              
               <Icon name="layers" size={13} />보드
             </button>
             <button
               onClick={() => setView("grid")}
               className="btn btn-sm"
               style={{ height: 28, background: view === "grid" ? "var(--surface)" : "transparent", color: view === "grid" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: view === "grid" ? "var(--shadow-sm)" : "none" }}>
-              
               <Icon name="grid" size={13} />그리드
             </button>
           </div>
-          <button className="btn btn-ghost"><Icon name="download" size={14} />내보내기</button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              if (!notes.length) return;
+              const text = notes.map(n => `[${n.color}] ${n.text}`).join("\n\n");
+              navigator.clipboard?.writeText(text).then(() =>
+                window.Planary.toast?.({ type: "ok", title: "클립보드에 복사됨" })
+              );
+            }}
+          ><Icon name="download" size={14} />내보내기</button>
         </div>
       </div>
 
@@ -803,9 +839,51 @@ function NotesPage() {
         </div>
       </div>
 
+      {/* Color filter chips */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <button
+          className={`chip ${!colorFilter ? "chip-accent" : ""}`}
+          style={{ cursor: "pointer", height: 26, padding: "0 10px", fontSize: 12 }}
+          onClick={() => setColorFilter(null)}
+        >전체 <span style={{ fontSize: 11, opacity: 0.7 }}>{notes.length}</span></button>
+        {colors.map(c => {
+          const cnt = notes.filter(n => n.color === c).length;
+          if (!cnt) return null;
+          return (
+            <button
+              key={c}
+              className={`chip ${colorFilter === c ? "chip-accent" : ""}`}
+              style={{ cursor: "pointer", height: 26, padding: "0 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
+              onClick={() => setColorFilter(colorFilter === c ? null : c)}
+            >
+              <span className={`note-color-swatch note-${c}`} style={{ width: 10, height: 10, borderRadius: 3, display: "inline-block" }} />
+              {cnt}
+            </button>
+          );
+        })}
+      </div>
+
+      {filteredNotes.length === 0 && (
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          {notes.length === 0 ? (
+            <>
+              <Icon name="note" size={28} style={{ color: "var(--text-faint)", marginBottom: 12 }} />
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-lo)" }}>첫 메모를 작성해보세요</div>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 6 }}>위 입력창에 생각을 적고 메모 추가를 눌러요</div>
+            </>
+          ) : (
+            <>
+              <Icon name="search" size={24} style={{ color: "var(--text-faint)", marginBottom: 10 }} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-lo)" }}>검색 결과가 없어요</div>
+              <button className="btn btn-sm" style={{ marginTop: 12 }} onClick={() => { setSearch(""); setColorFilter(null); }}>필터 초기화</button>
+            </>
+          )}
+        </div>
+      )}
+
       {view === "board" ?
-      <div className="board" ref={boardRef} style={{ height: 620, touchAction: "none" }}>
-          {notes.map((n) => {
+      <div className="board" ref={boardRef} style={{ height: boardH, touchAction: "none" }}>
+          {filteredNotes.map((n) => {
         const NOTE_W = 200, NOTE_H = 144, PAD = 8;
         const maxX = Math.max(0, boardW - NOTE_W - PAD);
         const safeX = boardW > 0 ? Math.min(n.x, maxX) : n.x;
@@ -866,7 +944,7 @@ function NotesPage() {
         </div> :
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-          {notes.map((n) => {
+          {filteredNotes.map((n) => {
             const isEditing = editing && editing.id === n.id;
             const displayColor = isEditing ? editing.color : n.color;
             return (
