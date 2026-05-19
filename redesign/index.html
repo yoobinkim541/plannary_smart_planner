@@ -74,5 +74,13 @@
   <script type="text/babel" src="/redesign/src/user-guide.jsx"></script>
   <script type="text/babel" src="/redesign/src/app.jsx"></script>
   <script type="text/babel" src="/redesign/src/firebase-bridge.jsx"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .catch((err) => console.warn("[Planary] service worker registration failed", err));
+      });
+    }
+  </script>
 </body>
 </html>
