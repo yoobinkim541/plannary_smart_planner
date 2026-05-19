@@ -35,7 +35,9 @@ function Rail({ page, setPage, onToggleSidebar }) {
   ];
   return (
     <div className="rail">
-      <button className="rail-logo" onClick={onToggleSidebar} title="사이드바 토글">P</button>
+      <button className="rail-logo" onClick={onToggleSidebar} title="사이드바 토글">
+        <img src="/redesign/assets/icons/planary-logo.png" alt="Planary" style={{ width: 24, height: 24, objectFit: "contain" }} />
+      </button>
       <div style={{ height: 6 }} />
       {items.map(it => (
         <button

@@ -567,7 +567,18 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
    NOTES (drag-and-drop sticky board)
    =========================================================== */
 function NotesPage() {
-  const initialNotes = Array.isArray(window.Planary.NOTES) ? window.Planary.NOTES : [];
+  // Merge Firestore notes with localStorage-cached positions so positions
+  // survive navigation without waiting for a Firestore round-trip.
+  const initialNotes = (() => {
+    const base = Array.isArray(window.Planary.NOTES) ? window.Planary.NOTES : [];
+    try {
+      const cached = JSON.parse(localStorage.getItem("planary.note-positions") || "{}");
+      if (cached && typeof cached === "object") {
+        return base.map(n => cached[n.id] ? { ...n, x: cached[n.id].x, y: cached[n.id].y } : n);
+      }
+    } catch (_) {}
+    return base;
+  })();
   const [notes, setNotes] = useStateO(initialNotes);
   const [draftColor, setDraftColor] = useStateO("yellow");
   const [draft, setDraft] = useStateO("");
@@ -706,6 +717,16 @@ function NotesPage() {
           window.dispatchEvent(new CustomEvent("planary:update-note", {
             detail: { id: d.id, patch: finalPos },
           }));
+          // Cache all positions in localStorage for instant restore on navigation
+          setNotes((prev) => {
+            try {
+              const posMap = {};
+              prev.forEach(n => { posMap[n.id] = { x: n.x, y: n.y }; });
+              posMap[d.id] = finalPos;
+              localStorage.setItem("planary.note-positions", JSON.stringify(posMap));
+            } catch (_) {}
+            return prev;
+          });
         }
         dragRef.current = null;
       }
@@ -1079,6 +1100,21 @@ function WikiPage() {
   const renameInputRef = useRefO(null);
   const [duplicating, setDuplicating] = useStateO(null); // { node } | null
   const [addMenuFor, setAddMenuFor] = useStateO(null); // node id whose + add menu is open
+  const [addMenuPos, setAddMenuPos] = useStateO({ top: 0, right: 0 });
+  const [treeMenuPos, setTreeMenuPos] = useStateO({ top: 0, right: 0 });
+
+  // Close tree/add popovers when clicking outside them
+  useEffectO(() => {
+    if (!addMenuFor && !treeMenuFor) return;
+    const handler = (e) => {
+      if (!e.target.closest(".popover") && !e.target.closest(".wiki-tree-action-btn")) {
+        setAddMenuFor(null);
+        setTreeMenuFor(null);
+      }
+    };
+    document.addEventListener("mousedown", handler, true);
+    return () => document.removeEventListener("mousedown", handler, true);
+  }, [addMenuFor, treeMenuFor]);
   // Drag-and-drop reordering
   const [dragId, setDragId] = useStateO(null);
   const [dropTarget, setDropTarget] = useStateO(null); // { id, pos: "before"|"after"|"inside" }
@@ -1146,15 +1182,19 @@ function WikiPage() {
     setTagDraft("");
   }, [activeId, active.title]);
 
-  // Sync cover state from Firestore data when active page changes
+  // Sync cover state from Firestore data when active page changes.
+  // For local file covers (data: URLs too large for Firestore), fall back to localStorage.
   useEffectO(() => {
     coverLoadingRef.current = true;
-    setCoverImage(active.cover || null);
+    let coverVal = active.cover || null;
+    if (!coverVal && activeId) {
+      try { coverVal = localStorage.getItem(`planary.wiki-cover.${activeId}`) || null; } catch (_) {}
+    }
+    setCoverImage(coverVal);
     setCoverPosX(active.coverPosX ?? 50);
     setCoverPosY(active.coverPosY ?? 50);
     setCoverHeight(active.coverHeight ?? 180);
     setCoverZoom(active.coverZoom ?? 100);
-    // Allow one animation frame before enabling slider save-effects
     requestAnimationFrame(() => { coverLoadingRef.current = false; });
   }, [activeId]);
 
@@ -1208,6 +1248,19 @@ function WikiPage() {
 
 
   const saveCoverUrl = (url) => {
+    if (!activeId) return;
+    // data: URLs can be multi-MB — save to localStorage only to stay under Firestore 1MB limit
+    if (url && url.includes("data:")) {
+      try {
+        if (url) localStorage.setItem(`planary.wiki-cover.${activeId}`, url);
+        else localStorage.removeItem(`planary.wiki-cover.${activeId}`);
+      } catch (_) {}
+      return;
+    }
+    // For null (remove), clear localStorage cache too
+    if (!url) {
+      try { localStorage.removeItem(`planary.wiki-cover.${activeId}`); } catch (_) {}
+    }
     window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
       detail: { id: activeId, patch: { coverUrl: url } },
     }));
@@ -1525,6 +1578,8 @@ function WikiPage() {
               title="페이지 추가"
               onClick={(e) => {
                 e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setAddMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
                 setAddMenuFor(addMenuFor === node.id ? null : node.id);
                 setTreeMenuFor(null);
               }}
@@ -1537,6 +1592,8 @@ function WikiPage() {
               title="더 보기"
               onClick={(e) => {
                 e.stopPropagation();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setTreeMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
                 setTreeMenuFor(isMenuOpen ? null : node.id);
                 setAddMenuFor(null);
               }}
@@ -1554,7 +1611,7 @@ function WikiPage() {
           {addMenuFor === node.id && (
             <div
               className="popover"
-              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 220 }}
+              style={{ position: "fixed", top: addMenuPos.top, right: addMenuPos.right, zIndex: 300, minWidth: 220 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="popover-header" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 4px" }}>
@@ -1599,7 +1656,7 @@ function WikiPage() {
           {isMenuOpen && (
             <div
               className="popover"
-              style={{ position: "absolute", right: 0, top: "calc(100% + 2px)", zIndex: 30, minWidth: 160 }}
+              style={{ position: "fixed", top: treeMenuPos.top, right: treeMenuPos.right, zIndex: 300, minWidth: 160 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="popover-item" onClick={() => { setActiveId(node.id); setTreeMenuFor(null); }}>
@@ -2065,7 +2122,9 @@ function WikiPage() {
           </aside>}
       </div>
       {shareOpen && <ShareDialog onClose={() => setShareOpen(false)} title={active.title} />}
-      {historyOpen && <VersionHistoryDialog onClose={() => setHistoryOpen(false)} page={active} />}
+      {historyOpen && <VersionHistoryDialog onClose={() => setHistoryOpen(false)} page={active} onRestore={(blocks) => {
+        window.dispatchEvent(new CustomEvent("planary:wiki-restore", { detail: { id: active.id, blocks } }));
+      }} />}
       {infoOpen && <PageInfoDialog onClose={() => setInfoOpen(false)} page={active} favorites={favorites} />}
       {exportMenuOpen && <ExportDialog onClose={() => setExportMenuOpen(false)} page={active} />}
       {duplicating && (
@@ -3629,73 +3688,22 @@ function CodeBlock({ anchor }) {
 /* ===========================================================
    VERSION HISTORY DIALOG — wiki page revisions with restore
    =========================================================== */
-function VersionHistoryDialog({ onClose, page }) {
-  // Synthetic history. In production this would come from Firestore.
-  const VERSIONS = useMemoO(() => [
-    { id: "v12", ago: "방금", author: "도하 김", initials: "DK", current: true,
-      changes: [{ kind: "add", count: 8 }, { kind: "remove", count: 2 }],
-      summary: "악센트 팔레트 섹션 보강 + 코드 예시 추가",
-      preview: [
-        { type: "h3", text: "악센트 팔레트" },
-        { type: "p", text: "사용자는 6가지 악센트 중 자신의 워크스페이스 톤을 선택할 수 있습니다. 모두 같은 시각적 무게를 가지도록 조정되어 있습니다." },
-        { type: "code", text: ".btn-soft { background: color-mix(in oklab, var(--accent) 14%, transparent); }" },
-      ],
-    },
-    { id: "v11", ago: "12분 전", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 3 }, { kind: "remove", count: 0 }],
-      summary: "텍스트 스택 5단계 설명 추가",
-      preview: [
-        { type: "h3", text: "텍스트 스택" },
-        { type: "p", text: "슬레이트 5단계로 위계를 만듭니다. 본문 안에 --text-md, 헤딩에 --text-hi." },
-      ],
-    },
-    { id: "v10", ago: "1시간 전", author: "박서연", initials: "SY",
-      changes: [{ kind: "add", count: 12 }, { kind: "remove", count: 1 }],
-      summary: "코어 토큰 표 형식으로 정리",
-      preview: [
-        { type: "h2", text: "코어 토큰" },
-        { type: "table", text: "토큰 / 다크 / 라이트 / 용도" },
-      ],
-    },
-    { id: "v9", ago: "오늘 09:14", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 0 }, { kind: "remove", count: 4 }],
-      summary: "중복 문장 정리",
-      preview: [
-        { type: "p", text: "Planary는 단일 악센트 컬러 위에 풍부한 중성색 스택을 쌓아 정보 위계를 만듭니다." },
-      ],
-    },
-    { id: "v8", ago: "어제", author: "정민재", initials: "JM",
-      changes: [{ kind: "add", count: 24 }, { kind: "remove", count: 0 }],
-      summary: "그림자 & 글로우 섹션 신규 작성",
-      preview: [
-        { type: "h2", text: "그림자 & 글로우" },
-        { type: "p", text: "물리적 그림자 3단계 + 악센트 글로우 1종. 활성 CTA·로고에만 사용해 브랜드 시그니처로 살립니다." },
-      ],
-    },
-    { id: "v7", ago: "어제", author: "박서연", initials: "SY",
-      changes: [{ kind: "add", count: 6 }, { kind: "remove", count: 2 }],
-      summary: "설계 원칙 콜아웃 추가",
-      preview: [
-        { type: "callout", text: "새로운 hex를 추가하지 마세요. 악센트의 투명도 단계로 충분히 표현 가능합니다." },
-      ],
-    },
-    { id: "v6", ago: "3일 전", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 1 }, { kind: "remove", count: 0 }],
-      summary: "페이지 아이콘 변경: 🎨 → 🟣",
-      preview: [{ type: "meta", text: "아이콘 변경" }],
-    },
-    { id: "v5", ago: "1주 전", author: "도하 김", initials: "DK",
-      changes: [{ kind: "add", count: 42 }, { kind: "remove", count: 0 }],
-      summary: "초기 작성",
-      preview: [
-        { type: "h2", text: "코어 토큰" },
-        { type: "p", text: "모든 컬러는 var(--*)로만 접근합니다." },
-      ],
-    },
-  ], []);
+function VersionHistoryDialog({ onClose, page, onRestore }) {
+  const [versions, setVersions] = useStateO(null); // null = loading
+  const [selectedIdx, setSelectedIdx] = useStateO(0);
+  const [restoring, setRestoring] = useStateO(false);
 
-  const [selectedId, setSelectedId] = useStateO(VERSIONS[0].id);
-  const selected = VERSIONS.find(v => v.id === selectedId) || VERSIONS[0];
+  // Load revisions from Firestore on open
+  useEffectO(() => {
+    let cancelled = false;
+    window.Planary.api.loadWikiRevisions(page.id).then(revs => {
+      if (!cancelled) setVersions(revs);
+    }).catch(err => {
+      console.error("[Planary] loadWikiRevisions failed:", err);
+      if (!cancelled) setVersions([]);
+    });
+    return () => { cancelled = true; };
+  }, [page.id]);
 
   useEffectO(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -3703,16 +3711,55 @@ function VersionHistoryDialog({ onClose, page }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const restore = () => {
-    if (selected.current) return;
-    if (window.confirm(`${selected.ago} 버전으로 되돌릴까요? 현재 변경 사항은 새 버전으로 보존됩니다.`)) {
+  const selected = versions && versions.length ? versions[selectedIdx] : null;
+
+  const formatAgo = (ms) => {
+    if (!ms) return "알 수 없음";
+    const diff = Date.now() - ms;
+    if (diff < 60000)  return "방금";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+    if (diff < 172800000) return "어제";
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}일 전`;
+    return new Date(ms).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+  };
+
+  const restore = async () => {
+    if (!selected || selectedIdx === 0) return;
+    if (!window.confirm(`이 버전으로 되돌릴까요? 현재 내용은 새 버전으로 보존됩니다.`)) return;
+    setRestoring(true);
+    try {
+      // Dispatch as if the user saved these blocks (auto-saves + creates new revision)
+      window.dispatchEvent(new CustomEvent("planary:save-wiki-blocks", {
+        detail: { id: page.id, blocks: selected.blocks },
+      }));
+      if (onRestore) onRestore(selected.blocks);
       window.Planary.toast({
         type: "ok",
-        title: `${selected.ago} 버전으로 되돌렸어요`,
-        sub: `${selected.author}님의 편집 · ${selected.summary}`,
+        title: "이전 버전으로 되돌렸어요",
+        sub: `${formatAgo(selected.savedAt)} · ${selected.authorName}`,
       });
       onClose();
+    } catch (err) {
+      console.error("[Planary] restore failed:", err);
+      window.Planary.toast({ type: "err", title: "되돌리기 실패", sub: String(err.message) });
+    } finally {
+      setRestoring(false);
     }
+  };
+
+  const renderBlockPreview = (blocks) => {
+    if (!blocks || !blocks.length) return <div style={{ fontSize: 12, color: "var(--text-faint)" }}>내용 없음</div>;
+    return blocks.slice(0, 8).map((b, i) => {
+      const text = b.content || "";
+      if (b.type === "h1") return <h2 key={i} style={{ fontSize: 17, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 6px" }}>{text}</h2>;
+      if (b.type === "h2") return <h3 key={i} style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)", margin: "8px 0 4px" }}>{text}</h3>;
+      if (b.type === "h3") return <h3 key={i} style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", margin: "6px 0 4px" }}>{text}</h3>;
+      if (b.type === "code") return <pre key={i} className="mono" style={{ fontSize: 11.5, padding: 10, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", margin: "6px 0", overflowX: "auto" }}>{text}</pre>;
+      if (b.type === "callout") return <div key={i} className="callout callout-ok" style={{ fontSize: 13 }}><Icon name="sparkles" size={16} style={{ color: "var(--ok)", flexShrink: 0, marginTop: 2 }} />{text}</div>;
+      if (b.type === "divider") return <hr key={i} style={{ border: "none", borderTop: "1px solid var(--border-soft)", margin: "8px 0" }} />;
+      return <p key={i} style={{ fontSize: 13, color: "var(--text-md)", lineHeight: 1.6, margin: "4px 0" }}>{text}</p>;
+    });
   };
 
   return (
@@ -3725,100 +3772,103 @@ function VersionHistoryDialog({ onClose, page }) {
               수정 이력
             </h3>
             <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>
-              <span style={{ color: "var(--text-md)", fontWeight: 600 }}>{page.title}</span> · {VERSIONS.length}개 버전
+              <span style={{ color: "var(--text-md)", fontWeight: 600 }}>{page.title}</span>
+              {versions !== null && ` · ${versions.length}개 버전`}
             </p>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          {/* Left: version list */}
-          <div style={{ borderRight: "1px solid var(--border-soft)", overflowY: "auto", padding: "10px 8px" }}>
-            <div className="version-thread">
-              {VERSIONS.map((v, i) => {
-                const active = v.id === selectedId;
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    className={`version-item ${active ? "is-active" : ""} ${v.current ? "is-current" : ""}`}
-                    onClick={() => setSelectedId(v.id)}
-                  >
-                    <span className="version-dot" />
-                    <div className="version-meta">
-                      <div className="version-row">
-                        <span className="version-time">{v.ago}</span>
-                        {v.current && <span className="version-now">현재</span>}
+        {versions === null ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
+            <div style={{ fontSize: 13, color: "var(--text-faint)" }}>불러오는 중...</div>
+          </div>
+        ) : versions.length === 0 ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 48, gap: 8 }}>
+            <Icon name="clock" size={28} style={{ color: "var(--text-faint)" }} />
+            <div style={{ fontSize: 14, fontWeight: 700 }}>아직 저장된 이력이 없어요</div>
+            <div style={{ fontSize: 12, color: "var(--text-lo)" }}>문서를 편집하면 자동으로 이력이 쌓입니다</div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", flex: 1, minHeight: 0, overflow: "hidden" }}>
+            {/* Left: version list */}
+            <div style={{ borderRight: "1px solid var(--border-soft)", overflowY: "auto", padding: "10px 8px" }}>
+              <div className="version-thread">
+                {versions.map((v, i) => {
+                  const active = i === selectedIdx;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      className={`version-item ${active ? "is-active" : ""} ${i === 0 ? "is-current" : ""}`}
+                      onClick={() => setSelectedIdx(i)}
+                    >
+                      <span className="version-dot" />
+                      <div className="version-meta">
+                        <div className="version-row">
+                          <span className="version-time">{formatAgo(v.savedAt)}</span>
+                          {i === 0 && <span className="version-now">현재</span>}
+                        </div>
+                        <div className="version-row" style={{ marginTop: 4 }}>
+                          <div className="avatar avatar-xs" style={{ width: 16, height: 16, fontSize: 9 }}>{v.authorInitials}</div>
+                          <span className="version-author">{v.authorName}</span>
+                        </div>
+                        <div className="version-summary">{v.blocks.length}개 블록</div>
                       </div>
-                      <div className="version-row" style={{ marginTop: 4 }}>
-                        <div className="avatar avatar-xs" style={{ width: 16, height: 16, fontSize: 9 }}>{v.initials}</div>
-                        <span className="version-author">{v.author}</span>
-                      </div>
-                      <div className="version-summary">{v.summary}</div>
-                      <div className="version-diff">
-                        {v.changes[0]?.count > 0 && <span className="diff-add">+{v.changes[0].count}</span>}
-                        {v.changes[1]?.count > 0 && <span className="diff-rem">−{v.changes[1].count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right: preview */}
+            <div style={{ overflowY: "auto", padding: "18px 22px 8px" }}>
+              {selected && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                    <div className="avatar" style={{ width: 30, height: 30, fontSize: 11 }}>{selected.authorInitials}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{selected.authorName}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-lo)" }}>
+                        {formatAgo(selected.savedAt)} · {new Date(selected.savedAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </div>
                     </div>
-                  </button>
-                );
-              })}
+                    <span className="chip">{selected.blocks.length}블록</span>
+                  </div>
+
+                  <div className="kicker" style={{ marginBottom: 8 }}>내용 미리보기</div>
+                  <div className="version-preview">
+                    {renderBlockPreview(selected.blocks)}
+                    {selected.blocks.length > 8 && (
+                      <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
+                        … 외 {selected.blocks.length - 8}개 블록
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
-
-          {/* Right: preview */}
-          <div style={{ overflowY: "auto", padding: "18px 22px 8px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <div className="avatar" style={{ width: 30, height: 30, fontSize: 11 }}>{selected.initials}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{selected.author}</div>
-                <div style={{ fontSize: 11, color: "var(--text-lo)" }}>{selected.ago} · 버전 {selected.id.replace("v", "#")}</div>
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {selected.changes[0]?.count > 0 && <span className="chip" style={{ background: "color-mix(in oklab, var(--ok) 14%, transparent)", color: "var(--ok)", borderColor: "transparent" }}>+{selected.changes[0].count}줄</span>}
-                {selected.changes[1]?.count > 0 && <span className="chip" style={{ background: "color-mix(in oklab, var(--err) 14%, transparent)", color: "var(--err)", borderColor: "transparent" }}>−{selected.changes[1].count}줄</span>}
-              </div>
-            </div>
-
-            <div style={{ padding: "12px 14px", background: "var(--accent-softer)", border: "1px solid var(--accent-ring)", borderRadius: "var(--r-md)", marginBottom: 16 }}>
-              <div className="kicker" style={{ marginBottom: 4 }}>요약</div>
-              <div style={{ fontSize: 13, color: "var(--text-hi)" }}>{selected.summary}</div>
-            </div>
-
-            <div className="kicker" style={{ marginBottom: 8 }}>변경 내용 미리보기</div>
-            <div className="version-preview">
-              {selected.preview.map((b, i) => {
-                if (b.type === "h2") return <h2 key={i} style={{ fontSize: 17, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 6px" }}>{b.text}</h2>;
-                if (b.type === "h3") return <h3 key={i} style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)", margin: "10px 0 4px" }}>{b.text}</h3>;
-                if (b.type === "p")  return <p key={i} style={{ fontSize: 13, color: "var(--text-md)", lineHeight: 1.6, margin: "4px 0" }}>{b.text}</p>;
-                if (b.type === "code") return <pre key={i} className="mono" style={{ fontSize: 11.5, padding: 10, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", margin: "6px 0", overflowX: "auto" }}>{b.text}</pre>;
-                if (b.type === "table") return <div key={i} style={{ padding: 10, background: "var(--surface-2)", borderRadius: "var(--r-sm)", fontSize: 12, color: "var(--text-md)", marginTop: 6 }}><Icon name="grid" size={11} style={{ marginRight: 6, verticalAlign: -2 }} />{b.text}</div>;
-                if (b.type === "callout") return <div key={i} className="callout callout-ok" style={{ fontSize: 13 }}><Icon name="sparkles" size={16} style={{ color: "var(--ok)", flexShrink: 0, marginTop: 2 }} />{b.text}</div>;
-                if (b.type === "meta") return <div key={i} style={{ fontSize: 12, color: "var(--text-lo)", fontStyle: "italic" }}><Icon name="edit" size={11} style={{ marginRight: 6, verticalAlign: -2 }} />{b.text}</div>;
-                return null;
-              })}
-            </div>
-          </div>
-        </div>
+        )}
 
         <div className="dialog-foot" style={{ flexShrink: 0 }}>
-          {selected.current ? (
+          {selectedIdx === 0 ? (
             <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
               현재 버전입니다. 다른 버전을 선택하면 되돌릴 수 있어요.
             </span>
           ) : (
             <span style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>
-              되돌리기 전 현재 변경 사항은 새 버전으로 자동 보존돼요.
+              되돌리기 전 현재 내용은 새 버전으로 자동 보존돼요.
             </span>
           )}
           <button className="btn btn-sm" onClick={onClose}>닫기</button>
           <button
             className="btn btn-sm btn-primary"
             onClick={restore}
-            disabled={selected.current}
-            style={selected.current ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+            disabled={selectedIdx === 0 || restoring || !selected}
+            style={(selectedIdx === 0 || !selected) ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
           >
-            <Icon name="refresh" size={12} />이 버전으로 되돌리기
+            <Icon name="refresh" size={12} />{restoring ? "되돌리는 중..." : "이 버전으로 되돌리기"}
           </button>
         </div>
       </div>
@@ -5874,6 +5924,20 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     };
     window.addEventListener("planary:wiki-loaded", onLoaded);
     return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
+  }, [activeId]);
+
+  // Apply restored blocks from VersionHistoryDialog
+  useEffectO(() => {
+    const onRestore = (e) => {
+      const d = e.detail || {};
+      if (d.id !== activeId || !Array.isArray(d.blocks)) return;
+      setBlocks(d.blocks);
+      liveBlocksRef.current = d.blocks;
+      lastSavedRef.current = JSON.stringify(d.blocks);
+      undoStackRef.current = [d.blocks];
+    };
+    window.addEventListener("planary:wiki-restore", onRestore);
+    return () => window.removeEventListener("planary:wiki-restore", onRestore);
   }, [activeId]);
 
   // Notify parent of block changes (for TOC etc.)
