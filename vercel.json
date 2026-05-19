@@ -1,12 +1,6 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
-  "crons": [
-    {
-      "path": "/api/notifications/check-reminders",
-      "schedule": "0 * * * *"
-    }
-  ],
   "redirects": [
     { "source": "/", "destination": "/redesign/", "permanent": false }
   ],
