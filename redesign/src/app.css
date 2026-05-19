@@ -1497,6 +1497,12 @@
   background: var(--bg);
   padding: 0 12px;
 }
+/* Clamp pasted/embedded images to page width */
+.wiki-doc img, .wiki-block img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
 .wiki-cover {
   position: relative;
   height: 180px;

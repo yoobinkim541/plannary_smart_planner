@@ -4669,18 +4669,28 @@ function CodeEditorBlock({ block, onUpdate }) {
 function MathBlock({ block, onUpdate }) {
   const [tex, setTex] = useStateO(block.tex || "");
   const [edit, setEdit] = useStateO(!block.tex);
-  // Render via KaTeX (loaded externally) or as plain text if not loaded
+  const [katexReady, setKatexReady] = useStateO(typeof window.katex !== "undefined");
   const renderedRef = useRefO(null);
+
+  // Wait for KaTeX to load if it hasn't yet (defer script)
+  useEffectO(() => {
+    if (katexReady) return;
+    const check = setInterval(() => {
+      if (typeof window.katex !== "undefined") { setKatexReady(true); clearInterval(check); }
+    }, 100);
+    return () => clearInterval(check);
+  }, [katexReady]);
+
   useEffectO(() => {
     if (edit || !renderedRef.current) return;
-    if (typeof window.katex !== "undefined") {
+    if (katexReady && typeof window.katex !== "undefined") {
       try {
         window.katex.render(tex, renderedRef.current, { throwOnError: false, displayMode: true, strict: false });
       } catch (_) { renderedRef.current.textContent = tex; }
     } else {
       renderedRef.current.textContent = tex || "수식을 입력하세요";
     }
-  }, [tex, edit]);
+  }, [tex, edit, katexReady]);
   return (
     <div style={{ margin: "10px 0", padding: 16, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-md)", textAlign: "center" }}>
       {edit ? (
@@ -6112,6 +6122,146 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     onDragEnd();
   };
 
+  // ── Markdown paste ─────────────────────────────────────────────────────
+  const mkId = () => `b${Date.now()}${Math.random().toString(36).slice(2, 5)}`;
+
+  const inlineMd = (s) => s
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/__(.+?)__/g, "<strong>$1</strong>")
+    .replace(/_([^_]+)_/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/~~(.+?)~~/g, "<del>$1</del>");
+
+  const parseMarkdownToBlocks = (text) => {
+    const lines = text.split("\n");
+    const result = [];
+    let i = 0;
+    while (i < lines.length) {
+      const raw = lines[i];
+      const line = raw.trimEnd();
+
+      // blank line → skip
+      if (!line.trim()) { i++; continue; }
+
+      // headings
+      if (/^### /.test(line)) { result.push({ id: mkId(), type: "h3", content: inlineMd(line.slice(4)) }); i++; continue; }
+      if (/^## /.test(line))  { result.push({ id: mkId(), type: "h2", content: inlineMd(line.slice(3)) }); i++; continue; }
+      if (/^# /.test(line))   { result.push({ id: mkId(), type: "h1", content: inlineMd(line.slice(2)) }); i++; continue; }
+
+      // horizontal rule
+      if (/^(---+|\*\*\*+|___+)$/.test(line.trim())) { result.push({ id: mkId(), type: "divider", content: "" }); i++; continue; }
+
+      // fenced code block
+      if (/^```/.test(line)) {
+        const lang = line.slice(3).trim();
+        const codeLines = [];
+        i++;
+        while (i < lines.length && !/^```/.test(lines[i])) { codeLines.push(lines[i]); i++; }
+        i++; // closing ```
+        result.push({ id: mkId(), type: "code", lang, code: codeLines.join("\n") });
+        continue;
+      }
+
+      // math block $$ ... $$
+      if (line.trim() === "$$") {
+        const mathLines = [];
+        i++;
+        while (i < lines.length && lines[i].trim() !== "$$") { mathLines.push(lines[i]); i++; }
+        i++;
+        result.push({ id: mkId(), type: "math", tex: mathLines.join("\n") });
+        continue;
+      }
+      // inline math $...$  or \(...\)
+      if (/^\$[^$].*\$$/.test(line.trim()) || /^\\\(.*\\\)$/.test(line.trim())) {
+        const tex = line.trim().replace(/^\$|\$$/g, "").replace(/^\\\(|\\\)$/g, "");
+        result.push({ id: mkId(), type: "math", tex });
+        i++; continue;
+      }
+
+      // blockquote
+      if (/^> /.test(line)) { result.push({ id: mkId(), type: "quote", content: inlineMd(line.slice(2)) }); i++; continue; }
+
+      // todo list (- [ ] / - [x])
+      if (/^- \[[ xX]\] /.test(line)) {
+        const items = [];
+        while (i < lines.length && /^- \[[ xX]\] /.test(lines[i])) {
+          items.push({ text: inlineMd(lines[i].replace(/^- \[[ xX]\] /, "")), checked: /^- \[[xX]\] /.test(lines[i]) });
+          i++;
+        }
+        result.push({ id: mkId(), type: "todo", items });
+        continue;
+      }
+
+      // unordered list
+      if (/^[-*] /.test(line)) {
+        const items = [];
+        while (i < lines.length && /^[-*] /.test(lines[i]) && !/^- \[[ xX]\] /.test(lines[i])) {
+          items.push(inlineMd(lines[i].replace(/^[-*] /, "")));
+          i++;
+        }
+        result.push({ id: mkId(), type: "ul", items });
+        continue;
+      }
+
+      // ordered list
+      if (/^\d+\. /.test(line)) {
+        const items = [];
+        while (i < lines.length && /^\d+\. /.test(lines[i])) {
+          items.push(inlineMd(lines[i].replace(/^\d+\. /, "")));
+          i++;
+        }
+        result.push({ id: mkId(), type: "ol", items });
+        continue;
+      }
+
+      // table  |col|col|
+      if (/^\|.+\|/.test(line)) {
+        const rows = [];
+        while (i < lines.length && /^\|.+\|/.test(lines[i])) {
+          const cols = lines[i].split("|").slice(1, -1).map(c => c.trim());
+          if (!cols.every(c => /^[-:]+$/.test(c))) rows.push(cols); // skip separator rows
+          i++;
+        }
+        if (rows.length) result.push({ id: mkId(), type: "table", rows });
+        continue;
+      }
+
+      // paragraph — collect consecutive non-special lines
+      const paraLines = [];
+      while (i < lines.length) {
+        const l = lines[i].trimEnd();
+        if (!l.trim()) { i++; break; } // blank line ends paragraph
+        if (/^#{1,3} |^> |^[-*] |^\d+\. |^```|^\$\$/.test(l) || /^(---+|\*\*\*+|___+)$/.test(l.trim()) || /^\|.+\|/.test(l)) break;
+        paraLines.push(inlineMd(l));
+        i++;
+      }
+      if (paraLines.length) result.push({ id: mkId(), type: "p", content: paraLines.join("<br>") });
+    }
+    return result;
+  };
+
+  // Called by WikiBlockItem when pasting markdown text
+  const onPasteBlocks = (markdownText, afterBlockId) => {
+    const parsed = parseMarkdownToBlocks(markdownText);
+    if (!parsed.length) return;
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === afterBlockId);
+      const cur = prev[idx];
+      const isEmpty = cur && !cur.content && !cur.code && !cur.tex &&
+                      !(cur.items && cur.items.length) && !(cur.rows && cur.rows.length);
+      // Replace empty block, or insert after current block
+      let arr = isEmpty ? prev.filter(b => b.id !== afterBlockId) : [...prev];
+      const insertAt = isEmpty ? Math.max(0, idx) : (idx < 0 ? arr.length : idx + 1);
+      arr.splice(insertAt, 0, ...parsed);
+      return arr;
+    });
+    const lastId = parsed[parsed.length - 1]?.id;
+    if (lastId) { setActiveBlockId(lastId); setFocusBlockId(lastId); }
+  };
+
   const addAtEnd = () => {
     const lastId = blocks[blocks.length - 1]?.id;
     addBlockAfter(lastId, "p");
@@ -6141,6 +6291,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           onMenuToggle={() => setMenuOpenId(menuOpenId === b.id ? null : b.id)}
           onMenuClose={() => setMenuOpenId(null)}
           onLiveEdit={(key, value) => onLiveEdit(b.id, key, value)}
+          onPasteBlocks={(text) => onPasteBlocks(text, b.id)}
           onSlashCommand={(rect) => openSlashMenu(b.id, rect)}
           onDragStart={(e) => onDragStart(e, b.id)}
           onDragOver={(e) => onDragOver(e, b.id)}
@@ -6178,7 +6329,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   );
 }
 
-function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onLiveEdit, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
+function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onLiveEdit, onPasteBlocks, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const ref = useRefO(null);
   const bodyRef = useRefO(null);
 
@@ -6224,6 +6375,32 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
     "*": "ul",
     "1.": "ol",
     "[]": "todo",
+  };
+
+  const handlePaste = (e) => {
+    const text = e.clipboardData?.getData("text/plain") || "";
+    if (!text) return;
+    // Check for image in clipboard first — paste as image block
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          onUpdate({ type: "image", url: reader.result, name: file.name || "붙여넣은 이미지", caption: "" });
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+    // Detect markdown: multiple lines, or common markdown syntax
+    const hasMarkdown = text.includes("\n") ||
+      /^#{1,3} |^> |^[-*] |^\d+\. |^```|^\$\$|^- \[[ xX]\] |\*\*|`/.test(text);
+    if (!hasMarkdown) return; // let browser handle plain single-line paste
+    e.preventDefault();
+    onPasteBlocks && onPasteBlocks(text);
   };
 
   const tryMarkdownShortcut = (e) => {
@@ -6274,11 +6451,11 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
 
   const renderContent = () => {
     const t = block.type;
-    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onPaste={handlePaste} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onPaste={handlePaste} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onPaste={handlePaste} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onPaste={handlePaste} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onPaste={handlePaste} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
     if (t === "ul" || t === "ol") {
       return <ListBlock block={block} onUpdate={onUpdate} />;
     }
