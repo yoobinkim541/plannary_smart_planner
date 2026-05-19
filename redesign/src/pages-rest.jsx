@@ -1141,13 +1141,27 @@ function WikiPage() {
   const [infoOpen, setInfoOpen] = useStateO(false);
   const [favorites, setFavorites] = useStateO(() => new Set());
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
+  const [pageSwitching, setPageSwitching] = useStateO(false);
+  const activeIdRef = useRefO(activeId);
+  const pageSwitchTimerRef = useRefO(null);
+  const pageIndex = useMemoO(() => {
+    const byId = new Map();
+    const childrenByParent = new Map();
+    for (const page of tree) {
+      byId.set(page.id, page);
+      const parent = page.parent || null;
+      if (!childrenByParent.has(parent)) childrenByParent.set(parent, []);
+      childrenByParent.get(parent).push(page);
+    }
+    return { byId, childrenByParent };
+  }, [tree]);
+  const active = pageIndex.byId.get(activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
+  const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
   const [tagInputOpen, setTagInputOpen] = useStateO(false);
   const [tagDraft, setTagDraft] = useStateO("");
   const [titleDraft, setTitleDraft] = useStateO("");
   const tagInputRef = useRefO(null);
   const titleInputRef = useRefO(null);
-  const active = tree.find((w) => w.id === activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
-  const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
   const setActiveIcon = (v) => {
     setPageIcons(prev => ({ ...prev, [activeId]: v }));
     setTree(prev => prev.map(w => w.id === activeId ? { ...w, icon: v } : w));
@@ -1155,12 +1169,29 @@ function WikiPage() {
       detail: { id: activeId, patch: { icon: v } },
     }));
   };
+  useEffectO(() => { activeIdRef.current = activeId; }, [activeId]);
+  const selectWikiPage = React.useCallback((id) => {
+    if (!id || id === activeIdRef.current) return;
+    activeIdRef.current = id;
+    const cachedBlocks = window.Planary.WIKI_PAGES?.[id]?.blocks;
+    if (Array.isArray(cachedBlocks)) setDocBlocks(cachedBlocks);
+    setPageSwitching(true);
+    setActiveId(id);
+    setTreeMenuFor(null);
+    setAddMenuFor(null);
+    setMoreMenuOpen(false);
+    setCoverMenuOpen(false);
+    setCoverPanelOpen(false);
+    window.clearTimeout(pageSwitchTimerRef.current);
+    pageSwitchTimerRef.current = window.setTimeout(() => setPageSwitching(false), 120);
+  }, []);
+  useEffectO(() => () => window.clearTimeout(pageSwitchTimerRef.current), []);
   const currentPageMeta = useMemoO(() => {
     const chain = [];
     let cur = active;
     while (cur) {
       chain.unshift(cur);
-      cur = cur.parent ? tree.find(w => w.id === cur.parent) : null;
+      cur = cur.parent ? pageIndex.byId.get(cur.parent) : null;
     }
     const headingText = docBlocks
       .filter((b) => /^h[1-3]$/.test(b.type || ""))
@@ -1301,8 +1332,8 @@ function WikiPage() {
   };
 
   // Build tree: roots and children
-  const roots = tree.filter((w) => !w.parent);
-  const childrenOf = (id) => tree.filter((w) => w.parent === id);
+  const roots = pageIndex.childrenByParent.get(null) || [];
+  const childrenOf = (id) => pageIndex.childrenByParent.get(id) || [];
 
   const toggleNode = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -1337,7 +1368,7 @@ function WikiPage() {
     const stack = [id];
     while (stack.length) {
       const cur = stack.pop();
-      tree.filter((w) => w.parent === cur).forEach((w) => {
+      childrenOf(cur).forEach((w) => {
         result.push(w.id);
         stack.push(w.id);
       });
@@ -1419,10 +1450,10 @@ function WikiPage() {
   // Drag-and-drop reorder/reparent helpers
   const isDescendantOf = (ancestorId, candidateId) => {
     if (ancestorId === candidateId) return true;
-    let cur = tree.find((w) => w.id === candidateId);
+    let cur = pageIndex.byId.get(candidateId);
     while (cur && cur.parent) {
       if (cur.parent === ancestorId) return true;
-      cur = tree.find((w) => w.id === cur.parent);
+      cur = pageIndex.byId.get(cur.parent);
     }
     return false;
   };
@@ -1524,7 +1555,19 @@ function WikiPage() {
         <div
           className={`wiki-tree-item ${activeId === node.id ? "is-active" : ""} ${isDragSource ? "is-drag-src" : ""} ${dropPos ? `drop-${dropPos}` : ""}`}
           style={{ paddingLeft: 6 + depth * 14 }}
-          onClick={() => setActiveId(node.id)}
+          onPointerDown={(e) => {
+            if (e.button !== 0 || renamingId === node.id) return;
+            selectWikiPage(node.id);
+          }}
+          onClick={() => selectWikiPage(node.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              selectWikiPage(node.id);
+            }
+          }}
+          role="button"
+          tabIndex={0}
           draggable
           onDragStart={onDragStartEvt}
           onDragOver={onDragOverEvt}
@@ -1659,7 +1702,7 @@ function WikiPage() {
               style={{ position: "fixed", top: treeMenuPos.top, right: treeMenuPos.right, zIndex: 300, minWidth: 160 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="popover-item" onClick={() => { setActiveId(node.id); setTreeMenuFor(null); }}>
+              <div className="popover-item" onClick={() => { selectWikiPage(node.id); setTreeMenuFor(null); }}>
                 <Icon name="eye" size={12} />열기
               </div>
               <div className="popover-item" onClick={() => { addPage(node.id, "blank"); setTreeMenuFor(null); }}>
@@ -1755,7 +1798,7 @@ function WikiPage() {
           </button>
         </aside>}
 
-        <div className="wiki-doc" ref={docScrollRef}>
+        <div className={`wiki-doc ${pageSwitching ? "is-switching" : ""}`} ref={docScrollRef}>
           <div
             className={`wiki-cover ${coverPanelOpen ? "is-editing" : ""}`}
             style={{ height: coverHeight, "--cover-pos-x": `${coverPosX}%`, "--cover-pos-y": `${coverPosY}%`, "--cover-zoom": `${coverZoom}%` }}>
@@ -1918,7 +1961,7 @@ function WikiPage() {
               let cur = active;
               while (cur) {
                 chain.unshift(cur);
-                cur = cur.parent ? tree.find(w => w.id === cur.parent) : null;
+                cur = cur.parent ? pageIndex.byId.get(cur.parent) : null;
               }
               return chain.map((node, i) => {
                 const isLast = i === chain.length - 1;
@@ -1930,7 +1973,11 @@ function WikiPage() {
                     ) : (
                       <button
                         className="wiki-crumb"
-                        onClick={() => setActiveId(node.id)}
+                        onPointerDown={(e) => {
+                          if (e.button !== 0) return;
+                          selectWikiPage(node.id);
+                        }}
+                        onClick={() => selectWikiPage(node.id)}
                         title={`${node.title}(으)로 이동`}
                       >
                         <span className="wiki-crumb-icon">{node.icon}</span>
@@ -2083,7 +2130,7 @@ function WikiPage() {
             placeholder="제목 없음"
           />
 
-          <WikiBlocks activeId={activeId} onBlocksChange={setDocBlocks} />
+          <WikiBlocks key={activeId} activeId={activeId} onBlocksChange={setDocBlocks} />
         </div>
 
         {showAside &&
@@ -2143,7 +2190,7 @@ function WikiPage() {
               const queue = [duplicating.node.id];
               while (queue.length) {
                 const curId = queue.shift();
-                tree.filter((w) => w.parent === curId).forEach((child) => {
+                childrenOf(curId).forEach((child) => {
                   const newId = `w${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
                   idMap[child.id] = newId;
                   additions.push({ ...child, id: newId, parent: idMap[child.parent] });
@@ -2153,7 +2200,7 @@ function WikiPage() {
             }
             setTree((prev) => [...prev, ...additions]);
             if (duplicating.node.parent) setExpanded((prev) => ({ ...prev, [duplicating.node.parent]: true }));
-            setActiveId(newRoot.id);
+            selectWikiPage(newRoot.id);
             window.Planary.toast?.({
               type: "ok",
               title: `"${opts.title}" 복제됨`,
