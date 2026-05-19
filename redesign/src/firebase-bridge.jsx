@@ -470,7 +470,7 @@
 
     async createNote(note) {
       if (!this.uid) return null;
-      const ref = await db.collection("notes").add({
+      const docData = {
         uid: this.uid,
         text: (note.text || "").trim() || "(빈 메모)",
         color: note.color || "yellow",
@@ -478,24 +478,25 @@
         y: typeof note.y === "number" ? note.y : 80,
         archived: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+      if (note.id) {
+        await db.collection("notes").doc(note.id).set(docData);
+        return note.id;
+      }
+      const ref = await db.collection("notes").add(docData);
       return ref.id;
     },
     async updateNote(id, patch) {
       if (!this.uid) return;
-      const snap = await db.collection("notes").doc(id).get();
-      const data = snap.data();
-      if (!data) return;
-      const next = {
-        uid: this.uid,
-        text: patch.text ?? data.text,
-        color: patch.color ?? data.color,
-        x: typeof patch.x === "number" ? patch.x : data.x,
-        y: typeof patch.y === "number" ? patch.y : data.y,
-        archived: patch.archived ?? data.archived ?? false,
-        createdAt: data.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
-      };
-      await db.collection("notes").doc(id).set(next);
+      const updates = {};
+      if (patch.text !== undefined) updates.text = patch.text;
+      if (patch.color !== undefined) updates.color = patch.color;
+      if (typeof patch.x === "number") updates.x = patch.x;
+      if (typeof patch.y === "number") updates.y = patch.y;
+      if (patch.archived !== undefined) updates.archived = patch.archived;
+      if (typeof patch.rot === "number") updates.rot = patch.rot;
+      if (!Object.keys(updates).length) return;
+      await db.collection("notes").doc(id).set(updates, { merge: true });
     },
     async deleteNote(id) {
       if (!this.uid) return;
@@ -556,11 +557,18 @@
 
     async savePreferences(patch) {
       if (!this.uid) return;
-      await db.collection("users").doc(this.uid).set({
-        uid: this.uid,
-        preferences: patch || {},
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      const ref = db.collection("users").doc(this.uid);
+      const updates = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      for (const [key, val] of Object.entries(patch || {})) {
+        updates[`preferences.${key}`] = val;
+      }
+      try {
+        await ref.update(updates);
+      } catch (err) {
+        if (err.code === "not-found") {
+          await ref.set({ uid: this.uid, preferences: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        } else throw err;
+      }
     },
     async saveNotifPrefs(patch) {
       if (!this.uid) return;
@@ -665,6 +673,7 @@
 
   window.Planary = window.Planary || {};
   window.Planary.api = api;
+  window.Planary.generateId = () => db.collection("notes").doc().id;
 
   // ────────────────────────────────────────────────────────────────────
   // Auth + Firestore listeners
