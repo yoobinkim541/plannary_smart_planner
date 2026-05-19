@@ -773,7 +773,24 @@ function applyLanguage(lang = currentLanguage) {
 function loadTodos() {
     if (!currentUser || !db) return;
     db.collection('todos').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
-        allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        allTodos = snapshot.docs.map(doc => {
+            const data = doc.data();
+            let dueDate = data.dueDate || null;
+            if (dueDate && typeof dueDate !== 'string' && typeof dueDate.toDate === 'function') {
+                dueDate = dueDate.toDate().toISOString().slice(0, 10);
+            }
+            if (dueDate === '') dueDate = null;
+            return {
+                id: doc.id,
+                ...data,
+                completed: typeof data.completed === 'boolean' ? data.completed : false,
+                archived: typeof data.archived === 'boolean' ? data.archived : false,
+                dueDate,
+                priority: data.priority || 'medium',
+                memo: data.memo || '',
+                createdAt: data.createdAt || { toMillis: () => Date.now() }
+            };
+        });
         applyFilters();
         updateDashboardUI();
         renderProjectManagementList();
