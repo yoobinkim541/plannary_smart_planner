@@ -2729,7 +2729,7 @@ function ProfilePage({ tasks, t, setTweak }) {
             <div style={{ padding: "4px 22px 22px" }}>
               {[
               { id: "email", label: "이메일 알림", sub: notifs.email ? "주간 요약 발송" : "발송 안 함" },
-              { id: "push", label: "데스크톱 푸시", sub: notifs.push ? "리마인더만" : "꺼짐" },
+              { id: "push", label: "백그라운드 푸시 알림", sub: (() => { const p = window.Planary?.getPushPermission?.(); if (!notifs.push) return "꺼짐"; if (p === "granted") return "켜짐 · 리마인더 및 e-Class 새 항목"; if (p === "denied") return "브라우저에서 알림이 차단됨"; return "켜짐 (권한 대기 중)"; })() },
               { id: "gcal", label: "Google Calendar", sub: notifs.gcal ? "연결됨 · 양방향 동기화" : "연결 안 됨" },
               { id: "apple", label: "Apple Calendar", sub: notifs.apple ? "연결됨" : "연결 안 됨" },
               { id: "slack", label: "Slack 통합", sub: notifs.slack ? "연결됨" : "연결 안 됨" }].
