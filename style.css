@@ -1545,6 +1545,14 @@ textarea.composer-input {
     background: color-mix(in srgb, var(--bg) 78%, var(--surface));
 }
 
+.onboarding-step.skipped {
+    opacity: 0.64;
+}
+
+.onboarding-step.skipped .onboarding-step-icon {
+    color: var(--text-3);
+}
+
 .onboarding-step-icon {
     width: 44px;
     height: 44px;
@@ -1690,6 +1698,27 @@ textarea.composer-input {
     font-size: 0.74rem;
 }
 
+.onboarding-step-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.onboarding-step-actions .confirm-btn,
+.onboarding-step-actions .text-link-btn {
+    width: auto;
+    min-height: 36px;
+    padding: 8px 13px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+}
+
+.onboarding-step-skip:disabled {
+    cursor: default;
+    opacity: 0.8;
+}
+
 .onboarding-actions {
     display: flex;
     align-items: center;
@@ -1816,6 +1845,11 @@ body.onboarding-spotlight-active #main-area {
 
     .onboarding-welcome p {
         max-width: min(760px, calc(100vw - 160px));
+    }
+
+    .onboarding-step-actions .confirm-btn,
+    .onboarding-step-actions .text-link-btn {
+        min-height: 38px;
     }
 }
 
@@ -1978,8 +2012,15 @@ body.onboarding-spotlight-active #main-area {
         grid-template-columns: 1fr;
     }
 
+    .onboarding-step-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
     .onboarding-actions .confirm-btn,
-    .onboarding-actions .text-link-btn {
+    .onboarding-actions .text-link-btn,
+    .onboarding-step-actions .confirm-btn,
+    .onboarding-step-actions .text-link-btn {
         width: 100%;
         justify-content: center;
         min-height: 44px;

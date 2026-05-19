@@ -1374,7 +1374,7 @@
 .wiki-block table { table-layout: fixed; word-break: break-word; }
 .wiki-block pre, .codeblock pre { max-width: 100%; overflow-x: auto; }
 @media (max-width: 640px) {
-  .wiki-doc { overflow-x: hidden; }
+  .wiki-doc { overflow-x: auto; }
 }
 
 .wiki-tree {
@@ -2044,7 +2044,7 @@
 /* ---------- MOBILE ---------- */
 @media (max-width: 640px) {
   .rail, .sidebar { display: none; }
-  .page { padding: 14px 14px 80px; }
+  .page { padding: 14px max(14px, env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
   .topbar { display: none; }
   .hero-row { grid-template-columns: 1fr; gap: 14px; }
   .hero-stats { grid-template-columns: repeat(3, 1fr); min-width: 0; }
@@ -2127,10 +2127,21 @@
 
   /* Dialog padding */
   .dialog-head, .dialog-foot { padding: 14px 16px; }
-  .dialog { width: calc(100vw - 28px) !important; }
+  .dialog { width: calc(100vw - 28px - env(safe-area-inset-left) - env(safe-area-inset-right)) !important; }
+  /* Popover must not overflow viewport edge */
+  .popover { min-width: min(200px, calc(100vw - 28px)); max-width: calc(100vw - 28px); }
 
   /* Project detail single column on mobile */
   .project-detail-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ---------- SMALL TABLET / LARGE PHONE (641-760px gap) ---------- */
+@media (max-width: 760px) and (min-width: 641px) {
+  .page { padding: 18px 20px 60px; }
+  .hero-row { grid-template-columns: 1fr; gap: 14px; }
+  .hero-stats { min-width: 0; }
+  .page-wide > div[style*="1.5fr 1fr"] { grid-template-columns: 1fr !important; }
+  .page-wide > div[style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 @media (max-width: 1100px) and (min-width: 761px) {
@@ -2140,6 +2151,7 @@
   .hero-stats { min-width: 0; }
   .dash { grid-template-columns: 1.2fr 1fr; }
   .page { padding: 18px 22px 60px; }
+  .page-wide > div[style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 .mobile-bar {
@@ -2170,7 +2182,7 @@
   display: none;
   align-items: stretch;
   justify-content: space-around;
-  padding: 6px 0 12px;
+  padding: 6px 0 max(12px, env(safe-area-inset-bottom));
   z-index: 50;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

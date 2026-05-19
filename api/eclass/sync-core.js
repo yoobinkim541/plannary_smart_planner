@@ -237,6 +237,7 @@ async function syncConnection(uid, connection, options = {}) {
   const activeKeys = new Set(payloads.map(p => `${p.source}:${p.sourceItemId}`));
 
   const ops = [];
+  let newTodoCount = 0;
 
   payloads.forEach(payload => {
     const key = `${payload.source}:${payload.sourceItemId}`;
@@ -244,6 +245,7 @@ async function syncConnection(uid, connection, options = {}) {
     if (existingRef) {
       ops.push(batch => batch.set(existingRef, payload, { merge: true }));
     } else {
+      newTodoCount++;
       const newRef = db.collection('todos').doc();
       ops.push(batch => batch.set(newRef, {
         ...payload,
@@ -294,7 +296,7 @@ async function syncConnection(uid, connection, options = {}) {
   }, { merge: true }));
 
   await commitInChunks(db, ops);
-  return { todoCount: items.length, examCount: exams.length, projectCount, courseCount: enrolledCourses.length };
+  return { todoCount: items.length, examCount: exams.length, projectCount, courseCount: enrolledCourses.length, newTodoCount };
 }
 
 async function syncAll(options = {}) {

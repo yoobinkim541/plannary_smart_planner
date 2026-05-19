@@ -406,6 +406,44 @@ function discoverEnrolledCourses(pages) {
         courses.set(kj, (name && name.length > 1 && name.length < 80) ? name : null);
       }
     });
+
+    // Pattern D: SeoulTech ilos my_lecture_container — iterate every course div
+    // directly so we never miss a course even if its onclick/href format is unusual.
+    $('.my_lecture_container .container_body > div').each((_, el) => {
+      const itemHtml = $.html(el);
+      if (!itemHtml) return;
+      let kj = null, name = null;
+
+      // goLecture('kjKey') or goLecture('kjKey', 'name', ...)
+      const glm = itemHtml.match(/goLecture\(\s*['"]([A-Za-z0-9._-]+)['"]\s*(?:,\s*['"]([^'"]*)['"]\s*)?/);
+      if (glm) {
+        kj = glm[1].trim();
+        name = (glm[2] !== undefined && glm[2] !== '') ? cleanText(glm[2]) || null : null;
+      }
+
+      // KJKEY= in any href or JS string
+      if (!kj) {
+        const km = itemHtml.match(/[?&]KJKEY=([A-Za-z0-9._%-]{1,63})/i);
+        if (km) {
+          try { kj = decodeURIComponent(km[1]).trim(); } catch (_) {}
+        }
+      }
+
+      if (!kj || !/^[A-Za-z0-9._-]+$/.test(kj) || kj.length >= 64) return;
+
+      // Derive name from visible text when goLecture didn't provide one
+      if (!name || name.length < 2) {
+        const item = $(el);
+        const candidate = cleanText(
+          item.find('.course_name, .courseName, .name, h4, h3, a').first().text()
+          || item.text().split(/[\n\r|·–]/)[0]
+        ).slice(0, 80);
+        name = (candidate && candidate.length >= 2) ? candidate : null;
+      }
+
+      if (!courses.has(kj)) courses.set(kj, name);
+      else if (!courses.get(kj) && name) courses.set(kj, name);
+    });
   });
   return [...courses.entries()].map(([kj, name]) => ({ kj, name }));
 }

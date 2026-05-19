@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const crypto = require('crypto');
 const { toAbsoluteUrl, parseDate, parseKoreanDate, normalizeBaseUrl, fetchText } = require('./_seoultech');
+const cleanText = text => String(text || '').replace(/\s+/g, ' ').trim();
 
 const SEMESTER_STARTS = {
   '2026-1': '2026-03-02',
@@ -111,13 +112,13 @@ function discoverSyllabusUrls(pages, baseUrl) {
   return [...urls].slice(0, MAX_SYLLABUS_URLS);
 }
 
-async function fetchSyllabusContent(url, cookie) {
+async function fetchSyllabusContent(url, cookie, referer) {
   const response = await fetch(url, {
     headers: {
       Cookie: cookie,
       'User-Agent': 'PlanaryEclassSync/1.0',
       Accept: '*/*',
-      Referer: url
+      Referer: referer || url
     },
     redirect: 'follow'
   });
@@ -135,7 +136,103 @@ async function fetchSyllabusContent(url, cookie) {
     }
   }
   const html = buffer.toString('utf8');
-  return { text: cheerio.load(html)('body').text() || html, isPdf: false, contentType };
+  return { text: cheerio.load(html)('body').text() || html, html, isPdf: false, contentType };
+}
+
+// Extract follow-up syllabus URLs from onclick handlers in #top_notice_container.
+// SeoulTech ilos shows a row of icon-buttons at the top of each course's submain
+// page; the first button typically opens the 강의계획서 in a popup window.
+function extractSyllabusFollowUps($, pageUrl, queuedUrls, followUpMap) {
+  $('#top_notice_container button, #top_notice_container a').each((_, el) => {
+    const onclick = $(el).attr('onclick') || '';
+    const href = $(el).attr('href') || '';
+    const candidates = [];
+
+    const winMatch = onclick.match(/window\.open\(\s*['"]([^'"]+)['"]/);
+    if (winMatch) candidates.push(winMatch[1]);
+
+    const locMatch = onclick.match(/location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/);
+    if (locMatch) candidates.push(locMatch[1]);
+
+    if (href && !href.startsWith('javascript:') && !href.startsWith('#')) candidates.push(href);
+
+    for (const c of candidates) {
+      try {
+        const u = new URL(c.replace(/&amp;/g, '&'), pageUrl).toString();
+        if (!queuedUrls.has(u)) {
+          queuedUrls.add(u);
+          followUpMap.set(u, pageUrl);
+        }
+      } catch (_) {}
+    }
+  });
+}
+
+// Structured parser for the weekly schedule table in #plan_view_form.
+// Handles the SeoulTech ilos layout:
+//   #plan_view_form > div:nth-child(2) > table:nth-child(6)
+// Each row: [주차] [날짜?] [강의내용] [비고?]
+function extractExamDatesFromTable($, semesterStart, fallbackCourseTitle, sourceUrl) {
+  const results = [];
+  const seen = new Set();
+  const courseTitle = extractCourseTitle($('body').text()) || fallbackCourseTitle || 'SeoulTech e-Class';
+  const range = semesterStart ? semesterRange(semesterStart) : null;
+
+  // Target the plan table; fall back to any table on the page
+  const table = $('#plan_view_form table').first();
+  if (!table.length) return results;
+
+  table.find('tr').each((_, tr) => {
+    const row = $(tr);
+    const cells = row.find('td');
+    if (cells.length < 2) return;
+
+    const rowText = cells.map((__, td) => cleanText($(td).text())).get().join(' ');
+    const matching = KEYWORD_RULES.filter(rule => rule.pattern.test(rowText));
+    if (!matching.length) return;
+
+    let dueDate = null;
+    let week = null;
+
+    cells.each((__, td) => {
+      const t = cleanText($(td).text());
+      if (!dueDate) {
+        const d = parseDate(t) || parseKoreanDate(t);
+        if (d) { dueDate = d; return; }
+      }
+      if (week === null) {
+        const wm = t.match(WEEK_RE);
+        if (wm) week = Number(wm[1] || wm[2]);
+      }
+    });
+
+    if (!dueDate && week !== null && semesterStart) {
+      dueDate = dueFromWeek(semesterStart, week);
+    }
+    if (!dueDate) return;
+
+    if (range) {
+      const d = new Date(dueDate);
+      if (!Number.isFinite(d.getTime()) || d < range.start || d > range.end) return;
+    }
+
+    matching.forEach(rule => {
+      const key = `${rule.type}:${dueDate}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      results.push({
+        type: rule.type,
+        priority: rule.priority,
+        reminderMinutes: rule.reminders,
+        dueDate, dueTime: null,
+        courseTitle, sourceUrl: sourceUrl || null,
+        note: rowText.slice(0, 100),
+        confidence: 'high'
+      });
+    });
+  });
+
+  return results;
 }
 
 function extractCourseTitle(text) {
@@ -240,6 +337,10 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
 
   const now = Date.now();
   const out = [];
+  // Track queued URLs so follow-ups from submain pages don't double-fetch
+  const queuedUrls = new Set(refs.map(r => r.url));
+  const followUpUrls = new Map(); // extraUrl → submainReferer
+
   for (let i = 0; i < refs.length; i++) {
     const { url, ref } = refs[i];
     const snap = snapshots[i];
@@ -262,6 +363,20 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
           }, { merge: true });
           continue;
         }
+
+        // When we land on a submain page, follow the #top_notice_container buttons
+        // to find the actual syllabus popup URL rather than scraping the submain itself.
+        if (!content.isPdf && content.html && /submain_form/.test(url)) {
+          const $sub = cheerio.load(content.html);
+          extractSyllabusFollowUps($sub, url, queuedUrls, followUpUrls);
+          await ref.set({
+            uid, sourceUrl: url,
+            lastError: 'submain_redirected',
+            parsedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          continue;
+        }
+
         if (!content.text || content.text.length < 50) {
           await ref.set({
             uid, sourceUrl: url,
@@ -272,7 +387,16 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
           continue;
         }
         metrics.urlsWithText += 1;
-        exams = extractExamDates(content.text, { sourceUrl: url });
+        // Prefer structured table extraction for HTML pages; fall back to text scan.
+        if (!content.isPdf && content.html) {
+          const semesterStart = parseSemesterPeriod(content.text) || SEMESTER_STARTS[currentSemesterKey()];
+          const tableExams = extractExamDatesFromTable(
+            cheerio.load(content.html), semesterStart, null, url
+          );
+          exams = tableExams.length > 0 ? tableExams : extractExamDates(content.text, { sourceUrl: url });
+        } else {
+          exams = extractExamDates(content.text, { sourceUrl: url });
+        }
         await ref.set({
           uid, sourceUrl: url,
           isPdf: content.isPdf,
@@ -297,6 +421,36 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
     const courseId = hashUrl(url).slice(0, 12);
     (exams || []).forEach(exam => out.push({ ...exam, courseId, sourceUrl: exam.sourceUrl || url }));
   }
+
+  // Process follow-up URLs discovered from #top_notice_container on submain pages.
+  // These are the actual syllabus popup pages — fetch with the submain as referer.
+  for (const [extraUrl, refererUrl] of followUpUrls) {
+    metrics.urlsProbed += 1;
+    try {
+      const content = await fetchSyllabusContent(extraUrl, sessionCookie, refererUrl);
+      const isLoginWall = /usr_id|usr_pwd|form[^>]*action=.{1,40}login/i.test(content.text || '');
+      if (isLoginWall) { metrics.urlsLoginRedirect += 1; continue; }
+      if (!content.text || content.text.length < 50) continue;
+      metrics.urlsWithText += 1;
+
+      let extraExams;
+      if (!content.isPdf && content.html) {
+        const semesterStart = parseSemesterPeriod(content.text) || SEMESTER_STARTS[currentSemesterKey()];
+        const tableExams = extractExamDatesFromTable(
+          cheerio.load(content.html), semesterStart, null, extraUrl
+        );
+        extraExams = tableExams.length > 0 ? tableExams : extractExamDates(content.text, { sourceUrl: extraUrl });
+      } else {
+        extraExams = extractExamDates(content.text, { sourceUrl: extraUrl });
+      }
+
+      const courseId = hashUrl(extraUrl).slice(0, 12);
+      extraExams.forEach(exam => out.push({ ...exam, courseId, sourceUrl: exam.sourceUrl || extraUrl }));
+    } catch (_) {
+      metrics.urlsHttpErrors += 1;
+    }
+  }
+
   metrics.examsExtracted = out.length;
   return { exams: out, metrics };
 }
@@ -304,6 +458,8 @@ async function fetchSyllabusExams({ baseUrl, sessionCookie, pages, db, admin, ui
 module.exports = {
   fetchSyllabusExams,
   extractExamDates,
+  extractExamDatesFromTable,
+  extractSyllabusFollowUps,
   discoverSyllabusUrls,
   discoverCourseKjs,
   syllabusCandidatesForKj,
