@@ -662,13 +662,40 @@
     },
     async saveWikiBlocks(id, blocks) {
       if (!this.uid) return;
+      const encoded = (blocks || []).map(encodeEditorJSBlock);
+      const now = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection("wiki_pages").doc(id).update({
-        content: {
-          time: Date.now(),
-          blocks: (blocks || []).map(encodeEditorJSBlock),
-          version: "redesign-v1",
-        },
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        content: { time: Date.now(), blocks: encoded, version: "redesign-v1" },
+        updatedAt: now,
+      });
+      // Save a revision snapshot (latest 50 kept)
+      const user = auth.currentUser;
+      const authorName = (user && (user.displayName || (user.email || "").split("@")[0])) || "나";
+      const authorInitials = authorName.slice(0, 1).toUpperCase();
+      await db.collection("wiki_pages").doc(id).collection("revisions").add({
+        blocks: encoded,
+        authorName,
+        authorInitials,
+        savedAt: now,
+      });
+    },
+    async loadWikiRevisions(id) {
+      if (!this.uid) return [];
+      const snap = await db.collection("wiki_pages").doc(id)
+        .collection("revisions")
+        .orderBy("savedAt", "desc")
+        .limit(50)
+        .get();
+      return snap.docs.map(doc => {
+        const d = doc.data();
+        const ms = d.savedAt && d.savedAt.toMillis ? d.savedAt.toMillis() : 0;
+        return {
+          id: doc.id,
+          blocks: (d.blocks || []).map(decodeEditorJSBlock),
+          authorName: d.authorName || "사용자",
+          authorInitials: d.authorInitials || "U",
+          savedAt: ms,
+        };
       });
     },
     async deleteWikiPage(id) {
