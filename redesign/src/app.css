@@ -2630,11 +2630,28 @@
   align-items: flex-start;
   margin: 0 -28px;
   padding: 1px 28px;
+  border-radius: var(--r-sm);
+  cursor: grab;
+  outline: none;
   transition: background var(--dur-fast);
 }
-.wiki-block-row:hover { background: transparent; }
-.wiki-block-row.is-active { background: transparent; }
-.wiki-block-row.is-dragging { opacity: 0.4; }
+.wiki-block-row:hover { background: color-mix(in oklab, var(--accent) 5%, transparent); }
+.wiki-block-row.is-active,
+.wiki-block-row:focus-visible {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.wiki-block-row.is-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+.wiki-block-row [contenteditable],
+.wiki-block-row input,
+.wiki-block-row textarea,
+.wiki-block-row select,
+.wiki-block-row button {
+  cursor: auto;
+}
 .wiki-block-row.drop-before::before,
 .wiki-block-row.drop-after::after {
   content: "";

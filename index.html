@@ -384,12 +384,20 @@
                 <div class="composer">
                     <div class="composer-top">
                         <input type="text" id="todo-input" placeholder="무엇을 해야 하나요?">
+                        <label class="task-date-picker" for="due-date">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <input type="date" id="due-date" aria-label="마감일">
+                        </label>
                         <button id="task-details-toggle" class="text-link-btn task-details-toggle" type="button">세부 설정</button>
                         <button id="add-btn">작업 추가</button>
                     </div>
                     <div class="composer-details">
                         <input type="text" id="memo-input" placeholder="메모 (선택)">
-                        <input type="date" id="due-date">
                         <input type="time" id="due-time" aria-label="리마인더 시간">
                         <select id="calendar-reminder-select" aria-label="캘린더 알림">
                             <option value="0">정시에 알림</option>

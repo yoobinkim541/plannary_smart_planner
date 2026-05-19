@@ -85,8 +85,7 @@ const WIKI_TREE = [
 ];
 
 const hasFirebaseRuntime = typeof firebase !== "undefined" && firebase.apps && firebase.apps.length > 0;
-const isLocalPrototype = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-const useLiveDataShell = hasFirebaseRuntime && !isLocalPrototype;
+const useLiveDataShell = true;
 
 window.Planary = {
   LIVE_DATA_SHELL: useLiveDataShell,
