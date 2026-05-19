@@ -637,13 +637,13 @@ function NotesPage() {
   };
 
   const duplicateNote = (n) => {
-    const id = "n" + Date.now();
+    const id = window.Planary?.generateId?.() || "n" + Date.now();
     setNotes((prev) => [
       { ...n, id, x: n.x + 24, y: n.y + 24, rot: (Math.random() - 0.5) * 4, date: "방금 복제" },
       ...prev,
     ]);
     window.dispatchEvent(new CustomEvent("planary:create-note", {
-      detail: { text: n.text, color: n.color, x: n.x + 24, y: n.y + 24 },
+      detail: { id, text: n.text, color: n.color, x: n.x + 24, y: n.y + 24 },
     }));
   };
 
@@ -724,7 +724,7 @@ function NotesPage() {
 
   const addNote = () => {
     if (!draft.trim()) return;
-    const id = "n" + Date.now();
+    const id = window.Planary?.generateId?.() || "n" + Date.now();
     const x = 60 + Math.random() * 200;
     const y = 60 + Math.random() * 100;
     const text = draft.trim();
@@ -733,7 +733,7 @@ function NotesPage() {
     ...prev]
     );
     window.dispatchEvent(new CustomEvent("planary:create-note", {
-      detail: { text, color: draftColor, x, y },
+      detail: { id, text, color: draftColor, x, y },
     }));
     setDraft("");
   };
