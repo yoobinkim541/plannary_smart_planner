@@ -675,6 +675,42 @@
   window.Planary.api = api;
   window.Planary.generateId = () => db.collection("notes").doc().id;
 
+  // ── FCM push notification helpers ────────────────────────────────────
+  async function registerFCMToken() {
+    try {
+      if (!("Notification" in window) || Notification.permission === "denied") return;
+      if (typeof firebase.messaging !== "function") return;
+      if (!("serviceWorker" in navigator)) return;
+      const swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      const messaging = firebase.messaging();
+      const vapidKey = window.PLANARY_FCM_VAPID_KEY;
+      const token = await messaging.getToken({ vapidKey, serviceWorkerRegistration: swReg });
+      if (token && api.uid) {
+        await db.collection("users").doc(api.uid).update({
+          fcmTokens: firebase.firestore.FieldValue.arrayUnion(token),
+        });
+        window.Planary.FCM_TOKEN = token;
+      }
+    } catch (err) {
+      console.warn("[Planary] FCM token registration failed:", err.message);
+    }
+  }
+
+  window.Planary.requestPushPermission = async () => {
+    if (!("Notification" in window)) return false;
+    const perm = await Notification.requestPermission();
+    if (perm === "granted") {
+      await registerFCMToken();
+      return true;
+    }
+    return false;
+  };
+
+  window.Planary.getPushPermission = () => {
+    if (!("Notification" in window)) return "unsupported";
+    return Notification.permission; // "default" | "granted" | "denied"
+  };
+
   // ────────────────────────────────────────────────────────────────────
   // Auth + Firestore listeners
   // ────────────────────────────────────────────────────────────────────
@@ -707,6 +743,11 @@
     // Update USER mock so existing components pick it up on next render
     window.Planary.USER = api.user;
     window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: api.user }));
+
+    // Auto-register FCM token if permission was already granted
+    if (window.Planary.getPushPermission() === "granted") {
+      registerFCMToken();
+    }
 
     // Tasks
     unsubs.push(
@@ -1002,6 +1043,14 @@
   window.addEventListener("planary:save-notif-prefs", (e) => {
     const patch = e.detail || {};
     api.saveNotifPrefs(patch).catch(err => console.error("[Planary] save-notif-prefs failed:", err));
+    // When the user turns push on, request OS permission and register FCM token
+    if (patch.push === true) {
+      window.Planary.requestPushPermission().then(granted => {
+        if (!granted) {
+          window.Planary?.toast?.({ type: "err", title: "알림 권한이 필요해요", sub: "브라우저 설정에서 알림을 허용해주세요" });
+        }
+      });
+    }
   });
   window.addEventListener("planary:save-preferences", (e) => {
     const patch = e.detail || {};
