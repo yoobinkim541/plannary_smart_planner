@@ -1329,7 +1329,7 @@ function WikiPage() {
   // Scroll doc area to top on page change
   useEffectO(() => {
     if (docScrollRef.current) docScrollRef.current.scrollTop = 0;
-  }, [activeId, activeBlockId]);
+  }, [activeId]);
 
   // Collect a page and all its descendants
   const collectDescendants = (id) => {
@@ -6046,7 +6046,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [activeId]);
+  }, [activeId, activeBlockId]);
 
   const updateBlock = (id, patch) =>
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
