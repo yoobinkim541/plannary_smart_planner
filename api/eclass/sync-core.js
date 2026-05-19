@@ -3,7 +3,10 @@ const { decrypt } = require('./_crypto');
 const { fetchSeoultechItems } = require('./_seoultech');
 const { fetchSyllabusExams, discoverCourseKjs } = require('./_syllabus');
 
-const ECLASS_SOURCES = ['eclass', 'eclass-exam'];
+// 'eclass-course' tracks course enrollment anchors (one per enrolled course,
+// no due date). Included in ECLASS_SOURCES so the archival logic can remove
+// items for courses the student dropped.
+const ECLASS_SOURCES = ['eclass', 'eclass-exam', 'eclass-course'];
 const ECLASS_PROJECT_NAME = 'e-Class';
 const ECLASS_PROJECT_COLOR = '#3b82f6';
 const BATCH_LIMIT = 400;
@@ -103,6 +106,7 @@ async function commitInChunks(db, ops) {
 }
 
 async function loadExistingEclassTodos(db, uid) {
+  // Firestore 'in' operator supports up to 30 values; ECLASS_SOURCES has 3.
   const snapshot = await db.collection('todos')
     .where('uid', '==', uid)
     .where('source', 'in', ECLASS_SOURCES)
@@ -171,7 +175,7 @@ async function syncConnection(uid, connection, options = {}) {
   const password = connection.encryptedPassword ? decrypt(connection.encryptedPassword) : '';
   if (!sessionCookie && (!username || !password)) throw new Error('Missing saved E-class credentials');
 
-  const { items, pages, cookie } = await fetchSeoultechItems({
+  const { items, pages, cookie, enrolledCourses = [] } = await fetchSeoultechItems({
     baseUrl: connection.baseUrl,
     sessionCookie, username, password,
     returnPages: true
@@ -197,13 +201,43 @@ async function syncConnection(uid, connection, options = {}) {
   const { byKey, allDocs } = await loadExistingEclassTodos(db, uid);
   const { masterRef: eclassProjectRef, createdCount: projectCount } = await ensureEclassProject(db, uid, ts);
   const eclassProjectId = eclassProjectRef.id;
-  const payloads = [
+
+  // Build per-item payloads from todo_list + syllabus exams
+  const itemPayloads = [
     ...items.map(item => itemPayload(item, uid, ts, eclassProjectId)),
-    ...exams.map(exam => examPayload(exam, uid, ts, eclassProjectId))
+    ...exams.map(exam => examPayload(exam, uid, ts, eclassProjectId)),
   ];
+
+  // Build enrollment-anchor payloads for every enrolled course (regardless of
+  // whether it has active assignments). These give users visibility of all their
+  // courses inside the e-Class project even when no tasks are pending.
+  const coursesWithActiveItems = new Set(
+    itemPayloads.map(p => p.courseTitle).filter(Boolean)
+  );
+  const enrollmentPayloads = enrolledCourses
+    .filter(c => c.name && c.kj)
+    .map(course => ({
+      uid,
+      text: course.name,
+      memo: 'e-Class 수강 중',
+      source: 'eclass-course',
+      sourceItemId: `course:${course.kj}`,
+      projectId: eclassProjectId,
+      dueDate: null, dueTime: null,
+      calendarReminderMinutes: null,
+      calendarReminderMinutesList: [],
+      syncCalendar: false,
+      priority: 'medium',
+      archived: false,
+      completed: false,
+      syncedAt: ts,
+    }));
+
+  const payloads = [...itemPayloads, ...enrollmentPayloads];
   const activeKeys = new Set(payloads.map(p => `${p.source}:${p.sourceItemId}`));
 
   const ops = [];
+  let newTodoCount = 0;
 
   payloads.forEach(payload => {
     const key = `${payload.source}:${payload.sourceItemId}`;
@@ -211,6 +245,7 @@ async function syncConnection(uid, connection, options = {}) {
     if (existingRef) {
       ops.push(batch => batch.set(existingRef, payload, { merge: true }));
     } else {
+      newTodoCount++;
       const newRef = db.collection('todos').doc();
       ops.push(batch => batch.set(newRef, {
         ...payload,
@@ -246,7 +281,9 @@ async function syncConnection(uid, connection, options = {}) {
     }
   });
 
-  const lastCourseCount = discoverCourseKjs(pages || []).length;
+  // enrolledCourses already contains all discovered courses including those
+  // found via the per-course crawl, so use its length instead of re-scanning.
+  const lastCourseCount = enrolledCourses.length || discoverCourseKjs(pages || []).length;
   ops.push(batch => batch.set(connectionRef, {
     lastSyncedAt: ts,
     lastError: null,
@@ -254,33 +291,68 @@ async function syncConnection(uid, connection, options = {}) {
     lastExamCount: exams.length,
     lastProjectCount: projectCount,
     lastCourseCount,
+    lastEnrollmentCount: enrolledCourses.length,
     lastSyllabusMetrics: syllabusMetrics || null
   }, { merge: true }));
 
   await commitInChunks(db, ops);
-  return { todoCount: items.length, examCount: exams.length, projectCount };
+  return { todoCount: items.length, examCount: exams.length, projectCount, courseCount: enrolledCourses.length, newTodoCount };
 }
 
 async function syncAll(options = {}) {
   const admin = getAdmin();
   const db = admin.firestore();
   const snapshot = await db.collection('eclass_connections').get();
-  let todoCount = 0;
-  let examCount = 0;
-  let projectCount = 0;
-  for (const doc of snapshot.docs) {
-    try {
-      const connection = doc.data();
-      if (connection.enabled === false || !hasSavedCredentials(connection)) continue;
-      const result = await syncConnection(doc.id, connection, options);
-      todoCount += result.todoCount;
-      examCount += result.examCount;
-      projectCount += result.projectCount || 0;
-    } catch (error) {
-      await doc.ref.set({
-        lastError: error.message || String(error),
-        lastSyncedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+
+  // Group connections by credentialKey so we make exactly one e-Class network
+  // fetch per unique account, even when multiple Planary users share the same
+  // e-Class credentials. Within each group we use the most-recently-updated
+  // connection's credentials (freshest session cookie / password).
+  // Connections without a credentialKey (pre-migration legacy docs) are treated
+  // as their own singleton group.
+  const groups = new Map(); // credentialKey → [doc, ...]
+  snapshot.docs.forEach(doc => {
+    const data = doc.data();
+    if (data.enabled === false || !hasSavedCredentials(data)) return;
+    const gKey = data.credentialKey || `__legacy:${doc.id}`;
+    if (!groups.has(gKey)) groups.set(gKey, []);
+    groups.get(gKey).push(doc);
+  });
+
+  let todoCount = 0, examCount = 0, projectCount = 0;
+
+  for (const docs of groups.values()) {
+    // Sort descending by updatedAt so the freshest credentials are used first.
+    docs.sort((a, b) => {
+      const ta = a.data().updatedAt?.toMillis?.() || 0;
+      const tb = b.data().updatedAt?.toMillis?.() || 0;
+      return tb - ta;
+    });
+    const primaryData = docs[0].data();
+
+    for (const doc of docs) {
+      try {
+        // Always pass doc.id (the Planary UID) as the first argument so all
+        // writes (todos, projects, eclass_items) go to the correct user's
+        // namespace. Credentials come from the primary doc in the group.
+        const result = await syncConnection(doc.id, primaryData, options);
+        await doc.ref.set({
+          syncStatus: 'ok',
+          lastError: null,
+          lastTodoCount: result.todoCount,
+          lastExamCount: result.examCount,
+          lastProjectCount: result.projectCount,
+          lastSyncedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        todoCount += result.todoCount;
+        examCount += result.examCount;
+        projectCount += result.projectCount || 0;
+      } catch (error) {
+        await doc.ref.set({
+          lastError: error.message || String(error),
+          lastSyncedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
     }
   }
   return { todoCount, examCount, projectCount };
