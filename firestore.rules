@@ -41,17 +41,83 @@ service cloud.firestore {
       return value == null || value is int || value is float;
     }
 
+    function validOnboardingStatus(value) {
+      return value is string && value in ['pending', 'completed', 'skipped'];
+    }
+
+    function validOnboardingProgress(value) {
+      return value is map &&
+        value.keys().hasOnly(['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki']) &&
+        value.keys().hasAll(['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki']) &&
+        validOnboardingStatus(value.taskCreate) &&
+        validOnboardingStatus(value.taskDetails) &&
+        validOnboardingStatus(value.taskManage) &&
+        validOnboardingStatus(value.taskViews) &&
+        validOnboardingStatus(value.projects) &&
+        validOnboardingStatus(value.notesCreate) &&
+        validOnboardingStatus(value.notesManage) &&
+        validOnboardingStatus(value.wiki);
+    }
+
+    function validOnboardingCurrentStep(value) {
+      return value == null || (value is string && value in ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki']);
+    }
+
+    function validPreferences(value) {
+      return value is map &&
+        value.keys().hasOnly(['theme', 'accent', 'font', 'radius', 'sidebar', 'density', 'variant', 'lang']) &&
+        (!value.keys().hasAny(['theme']) || isStringOrNull(value.theme)) &&
+        (!value.keys().hasAny(['accent']) || isStringOrNull(value.accent)) &&
+        (!value.keys().hasAny(['font']) || isStringOrNull(value.font)) &&
+        (!value.keys().hasAny(['radius']) || isNumberOrNull(value.radius)) &&
+        (!value.keys().hasAny(['sidebar']) || isStringOrNull(value.sidebar)) &&
+        (!value.keys().hasAny(['density']) || isStringOrNull(value.density)) &&
+        (!value.keys().hasAny(['variant']) || isStringOrNull(value.variant)) &&
+        (!value.keys().hasAny(['lang']) || isStringOrNull(value.lang));
+    }
+
+    function validNotifPrefs(value) {
+      return value is map &&
+        value.keys().hasOnly(['email', 'push', 'gcal', 'apple', 'slack']) &&
+        (!value.keys().hasAny(['email']) || isBoolOrNull(value.email)) &&
+        (!value.keys().hasAny(['push']) || isBoolOrNull(value.push)) &&
+        (!value.keys().hasAny(['gcal']) || isBoolOrNull(value.gcal)) &&
+        (!value.keys().hasAny(['apple']) || isBoolOrNull(value.apple)) &&
+        (!value.keys().hasAny(['slack']) || isBoolOrNull(value.slack));
+    }
+
     function validTodo() {
       return hasOnlyKeys([
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
-        'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex'
+        'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
+        'completedAt', 'completedDate',
+        'dueTime', 'calendarReminderMinutes', 'calendarReminderMinutesList',
+        'syncCalendar', 'calendarEventId',
+        'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt',
+        'remindersSent',
+        'remindersSent'
       ]) &&
       request.resource.data.text is string &&
       request.resource.data.text.size() > 0 &&
       isStringOrNull(request.resource.data.memo) &&
       isStringOrNull(request.resource.data.dueDate) &&
+      (!request.resource.data.keys().hasAny(['dueTime']) || isStringOrNull(request.resource.data.dueTime)) &&
       isStringOrNull(request.resource.data.projectId) &&
       isStringOrNull(request.resource.data.imageUrl) &&
+      (!request.resource.data.keys().hasAny(['calendarEventId']) || isStringOrNull(request.resource.data.calendarEventId)) &&
+      (!request.resource.data.keys().hasAny(['calendarReminderMinutes']) || isNumberOrNull(request.resource.data.calendarReminderMinutes)) &&
+      (!request.resource.data.keys().hasAny(['calendarReminderMinutesList']) ||
+        (request.resource.data.calendarReminderMinutesList is list &&
+         request.resource.data.calendarReminderMinutesList.size() <= 8)) &&
+      (!request.resource.data.keys().hasAny(['syncCalendar']) || isBoolOrNull(request.resource.data.syncCalendar)) &&
+      (!request.resource.data.keys().hasAny(['source']) || isStringOrNull(request.resource.data.source)) &&
+      (!request.resource.data.keys().hasAny(['sourceItemId']) || isStringOrNull(request.resource.data.sourceItemId)) &&
+      (!request.resource.data.keys().hasAny(['sourceUrl']) || isStringOrNull(request.resource.data.sourceUrl)) &&
+      (!request.resource.data.keys().hasAny(['courseTitle']) || isStringOrNull(request.resource.data.courseTitle)) &&
+      (!request.resource.data.keys().hasAny(['ddayText']) || isStringOrNull(request.resource.data.ddayText)) &&
+      (!request.resource.data.keys().hasAny(['syncedAt']) || isTimestampOrNull(request.resource.data.syncedAt)) &&
+      (!request.resource.data.keys().hasAny(['completedAt']) || isTimestampOrNull(request.resource.data.completedAt)) &&
+      (!request.resource.data.keys().hasAny(['completedDate']) || isStringOrNull(request.resource.data.completedDate)) &&
       request.resource.data.priority is string &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&
       request.resource.data.completed is bool &&
@@ -76,12 +142,15 @@ service cloud.firestore {
 
     function validProject() {
       return hasOnlyKeys([
-        'uid', 'name', 'color', 'createdAt'
+        'uid', 'name', 'color', 'icon', 'source', 'courseTitle', 'createdAt'
       ]) &&
       request.resource.data.name is string &&
       request.resource.data.name.size() > 0 &&
       request.resource.data.color is string &&
       request.resource.data.color.size() > 0 &&
+      (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
+      (!request.resource.data.keys().hasAny(['source']) || isStringOrNull(request.resource.data.source)) &&
+      (!request.resource.data.keys().hasAny(['courseTitle']) || isStringOrNull(request.resource.data.courseTitle)) &&
       isTimestampOrNull(request.resource.data.createdAt);
     }
 
@@ -98,12 +167,24 @@ service cloud.firestore {
 
     function validWikiPage() {
       return hasOnlyKeys([
-        'uid', 'title', 'parentId', 'projectId', 'content', 'createdAt', 'updatedAt'
+        'uid', 'title', 'parentId', 'projectId', 'content', 'tags', 'orderIndex', 'createdAt', 'updatedAt',
+        'icon', 'coverUrl', 'coverPosition', 'coverPositionX', 'coverHeight', 'coverZoom', 'coverCropMode',
+        'ogTried'
       ]) &&
       request.resource.data.title is string &&
       request.resource.data.title.size() > 0 &&
       isStringOrNull(request.resource.data.parentId) &&
       (!request.resource.data.keys().hasAny(['projectId']) || isStringOrNull(request.resource.data.projectId)) &&
+      (!request.resource.data.keys().hasAny(['tags']) || request.resource.data.tags is list) &&
+      (!request.resource.data.keys().hasAny(['orderIndex']) || isNumberOrNull(request.resource.data.orderIndex)) &&
+      (!request.resource.data.keys().hasAny(['icon']) || isStringOrNull(request.resource.data.icon)) &&
+      (!request.resource.data.keys().hasAny(['coverUrl']) || isStringOrNull(request.resource.data.coverUrl)) &&
+      (!request.resource.data.keys().hasAny(['coverPosition']) || isNumberOrNull(request.resource.data.coverPosition)) &&
+      (!request.resource.data.keys().hasAny(['coverPositionX']) || isNumberOrNull(request.resource.data.coverPositionX)) &&
+      (!request.resource.data.keys().hasAny(['coverHeight']) || isNumberOrNull(request.resource.data.coverHeight)) &&
+      (!request.resource.data.keys().hasAny(['coverZoom']) || isNumberOrNull(request.resource.data.coverZoom)) &&
+      (!request.resource.data.keys().hasAny(['coverCropMode']) || isStringOrNull(request.resource.data.coverCropMode)) &&
+      (!request.resource.data.keys().hasAny(['ogTried']) || isBoolOrNull(request.resource.data.ogTried)) &&
       request.resource.data.content is map &&
       isTimestampOrNull(request.resource.data.createdAt) &&
       isTimestampOrNull(request.resource.data.updatedAt);
@@ -139,20 +220,81 @@ service cloud.firestore {
       allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validWikiPage();
     }
 
+    match /eclass_items/{itemId} {
+      allow read: if existingOwner();
+      allow delete: if false;
+      allow create, update: if false;
+    }
+
+    match /eclass_connections/{connectionId} {
+      allow read: if isOwner(connectionId);
+      allow write: if false;
+    }
+
+    match /eclass_syllabi/{docId} {
+      allow read: if existingOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /fcm_tokens/{tokenId} {
+      allow read: if existingOwner();
+      allow create: if incomingOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0 &&
+        isStringOrNull(request.resource.data.platform) &&
+        isStringOrNull(request.resource.data.userAgent) &&
+        isTimestampOrNull(request.resource.data.createdAt) &&
+        isTimestampOrNull(request.resource.data.lastSeenAt);
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0;
+      allow delete: if existingOwner();
+    }
+
+    match /fcm_tokens/{tokenId} {
+      allow read: if existingOwner();
+      allow create: if incomingOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0 &&
+        isStringOrNull(request.resource.data.platform) &&
+        isStringOrNull(request.resource.data.userAgent) &&
+        isTimestampOrNull(request.resource.data.createdAt) &&
+        isTimestampOrNull(request.resource.data.lastSeenAt);
+      allow update: if existingOwner() && incomingOwner() && keepsSameOwner() &&
+        hasOnlyKeys(['uid', 'token', 'platform', 'userAgent', 'createdAt', 'lastSeenAt']) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 0;
+      allow delete: if existingOwner();
+    }
+
     match /users/{userId} {
-      allow read, create, update: if isOwner(userId) &&
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
         request.resource.data.uid == userId &&
         hasOnlyKeys([
           'uid', 'email', 'displayName', 'onboardingCompleted',
-          'onboardingCompletedAt', 'createdAt', 'updatedAt'
+          'onboardingCompletedAt', 'onboardingProgress', 'onboardingCurrentStep',
+          'photoURL', 'school', 'studentId', 'bio', 'preferences', 'notifPrefs',
+          'createdAt', 'updatedAt'
         ]) &&
         isStringOrNull(request.resource.data.email) &&
         isStringOrNull(request.resource.data.displayName) &&
-        request.resource.data.onboardingCompleted is bool &&
-        isTimestampOrNull(request.resource.data.onboardingCompletedAt) &&
+        (!request.resource.data.keys().hasAny(['photoURL']) || isStringOrNull(request.resource.data.photoURL)) &&
+        (!request.resource.data.keys().hasAny(['school']) || isStringOrNull(request.resource.data.school)) &&
+        (!request.resource.data.keys().hasAny(['studentId']) || isStringOrNull(request.resource.data.studentId)) &&
+        (!request.resource.data.keys().hasAny(['bio']) || isStringOrNull(request.resource.data.bio)) &&
+        (!request.resource.data.keys().hasAny(['onboardingCompleted']) || request.resource.data.onboardingCompleted is bool) &&
+        (!request.resource.data.keys().hasAny(['onboardingCompletedAt']) || isTimestampOrNull(request.resource.data.onboardingCompletedAt)) &&
+        (!request.resource.data.keys().hasAny(['onboardingProgress']) || validOnboardingProgress(request.resource.data.onboardingProgress)) &&
+        validOnboardingCurrentStep(request.resource.data.onboardingCurrentStep) &&
+        (!request.resource.data.keys().hasAny(['preferences']) || validPreferences(request.resource.data.preferences)) &&
+        (!request.resource.data.keys().hasAny(['notifPrefs']) || validNotifPrefs(request.resource.data.notifPrefs)) &&
         isTimestampOrNull(request.resource.data.createdAt) &&
         isTimestampOrNull(request.resource.data.updatedAt);
-      allow delete: if false;
+      allow delete: if isOwner(userId);
     }
   }
 }

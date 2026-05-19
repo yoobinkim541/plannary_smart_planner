@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -9,40 +9,55 @@
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
     </script>
-    <title>Planary - tasks, wiki, projects in one workspace</title>
-    
+    <title>Planary — 생각을 정리하는 워크스페이스</title>
+
     <!-- Primary Meta Tags -->
-    <meta name="title" content="Planary - tasks, wiki, projects in one workspace">
-    <meta name="description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
+    <meta name="title" content="Planary — 생각을 정리하는 워크스페이스">
+    <meta name="description" content="할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 조용하고 단정하게 하루를 정리하세요.">
     <meta name="keywords" content="플래너, 위키, 할일관리, 메모, 생산성, PWA, Notion-style">
     <meta name="author" content="Planner Team">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://planary-a2f6b.web.app/">
-    <meta property="og:title" content="Planary - tasks, wiki, projects in one workspace">
-    <meta property="og:description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
-    <meta property="og:image" content="https://planary-a2f6b.web.app/icon.svg">
+    <meta property="og:url" content="https://yourplanary.vercel.app/">
+    <meta property="og:title" content="Planary — 생각을 정리하는 워크스페이스">
+    <meta property="og:description" content="할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 조용하고 단정하게 하루를 정리하세요.">
+    <meta property="og:image" content="https://yourplanary.vercel.app/api/og?kind=home&v=3">
+    <meta property="og:image:secure_url" content="https://yourplanary.vercel.app/api/og?kind=home&v=3">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Planary — 따뜻한 베이지 톤의 생각 정리 워크스페이스 미리보기">
+    <meta property="og:site_name" content="Planary">
+    <meta property="og:locale" content="ko_KR">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://planary-a2f6b.web.app/">
-    <meta property="twitter:title" content="Planary - tasks, wiki, projects in one workspace">
-    <meta property="twitter:description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
-    <meta property="twitter:image" content="https://planary-a2f6b.web.app/icon.svg">
+    <meta property="twitter:url" content="https://yourplanary.vercel.app/">
+    <meta property="twitter:title" content="Planary — 생각을 정리하는 워크스페이스">
+    <meta property="twitter:description" content="할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 조용하고 단정하게 하루를 정리하세요.">
+    <meta property="twitter:image" content="https://yourplanary.vercel.app/api/og?kind=home&v=3">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&family=Nanum+Myeongjo&display=swap" rel="stylesheet">
     
     <!-- PWA Settings -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4b6bfb">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#7f0df2">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Planary">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png">
     
     <!-- KaTeX for Math Support in Editor -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
@@ -50,7 +65,7 @@
     <!-- Highlight.js for Code block Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 
-    <link rel="stylesheet" href="style.css?v=v2">
+    <link rel="stylesheet" href="style.css?v=v6">
 </head>
 
 <body>
@@ -58,7 +73,7 @@
     <div id="app-shell">
         <!-- Mobile Header (Visible only on mobile) -->
         <header id="mobile-header">
-            <button id="menu-toggle" aria-label="내비게이션 열기">
+            <button id="menu-toggle" data-i18n-title="toggleNavigation" aria-label="내비게이션 열기">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <span class="mobile-logo">Planary</span>
@@ -72,7 +87,7 @@
 
         <div id="icon-rail">
             <!-- Desktop Sidebar Toggle -->
-            <button class="rail-icon desktop-only" id="sidebar-toggle-btn" type="button" title="사이드바 접기" aria-label="사이드바 접기" aria-expanded="true">
+            <button class="rail-icon desktop-only" id="sidebar-toggle-btn" type="button" data-i18n-title="collapseSidebar" title="사이드바 접기" aria-label="사이드바 접기" aria-expanded="true">
                 <svg class="sidebar-toggle-menu-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 <svg class="sidebar-toggle-restore-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
@@ -121,51 +136,59 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                     </div>
                     <div>
-                        <h2 class="project-name" id="sidebar-header-title">내 작업</h2>
-                        <span class="project-id" id="sidebar-header-subtitle">작업 관리자 ↗</span>
+                        <h2 class="project-name" id="sidebar-header-title" data-i18n="taskHeaderTitle">내 작업</h2>
+                        <span class="project-id" id="sidebar-header-subtitle" data-i18n="taskHeaderSubtitle">작업 관리자 ↗</span>
                     </div>
                 </div>
 
                 <nav class="sidebar-nav">
                     <a href="#" class="nav-link" data-target="page-home">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                        <span>홈</span>
+                        <span data-i18n="home">홈</span>
                     </a>
                     <a href="#" class="nav-link active" data-target="page-tasks" data-filter="all">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        <span>작업</span>
+                        <span data-i18n="tasks">작업</span>
                     </a>
                     <div class="task-subnav" id="task-subnav">
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="all">전체 작업</a>
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="active">진행 중</a>
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="important">중요</a>
-                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="reminders">리마인더</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="all" data-i18n="allTasks">전체 작업</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="active" data-i18n="progress">진행 중</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="important" data-i18n="important">중요</a>
+                        <a href="#" class="task-subnav-link" data-target="page-tasks" data-filter="reminders" data-i18n="reminders">리마인더</a>
                     </div>
                     <a href="#" class="nav-link" data-target="page-projects">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                        <span>프로젝트</span>
+                        <span data-i18n="projects">프로젝트</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-notes">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        <span>메모</span>
+                        <span data-i18n="notes">포스트잇</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-wiki">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                        <span>위키</span>
+                        <span data-i18n="wiki">노트</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-bookmarks">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                        <span>북마크</span>
+                        <span data-i18n="bookmarks">북마크</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-archive">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-                        <span>보관함</span>
+                        <span data-i18n="archive">보관함</span>
                     </a>
                     <a href="#" class="nav-link" data-target="page-profile">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        <span>마이페이지</span>
+                        <span data-i18n="myPage">마이페이지</span>
                     </a>
                 </nav>
+
+                <div id="sidebar-note-tree" class="sidebar-note-tree" hidden>
+                    <button id="sidebar-note-back" class="sidebar-note-back" type="button">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>사이드바로</span>
+                    </button>
+                    <div class="sidebar-note-tree-list" id="sidebar-note-tree-list"></div>
+                </div>
             </div>
 
             <div class="sidebar-bottom">
@@ -175,11 +198,11 @@
                         <span id="user-name-sidebar" class="profile-name">User</span>
                         <span id="user-email-sidebar" class="profile-email">user@email.com</span>
                     </div>
-                    <div style="display:flex; align-items:center; gap: 8px;">
-                        <button id="theme-toggle-btn" class="profile-menu-btn" title="테마 전환">
+                    <div class="profile-actions">
+                        <button id="theme-toggle-btn" class="profile-menu-btn" data-i18n-title="toggleTheme" title="테마 전환">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         </button>
-                        <button id="logout-btn" class="profile-menu-btn" title="로그아웃">
+                        <button id="logout-btn" class="profile-menu-btn" data-i18n-title="logout" title="로그아웃">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                         </button>
                     </div>
@@ -193,35 +216,78 @@
             <section id="page-home" class="page-content">
                 <header class="main-header">
                     <h1>대시보드</h1>
-                    <p id="dashboard-welcome-text" style="color: var(--text-2); font-size: 0.9rem; margin-top: 4px;">오늘의 작업 흐름을 확인하세요.</p>
+                    <p id="dashboard-welcome-text">오늘의 작업 흐름을 확인하세요.</p>
                 </header>
 
                 <div class="dashboard-container">
+                    <section class="today-hub">
+                        <div class="today-hub-main">
+                            <span class="today-hub-kicker" id="today-hub-kicker">Today Overview</span>
+                            <h2 id="today-hub-title">오늘 해야 할 일을 한눈에 확인하세요</h2>
+                            <p id="today-hub-summary">오늘 마감, 중요 작업, 진행 중인 프로젝트를 바로 확인합니다.</p>
+                            <div class="today-hub-actions">
+                                <button class="confirm-btn" type="button" data-target="page-tasks" data-filter="active" data-i18n="openTasks">작업 열기</button>
+                                <button class="text-link-btn" type="button" data-target="page-tasks" data-filter="important" data-i18n="important">중요 작업</button>
+                            </div>
+                        </div>
+                        <div class="today-hub-side">
+                            <div class="today-hub-metric">
+                                <span id="today-due-label">오늘 마감</span>
+                                <strong id="today-due-count">0</strong>
+                            </div>
+                            <div class="today-hub-metric">
+                                <span id="today-important-label">중요</span>
+                                <strong id="today-important-count">0</strong>
+                            </div>
+                            <div class="today-hub-metric">
+                                <span id="today-project-label">프로젝트</span>
+                                <strong id="today-project-count">0</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="today-focus-grid">
+                        <section class="dashboard-widget today-focus-card">
+                            <div class="widget-header">
+                                <h3 id="today-focus-title">오늘의 우선 작업</h3>
+                                <button class="text-link-btn" type="button" data-target="page-tasks" data-filter="all">전체 보기</button>
+                            </div>
+                            <div id="today-focus-list" class="today-focus-list"></div>
+                        </section>
+                        <section class="dashboard-widget today-project-card">
+                            <div class="widget-header">
+                                <h3 id="today-projects-title">진행 중 프로젝트</h3>
+                                <button class="text-link-btn" type="button" data-target="page-projects">전체 보기</button>
+                            </div>
+                            <div id="today-projects-list" class="today-projects-list"></div>
+                        </section>
+                    </div>
+
                     <!-- Stats Section -->
                     <div class="dashboard-stats-row">
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--blue);">
+                            <div class="stat-icon tone-blue">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                             </div>
                             <div class="stat-info">
-                                <span class="stat-label">전체 작업</span>
+                                <span class="stat-label" data-i18n="totalTasks">전체 작업</span>
                                 <h2 class="stat-value" id="stat-total-tasks">0</h2>
                             </div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--green);">
+                            <div class="stat-icon tone-green">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                             </div>
                             <div class="stat-info">
-                                <span class="stat-label">완료됨</span>
+                                <span class="stat-label" data-i18n="completed">완료됨</span>
                                 <h2 class="stat-value" id="stat-completed-tasks">0</h2>
                             </div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-info" style="width: 100%;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span class="stat-label">생산성</span>
-                                    <span id="stat-progress-percent" style="font-weight: 600; font-size: 0.85rem;">0%</span>
+                            <div class="stat-info stat-info--progress">
+                                <div class="stat-progress-row">
+                                    <span class="stat-label" data-i18n="productivity">생산성</span>
+                                    <span id="stat-progress-percent" class="stat-progress-percent">0%</span>
                                 </div>
                                 <div class="progress-bar-bg">
                                     <div id="stat-progress-bar" class="progress-bar-fill" style="width: 0%"></div>
@@ -234,8 +300,8 @@
                         <!-- Recent Notes Widget -->
                         <div class="dashboard-widget">
                             <div class="widget-header">
-                                <h3>최근 메모</h3>
-                                <button class="text-link-btn" data-target="page-notes">전체 보기</button>
+                                <h3 data-i18n="recentNotes">최근 메모</h3>
+                                <button class="text-link-btn" data-target="page-notes" data-i18n="viewAll">전체 보기</button>
                             </div>
                             <div id="dash-recent-notes" class="widget-content dash-notes-list">
                                 <!-- Dynamic items -->
@@ -245,12 +311,12 @@
                         <!-- Upcoming Reminders Widget -->
                         <div class="dashboard-widget">
                             <div class="widget-header">
-                                <h3>다가오는 리마인더</h3>
-                                <button class="text-link-btn" data-target="page-tasks" data-filter="reminders">전체 보기</button>
+                                <h3 data-i18n="upcomingReminders">다가오는 리마인더</h3>
+                                <button class="text-link-btn" data-target="page-tasks" data-filter="reminders" data-i18n="viewAll">전체 보기</button>
                             </div>
                             <div id="dash-reminders-list" class="widget-content">
                                 <!-- Dynamic items -->
-                                <p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">다가오는 리마인더가 없습니다.</p>
+                                <p class="empty-msg" data-i18n="noUpcomingReminders">다가오는 리마인더가 없습니다.</p>
                             </div>
                         </div>
                     </div>
@@ -259,17 +325,8 @@
 
             <!-- PAGE: TASKS -->
             <section id="page-tasks" class="page-content active">
-                <header class="main-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <header class="main-header">
                     <h1 id="welcome-message">작업</h1>
-                    <div class="font-selector">
-                        <select id="app-font-select" class="font-dropdown">
-                            <option value="var(--font)">기본 글꼴</option>
-                            <option value="'Pretendard', sans-serif">Pretendard</option>
-                            <option value="'Courier New', Courier, monospace">고정폭</option>
-                            <option value="'Georgia', serif">세리프</option>
-                            <option value="'Comic Sans MS', cursive">손글씨</option>
-                        </select>
-                    </div>
                 </header>
 
                 <div class="filter-bar">
@@ -285,11 +342,30 @@
                 <div class="composer">
                     <div class="composer-top">
                         <input type="text" id="todo-input" placeholder="무엇을 해야 하나요?">
+                        <button id="task-details-toggle" class="text-link-btn task-details-toggle" type="button">세부 설정</button>
                         <button id="add-btn">작업 추가</button>
                     </div>
                     <div class="composer-details">
                         <input type="text" id="memo-input" placeholder="메모 (선택)">
                         <input type="date" id="due-date">
+                        <input type="time" id="due-time" aria-label="리마인더 시간">
+                        <select id="calendar-reminder-select" aria-label="캘린더 알림">
+                            <option value="0">정시에 알림</option>
+                            <option value="10">10분 전</option>
+                            <option value="30" selected>30분 전</option>
+                            <option value="60">1시간 전</option>
+                            <option value="120">2시간 전</option>
+                            <option value="1440">1일 전</option>
+                        </select>
+                        <button id="task-calendar-connect-btn" class="composer-icon-btn calendar-connect-btn" type="button" title="Google Calendar 연결">
+                            GCal
+                        </button>
+                        <button id="task-calendar-import-btn" class="composer-icon-btn calendar-connect-btn" type="button" title="Google Calendar 가져오기">
+                            가져오기
+                        </button>
+                        <button id="task-apple-calendar-btn" class="composer-icon-btn calendar-connect-btn" type="button" title="Apple Calendar에 추가" hidden>
+                            Apple
+                        </button>
                         <select id="priority-select">
                             <option value="low">낮음</option>
                             <option value="medium" selected>보통</option>
@@ -326,7 +402,7 @@
             <section id="page-projects" class="page-content">
                 <header class="main-header">
                     <h1>프로젝트</h1>
-                    <p style="color: var(--text-2); font-size: 0.9rem;">작업을 프로젝트별로 정리하세요.</p>
+                    <p>작업을 프로젝트별로 정리하세요.</p>
                 </header>
 
                 <div class="composer">
@@ -397,9 +473,9 @@
                 
                 <div class="composer">
                     <div class="composer-top">
-                        <textarea id="note-input" class="composer-input" placeholder="짧은 생각이나 아이디어를 적어보세요..." rows="3" style="resize: none;"></textarea>
+                        <textarea id="note-input" class="composer-input" placeholder="짧은 생각이나 아이디어를 적어보세요..." rows="3"></textarea>
                     </div>
-                    <div class="composer-details" style="justify-content: space-between; align-items: center; margin-top: 12px;">
+                    <div class="composer-details composer-details--note">
                         <div class="color-selector" id="note-color-picker">
                             <div class="color-option opt-yellow selected" data-color="yellow" title="Yellow"></div>
                             <div class="color-option opt-blue" data-color="blue" title="Blue"></div>
@@ -408,7 +484,7 @@
                             <div class="color-option opt-purple" data-color="purple" title="Purple"></div>
                             <div class="color-option opt-orange" data-color="orange" title="Orange"></div>
                         </div>
-                        <button id="add-note-btn" class="composer-submit-btn" style="padding: 10px 24px; font-size: 14px;">+ 메모 추가</button>
+                        <button id="add-note-btn" class="composer-submit-btn composer-submit-btn--note">+ 메모 추가</button>
                     </div>
                 </div>
 
@@ -421,12 +497,12 @@
             <section id="page-bookmarks" class="page-content">
                 <header class="main-header">
                     <h1>북마크</h1>
-                    <p style="color: var(--text-2); font-size: 0.9rem;">중요한 링크를 태그와 함께 저장하세요.</p>
+                    <p>중요한 링크를 태그와 함께 저장하세요.</p>
                 </header>
 
                 <div class="composer">
                     <div class="composer-top">
-                        <div style="display:flex; align-items:center; flex:1; gap:10px;">
+                        <div class="bm-url-row">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                             <input type="text" id="bm-url-input" class="composer-input" placeholder="URL 붙여넣기 (https://...)">
                         </div>
@@ -445,17 +521,23 @@
 
             <!-- PAGE: WIKI DOCS -->
             <section id="page-wiki" class="page-content">
-                <header class="main-header" style="flex-wrap: wrap; gap: 10px;">
+                <header class="main-header">
                     <div>
-                        <h1>문서 & 위키</h1>
+                        <h1>노트</h1>
                         <p style="color: var(--text-2); font-size: 0.9rem;">노션 스타일 문서 편집기</p>
                     </div>
-                    <button class="confirm-btn block-btn" id="new-wiki-btn" style="width: auto;">+ 새 페이지</button>
+                    <button class="confirm-btn block-btn size-auto" id="new-wiki-btn">+ 새 페이지</button>
                 </header>
                 
                 <div class="wiki-layout">
                     <!-- Wiki Page List -->
                     <div class="wiki-sidebar">
+                        <div class="wiki-sidebar-top">
+                            <button id="wiki-tree-toggle-btn" class="wiki-control-btn" type="button" aria-expanded="true" title="페이지 목록 접기">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                            </button>
+                            <span id="wiki-tree-title">페이지</span>
+                        </div>
                         <div class="search-box">
                             <input type="text" id="wiki-search-input" placeholder="페이지 검색...">
                         </div>
@@ -466,16 +548,58 @@
 
                     <!-- Editor UI -->
                     <div class="wiki-editor-container" id="wiki-editor-view" style="display: none;">
+                        <div class="wiki-cover" id="wiki-cover">
+                            <div class="wiki-cover-actions">
+                                <button id="wiki-cover-btn" class="wiki-cover-action" type="button">커버 변경</button>
+                                <button id="wiki-cover-adjust-btn" class="wiki-cover-action" type="button">위치/면적</button>
+                            </div>
+                            <div class="wiki-cover-panel" id="wiki-cover-panel" hidden>
+                                <label>
+                                    <span id="wiki-cover-position-x-label">가로 위치</span>
+                                    <input id="wiki-cover-position-x-range" type="range" min="0" max="100" value="50">
+                                </label>
+                                <label>
+                                    <span id="wiki-cover-position-y-label">세로 위치</span>
+                                    <input id="wiki-cover-position-range" type="range" min="0" max="100" value="50">
+                                </label>
+                                <label>
+                                    <span id="wiki-cover-height-label">보이는 면적</span>
+                                    <input id="wiki-cover-height-range" type="range" min="120" max="360" value="180">
+                                </label>
+                                <label>
+                                    <span id="wiki-cover-zoom-label">확대</span>
+                                    <input id="wiki-cover-zoom-range" type="range" min="100" max="220" value="100">
+                                </label>
+                                <button id="wiki-cover-reset-btn" class="text-link-btn" type="button">기본값</button>
+                            </div>
+                        </div>
                         <div class="wiki-editor-header">
                             <button id="wiki-back-btn" class="wiki-icon-btn mobile-only" title="목록으로 돌아가기">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                             </button>
-                            <div class="wiki-title-row">
-                                <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="제목 없는 문서">
+                            <button id="wiki-parent-btn" class="wiki-parent-btn" type="button" hidden>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                                <span>상위 페이지</span>
+                            </button>
+                            <button id="wiki-icon-btn" class="wiki-page-icon-btn" type="button" title="페이지 아이콘 변경">📄</button>
+                            <div class="wiki-title-wrap">
+                                <div class="wiki-project-control">
+                                    <label for="wiki-project-select">프로젝트</label>
                                 <select id="wiki-project-select" class="wiki-project-select" aria-label="위키 프로젝트">
                                     <option value="">프로젝트 없음</option>
                                 </select>
+                                </div>
+                                <div class="wiki-title-row">
+                                    <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="제목 없는 문서">
+                                </div>
+                                <div class="wiki-meta-row">
+                                    <span id="wiki-save-state">저장됨</span>
+                                    <span id="wiki-updated-at">최근 수정 없음</span>
+                                </div>
                             </div>
+                            <button id="wiki-widget-toggle-btn" class="wiki-control-btn" type="button" aria-expanded="true" title="위젯 접기">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                            </button>
                         </div>
                         <div id="wiki-upload-progress" class="upload-progress-container" style="display: none;">
                             <div class="progress-bar-bg">
@@ -511,12 +635,53 @@
                             </div>
                             <h2>지식 창고를 채워보세요</h2>
                             <p>생각을 정리하고 아이디어를 기록하는 당신만의 위키 공간입니다.<br>왼쪽 목록에서 문서를 선택하거나 새로 만들어 시작하세요.</p>
-                            <button class="confirm-btn" id="wiki-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                <span style="vertical-align: middle;">새 페이지 만들기</span>
+                            <button class="confirm-btn size-lg wiki-empty-create-btn" id="wiki-empty-create-btn">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="wiki-empty-create-btn-icon"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                <span class="wiki-empty-create-btn-label">새 페이지 만들기</span>
                             </button>
                         </div>
                     </div>
+
+                    <aside class="wiki-widget-panel" id="wiki-widget-panel" aria-label="위키 위젯">
+                        <div class="wiki-widget-panel-header">
+                            <strong id="wiki-widget-title">문서 도구</strong>
+                            <button id="wiki-widget-close-btn" class="wiki-icon-btn" type="button" title="위젯 접기">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                            </button>
+                        </div>
+                        <section class="wiki-widget-card">
+                            <h3 id="wiki-widget-toc-title">목차</h3>
+                            <div id="wiki-widget-toc-list" class="wiki-widget-list wiki-widget-toc-list"></div>
+                        </section>
+                        <section class="wiki-widget-card">
+                            <h3 id="wiki-info-title">문서 정보</h3>
+                            <div class="wiki-info-list">
+                                <div><span id="wiki-info-project-label">프로젝트</span><strong id="wiki-info-project">-</strong></div>
+                                <div><span id="wiki-info-updated-label">최근 수정</span><strong id="wiki-info-updated">-</strong></div>
+                                <div><span id="wiki-info-subpages-label">하위 페이지</span><strong id="wiki-info-subpages">0</strong></div>
+                            </div>
+                        </section>
+                        <section class="wiki-widget-card">
+                            <div class="wiki-widget-card-head">
+                                <h3 id="wiki-widget-subpages-title">하위 페이지</h3>
+                                <button id="wiki-widget-new-subpage-btn" class="text-link-btn" type="button">추가</button>
+                            </div>
+                            <div id="wiki-widget-subpages-list" class="wiki-widget-list"></div>
+                        </section>
+                        <section class="wiki-widget-card">
+                            <h3 id="wiki-widget-tasks-title">오늘 작업</h3>
+                            <div id="wiki-widget-tasks-list" class="wiki-widget-list"></div>
+                        </section>
+                        <section class="wiki-widget-card">
+                            <div class="wiki-widget-card-head">
+                                <h3 id="wiki-widget-calendar-title">캘린더</h3>
+                                <button id="wiki-calendar-connect-btn" class="text-link-btn" type="button">Google 연결</button>
+                            </div>
+                            <div id="wiki-calendar-status" class="wiki-widget-muted">연결 전입니다.</div>
+                            <div id="wiki-calendar-list" class="wiki-widget-list"></div>
+                            <button id="wiki-calendar-create-btn" class="wiki-small-action" type="button">문서 제목으로 일정 만들기</button>
+                        </section>
+                    </aside>
                 </div>
             </section>
 
@@ -524,14 +689,14 @@
             <section id="page-archive" class="page-content">
                 <header class="main-header">
                     <h1>보관함</h1>
-                    <p style="color: var(--text-2); font-size: 0.9rem;">완료한 작업과 지난 기록을 다시 확인하세요.</p>
+                    <p>완료한 작업과 지난 기록을 다시 확인하세요.</p>
                 </header>
 
                 <div class="archive-dashboard">
                     <!-- Achievement Stats -->
                     <div class="archive-stats-grid">
                         <div class="archive-stat-card">
-                            <div class="archive-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--green);">
+                            <div class="archive-stat-icon tone-green">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                             </div>
                             <div class="archive-stat-info">
@@ -540,12 +705,21 @@
                             </div>
                         </div>
                         <div class="archive-stat-card">
-                            <div class="archive-stat-icon" style="background: rgba(37, 99, 235, 0.1); color: var(--blue);">
+                            <div class="archive-stat-icon tone-blue">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                             </div>
                             <div class="archive-stat-info">
                                 <span class="stat-label">보관된 항목</span>
                                 <span class="stat-value" id="archive-total-items">0</span>
+                            </div>
+                        </div>
+                        <div class="archive-stat-card">
+                            <div class="archive-stat-icon tone-purple">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17c1.38 0 2-.5 2-1.5S12.38 14 11 14s-2-.5-2-1.5S9.62 11 11 11a2.5 2.5 0 0 1 2.5 2.5"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="m4.93 4.93 2.12 2.12"/><path d="m16.95 16.95 2.12 2.12"/><path d="M2 12h3"/><path d="M19 12h3"/><path d="m4.93 19.07 2.12-2.12"/><path d="m16.95 7.05 2.12-2.12"/></svg>
+                            </div>
+                            <div class="archive-stat-info">
+                                <span class="stat-label">연속 완료</span>
+                                <span class="stat-value" id="archive-current-streak">0일</span>
                             </div>
                         </div>
                     </div>
@@ -566,6 +740,14 @@
                     </div>
                 </div>
 
+                <div class="archive-activity-section">
+                    <div class="section-header">
+                        <h3>활동 히트맵</h3>
+                        <span class="archive-activity-caption">최근 12주 완료 기록</span>
+                    </div>
+                    <div class="archive-heatmap" id="archive-activity-heatmap" aria-label="최근 12주 완료 활동"></div>
+                </div>
+
                 <div class="archive-list-section">
                     <div class="section-header">
                         <h3>보관된 작업</h3>
@@ -583,30 +765,110 @@
                     <h1>마이페이지</h1>
                 </header>
                 <div class="profile-card">
-                    <p><strong>이름:</strong> <span id="profile-view-name"></span></p>
-                    <p><strong>이메일:</strong> <span id="profile-view-email"></span></p>
-                    <p><strong>로그인 방식:</strong> <span id="profile-login-methods"></span></p>
+                    <p><strong data-i18n="nameLabel">이름:</strong> <span id="profile-view-name"></span></p>
+                    <p><strong data-i18n="emailLabel">이메일:</strong> <span id="profile-view-email"></span></p>
+                    <p><strong data-i18n="loginMethodsLabel">로그인 방식:</strong> <span id="profile-login-methods"></span></p>
+                    <p><strong data-i18n="joinedDaysLabel">가입 기간:</strong> <span id="profile-joined-days"></span></p>
 
                     <div class="profile-language-panel">
-                        <label for="app-language-select">UI 언어</label>
+                        <label id="profile-language-label" for="app-language-select" data-i18n="languageLabel">UI 언어</label>
                         <select id="app-language-select" class="font-dropdown">
                             <option value="ko">한국어</option>
                             <option value="en">English</option>
+                            <option value="ja">日本語</option>
+                            <option value="zh">简体中文</option>
+                            <option value="es">Español</option>
                         </select>
+                    </div>
+
+                    <div class="profile-font-panel">
+                        <label id="profile-font-label" for="app-font-select" data-i18n="appFontLabel">전체 글꼴</label>
+                        <select id="app-font-select" class="font-dropdown">
+                            <option value="'Nanum Gothic', sans-serif">기본 글꼴</option>
+                            <option value="'Pretendard', sans-serif">Pretendard</option>
+                            <option value="'Noto Sans KR', sans-serif">Noto Sans KR</option>
+                            <option value="'Nanum Gothic', sans-serif">나눔고딕</option>
+                            <option value="'Nanum Myeongjo', serif">나눔명조</option>
+                            <option value="'IBM Plex Sans KR', sans-serif">IBM Plex Sans KR</option>
+                            <option value="'Inter', sans-serif">Inter</option>
+                            <option value="'Lora', serif">Lora</option>
+                            <option value="'Noto Serif KR', serif">Noto Serif KR</option>
+                            <option value="'Roboto Mono', monospace">Roboto Mono</option>
+                            <option value="'Caveat', cursive">Caveat</option>
+                            <option value="'Courier New', Courier, monospace">고정폭</option>
+                            <option value="'Georgia', serif">세리프</option>
+                            <option value="'Comic Sans MS', cursive">손글씨</option>
+                        </select>
+                    </div>
+
+                    <div class="profile-notification-panel">
+                        <h3 id="profile-notification-title" data-i18n="notificationSettings">알림 설정</h3>
+                        <label class="profile-toggle-row">
+                            <input type="checkbox" id="notify-daily-tasks-toggle">
+                            <span id="notify-daily-tasks-label" data-i18n="notifyDailyTasks">오늘 할 일 요약 알림 받기</span>
+                        </label>
+                        <label class="profile-setting-field">
+                            <span id="notify-daily-time-label" data-i18n="notifyDailyTime">요약 알림 시간</span>
+                            <input type="time" id="notify-daily-time" value="09:00">
+                        </label>
+                        <label class="profile-toggle-row">
+                            <input type="checkbox" id="notify-reminders-toggle">
+                            <span id="notify-reminders-label" data-i18n="notifyReminderTime">리마인더 시간에 알림 받기</span>
+                        </label>
+                        <button id="notification-permission-btn" class="confirm-btn" type="button" data-i18n="allowBrowserNotifications">브라우저 알림 허용</button>
+                        <p id="notification-status-text" class="profile-status-text"></p>
+                    </div>
+
+                    <div class="profile-eclass-panel">
+                        <div class="profile-panel-head">
+                            <div>
+                                <h3 id="profile-eclass-title" data-i18n="eclassTitle">E-class 연동</h3>
+                                <p id="profile-eclass-description" data-i18n="eclassDescription">서울과기대 e-Class 강의와 과제를 작업에 연결합니다.</p>
+                            </div>
+                            <span id="profile-eclass-status-badge" class="profile-status-badge" data-i18n="eclassDisconnected">연결 전</span>
+                        </div>
+                        <div class="profile-password-grid">
+                            <label>
+                                <span id="profile-eclass-url-label" data-i18n="eclassUrl">E-class URL</span>
+                                <input type="url" id="profile-eclass-url" class="auth-input" value="https://eclass.seoultech.ac.kr" placeholder="https://eclass.seoultech.ac.kr">
+                            </label>
+                            <label>
+                                <span id="profile-eclass-username-label" data-i18n="eclassUsername">E-class 아이디</span>
+                                <input type="text" id="profile-eclass-username" class="auth-input" autocomplete="username" placeholder="학번 또는 아이디">
+                            </label>
+                            <label>
+                                <span id="profile-eclass-password-label" data-i18n="eclassPassword">E-class 비밀번호</span>
+                                <input type="password" id="profile-eclass-password" class="auth-input" autocomplete="current-password" placeholder="비밀번호">
+                            </label>
+                        </div>
+                        <p id="profile-eclass-help" class="profile-help-text" data-i18n="eclassHelp">E-class 아이디와 비밀번호를 저장하면 앱 사용 중 5분마다, 서버에서는 하루 1회 강의와 과제를 가져옵니다. 비밀번호는 암호화해 저장합니다.</p>
+                        <details class="profile-eclass-support">
+                            <summary id="profile-eclass-supported-summary" data-i18n="eclassSupportedSchools">지원 학교 보기</summary>
+                            <ul id="profile-eclass-supported-list">
+                                <li data-i18n="eclassSupportedSeoultech">서울과학기술대학교 e-Class</li>
+                            </ul>
+                            <p id="profile-eclass-request-text" data-i18n="eclassRequestText">다른 학교 연동이 필요하면 이메일로 요청해주세요.</p>
+                            <a id="profile-eclass-request-link" class="text-link-btn" href="mailto:yoobinkim2006@gmail.com?subject=Planary%20E-class%20%ED%95%99%EA%B5%90%20%EC%B6%94%EA%B0%80%20%EC%9A%94%EC%B2%AD&body=%ED%95%99%EA%B5%90%EB%AA%85%3A%0AE-class%20URL%3A%0A%EC%9A%94%EC%B2%AD%20%EB%82%B4%EC%9A%A9%3A" data-i18n="eclassRequestSchool">학교 추가 요청</a>
+                        </details>
+                        <div class="profile-eclass-actions">
+                            <button id="profile-eclass-save-btn" class="confirm-btn" type="button" data-i18n="eclassSave">연결 저장</button>
+                            <button id="profile-eclass-sync-btn" class="text-link-btn" type="button" data-i18n="eclassSyncNow">지금 동기화</button>
+                        </div>
+                        <p id="profile-eclass-status" class="profile-status-text" role="status"></p>
                     </div>
 
                     <div class="profile-guide-panel">
                         <div>
-                            <h3>가이드</h3>
-                            <p>Planary의 기본 사용 흐름을 다시 확인합니다.</p>
+                            <h3 data-i18n="guideTitle">가이드</h3>
+                            <p data-i18n="guideDescription">Planary의 기본 사용 흐름을 다시 확인합니다.</p>
                         </div>
-                        <button id="profile-guide-btn" class="confirm-btn" type="button">가이드 다시 보기</button>
+                        <button id="profile-guide-btn" class="confirm-btn" type="button" data-i18n="replayGuide">가이드 다시 보기</button>
                     </div>
 
                     <div class="profile-password-panel">
-                        <h3>이메일 비밀번호 로그인</h3>
+                        <h3 data-i18n="emailPasswordLogin">이메일 비밀번호 로그인</h3>
                         <p id="profile-password-help" class="profile-help-text">
-                            이 이메일로 비밀번호 로그인도 할 수 있도록 비밀번호를 설정합니다.
+                            <span data-i18n="setPasswordHelp">이 이메일로 비밀번호 로그인도 할 수 있도록 비밀번호를 설정합니다.</span>
                         </p>
                         <div class="profile-password-grid">
                             <label>
@@ -618,11 +880,20 @@
                                 <input type="password" id="profile-password-confirm" class="auth-input" autocomplete="new-password" placeholder="비밀번호 확인">
                             </label>
                         </div>
-                        <button class="confirm-btn" id="profile-password-btn" style="width: auto; padding: 10px 24px; margin-top: 14px;">비밀번호 로그인 설정</button>
+                        <button class="confirm-btn size-md profile-action" id="profile-password-btn" data-i18n="setPasswordLogin">비밀번호 로그인 설정</button>
                         <p id="profile-password-status" class="profile-status-text" role="status"></p>
                     </div>
 
-                    <button class="confirm-btn" id="profile-logout-btn" style="width: auto; padding: 10px 24px; margin-top: 20px;">로그아웃</button>
+                    <button class="confirm-btn size-md profile-action profile-action--logout" id="profile-logout-btn" data-i18n="logout">로그아웃</button>
+
+                    <div class="profile-danger-panel">
+                        <div>
+                            <h3 id="profile-delete-title" data-i18n="deleteAccountTitle">회원탈퇴</h3>
+                            <p id="profile-delete-description" data-i18n="deleteAccountDescription">계정과 저장된 작업, 메모, 프로젝트, 위키, 북마크를 모두 삭제합니다.</p>
+                        </div>
+                        <button class="danger-btn" id="profile-delete-account-btn" type="button" data-i18n="deleteAccountButton">회원탈퇴</button>
+                        <p id="profile-delete-status" class="profile-status-text" role="status"></p>
+                    </div>
                 </div>
             </section>
         </main>
@@ -670,118 +941,142 @@
 
         <div id="onboarding-modal" class="onboarding-modal" aria-hidden="true">
             <div class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-                <div class="onboarding-eyebrow">Planary 시작하기</div>
-                <h2 id="onboarding-title">작업을 한 흐름으로 정리하세요</h2>
-                <p class="onboarding-intro">처음 사용하는 동안 핵심 기능을 하나씩 직접 써볼 수 있게 안내합니다. 각 단계는 바로 실행하거나 건너뛸 수 있습니다.</p>
-                <div class="onboarding-steps">
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingTaskCreateTitle">작업 만들기</strong>
-                            <span data-i18n="onboardingTaskCreateBody">Tasks에서 오늘 할 일을 하나 입력하고 작업 추가를 눌러보세요.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-create">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
+                <div class="onboarding-topbar">
+                    <div>
+                        <div class="onboarding-eyebrow">Planary 시작하기</div>
+                        <h2 id="onboarding-title">작업을 한 흐름으로 정리하세요</h2>
+                    </div>
+                    <button id="onboarding-exit-btn" class="onboarding-exit-btn" type="button" aria-label="가이드 나가기">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="onboarding-progress">
+                    <div class="onboarding-progress-track">
+                        <div id="onboarding-progress-fill" class="onboarding-progress-fill"></div>
+                    </div>
+                    <span id="onboarding-progress-text">1 / 3</span>
+                </div>
+                <div id="onboarding-welcome" class="onboarding-welcome">
+                    <div class="onboarding-welcome-mark" aria-hidden="true">
+                        <img src="/icons/icon-192.png" alt="" onerror="this.onerror=null;this.src='/icon.svg';">
+                    </div>
+                    <h3 id="onboarding-welcome-title">Planary에 오신 것을 환영합니다</h3>
+                    <p id="onboarding-welcome-body">해야 할 일, 떠오른 생각, 길어지는 기록을 Planary 안에서 자연스럽게 연결해보세요.</p>
+                    <span id="onboarding-welcome-hint">몇 분 동안 직접 눌러보며 핵심 흐름을 익힙니다.</span>
+                    <div class="onboarding-language-choice" role="group" aria-label="Guide language">
+                        <button class="onboarding-language-option" type="button" data-guide-language="ko">한국어</button>
+                        <button class="onboarding-language-option" type="button" data-guide-language="en">English</button>
+                        <button class="onboarding-language-option" type="button" data-guide-language="ja">日本語</button>
+                        <button class="onboarding-language-option" type="button" data-guide-language="zh">简体中文</button>
+                        <button class="onboarding-language-option" type="button" data-guide-language="es">Español</button>
+                    </div>
+                </div>
+                <p class="onboarding-intro">처음 시작할 때는 아래 순서만 기억하면 됩니다.</p>
+                <div id="onboarding-step-card" class="onboarding-step-card">
+                    <span id="onboarding-step-icon" class="onboarding-step-icon"></span>
+                    <div>
+                        <strong id="onboarding-step-title">작업</strong>
+                        <p id="onboarding-step-body">오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.</p>
+                        <div class="onboarding-guide-details">
+                            <div class="onboarding-detail-row">
+                                <span id="onboarding-why-label" class="onboarding-detail-label">왜 쓰나요</span>
+                                <p id="onboarding-step-why">할 일을 한 곳에 모아 오늘의 흐름을 만듭니다.</p>
+                            </div>
+                            <div class="onboarding-detail-row onboarding-example-row">
+                                <span id="onboarding-example-label" class="onboarding-detail-label">이렇게 해보세요</span>
+                                <p id="onboarding-step-example">예: 오늘 회의 자료 정리</p>
+                            </div>
+                            <div class="onboarding-detail-row">
+                                <span id="onboarding-done-label" class="onboarding-detail-label">완료 조건</span>
+                                <p id="onboarding-step-done">작업을 추가하면 자동으로 다음 단계로 넘어갑니다.</p>
                             </div>
                         </div>
-                    </div>
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingPriorityTitle">중요도 설정</strong>
-                            <span data-i18n="onboardingPriorityBody">작업 작성 영역에서 중요도를 높음으로 바꿔 중요한 일을 표시해보세요.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-priority">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingReminderTitle">리마인더 사용</strong>
-                            <span data-i18n="onboardingReminderBody">마감일을 지정한 작업을 만들어 리마인더 목록에 나타나는지 확인해보세요.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-reminder">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3h8l1 3h3v15H4V6h3z"/><path d="M9 14h6"/><path d="M12 11v6"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingTaskDragTitle">작업 드래그 앤 드랍</strong>
-                            <span data-i18n="onboardingTaskDragBody">작업이 2개 이상 있으면 카드 하나를 끌어 순서를 바꿔보세요. 컴퓨터 UI에서 가장 편하게 동작합니다.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="task-drag">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingNoteCreateTitle">스티키 노트 포스트</strong>
-                            <span data-i18n="onboardingNoteCreateBody">Notes에서 짧은 아이디어를 적고 메모 추가를 눌러 보드에 붙여보세요.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="note-create">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3"/><path d="M19 9l3 3-3 3"/><path d="M9 5l3-3 3 3"/><path d="M9 19l3 3 3-3"/><path d="M12 2v20"/><path d="M2 12h20"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingNoteDragTitle">컴퓨터 UI에서 노트 이동</strong>
-                            <span data-i18n="onboardingNoteDragBody">데스크톱 화면에서는 스티키 노트를 잡고 원하는 위치로 드래그해보세요.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="note-drag">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingProjectCreateTitle">프로젝트 만들기</strong>
-                            <span data-i18n="onboardingProjectCreateBody">Projects에서 업무, 공부 같은 프로젝트를 직접 만들고 작업을 묶어보세요.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="project-create">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="onboarding-step" data-guide-step>
-                        <span class="onboarding-step-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                        </span>
-                        <div>
-                            <strong data-i18n="onboardingWikiCreateTitle">위키 문서 만들기</strong>
-                            <span data-i18n="onboardingWikiCreateBody">Wiki에서 새 페이지를 만들고 제목과 첫 문단을 입력해 지식 베이스를 시작하세요.</span>
-                            <div class="onboarding-step-actions">
-                                <button class="confirm-btn onboarding-action-btn" type="button" data-guide-action="wiki-create">해보기</button>
-                                <button class="text-link-btn onboarding-step-skip" type="button">이 단계 스킵</button>
-                            </div>
+                        <div class="onboarding-step-target">
+                            <span id="onboarding-step-tip">여기에 지금 떠오른 할 일을 짧게 적어보세요.</span>
+                            <p id="onboarding-step-target">작업 입력창으로 이동합니다.</p>
                         </div>
                     </div>
                 </div>
+                <div class="onboarding-step-summary">
+                    <span id="onboarding-step-summary-text">0개 완료, 1번째 단계 진행 중</span>
+                    <button id="onboarding-toggle-steps-btn" class="text-link-btn" type="button">전체 단계 보기</button>
+                </div>
+                <div id="onboarding-step-list" class="onboarding-step-list" aria-label="가이드 단계"></div>
                 <div class="onboarding-actions">
-                    <button id="onboarding-skip-btn" class="text-link-btn" type="button">전체 스킵</button>
-                    <button id="onboarding-start-btn" class="confirm-btn" type="button">가이드 완료</button>
+                    <button id="onboarding-skip-btn" class="text-link-btn" type="button">이 단계 건너뛰기</button>
+                    <button id="onboarding-start-btn" class="confirm-btn" type="button">이 단계 시작</button>
+                    <button id="onboarding-complete-btn" class="confirm-btn" type="button">완료</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="task-edit-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="task-edit-title">
+                <div class="task-modal-header">
+                    <div>
+                        <span class="task-modal-kicker">Task</span>
+                        <h2 id="task-edit-title">작업 수정</h2>
+                    </div>
+                    <button class="task-modal-close" id="task-edit-close-btn" type="button" aria-label="닫기">×</button>
+                </div>
+                <div class="task-edit-grid">
+                    <label class="task-edit-field task-edit-field-wide">
+                        <span id="task-edit-text-label">작업명</span>
+                        <input id="task-edit-text" type="text">
+                    </label>
+                    <label class="task-edit-field task-edit-field-wide">
+                        <span id="task-edit-memo-label">메모</span>
+                        <textarea id="task-edit-memo" rows="4"></textarea>
+                    </label>
+                    <label class="task-edit-field">
+                        <span id="task-edit-date-label">마감일</span>
+                        <input id="task-edit-due-date" type="date">
+                    </label>
+                    <label class="task-edit-field">
+                        <span id="task-edit-time-label">시간</span>
+                        <input id="task-edit-due-time" type="time">
+                    </label>
+                    <label class="task-edit-field">
+                        <span id="task-edit-calendar-label">캘린더 알림</span>
+                        <select id="task-edit-calendar-reminder">
+                            <option value="0">정시에 알림</option>
+                            <option value="10">10분 전</option>
+                            <option value="30">30분 전</option>
+                            <option value="60">1시간 전</option>
+                            <option value="120">2시간 전</option>
+                            <option value="1440">1일 전</option>
+                        </select>
+                    </label>
+                    <label class="task-edit-field">
+                        <span id="task-edit-priority-label">우선순위</span>
+                        <select id="task-edit-priority">
+                            <option value="low">낮음</option>
+                            <option value="medium">보통</option>
+                            <option value="high">높음</option>
+                        </select>
+                    </label>
+                    <label class="task-edit-field task-edit-field-wide">
+                        <span id="task-edit-project-label">프로젝트</span>
+                        <select id="task-edit-project"></select>
+                    </label>
+                </div>
+                <div class="task-modal-actions">
+                    <button class="text-link-btn" id="task-edit-cancel-btn" type="button">취소</button>
+                    <button class="confirm-btn" id="task-edit-save-btn" type="button">변경사항 저장</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="task-delete-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card task-delete-card" role="dialog" aria-modal="true" aria-labelledby="task-delete-title">
+                <div class="task-delete-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
+                </div>
+                <h2 id="task-delete-title">작업을 삭제할까요?</h2>
+                <p id="task-delete-body">삭제한 작업은 되돌릴 수 없습니다.</p>
+                <div class="task-modal-actions task-delete-actions">
+                    <button class="text-link-btn" id="task-delete-cancel-btn" type="button">유지하기</button>
+                    <button class="danger-btn" id="task-delete-confirm-btn" type="button">삭제하기</button>
                 </div>
             </div>
         </div>
@@ -792,7 +1087,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
-    <script src="firebase-init.js?v=v1"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <script src="firebase-init.js?v=v3"></script>
 
     <!-- Editor.js Core & Plugins -->
     <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.0"></script>
@@ -813,8 +1109,13 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="app.js?v=v19"></script>
-    <script src="wiki.js?v=v10"></script>
+    <script src="i18n/ko.js?v=v1"></script>
+    <script src="i18n/en.js?v=v1"></script>
+    <script src="i18n/ja.js?v=v1"></script>
+    <script src="i18n/zh.js?v=v1"></script>
+    <script src="i18n/es.js?v=v1"></script>
+    <script src="app.js?v=v34"></script>
+    <script src="wiki.js?v=v20"></script>
 </body>
 
 </html>

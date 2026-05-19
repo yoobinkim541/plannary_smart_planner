@@ -10,12 +10,38 @@
         }
     </script>
     <title>Planary - tasks, wiki, projects in one workspace</title>
+    <meta name="title" content="Planary - tasks, wiki, projects in one workspace">
     <meta name="description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yourplanary.vercel.app/landing.html">
+    <meta property="og:title" content="Planary - tasks, wiki, projects in one workspace">
+    <meta property="og:description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
+    <meta property="og:image" content="https://yourplanary.vercel.app/assets/social-preview.png">
+    <meta property="og:image:secure_url" content="https://yourplanary.vercel.app/assets/social-preview.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Planary productivity workspace preview">
+    <meta property="og:site_name" content="Planary">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://yourplanary.vercel.app/landing.html">
+    <meta property="twitter:title" content="Planary - tasks, wiki, projects in one workspace">
+    <meta property="twitter:description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
+    <meta property="twitter:image" content="https://yourplanary.vercel.app/assets/social-preview.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="stylesheet" href="landing.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#7f0df2">
+    <link rel="stylesheet" href="landing.css?v=v3">
 </head>
 
 <body class="landing-page">
@@ -23,7 +49,7 @@
         <nav class="landing-nav" aria-label="Landing navigation">
             <a class="landing-brand" href="landing.html" aria-label="Planary home">
                 <span class="landing-brand-mark">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                    <img src="/icons/icon-192.png" alt="" onerror="this.onerror=null;this.src='/icon.svg';">
                 </span>
                 Planary
             </a>
@@ -31,6 +57,7 @@
                 <a href="#how">사용방법</a>
                 <a href="#features">기능</a>
                 <a href="#security">로그인</a>
+                <a href="privacy.html">개인정보</a>
             </div>
             <div class="landing-actions">
                 <a class="landing-btn" href="login.html">Login</a>
@@ -58,70 +85,108 @@
                 </div>
 
                 <div class="landing-product" aria-label="Planary product preview">
+                    <div class="landing-device-label" aria-hidden="true">
+                        <span class="desktop-label">Desktop UI</span>
+                        <span class="tablet-label">Tablet UI</span>
+                        <span class="mobile-label">Mobile UI</span>
+                    </div>
+                    <div class="landing-product-rail" aria-hidden="true">
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </span>
+                        <span class="active">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        </span>
+                        <span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        </span>
+                    </div>
                     <aside class="landing-product-sidebar">
-                        <div class="landing-mini-brand">
-                            <span class="landing-brand-mark">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                        <div class="landing-sidebar-project">
+                            <span class="landing-sidebar-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                             </span>
-                            Planary
+                            <span>
+                                <strong>내 작업</strong>
+                                <small>작업 관리자 ↗</small>
+                            </span>
                         </div>
-                        <button class="landing-mini-new" type="button">New</button>
                         <div class="landing-product-nav">
+                            <span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>홈</span>
                             <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Tasks</span>
-                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Wiki</span>
                             <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>Projects</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Notes</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Wiki</span>
                             <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>Bookmarks</span>
                         </div>
-                        <div class="landing-favorite">
-                            <span>Work system</span>
-                            <span>Study notes</span>
+                        <div class="landing-preview-profile">
+                            <span class="landing-avatar">U</span>
+                            <span>
+                                <strong>User</strong>
+                                <small>user@email.com</small>
+                            </span>
                         </div>
                     </aside>
                     <div class="landing-product-main">
                         <div class="landing-product-top">
                             <div>
-                                <h2>Today workspace</h2>
-                                <span>3 tasks · 2 wiki pages</span>
+                                <h2>작업</h2>
+                                <span>해야 할 일을 만들고 마감일과 프로젝트를 함께 관리하세요.</span>
                             </div>
-                            <span>Planary</span>
                         </div>
-                        <div class="landing-product-grid">
-                            <section class="landing-panel">
-                                <h3>Tasks</h3>
-                                <div class="landing-task-row">
-                                    <span class="landing-checkbox"></span><span>랜딩 페이지 QA</span><span class="landing-tag">Web</span><span class="landing-time">Today</span>
-                                </div>
-                                <div class="landing-task-row">
-                                    <span class="landing-checkbox"></span><span>프로젝트 위키 정리</span><span class="landing-tag">Docs</span><span class="landing-time">Fri</span>
-                                </div>
-                                <div class="landing-task-row">
-                                    <span class="landing-checkbox"></span><span>리마인더 확인</span><span class="landing-tag">Ops</span><span class="landing-time">Mon</span>
-                                </div>
-                            </section>
-                            <section class="landing-panel">
-                                <h3>Reminders</h3>
-                                <div class="landing-day">
-                                    <div class="landing-day-row"><strong>09:00</strong><span>작업 계획 확인</span></div>
-                                    <div class="landing-day-row"><strong>14:00</strong><span>프로젝트 문서 업데이트</span></div>
-                                    <div class="landing-day-row"><strong>18:00</strong><span>오늘 완료 항목 정리</span></div>
-                                </div>
-                            </section>
+                        <div class="landing-tablet-tabs" aria-hidden="true">
+                            <span class="active">Tasks</span>
+                            <span>Wiki</span>
+                            <span>Projects</span>
                         </div>
-                        <div class="landing-wiki-strip">
-                            <article class="landing-wiki-card">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                                <strong>Project wiki</strong>
-                                <p>프로젝트별 문서와 서브페이지를 연결합니다.</p>
+                        <div class="landing-composer">
+                            <span>오늘 챙길 일을 적어보세요...</span>
+                            <button type="button">추가</button>
+                        </div>
+                        <div class="landing-filter-row">
+                            <span class="active">전체</span>
+                            <span>진행 중</span>
+                            <span>중요</span>
+                            <span>리마인더</span>
+                        </div>
+                        <div class="landing-task-stack">
+                            <article class="landing-real-task">
+                                <button type="button" aria-label="완료"></button>
+                                <div>
+                                    <strong>저녁 장보기</strong>
+                                    <small>오늘 · 집안일</small>
+                                    <p>우유, 계란, 샐러드 채소를 퇴근길에 사 오기.</p>
+                                </div>
+                                <span class="blue"></span>
                             </article>
-                            <article class="landing-wiki-card">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                <strong>Task flow</strong>
-                                <p>우선순위와 마감일을 한 화면에서 봅니다.</p>
+                            <article class="landing-real-task">
+                                <button type="button" aria-label="완료"></button>
+                                <div>
+                                    <strong>치과 예약 확인</strong>
+                                    <small>내일 · 개인 일정</small>
+                                    <p>예약 시간 확인하고 신분증 챙기기.</p>
+                                </div>
+                                <span class="green"></span>
                             </article>
-                            <article class="landing-wiki-card">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                                <strong>Saved links</strong>
-                                <p>자주 쓰는 자료를 북마크로 보관합니다.</p>
+                            <article class="landing-real-task compact">
+                                <button type="button" aria-label="완료"></button>
+                                <div>
+                                    <strong>택배 반품 접수하기</strong>
+                                    <small>주말 · 집안일</small>
+                                </div>
+                                <span class="red"></span>
                             </article>
                         </div>
                     </div>
@@ -208,7 +273,7 @@
                     <div class="landing-auth-card">
                         <div class="landing-auth-logo">
                             <span class="landing-brand-mark">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 5h14v14H5z"/><path d="M9 9h6M9 13h4"/></svg>
+                                <img src="/icons/icon-192.png" alt="" onerror="this.onerror=null;this.src='/icon.svg';">
                             </span>
                             Planary
                         </div>
@@ -227,15 +292,31 @@
                 </div>
             </section>
         </main>
+        <footer class="landing-footer">
+            <span>Planary</span>
+            <nav aria-label="Legal links">
+                <a href="privacy.html">개인정보처리방침</a>
+                <a href="terms.html">서비스 약관</a>
+                <a href="mailto:yoobinkim2006@gmail.com">문의</a>
+            </nav>
+        </footer>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-init.js?v=v1"></script>
     <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then((registration) => {
+                    registration.update();
+                }).catch(() => {});
+            });
+        }
+
         if (typeof firebase !== 'undefined') {
             firebase.auth().onAuthStateChanged((user) => {
-                if (user) window.location.replace('/');
+                if (user) window.location.replace('/redesign/');
             });
         }
     </script>

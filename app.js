@@ -17,6 +17,40 @@ if ('serviceWorker' in navigator) {
 let db = null;
 let auth = null;
 
+function bindResilientMobileNav() {
+    const menuToggle = getEl('menu-toggle');
+    const overlay = getEl('sidebar-overlay');
+
+    if (menuToggle && !menuToggle.dataset.mobileNavBound) {
+        menuToggle.dataset.mobileNavBound = 'true';
+        menuToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = document.body.classList.toggle('nav-open');
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+    }
+
+    if (overlay && !overlay.dataset.mobileNavBound) {
+        overlay.dataset.mobileNavBound = 'true';
+        overlay.addEventListener('click', () => {
+            document.body.classList.remove('nav-open');
+            if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    document.querySelectorAll('[data-target]').forEach(link => {
+        if (link.dataset.mobileNavCloseBound) return;
+        link.dataset.mobileNavCloseBound = 'true';
+        link.addEventListener('click', () => {
+            document.body.classList.remove('nav-open');
+            if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bindResilientMobileNav);
+
 // Core App State (Global)
 let currentUser = null;
 let allTodos = [];
@@ -28,7 +62,285 @@ let currentFilter = 'all';
 let currentProjectId = null;
 let selectedProjectOverviewId = null;
 let selectedNoteColor = 'yellow';
-let currentLanguage = localStorage.getItem('planary-language') || 'ko';
+let pendingDeleteTaskId = null;
+let editingTaskId = null;
+const SUPPORTED_LANGS = ['ko', 'en', 'ja', 'zh', 'es'];
+function resolveInitialLanguage() {
+    const stored = localStorage.getItem('planary-language');
+    if (stored && SUPPORTED_LANGS.includes(stored)) return stored;
+    const nav = (navigator.language || 'en').toLowerCase().split('-')[0];
+    if (SUPPORTED_LANGS.includes(nav)) return nav;
+    return 'en';
+}
+let currentLanguage = resolveInitialLanguage();
+const DEFAULT_APP_FONT = "'Nanum Gothic', sans-serif";
+const LEGACY_DEFAULT_APP_FONT = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif";
+const savedAppFont = localStorage.getItem('planary-app-font');
+let currentAppFont = (!savedAppFont || savedAppFont === LEGACY_DEFAULT_APP_FONT) ? DEFAULT_APP_FONT : savedAppFont;
+let onboardingState = null;
+let onboardingHighlightEl = null;
+let onboardingHighlightTimer = null;
+let onboardingFocusIndex = 0;
+let onboardingWelcomeVisible = false;
+let onboardingSpotlightEls = [];
+// auto-scroll suppression and throttling for touch/scroll on mobile/tablet
+let onboardingSuppressAutoScroll = false;
+let onboardingSuppressTimer = null;
+let onboardingLastReposition = 0;
+let onboardingRepositionThrottleMs = 160;
+let eclassStatus = null;
+let eclassForegroundSyncTimer = null;
+let taskCalendarAccessToken = null;
+let lastCalendarImportAt = null;
+let appleCalendarEnabled = false;
+const reminderNotificationTimers = new Map();
+const DEFAULT_NOTIFICATION_SETTINGS = {
+    dailyTasks: false,
+    dailyTime: '09:00',
+    reminders: true
+};
+let notificationSettings = { ...DEFAULT_NOTIFICATION_SETTINGS, ...loadNotificationSettings() };
+let onboardingRepositionFrame = null;
+let onboardingScrollSettleTimer = null;
+let onboardingLastTargetRect = null;
+let onboardingLockScrollY = 0;
+
+const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
+const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
+const APP_FONT_OPTIONS = [
+    { value: DEFAULT_APP_FONT, labelKey: 'defaultSans' },
+    { value: "'Gothic A1', sans-serif", label: 'Gothic A1' },
+    { value: "'Gowun Dodum', sans-serif", label: 'Gowun Dodum' },
+    { value: "'Hahmlet', serif", label: 'Hahmlet' },
+    { value: "'Noto Sans KR', sans-serif", label: 'Noto Sans KR' },
+    { value: "'Nanum Gothic', sans-serif", labelKey: 'fontNanumGothic' },
+    { value: "'IBM Plex Sans KR', sans-serif", label: 'IBM Plex Sans KR' },
+    { value: "'Nanum Myeongjo', serif", label: 'Nanum Myeongjo' },
+    { value: "'Jua', sans-serif", label: 'Jua' },
+    { value: "'Do Hyeon', sans-serif", label: 'Do Hyeon' },
+    { value: "'Inter', sans-serif", label: 'Inter' },
+    { value: "'Lora', serif", label: 'Lora' },
+    { value: "'Noto Serif KR', serif", label: 'Noto Serif KR' },
+    { value: "'Roboto Mono', monospace", label: 'Roboto Mono' },
+    { value: "'Caveat', cursive", label: 'Caveat' },
+    { value: "'Courier New', Courier, monospace", labelKey: 'monospace' },
+    { value: "'Georgia', serif", labelKey: 'serif' },
+    { value: "'Comic Sans MS', cursive", labelKey: 'handwritten' }
+];
+
+function localDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseTaskDateKey(value) {
+    if (!value) return null;
+    if (typeof value === 'string') return value.slice(0, 10);
+    const date = value && typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : localDateKey(date);
+}
+
+function getTaskCompletedDateKey(task) {
+    return parseTaskDateKey(task.completedDate) || parseTaskDateKey(task.completedAt) || parseTaskDateKey(task.createdAt);
+}
+
+function buildCompletedTaskActivity(tasks, days = 84) {
+    const counts = new Map();
+    tasks.forEach(task => {
+        if (!task.completed) return;
+        const key = getTaskCompletedDateKey(task);
+        if (!key) return;
+        counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(today.getDate() - (days - 1));
+    const dates = [];
+    for (let i = 0; i < days; i += 1) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        const key = localDateKey(date);
+        dates.push({ key, count: counts.get(key) || 0 });
+    }
+
+    let streak = 0;
+    for (let cursor = new Date(today); ; cursor.setDate(cursor.getDate() - 1)) {
+        if ((counts.get(localDateKey(cursor)) || 0) === 0) break;
+        streak += 1;
+    }
+
+    return { dates, streak };
+}
+
+function dateFromBackendValue(value) {
+    if (!value) return null;
+    const date = value && typeof value.toDate === 'function' ? value.toDate() : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getJoinedDate(user, userDoc = null) {
+    return dateFromBackendValue(userDoc?.createdAt) || dateFromBackendValue(user?.metadata?.creationTime);
+}
+
+function getJoinedDays(user, userDoc = null) {
+    const joinedDate = getJoinedDate(user, userDoc);
+    if (!joinedDate) return null;
+    const joined = new Date(joinedDate);
+    const today = new Date();
+    joined.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return Math.max(1, Math.floor((today - joined) / 86400000) + 1);
+}
+
+function formatJoinedDays(user, userDoc = null) {
+    const days = getJoinedDays(user, userDoc);
+    return days == null ? '-' : formatText('joinedDaysValue', { days });
+}
+const GUIDE_STEPS = {
+    taskCreate: {
+        icon: 'tasks',
+        pageId: 'page-tasks',
+        focusSelector: '#todo-input',
+        fallbackSelector: '#todo-input',
+        filter: 'all',
+        titleKey: 'onboardingTaskCreateTitle',
+        bodyKey: 'onboardingTaskCreateBody',
+        targetKey: 'onboardingTaskCreateTarget',
+        whyKey: 'onboardingTaskCreateWhy',
+        exampleKey: 'onboardingTaskCreateExample',
+        doneKey: 'onboardingTaskCreateDone',
+        tipKey: 'onboardingTaskCreateTip',
+        focusFlow: [
+            { selector: '#todo-input', tipKey: 'onboardingTaskCreateInputTip', targetKey: 'onboardingTaskCreateInputTarget', waitFor: 'input-not-empty' },
+            { selector: '#add-btn', tipKey: 'onboardingTaskCreateButtonTip', targetKey: 'onboardingTaskCreateButtonTarget', waitFor: 'click' }
+        ],
+        completionEvent: 'task-created'
+    },
+    taskDetails: {
+        icon: 'reminders',
+        pageId: 'page-tasks',
+        focusSelector: '#memo-input',
+        fallbackSelector: '#priority-select',
+        filter: 'all',
+        titleKey: 'onboardingTaskDetailsTitle',
+        bodyKey: 'onboardingTaskDetailsBody',
+        targetKey: 'onboardingTaskDetailsTarget',
+        whyKey: 'onboardingTaskDetailsWhy',
+        exampleKey: 'onboardingTaskDetailsExample',
+        doneKey: 'onboardingTaskDetailsDone',
+        tipKey: 'onboardingTaskDetailsTip',
+        focusFlow: [
+            { selector: '#todo-input', tipKey: 'onboardingTaskDetailsNameTip', targetKey: 'onboardingTaskDetailsNameTarget', waitFor: 'input-not-empty' },
+            { selector: '#memo-input', tipKey: 'onboardingTaskDetailsMemoTip', targetKey: 'onboardingTaskDetailsMemoTarget', waitFor: 'input-not-empty' },
+            { selector: '#due-date', tipKey: 'onboardingTaskDetailsDateTip', targetKey: 'onboardingTaskDetailsDateTarget', waitFor: 'input-not-empty' },
+            { selector: '#priority-select', tipKey: 'onboardingTaskDetailsPriorityTip', targetKey: 'onboardingTaskDetailsPriorityTarget', waitFor: 'input-not-empty' },
+            { selector: '#add-btn', tipKey: 'onboardingTaskDetailsButtonTip', targetKey: 'onboardingTaskDetailsButtonTarget', waitFor: 'click' }
+        ],
+        completionEvent: 'task-created-with-details'
+    },
+    taskManage: {
+        icon: 'tasks',
+        pageId: 'page-tasks',
+        focusSelector: '.task-card .btn-edit-task',
+        fallbackSelector: '.task-card .btn-toggle',
+        filter: 'all',
+        titleKey: 'onboardingTaskManageTitle',
+        bodyKey: 'onboardingTaskManageBody',
+        targetKey: 'onboardingTaskManageTarget',
+        whyKey: 'onboardingTaskManageWhy',
+        exampleKey: 'onboardingTaskManageExample',
+        doneKey: 'onboardingTaskManageDone',
+        tipKey: 'onboardingTaskManageTip',
+        completionEvent: 'task-managed'
+    },
+    taskViews: {
+        icon: 'reminders',
+        pageId: 'page-tasks',
+        focusSelector: '.filter-chip[data-filter="important"]',
+        fallbackSelector: '.filter-chip[data-filter="reminders"]',
+        filter: 'all',
+        titleKey: 'onboardingTaskViewsTitle',
+        bodyKey: 'onboardingTaskViewsBody',
+        targetKey: 'onboardingTaskViewsTarget',
+        whyKey: 'onboardingTaskViewsWhy',
+        exampleKey: 'onboardingTaskViewsExample',
+        doneKey: 'onboardingTaskViewsDone',
+        tipKey: 'onboardingTaskViewsTip',
+        completionEvent: 'task-view-opened'
+    },
+    projects: {
+        icon: 'projects',
+        pageId: 'page-projects',
+        focusSelector: '#project-input',
+        fallbackSelector: '#project-input',
+        titleKey: 'onboardingProjectsTitle',
+        bodyKey: 'onboardingProjectsBody',
+        targetKey: 'onboardingProjectsTarget',
+        whyKey: 'onboardingProjectsWhy',
+        exampleKey: 'onboardingProjectsExample',
+        doneKey: 'onboardingProjectsDone',
+        tipKey: 'onboardingProjectsTip',
+        focusFlow: [
+            { selector: '#project-input', tipKey: 'onboardingProjectsInputTip', targetKey: 'onboardingProjectsInputTarget', waitFor: 'input-not-empty' },
+            { selector: '#add-project-btn', tipKey: 'onboardingProjectsButtonTip', targetKey: 'onboardingProjectsButtonTarget', waitFor: 'click' }
+        ],
+        completionEvent: 'project-created'
+    },
+    notesCreate: {
+        icon: 'notes',
+        pageId: 'page-notes',
+        focusSelector: '#note-input',
+        fallbackSelector: '#add-note-btn',
+        titleKey: 'onboardingNotesCreateTitle',
+        bodyKey: 'onboardingNotesCreateBody',
+        targetKey: 'onboardingNotesCreateTarget',
+        whyKey: 'onboardingNotesCreateWhy',
+        exampleKey: 'onboardingNotesCreateExample',
+        doneKey: 'onboardingNotesCreateDone',
+        tipKey: 'onboardingNotesCreateTip',
+        focusFlow: [
+            { selector: '#note-color-picker', tipKey: 'onboardingNotesColorTip', targetKey: 'onboardingNotesColorTarget', waitFor: 'none' },
+            { selector: '#note-input', tipKey: 'onboardingNotesInputTip', targetKey: 'onboardingNotesInputTarget', waitFor: 'input-not-empty' },
+            { selector: '#add-note-btn', tipKey: 'onboardingNotesButtonTip', targetKey: 'onboardingNotesButtonTarget', waitFor: 'click' }
+        ],
+        completionEvent: 'note-created'
+    },
+    notesManage: {
+        icon: 'notes',
+        pageId: 'page-notes',
+        focusSelector: '.note-card .note-edit-btn',
+        fallbackSelector: '.note-card .note-delete-btn',
+        titleKey: 'onboardingNotesManageTitle',
+        bodyKey: 'onboardingNotesManageBody',
+        targetKey: 'onboardingNotesManageTarget',
+        whyKey: 'onboardingNotesManageWhy',
+        exampleKey: 'onboardingNotesManageExample',
+        doneKey: 'onboardingNotesManageDone',
+        tipKey: 'onboardingNotesManageTip',
+        completionEvent: 'note-managed'
+    },
+    wiki: {
+        icon: 'wiki',
+        pageId: 'page-wiki',
+        focusSelector: '#new-wiki-btn',
+        fallbackSelector: '#wiki-empty-create-btn',
+        titleKey: 'onboardingWikiTitle',
+        bodyKey: 'onboardingWikiBody',
+        targetKey: 'onboardingWikiTarget',
+        whyKey: 'onboardingWikiWhy',
+        exampleKey: 'onboardingWikiExample',
+        doneKey: 'onboardingWikiDone',
+        tipKey: 'onboardingWikiTip',
+        focusFlow: [
+            { selector: '#new-wiki-btn', fallbackSelector: '#wiki-empty-create-btn', tipKey: 'onboardingWikiButtonTip', targetKey: 'onboardingWikiButtonTarget', waitFor: 'click' }
+        ],
+        completionEvent: 'wiki-created'
+    }
+};
 
 // --- CORE UTILITY FUNCTIONS ---
 const getEl = (id) => document.getElementById(id);
@@ -42,6 +354,18 @@ function showToast(message, type = 'info') {
     setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 300); }, 3000);
 }
 window.showToast = showToast; // Export to global
+
+function loadNotificationSettings() {
+    try {
+        return JSON.parse(localStorage.getItem('planary-notification-settings') || '{}');
+    } catch (error) {
+        return {};
+    }
+}
+
+function saveNotificationSettings() {
+    localStorage.setItem('planary-notification-settings', JSON.stringify(notificationSettings));
+}
 
 const escapeHtml = (value) => String(value || '')
     .replace(/&/g, '&amp;')
@@ -60,7 +384,18 @@ const APP_ICON_PATHS = {
     archive: '<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>',
     profile: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
     reminders: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    complete: '<path d="M20 6 9 17l-5-5"/>',
+    progress: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+    important: '<path d="M12 2 2 22h20L12 2z"/><path d="M12 9v5"/><path d="M12 18h.01"/>',
     add: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'
+};
+
+const TASK_EMPTY_STATES = {
+    all: { icon: 'tasks', titleKey: 'emptyTasksAllTitle', bodyKey: 'emptyTasksAllBody' },
+    completed: { icon: 'complete', titleKey: 'emptyTasksCompletedTitle', bodyKey: 'emptyTasksCompletedBody' },
+    active: { icon: 'progress', titleKey: 'emptyTasksActiveTitle', bodyKey: 'emptyTasksActiveBody' },
+    important: { icon: 'important', titleKey: 'emptyTasksImportantTitle', bodyKey: 'emptyTasksImportantBody' },
+    reminders: { icon: 'reminders', titleKey: 'emptyTasksRemindersTitle', bodyKey: 'emptyTasksRemindersBody' }
 };
 
 function appIconSvg(name, size = 20, extraAttrs = '') {
@@ -68,195 +403,14 @@ function appIconSvg(name, size = 20, extraAttrs = '') {
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extraAttrs}>${paths}</svg>`;
 }
 
-const I18N = {
-    ko: {
-        home: '홈', tasks: '작업', allTasks: '전체 작업', completed: '완료됨', progress: '진행 중', important: '중요',
-        reminders: '리마인더', projects: '프로젝트', notes: '메모', wiki: '위키', bookmarks: '북마크',
-        archive: '보관함', myPage: '마이페이지', dashboardTitle: '대시보드', dashboardSubtitle: '오늘의 작업 흐름을 확인하세요.',
-        totalTasks: '전체 작업', productivity: '생산성', recentNotes: '최근 메모', upcomingReminders: '다가오는 리마인더',
-        viewAll: '전체 보기', taskTitle: '작업', defaultSans: '기본 글꼴', addTask: '작업 추가', taskPlaceholder: '무엇을 해야 하나요?',
-        memoPlaceholder: '메모 (선택)', noProject: '프로젝트 없음', searchTasks: '작업 검색...', projectsTitle: '프로젝트',
-        projectsSubtitle: '작업을 프로젝트별로 정리하세요.', projectPlaceholder: '프로젝트 이름 (예: 업무, 공부)', createProject: '프로젝트 만들기',
-        projectWorkspace: '프로젝트 작업 공간', projectSummary: '작업, 리마인더, 위키 페이지를 한 곳에서 봅니다.',
-        openTasks: '작업 열기', openReminders: '리마인더 열기', newWikiPage: '새 위키 페이지', stickyNotes: '스티키 메모',
-        notePlaceholder: '짧은 생각이나 아이디어를 적어보세요...', addNote: '+ 메모 추가', bookmarksTitle: '북마크',
-        bookmarksSubtitle: '중요한 링크를 태그와 함께 저장하세요.', saveBookmark: '북마크 저장', docsWiki: '문서 & 위키',
-        wikiSubtitle: '노션 스타일 문서 편집기', searchPages: '페이지 검색...', saveChanges: '변경사항 저장',
-        archiveTitle: '보관함', archivedTasks: '보관된 작업', emptyArchive: '보관함 비우기', profileTitle: '마이페이지',
-        nameLabel: '이름:', emailLabel: '이메일:', loginMethodsLabel: '로그인 방식:', languageLabel: 'UI 언어',
-        guideTitle: '가이드', guideDescription: 'Planary의 기본 사용 흐름을 다시 확인합니다.', replayGuide: '가이드 다시 보기',
-        emailPasswordLogin: '이메일 비밀번호 로그인', newPassword: '새 비밀번호', confirmPassword: '비밀번호 확인',
-        logout: '로그아웃', taskHeaderTitle: '내 작업', taskHeaderSubtitle: '작업 관리자', overviewHeader: '개요',
-        overviewSubtitle: '대시보드 요약', projectHeader: '프로젝트 그룹', projectSubtitle: '분류 관리자',
-        notesHeader: '스티키 보드', notesSubtitle: '아이디어 메모', bookmarksHeader: '저장한 웹', bookmarksHeaderSubtitle: '참고 링크',
-        archiveHeader: '보관함', archiveSubtitle: '이전 기록', wikiHeader: '위키 & 문서', wikiHeaderSubtitle: '지식 베이스',
-        myPageSubtitle: '사용자 계정', googleProvider: '구글', emailPasswordProvider: '이메일 비밀번호',
-        emailPasswordAlreadyEnabled: '이메일 비밀번호 로그인이 이미 활성화되어 있습니다. 새 비밀번호를 입력하면 변경됩니다.',
-        setPasswordHelp: '이 이메일로 비밀번호 로그인도 할 수 있도록 비밀번호를 설정합니다.',
-        updatePassword: '비밀번호 변경', setPasswordLogin: '비밀번호 로그인 설정', passwordPlaceholder: '6자 이상',
-        confirmPasswordPlaceholder: '비밀번호 확인', authUnknownError: '알 수 없는 오류입니다.',
-        recentLoginRequired: '보안을 위해 로그아웃 후 구글로 다시 로그인한 다음 비밀번호를 설정하세요.',
-        weakPassword: '비밀번호는 최소 6자 이상이어야 합니다.', emailAlreadyConnected: '이 이메일은 이미 다른 계정에 연결되어 있습니다. 먼저 해당 방식으로 로그인하세요.',
-        providerAlreadyLinked: '이 계정에는 이메일 비밀번호 로그인이 이미 활성화되어 있습니다.',
-        emailPasswordDisabled: 'Firebase 프로젝트에서 이메일/비밀번호 로그인이 비활성화되어 있습니다. Firebase Console > Authentication > Sign-in method > Email/Password를 활성화한 뒤 다시 시도하세요.',
-        authFailed: '인증에 실패했습니다.', noEmailToConnect: '연결할 이메일 주소가 없는 계정입니다.',
-        passwordMismatch: '비밀번호가 일치하지 않습니다.', updatingPassword: '비밀번호 변경 중...', connectingEmailPassword: '이메일 비밀번호 로그인 연결 중...',
-        emailPasswordDone: '완료되었습니다. 이제 이 이메일과 비밀번호로 로그인할 수 있습니다.', emailPasswordEnabled: '이메일 비밀번호 로그인이 활성화되었습니다.',
-        edit: '수정', delete: '삭제', restore: '복원', archiveVerb: '보관', undo: '되돌리기', complete: '완료',
-        deleteConfirm: '삭제할까요?', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
-        low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
-        today: '오늘', active: '진행 중', noDate: '날짜 없음', deletePermanently: '영구 삭제',
-        permanentDeleteConfirm: '영구 삭제할까요?', stayInspired: '계속 기록하세요.', projectTasksUnit: '작업',
-        projectRemindersUnit: '리마인더', projectWikiUnit: '위키', open: '열기', deleteProjectConfirm: '프로젝트를 삭제할까요?',
-        taskCountSummary: '{tasks}개 작업, {reminders}개 리마인더, {wiki}개 위키 페이지',
-        noTasksInProject: '이 프로젝트에 작업이 없습니다.', noActiveReminders: '활성 리마인더가 없습니다.',
-        untitledDocument: '제목 없는 문서', subpage: '하위 페이지', rootPage: '루트 페이지', noWikiInProject: '이 프로젝트에 연결된 위키 페이지가 없습니다.',
-        visitWebsite: '웹사이트 방문', deleteBookmark: '북마크 삭제', deleteBookmarkConfirm: '북마크를 삭제할까요?',
-        editContent: '내용 수정:', updated: '수정되었습니다.', uploadingImage: '이미지 업로드 중...', imageUploadFailed: '이미지 업로드에 실패해 이미지 없이 저장합니다.',
-        added: '추가되었습니다.', taskCreationFailed: '작업 생성에 실패했습니다.', bookmarkSaved: '북마크가 저장되었습니다.',
-        projectCreated: '프로젝트가 생성되었습니다.', projectNotesTitle: '{project} 메모', failedCreateWiki: '위키 페이지 생성에 실패했습니다.',
-        noteAdded: '메모가 추가되었습니다.', logoutConfirm: '로그아웃할까요?', uploadImageTitle: '이미지 첨부',
-        pasteUrl: 'URL 붙여넣기', customTitle: '사용자 지정 제목', tagsPlaceholder: '태그...', newPage: '+ 새 페이지',
-        uploadingProgress: '업로드 중... 0%', subpages: '하위 페이지', newSubpage: '새 하위 페이지', deletePage: '페이지 삭제',
-        archiveDescription: '완료한 작업과 지난 기록을 다시 확인하세요.', totalAchievements: '전체 성과', itemsArchived: '보관된 항목',
-        monospace: '고정폭', serif: '세리프', handwritten: '손글씨', firstTaskTitle: '할 일을 채워보세요',
-        firstTaskBody: '해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.',
-        firstTaskButton: '첫 작업 추가하기', firstNoteTitle: '메모 보드를 채워보세요',
-        firstNoteBody: '아이디어와 짧은 기록을 포스트잇처럼 쌓아두는 공간입니다.<br>상단 입력창에 첫 메모를 적고 보드 위에 배치해보세요.',
-        firstNoteButton: '첫 메모 작성하기', firstProjectTitle: '프로젝트를 만들어보세요',
-        firstProjectBody: '업무와 아이디어를 주제별로 나누면 정리 속도가 빨라집니다.<br>상단 입력창에서 첫 프로젝트를 추가해 작업을 묶어보세요.',
-        firstProjectButton: '첫 프로젝트 만들기', firstBookmarkTitle: '북마크를 저장해보세요',
-        firstBookmarkBody: '자주 참고하는 링크를 태그와 함께 모아두는 공간입니다.<br>상단 입력창에 URL을 붙여 첫 북마크를 저장하세요.',
-        firstBookmarkButton: '첫 북마크 저장하기', emptyArchiveTitle: '보관함이 비어 있습니다',
-        emptyArchiveBody: '완료했거나 잠시 치워둔 작업이 여기에 쌓입니다.<br>작업 화면에서 항목을 보관하면 이곳에서 다시 꺼낼 수 있습니다.',
-        expandSidebar: '사이드바 펼치기', collapseSidebar: '사이드바 접기',
-        openPageFirst: '먼저 페이지를 열어주세요', untitledProject: '제목 없는 프로젝트', noPagesFound: '페이지가 없습니다',
-        createFirstSubpage: '첫 하위 페이지 만들기', subpageEmptyHelp: '관련 메모를 이 페이지 아래에 정리하세요.',
-        openSubpage: '하위 페이지 열기', loginFirst: '먼저 로그인해주세요', failedCreatePage: '페이지 생성 실패',
-        cannotSaveNotReady: '저장할 수 없습니다. 페이지가 준비되지 않았습니다.', saving: '저장 중...', pageSaved: '페이지가 저장되었습니다',
-        saveFailed: '저장 실패', deletePageConfirm: '이 페이지를 삭제할까요?',
-        deletePageWithSubpagesConfirm: '이 페이지와 하위 페이지 {count}개를 삭제할까요?', pageDeleted: '페이지가 삭제되었습니다',
-        failedDeletePage: '페이지 삭제 실패', mathPlaceholder: 'KaTeX 수식을 입력하세요 (예: \\sum_{i=1}^n i = \\frac{n(n+1)}{2})',
-        headingShortcutFailed: '제목 단축키 실패', undoFailed: '되돌리기 실패', headingPlaceholder: '제목 입력',
-        loginFirstOrStorage: '먼저 로그인하거나 Firebase Storage 초기화를 확인해주세요', uploadFailed: '업로드 실패',
-        editorPlaceholder: '명령어는 "/"를 입력하세요...', wikiEmptyTitle: '지식 창고를 채워보세요',
-        wikiEmptyBody: '생각을 정리하고 아이디어를 기록하는 당신만의 위키 공간입니다.<br>왼쪽 목록에서 문서를 선택하거나 새로 만들어 시작하세요.',
-        createNewPage: '새 페이지 만들기', inspirationTitle: '과거의 나로부터의 영감',
-        onboardingEyebrow: 'Planary 시작하기',
-        onboardingTitle: '작업을 한 흐름으로 정리하세요',
-        onboardingIntro: '처음 사용하는 동안 핵심 기능을 하나씩 직접 써볼 수 있게 안내합니다. 각 단계는 바로 실행하거나 건너뛸 수 있습니다.',
-        onboardingTaskBody: '오늘 할 일을 추가하고 마감일, 우선순위, 메모를 붙입니다.',
-        onboardingProjectBody: '작업, 리마인더, 위키를 프로젝트 단위로 묶어 봅니다.',
-        onboardingWikiBody: '회의 내용, 아이디어, 자료를 페이지와 서브페이지로 정리합니다.',
-        onboardingTaskCreateTitle: '작업 만들기', onboardingTaskCreateBody: 'Tasks에서 오늘 할 일을 하나 입력하고 작업 추가를 눌러보세요.',
-        onboardingPriorityTitle: '중요도 설정', onboardingPriorityBody: '작업 작성 영역에서 중요도를 높음으로 바꿔 중요한 일을 표시해보세요.',
-        onboardingReminderTitle: '리마인더 사용', onboardingReminderBody: '마감일을 지정한 작업을 만들어 리마인더 목록에 나타나는지 확인해보세요.',
-        onboardingTaskDragTitle: '작업 드래그 앤 드랍', onboardingTaskDragBody: '작업이 2개 이상 있으면 카드 하나를 끌어 순서를 바꿔보세요. 컴퓨터 UI에서 가장 편하게 동작합니다.',
-        onboardingNoteCreateTitle: '스티키 노트 포스트', onboardingNoteCreateBody: 'Notes에서 짧은 아이디어를 적고 메모 추가를 눌러 보드에 붙여보세요.',
-        onboardingNoteDragTitle: '컴퓨터 UI에서 노트 이동', onboardingNoteDragBody: '데스크톱 화면에서는 스티키 노트를 잡고 원하는 위치로 드래그해보세요.',
-        onboardingProjectCreateTitle: '프로젝트 만들기', onboardingProjectCreateBody: 'Projects에서 업무, 공부 같은 프로젝트를 직접 만들고 작업을 묶어보세요.',
-        onboardingWikiCreateTitle: '위키 문서 만들기', onboardingWikiCreateBody: 'Wiki에서 새 페이지를 만들고 제목과 첫 문단을 입력해 지식 베이스를 시작하세요.',
-        onboardingTry: '해보기', onboardingSkipStep: '이 단계 스킵', onboardingStepSkipped: '스킵됨',
-        onboardingLater: '전체 스킵', onboardingStart: '가이드 완료', backToList: '목록으로 돌아가기',
-        toggleTheme: '테마 전환', toggleNavigation: '내비게이션 열기', attachment: '첨부파일',
-        katexNotLoaded: 'KaTeX를 불러오지 못했습니다.', syntaxError: '문법 오류'
-    },
-    en: {
-        home: 'Home', tasks: 'Tasks', allTasks: 'All tasks', completed: 'Completed', progress: 'Progress', important: 'Important',
-        reminders: 'Reminders', projects: 'Projects', notes: 'Notes', wiki: 'Wiki', bookmarks: 'Bookmarks',
-        archive: 'Archive', myPage: 'My Page', dashboardTitle: 'Dashboard Overview', dashboardSubtitle: "Welcome back! Here's what's happening today.",
-        totalTasks: 'Total Tasks', productivity: 'Productivity', recentNotes: 'Recent Notes', upcomingReminders: 'Upcoming Reminders',
-        viewAll: 'View All', taskTitle: 'Tasks', defaultSans: 'Default Sans', addTask: 'Add Task', taskPlaceholder: 'What needs to be done?',
-        memoPlaceholder: 'Notes (optional)', noProject: 'No Project', searchTasks: 'Search tasks...', projectsTitle: 'Projects',
-        projectsSubtitle: 'Organize your tasks into groups.', projectPlaceholder: 'Project name (e.g. Work, Study)', createProject: 'Create Project',
-        projectWorkspace: 'Project workspace', projectSummary: 'Tasks, reminders, and wiki pages in one place.',
-        openTasks: 'Open tasks', openReminders: 'Open reminders', newWikiPage: 'New wiki page', stickyNotes: 'Sticky Notes',
-        notePlaceholder: 'Jot down a quick thought or idea...', addNote: '+ Add Note', bookmarksTitle: 'Bookmarks',
-        bookmarksSubtitle: 'Save important links with tags.', saveBookmark: 'Save Bookmark', docsWiki: 'Docs & Wiki',
-        wikiSubtitle: 'Notion-like document editor', searchPages: 'Search pages...', saveChanges: 'Save Changes',
-        archiveTitle: 'Archive Vault', archivedTasks: 'Archived Tasks', emptyArchive: 'Empty Archive', profileTitle: 'My Page',
-        nameLabel: 'Name:', emailLabel: 'Email:', loginMethodsLabel: 'Login methods:', languageLabel: 'UI language',
-        guideTitle: 'Guide', guideDescription: 'Review the basic Planary workflow again.', replayGuide: 'Replay guide',
-        emailPasswordLogin: 'Email password login', newPassword: 'New password', confirmPassword: 'Confirm password',
-        logout: 'Logout', taskHeaderTitle: 'My Tasks', taskHeaderSubtitle: 'Todo Manager', overviewHeader: 'Overview',
-        overviewSubtitle: 'Dashboard Summary', projectHeader: 'Project Groups', projectSubtitle: 'Category Manager',
-        notesHeader: 'Sticky Board', notesSubtitle: 'Idea Notes', bookmarksHeader: 'Web Saved', bookmarksHeaderSubtitle: 'Reference Links',
-        archiveHeader: 'Vault', archiveSubtitle: 'Historical Records', wikiHeader: 'Wiki & Docs', wikiHeaderSubtitle: 'Knowledge Base',
-        myPageSubtitle: 'User Account', googleProvider: 'Google', emailPasswordProvider: 'Email password',
-        emailPasswordAlreadyEnabled: 'Email password login is already enabled. Enter a new password to update it.',
-        setPasswordHelp: 'Set a password for this email so you can sign in with email and password too.',
-        updatePassword: 'Update password', setPasswordLogin: 'Set password login', passwordPlaceholder: 'At least 6 characters',
-        confirmPasswordPlaceholder: 'Confirm password', authUnknownError: 'Unknown error.',
-        recentLoginRequired: 'For security, please log out, sign in with Google again, then set the password.',
-        weakPassword: 'Password should be at least 6 characters.', emailAlreadyConnected: 'This email is already connected to another account. Sign in with that method first.',
-        providerAlreadyLinked: 'Email password login is already enabled for this account.',
-        emailPasswordDisabled: 'Email/Password login is disabled in this Firebase project. Enable Firebase Console > Authentication > Sign-in method > Email/Password, then try again.',
-        authFailed: 'Authentication failed.', noEmailToConnect: 'This account has no email address to connect.',
-        passwordMismatch: 'Passwords do not match.', updatingPassword: 'Updating password...', connectingEmailPassword: 'Connecting email password login...',
-        emailPasswordDone: 'Done. You can now sign in with this email and password.', emailPasswordEnabled: 'Email password login enabled.',
-        edit: 'Edit', delete: 'Delete', restore: 'Restore', archiveVerb: 'Archive', undo: 'Undo', complete: 'Complete',
-        deleteConfirm: 'Delete?', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
-        low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
-        today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
-        permanentDeleteConfirm: 'Permanently delete?', stayInspired: 'Stay inspired.', projectTasksUnit: 'tasks',
-        projectRemindersUnit: 'reminders', projectWikiUnit: 'wiki', open: 'Open', deleteProjectConfirm: 'Delete project?',
-        taskCountSummary: '{tasks} tasks, {reminders} reminders, {wiki} wiki pages',
-        noTasksInProject: 'No tasks in this project.', noActiveReminders: 'No active reminders.',
-        untitledDocument: 'Untitled Document', subpage: 'Subpage', rootPage: 'Root page', noWikiInProject: 'No wiki pages linked to this project.',
-        visitWebsite: 'Visit Website', deleteBookmark: 'Delete bookmark', deleteBookmarkConfirm: 'Delete bookmark?',
-        editContent: 'Edit content:', updated: 'Updated!', uploadingImage: 'Uploading image...', imageUploadFailed: 'Image upload failed, saving task without image',
-        added: 'Added!', taskCreationFailed: 'Task creation failed.', bookmarkSaved: 'Bookmark saved!',
-        projectCreated: 'Project created!', projectNotesTitle: '{project} Notes', failedCreateWiki: 'Failed to create wiki page.',
-        noteAdded: 'Note added!', logoutConfirm: 'Logout?', uploadImageTitle: 'Attach Image',
-        pasteUrl: 'Paste URL here', customTitle: 'Custom Title', tagsPlaceholder: 'Tags...', newPage: '+ New Page',
-        uploadingProgress: 'Uploading... 0%', subpages: 'Subpages', newSubpage: 'New Subpage', deletePage: 'Delete Page',
-        archiveDescription: 'Review your achievements and past thoughts', totalAchievements: 'Total Achievements', itemsArchived: 'Items Archived',
-        monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', firstTaskTitle: 'Fill your task list',
-        firstTaskBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',
-        firstTaskButton: 'Add first task', firstNoteTitle: 'Fill your note board',
-        firstNoteBody: 'Keep ideas and quick records like sticky notes.<br>Write your first note above and place it on the board.',
-        firstNoteButton: 'Write first note', firstProjectTitle: 'Create your first project',
-        firstProjectBody: 'Grouping work and ideas by topic makes planning faster.<br>Add your first project above to connect related work.',
-        firstProjectButton: 'Create first project', firstBookmarkTitle: 'Save your first bookmark',
-        firstBookmarkBody: 'Collect frequently referenced links with tags.<br>Paste a URL above to save your first bookmark.',
-        firstBookmarkButton: 'Save first bookmark', emptyArchiveTitle: 'Archive is empty',
-        emptyArchiveBody: 'Completed or tucked-away tasks will collect here.<br>Archive items from Tasks to restore them later.',
-        expandSidebar: 'Expand sidebar', collapseSidebar: 'Collapse sidebar',
-        openPageFirst: 'Open a page first', untitledProject: 'Untitled Project', noPagesFound: 'No pages found',
-        createFirstSubpage: 'Create first subpage', subpageEmptyHelp: 'Keep related notes nested under this page.',
-        openSubpage: 'Open subpage', loginFirst: 'Please login first', failedCreatePage: 'Failed to create page',
-        cannotSaveNotReady: 'Cannot save: not ready', saving: 'Saving...', pageSaved: 'Page saved',
-        saveFailed: 'Save failed', deletePageConfirm: 'Delete this page?',
-        deletePageWithSubpagesConfirm: 'Delete this page and {count} subpage(s)?', pageDeleted: 'Page deleted',
-        failedDeletePage: 'Failed to delete page', mathPlaceholder: 'Enter KaTeX formula (e.g. \\sum_{i=1}^n i = \\frac{n(n+1)}{2})',
-        headingShortcutFailed: 'Heading shortcut failed', undoFailed: 'Undo failed', headingPlaceholder: 'Enter a heading',
-        loginFirstOrStorage: 'Please login first or Firebase is not initialized', uploadFailed: 'Upload failed',
-        editorPlaceholder: 'Type "/" for commands...', wikiEmptyTitle: 'Fill your knowledge base',
-        wikiEmptyBody: 'Your own wiki space for organizing thoughts and ideas.<br>Select a document from the left or create a new one to start.',
-        createNewPage: 'Create new page', inspirationTitle: 'Inspiration from past notes',
-        onboardingEyebrow: 'Welcome to Planary',
-        onboardingTitle: 'Organize work into one flow',
-        onboardingIntro: 'This guide walks new users through the core features one by one. Every step can be tried immediately or skipped.',
-        onboardingTaskBody: 'Add today’s work with due dates, priorities, and notes.',
-        onboardingProjectBody: 'Group tasks, reminders, and wiki pages by project.',
-        onboardingWikiBody: 'Organize meetings, ideas, and references into pages and subpages.',
-        onboardingTaskCreateTitle: 'Create a task', onboardingTaskCreateBody: 'Go to Tasks, enter one thing to do today, and press Add Task.',
-        onboardingPriorityTitle: 'Set priority', onboardingPriorityBody: 'Use the task composer to switch priority to High so important work stands out.',
-        onboardingReminderTitle: 'Use a reminder', onboardingReminderBody: 'Add a due date to a task and confirm it appears in the reminders view.',
-        onboardingTaskDragTitle: 'Drag and drop tasks', onboardingTaskDragBody: 'When you have at least two tasks, drag a card to reorder it. This works best in the desktop UI.',
-        onboardingNoteCreateTitle: 'Post a sticky note', onboardingNoteCreateBody: 'Go to Notes, write a quick idea, and add it to the board.',
-        onboardingNoteDragTitle: 'Move notes on desktop', onboardingNoteDragBody: 'On a desktop screen, grab a sticky note and drag it to a new position.',
-        onboardingProjectCreateTitle: 'Create a project', onboardingProjectCreateBody: 'Go to Projects, create a project like Work or Study, and start grouping tasks.',
-        onboardingWikiCreateTitle: 'Create a wiki document', onboardingWikiCreateBody: 'Go to Wiki, create a new page, then add a title and first paragraph.',
-        onboardingTry: 'Try it', onboardingSkipStep: 'Skip this step', onboardingStepSkipped: 'Skipped',
-        onboardingLater: 'Skip all', onboardingStart: 'Finish guide', backToList: 'Back to list',
-        toggleTheme: 'Toggle theme', toggleNavigation: 'Toggle navigation', attachment: 'Attachment',
-        katexNotLoaded: 'KaTeX not loaded.', syntaxError: 'Syntax Error'
-    }
-};
+const I18N = window.PlanaryI18nDict || {};
 
 function t(key) {
-    return (I18N[currentLanguage] && I18N[currentLanguage][key]) || I18N.ko[key] || key;
+    const cur = I18N[currentLanguage];
+    if (cur && cur[key] != null) return cur[key];
+    if (I18N.en && I18N.en[key] != null) return I18N.en[key];
+    if (I18N.ko && I18N.ko[key] != null) return I18N.ko[key];
+    return key;
 }
 
 function setText(selector, value) {
@@ -271,6 +425,13 @@ function setHtml(selector, value) {
 
 function setAllText(selector, value) {
     document.querySelectorAll(selector).forEach(el => { el.textContent = value; });
+}
+
+function setAllTitle(selector, value, includeAria = true) {
+    document.querySelectorAll(selector).forEach(el => {
+        el.title = value;
+        if (includeAria) el.setAttribute('aria-label', value);
+    });
 }
 
 function setPlaceholder(selector, value) {
@@ -307,16 +468,51 @@ function setButtonTextPreserveIcon(selector, value) {
     el.appendChild(document.createTextNode(value));
 }
 
+function setAllButtonTextPreserveIcon(selector, value) {
+    document.querySelectorAll(selector).forEach(el => {
+        const icon = el.querySelector('svg');
+        el.textContent = '';
+        if (icon) {
+            el.appendChild(icon);
+            el.appendChild(document.createTextNode(' '));
+        }
+        el.appendChild(document.createTextNode(value));
+    });
+}
+
 window.PlanaryI18n = {
     t: (key) => t(key),
     format: (key, values) => formatText(key, values),
     getLanguage: () => currentLanguage
 };
 
+function applyAppFont(font = currentAppFont) {
+    const supportedFont = APP_FONT_OPTIONS.some(option => option.value === font);
+    currentAppFont = (!font || font === 'var(--font)' || !supportedFont) ? DEFAULT_APP_FONT : font;
+    localStorage.setItem('planary-app-font', currentAppFont);
+    document.documentElement.style.setProperty('--font', currentAppFont);
+    const fontSelect = getEl('app-font-select');
+    if (fontSelect) fontSelect.value = currentAppFont;
+}
+
+function renderFontOptions() {
+    const fontSelect = getEl('app-font-select');
+    if (!fontSelect) return;
+    fontSelect.innerHTML = APP_FONT_OPTIONS.map(option => {
+        const label = option.label || t(option.labelKey);
+        return `<option value="${escapeHtml(option.value)}">${escapeHtml(label)}</option>`;
+    }).join('');
+    fontSelect.value = currentAppFont;
+    if (fontSelect.value !== currentAppFont) {
+        fontSelect.value = DEFAULT_APP_FONT;
+    }
+}
+
 function applyLanguage(lang = currentLanguage) {
+    if (!SUPPORTED_LANGS.includes(lang)) lang = 'en';
     currentLanguage = lang;
     localStorage.setItem('planary-language', lang);
-    document.documentElement.lang = lang === 'ko' ? 'ko' : 'en';
+    document.documentElement.lang = lang;
 
     setAllText('[data-target="page-home"] span, .fab-item[data-target="page-home"] .fab-label', t('home'));
     setAllText('[data-target="page-tasks"]:not(.task-subnav-link) span, .fab-item[data-target="page-tasks"] .fab-label', t('tasks'));
@@ -326,14 +522,15 @@ function applyLanguage(lang = currentLanguage) {
     setAllText('[data-target="page-bookmarks"] span, .fab-item[data-target="page-bookmarks"] .fab-label', t('bookmarks'));
     setAllText('[data-target="page-archive"] span, .fab-item[data-target="page-archive"] .fab-label', t('archive'));
     setAllText('[data-target="page-profile"] span, .fab-item[data-target="page-profile"] .fab-label', t('myPage'));
-    document.querySelectorAll('[data-target="page-home"]').forEach(el => el.title = t('home'));
-    document.querySelectorAll('[data-target="page-tasks"]').forEach(el => el.title = t('tasks'));
-    document.querySelectorAll('[data-target="page-projects"]').forEach(el => el.title = t('projects'));
-    document.querySelectorAll('[data-target="page-notes"]').forEach(el => el.title = t('notes'));
-    document.querySelectorAll('[data-target="page-wiki"]').forEach(el => el.title = t('wiki'));
-    document.querySelectorAll('[data-target="page-bookmarks"]').forEach(el => el.title = t('bookmarks'));
-    document.querySelectorAll('[data-target="page-archive"]').forEach(el => el.title = t('archive'));
-    document.querySelectorAll('[data-target="page-profile"]').forEach(el => el.title = t('myPage'));
+    setAllTitle('[data-target="page-home"]', t('home'));
+    setAllTitle('[data-target="page-tasks"]', t('tasks'));
+    setAllTitle('[data-target="page-projects"]', t('projects'));
+    setAllTitle('[data-target="page-notes"]', t('notes'));
+    setAllTitle('[data-target="page-wiki"]', t('wiki'));
+    setAllTitle('[data-target="page-bookmarks"]', t('bookmarks'));
+    setAllTitle('[data-target="page-archive"]', t('archive'));
+    setAllTitle('[data-target="page-profile"]', t('myPage'));
+    setAllTitle('.rail-icon.mobile-only[data-target="page-tasks"]', t('undo'));
     setText('.task-subnav-link[data-filter="all"]', t('allTasks'));
     setText('.task-subnav-link[data-filter="active"]', t('progress'));
     setText('.task-subnav-link[data-filter="important"]', t('important'));
@@ -341,6 +538,15 @@ function applyLanguage(lang = currentLanguage) {
 
     setText('#page-home .main-header h1', t('dashboardTitle'));
     setText('#dashboard-welcome-text', t('dashboardSubtitle'));
+    setText('#today-hub-kicker', t('todayOverview'));
+    setText('#today-hub-title', t('todayHubTitle'));
+    setText('#today-due-label', t('todayDue'));
+    setText('#today-important-label', t('todayImportant'));
+    setText('#today-project-label', t('todayProjects'));
+    setText('#today-focus-title', t('todayFocusTitle'));
+    setText('#today-projects-title', t('activeProjectsTitle'));
+    setAllButtonTextPreserveIcon('.today-hub-actions .confirm-btn', t('openTasks'));
+    setAllButtonTextPreserveIcon('.today-hub-actions .text-link-btn', t('important'));
     const statLabels = document.querySelectorAll('.dashboard-stats-row .stat-label');
     if (statLabels[0]) statLabels[0].textContent = t('totalTasks');
     if (statLabels[1]) statLabels[1].textContent = t('completed');
@@ -356,18 +562,30 @@ function applyLanguage(lang = currentLanguage) {
     setText('.filter-chip[data-filter="important"]', t('important'));
     setText('.filter-chip[data-filter="reminders"]', t('reminders'));
     setText('#add-btn', t('addTask'));
+    setText('#task-details-toggle', t('taskDetailsToggle'));
     setPlaceholder('#todo-input', t('taskPlaceholder'));
     setPlaceholder('#memo-input', t('memoPlaceholder'));
     setPlaceholder('#search-input', t('searchTasks'));
     setTitle('#task-img-upload-btn', t('uploadImageTitle'));
+    setTitle('#task-calendar-connect-btn', t('calendarConnectTask'));
+    setTitle('#task-calendar-import-btn', t('calendarImportTask'));
+    setText('#task-calendar-import-btn', t('calendarImportTask'));
+    setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
+    setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
+    const dueTimeInput = getEl('due-time');
+    if (dueTimeInput) dueTimeInput.setAttribute('aria-label', t('dueTimeLabel'));
+    const calendarReminderSelect = getEl('calendar-reminder-select');
+    if (calendarReminderSelect) calendarReminderSelect.setAttribute('aria-label', t('calendarReminderLabel'));
+    setOptionText('#calendar-reminder-select option[value="0"]', t('notifyAtTime'));
+    setOptionText('#calendar-reminder-select option[value="10"]', t('notifyBefore10'));
+    setOptionText('#calendar-reminder-select option[value="30"]', t('notifyBefore30'));
+    setOptionText('#calendar-reminder-select option[value="60"]', t('notifyBefore60'));
+    setOptionText('#calendar-reminder-select option[value="120"]', t('notifyBefore120'));
+    setOptionText('#calendar-reminder-select option[value="1440"]', t('notifyBefore1440'));
     setOptionText('#priority-select option[value="low"]', t('low'));
     setOptionText('#priority-select option[value="medium"]', t('medium'));
     setOptionText('#priority-select option[value="high"]', t('high'));
-    const fontOptions = document.querySelectorAll('#app-font-select option');
-    if (fontOptions[0]) fontOptions[0].textContent = t('defaultSans');
-    if (fontOptions[2]) fontOptions[2].textContent = t('monospace');
-    if (fontOptions[3]) fontOptions[3].textContent = t('serif');
-    if (fontOptions[4]) fontOptions[4].textContent = t('handwritten');
+    renderFontOptions();
 
     setText('#page-projects .main-header h1', t('projectsTitle'));
     setText('#page-projects .main-header p', t('projectsSubtitle'));
@@ -375,6 +593,7 @@ function applyLanguage(lang = currentLanguage) {
     setText('#add-project-btn', t('createProject'));
     setButtonTextPreserveIcon('.project-detail-kicker', t('projectWorkspace'));
     setText('#project-detail-summary', t('projectSummary'));
+    setTitle('#project-detail-close', t('closeProjectView'));
     const projectSectionTitles = document.querySelectorAll('.project-detail-section-header h3');
     if (projectSectionTitles[0]) projectSectionTitles[0].textContent = t('tasks');
     if (projectSectionTitles[1]) projectSectionTitles[1].textContent = t('reminders');
@@ -398,7 +617,10 @@ function applyLanguage(lang = currentLanguage) {
     setText('#new-wiki-btn', t('newPage'));
     setPlaceholder('#wiki-title-input', t('untitledDocument'));
     setOptionText('#wiki-project-select option[value=""]', t('noProject'));
+    const wikiProjectSelect = getEl('wiki-project-select');
+    if (wikiProjectSelect) wikiProjectSelect.setAttribute('aria-label', t('wikiProjectSelect'));
     setText('#wiki-upload-text', t('uploadingProgress'));
+    setText('.wiki-project-control label', t('projectLabel'));
     setText('#wiki-subpages-section h3', t('subpages'));
     setText('#wiki-create-subpage-btn', t('newSubpage'));
     setText('#wiki-save-btn', t('saveChanges'));
@@ -406,11 +628,32 @@ function applyLanguage(lang = currentLanguage) {
     setText('#wiki-empty-view h2', t('wikiEmptyTitle'));
     setHtml('#wiki-empty-view p', t('wikiEmptyBody'));
     setText('#wiki-empty-create-btn span', t('createNewPage'));
+    setText('#wiki-tree-title', t('wikiPageTree'));
+    setText('#wiki-widget-title', t('documentTools'));
+    setText('#wiki-info-title', t('documentInfo'));
+    setText('#wiki-info-project-label', t('projectLabel'));
+    setText('#wiki-info-updated-label', t('recentlyUpdated'));
+    setText('#wiki-info-subpages-label', t('subpages'));
+    setText('#wiki-widget-subpages-title', t('subpages'));
+    setText('#wiki-widget-new-subpage-btn', t('newSubpage'));
+    setText('#wiki-widget-tasks-title', t('todayFocusTitle'));
+    setText('#wiki-widget-calendar-title', t('calendar'));
+    setText('#wiki-calendar-connect-btn', t('googleCalendarConnect'));
+    setText('#wiki-calendar-create-btn', t('createCalendarFromPage'));
+    setText('#wiki-cover-btn', t('changeCover'));
+    setTitle('#wiki-tree-toggle-btn', t('collapsePageTree'));
+    setTitle('#wiki-widget-toggle-btn', t('collapseWidgets'));
+    setTitle('#wiki-widget-close-btn', t('collapseWidgets'));
+    const wikiStepList = getEl('onboarding-step-list');
+    if (wikiStepList) wikiStepList.setAttribute('aria-label', t('onboardingStepsLabel'));
     setText('#page-archive .main-header h1', t('archiveTitle'));
     setText('#page-archive .main-header p', t('archiveDescription'));
     const archiveStatLabels = document.querySelectorAll('#page-archive .archive-stat-card .stat-label');
     if (archiveStatLabels[0]) archiveStatLabels[0].textContent = t('totalAchievements');
     if (archiveStatLabels[1]) archiveStatLabels[1].textContent = t('itemsArchived');
+    if (archiveStatLabels[2]) archiveStatLabels[2].textContent = t('currentStreak');
+    setText('.archive-activity-section .section-header h3', t('activityHeatmap'));
+    setText('.archive-activity-caption', t('lastTwelveWeeksCompleted'));
     setText('.archive-list-section .section-header h3', t('archivedTasks'));
     setText('#empty-archive-btn', t('emptyArchive'));
     setText('.inspiration-header span', t('inspirationTitle'));
@@ -420,7 +663,30 @@ function applyLanguage(lang = currentLanguage) {
     if (profileLabels[0]) profileLabels[0].textContent = t('nameLabel');
     if (profileLabels[1]) profileLabels[1].textContent = t('emailLabel');
     if (profileLabels[2]) profileLabels[2].textContent = t('loginMethodsLabel');
-    setText('.profile-language-panel label', t('languageLabel'));
+    if (profileLabels[3]) profileLabels[3].textContent = t('joinedDaysLabel');
+    setText('#profile-language-label', t('languageLabel'));
+    setText('#profile-font-label', t('appFontLabel'));
+    setText('#profile-notification-title', t('notificationSettings'));
+    setText('#notify-daily-tasks-label', t('notifyDailyTasks'));
+    setText('#notify-daily-time-label', t('notifyDailyTime'));
+    setText('#notify-reminders-label', t('notifyReminderTime'));
+    setText('#notification-permission-btn', t('allowBrowserNotifications'));
+    syncNotificationSettingsUI();
+    setText('#profile-eclass-title', t('eclassTitle'));
+    setText('#profile-eclass-description', t('eclassDescription'));
+    setText('#profile-eclass-url-label', t('eclassUrl'));
+    setText('#profile-eclass-username-label', t('eclassUsername'));
+    setText('#profile-eclass-password-label', t('eclassPassword'));
+    setText('#profile-eclass-help', t('eclassHelp'));
+    setText('#profile-eclass-save-btn', t('eclassSave'));
+    setText('#profile-eclass-sync-btn', t('eclassSyncNow'));
+    setText('#profile-eclass-supported-summary', t('eclassSupportedSchools'));
+    const supportedSchool = document.querySelector('#profile-eclass-supported-list li');
+    if (supportedSchool) supportedSchool.textContent = t('eclassSupportedSeoultech');
+    setText('#profile-eclass-request-text', t('eclassRequestText'));
+    setText('#profile-eclass-request-link', t('eclassRequestSchool'));
+    placeEclassPanelNearProfileTop();
+    updateEclassStatusBadge();
     setText('.profile-guide-panel h3', t('guideTitle'));
     setText('.profile-guide-panel p', t('guideDescription'));
     setText('#profile-guide-btn', t('replayGuide'));
@@ -431,22 +697,41 @@ function applyLanguage(lang = currentLanguage) {
     setPlaceholder('#profile-password', t('passwordPlaceholder'));
     setPlaceholder('#profile-password-confirm', t('confirmPasswordPlaceholder'));
     setText('#profile-logout-btn', t('logout'));
+    setText('#profile-delete-title', t('deleteAccountTitle'));
+    setText('#profile-delete-description', t('deleteAccountDescription'));
+    setText('#profile-delete-account-btn', t('deleteAccountButton'));
+    setText('.onboarding-language-option[data-guide-language="ko"]', t('koreanLanguage'));
+    setText('.onboarding-language-option[data-guide-language="en"]', t('englishLanguage'));
+    setText('#task-edit-title', t('editTaskTitle'));
+    setText('#task-edit-text-label', t('taskNameLabel'));
+    setText('#task-edit-memo-label', t('taskMemoLabel'));
+    setText('#task-edit-date-label', t('dueDateLabel'));
+    setText('#task-edit-time-label', t('dueTimeLabel'));
+    setText('#task-edit-calendar-label', t('calendarReminderLabel'));
+    setOptionText('#task-edit-calendar-reminder option[value="0"]', t('notifyAtTime'));
+    setOptionText('#task-edit-calendar-reminder option[value="10"]', t('notifyBefore10'));
+    setOptionText('#task-edit-calendar-reminder option[value="30"]', t('notifyBefore30'));
+    setOptionText('#task-edit-calendar-reminder option[value="60"]', t('notifyBefore60'));
+    setOptionText('#task-edit-calendar-reminder option[value="120"]', t('notifyBefore120'));
+    setOptionText('#task-edit-calendar-reminder option[value="1440"]', t('notifyBefore1440'));
+    setText('#task-edit-priority-label', t('priorityLabel'));
+    setText('#task-edit-project-label', t('projectSelectLabel'));
+    setOptionText('#task-edit-priority option[value="low"]', t('low'));
+    setOptionText('#task-edit-priority option[value="medium"]', t('medium'));
+    setOptionText('#task-edit-priority option[value="high"]', t('high'));
+    setText('#task-edit-cancel-btn', t('cancel'));
+    setText('#task-edit-save-btn', t('saveTaskChanges'));
+    setTitle('#task-edit-close-btn', t('close'));
+    setText('#task-delete-title', t('deleteTaskTitle'));
+    setText('#task-delete-body', t('deleteTaskBody'));
+    setText('#task-delete-cancel-btn', t('deleteTaskCancel'));
+    setText('#task-delete-confirm-btn', t('deleteTaskConfirm'));
     setText('.onboarding-eyebrow', t('onboardingEyebrow'));
     setText('#onboarding-title', t('onboardingTitle'));
     setText('.onboarding-intro', t('onboardingIntro'));
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        el.textContent = t(el.dataset.i18n);
-    });
-    document.querySelectorAll('.onboarding-action-btn').forEach(btn => {
-        btn.textContent = t('onboardingTry');
-    });
-    document.querySelectorAll('.onboarding-step-skip').forEach(btn => {
-        btn.textContent = btn.closest('.onboarding-step')?.classList.contains('skipped')
-            ? t('onboardingStepSkipped')
-            : t('onboardingSkipStep');
-    });
-    setText('#onboarding-skip-btn', t('onboardingLater'));
-    setText('#onboarding-start-btn', t('onboardingStart'));
+    setTitle('#onboarding-exit-btn', t('onboardingExit'));
+    setText('#onboarding-skip-btn', t('onboardingSkipStep'));
+    renderOnboarding();
 
     setTitle('#menu-toggle', t('toggleNavigation'));
     setTitle('#fab-trigger', t('toggleNavigation'));
@@ -465,6 +750,22 @@ function applyLanguage(lang = currentLanguage) {
     renderBookmarks();
     renderArchive();
     updateDashboardUI();
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const v = t(el.dataset.i18nTitle);
+        el.title = v;
+        el.setAttribute('aria-label', v);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        el.innerHTML = t(el.dataset.i18nHtml);
+    });
+
     window.dispatchEvent(new CustomEvent('planary-language-change'));
 }
 
@@ -472,12 +773,201 @@ function applyLanguage(lang = currentLanguage) {
 function loadTodos() {
     if (!currentUser || !db) return;
     db.collection('todos').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
-        allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        allTodos = snapshot.docs.map(doc => {
+            const data = doc.data();
+            let dueDate = data.dueDate || null;
+            if (dueDate && typeof dueDate !== 'string' && typeof dueDate.toDate === 'function') {
+                dueDate = dueDate.toDate().toISOString().slice(0, 10);
+            }
+            if (dueDate === '') dueDate = null;
+            return {
+                id: doc.id,
+                ...data,
+                completed: typeof data.completed === 'boolean' ? data.completed : false,
+                archived: typeof data.archived === 'boolean' ? data.archived : false,
+                dueDate,
+                priority: data.priority || 'medium',
+                memo: data.memo || '',
+                createdAt: data.createdAt || { toMillis: () => Date.now() }
+            };
+        });
         applyFilters();
         updateDashboardUI();
         renderProjectManagementList();
         checkDueNotifications(); // Check for reminders when data updates
+        scheduleReminderNotifications();
     });
+}
+
+function updateEclassStatusBadge() {
+    const badge = getEl('profile-eclass-status-badge');
+    if (!badge) return;
+    const connected = !!eclassStatus?.connected;
+    badge.textContent = connected ? t('eclassConnected') : t('eclassDisconnected');
+    badge.classList.toggle('connected', connected);
+}
+
+function placeEclassPanelNearProfileTop() {
+    const panel = getEl('profile-eclass-panel');
+    const languagePanel = document.querySelector('.profile-language-panel');
+    if (panel && languagePanel && panel.previousElementSibling !== languagePanel.previousElementSibling) {
+        languagePanel.parentNode.insertBefore(panel, languagePanel);
+    }
+}
+
+async function getAuthHeaders() {
+    if (!currentUser) throw new Error(t('loginFirst'));
+    const token = await currentUser.getIdToken();
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+async function loadEclassStatusFromFirestore() {
+    if (!currentUser || !db) return null;
+    const snap = await db.collection('eclass_connections').doc(currentUser.uid).get();
+    if (!snap.exists) return { connected: false, baseUrl: 'https://eclass.seoultech.ac.kr' };
+    const data = snap.data() || {};
+    const hasCredentials = !!data.encryptedSessionCookie || (!!data.encryptedUsername && !!data.encryptedPassword);
+    return {
+        connected: data.enabled === false ? false : hasCredentials,
+        baseUrl: data.baseUrl || 'https://eclass.seoultech.ac.kr',
+        platform: data.platform || 'seoultech-moodle',
+        lastSyncedAt: data.lastSyncedAt || null,
+        lastError: data.lastError || null
+    };
+}
+
+async function loadEclassStatus() {
+    if (!currentUser) return;
+    try {
+        const response = await fetch('/api/eclass/connection', { headers: await getAuthHeaders() });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        eclassStatus = await response.json();
+        const urlInput = getEl('profile-eclass-url');
+        if (urlInput) urlInput.value = eclassStatus.baseUrl || 'https://eclass.seoultech.ac.kr';
+        updateEclassStatusBadge();
+    } catch (error) {
+        console.warn('E-class status unavailable:', error);
+        eclassStatus = await loadEclassStatusFromFirestore().catch(() => ({ connected: false }));
+        updateEclassStatusBadge();
+    }
+}
+
+async function saveEclassConnection() {
+    const urlInput = getEl('profile-eclass-url');
+    const usernameInput = getEl('profile-eclass-username');
+    const passwordInput = getEl('profile-eclass-password');
+    const status = getEl('profile-eclass-status');
+    const button = getEl('profile-eclass-save-btn');
+    const username = usernameInput?.value?.trim() || '';
+    const password = passwordInput?.value || '';
+    if (!username || !password) {
+        if (status) status.textContent = t('eclassCredentialsRequired');
+        return;
+    }
+    try {
+        if (button) button.textContent = t('eclassSaving');
+        const response = await fetch('/api/eclass/connection', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({
+                baseUrl: urlInput?.value?.trim() || 'https://eclass.seoultech.ac.kr',
+                username,
+                password
+            })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        eclassStatus = data;
+        if (passwordInput) passwordInput.value = '';
+        updateEclassStatusBadge();
+        if (status) {
+            status.className = 'profile-status-text success';
+            status.textContent = t('eclassSaved');
+        }
+        showToast(t('eclassSaved'), 'success');
+        await syncEclassNow();
+    } catch (error) {
+        if (status) {
+            status.className = 'profile-status-text error';
+            status.textContent = `${t('eclassFailed')}: ${error.message || error}`;
+        }
+    } finally {
+        if (button) button.textContent = t('eclassSave');
+    }
+}
+
+let eclassSyncUnsub = null;
+async function syncEclassNow() {
+    const status = getEl('profile-eclass-status');
+    const button = getEl('profile-eclass-sync-btn');
+    try {
+        if (button) button.textContent = t('eclassSyncing');
+        const requestedAt = Date.now();
+        const response = await fetch('/api/eclass/sync', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ uid: currentUser.uid })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        if (status) {
+            status.className = 'profile-status-text';
+            status.textContent = t('eclassSyncing');
+        }
+        if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+        const timeout = setTimeout(() => {
+            if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+            if (button) button.textContent = t('eclassSyncNow');
+        }, 5 * 60 * 1000);
+        eclassSyncUnsub = db.collection('eclass_connections').doc(currentUser.uid)
+            .onSnapshot(snap => {
+                const d = snap.data() || {};
+                const syncedMs = d.lastSyncedAt && d.lastSyncedAt.toMillis ? d.lastSyncedAt.toMillis() : 0;
+                if (d.syncStatus === 'ok' && syncedMs >= requestedAt) {
+                    if (status) {
+                        status.className = 'profile-status-text success';
+                        status.textContent = window.PlanaryI18n?.format?.('eclassSynced', { count: d.lastTodoCount || 0 }) || t('eclassSynced');
+                    }
+                    showToast(status?.textContent || t('eclassSyncNow'), 'success');
+                    loadEclassStatus();
+                    if (button) button.textContent = t('eclassSyncNow');
+                    clearTimeout(timeout);
+                    if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+                } else if (d.syncStatus === 'error' && syncedMs >= requestedAt) {
+                    if (status) {
+                        status.className = 'profile-status-text error';
+                        status.textContent = `${t('eclassFailed')}: ${d.lastError || ''}`;
+                    }
+                    if (button) button.textContent = t('eclassSyncNow');
+                    clearTimeout(timeout);
+                    if (eclassSyncUnsub) { try { eclassSyncUnsub(); } catch {} eclassSyncUnsub = null; }
+                }
+            }, error => {
+                console.warn('[eclass] status subscription failed', error);
+            });
+    } catch (error) {
+        if (status) {
+            status.className = 'profile-status-text error';
+            status.textContent = `${t('eclassFailed')}: ${error.message || error}`;
+        }
+        if (button) button.textContent = t('eclassSyncNow');
+    }
+}
+
+function startEclassForegroundSync() {
+    clearInterval(eclassForegroundSyncTimer);
+    eclassForegroundSyncTimer = setInterval(async () => {
+        if (!currentUser || !eclassStatus?.connected || document.hidden) return;
+        try {
+            await fetch('/api/eclass/sync', {
+                method: 'POST',
+                headers: await getAuthHeaders(),
+                body: JSON.stringify({ uid: currentUser.uid })
+            });
+        } catch (error) {
+            console.warn('Foreground E-class sync failed:', error);
+        }
+    }, 5 * 60 * 1000);
 }
 
 function loadNotes() {
@@ -532,8 +1022,19 @@ function applyFilters() {
     else if (currentFilter === 'archive') filtered = filtered.filter(t => t.archived);
     else filtered = filtered.filter(t => !t.archived);
     
-    filtered.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    filtered.sort((a, b) => getTaskSortValue(b) - getTaskSortValue(a));
     renderTodos(filtered);
+}
+
+function getTaskSortValue(task) {
+    if (typeof task.orderIndex === 'number') return task.orderIndex;
+    const createdAt = task.createdAt;
+    if (createdAt && typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+    if (createdAt) {
+        const parsed = new Date(createdAt).getTime();
+        if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
 }
 
 function switchPage(targetId) {
@@ -602,11 +1103,29 @@ function handleHash() {
     let pageId = hash.replace('#', '');
     if (pageId.startsWith('wiki/')) pageId = 'page-wiki';
     if (getEl(pageId)) switchPage(pageId);
+    updateSidebarMode(hash);
 }
+
+function updateSidebarMode(hash) {
+    const nav = document.querySelector('#sidebar .sidebar-nav');
+    const tree = document.getElementById('sidebar-note-tree');
+    if (!nav || !tree) return;
+    const inNote = (hash || '').startsWith('#wiki/');
+    nav.hidden = inNote;
+    tree.hidden = !inNote;
+    if (inNote && typeof window.renderNoteSidebarTree === 'function') {
+        window.renderNoteSidebarTree();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const backBtn = document.getElementById('sidebar-note-back');
+    if (backBtn) backBtn.onclick = () => { window.location.hash = 'page-wiki'; };
+});
 
 function updateProfileUI(user) {
     if (!user) return;
-    const name = user.displayName || user.email.split('@')[0];
+    const name = getUserGuideName(user);
     const providerLabels = {
         'google.com': t('googleProvider'),
         'password': t('emailPasswordProvider')
@@ -625,6 +1144,7 @@ function updateProfileUI(user) {
     if (getEl('profile-login-methods')) {
         getEl('profile-login-methods').textContent = providerIds.map(id => providerLabels[id] || id).join(', ') || t('emailPasswordProvider');
     }
+    if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user);
     if (getEl('profile-password-help')) {
         getEl('profile-password-help').textContent = hasPasswordProvider
             ? t('emailPasswordAlreadyEnabled')
@@ -711,90 +1231,810 @@ async function connectEmailPasswordLogin() {
     }
 }
 
-async function completeOnboarding() {
-    closeOnboardingModal();
-    if (!currentUser || !db) return;
+async function deleteCurrentUserData(uid) {
     try {
-        await db.collection('users').doc(currentUser.uid).set({
-            uid: currentUser.uid,
-            onboardingCompleted: true,
-            onboardingCompletedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        const response = await fetch('/api/account/delete-data', {
+            method: 'POST',
+            headers: await getAuthHeaders(),
+            body: JSON.stringify({ uid })
+        });
+        if (response.ok) return;
+        console.warn('[Account] Server-side data deletion failed, falling back to client delete:', await response.text());
     } catch (error) {
-        console.warn('Onboarding completion was not saved:', error);
+        console.warn('[Account] Server-side data deletion unavailable, falling back to client delete:', error);
+    }
+
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    const storageUrls = new Set();
+    for (const name of collections) {
+        let snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
+        while (!snapshot.empty) {
+            const batch = db.batch();
+            snapshot.docs.forEach(doc => {
+                collectStorageUrlsFromValue(doc.data(), storageUrls);
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            snapshot = await db.collection(name).where('uid', '==', uid).limit(300).get();
+        }
+    }
+    await deleteStorageUrls(storageUrls);
+    await db.collection('users').doc(uid).delete().catch(() => {});
+}
+
+function getFirebaseStoragePathFromUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    try {
+        const parsed = new URL(url);
+        const marker = '/o/';
+        const index = parsed.pathname.indexOf(marker);
+        if (index === -1) return null;
+        return decodeURIComponent(parsed.pathname.slice(index + marker.length));
+    } catch (error) {
+        return null;
     }
 }
 
-function closeOnboardingModal() {
+function collectStorageUrlsFromValue(value, target = new Set()) {
+    if (!value) return target;
+    if (typeof value === 'string') {
+        if (getFirebaseStoragePathFromUrl(value)) target.add(value);
+        return target;
+    }
+    if (Array.isArray(value)) {
+        value.forEach(item => collectStorageUrlsFromValue(item, target));
+        return target;
+    }
+    if (typeof value === 'object') {
+        Object.values(value).forEach(item => collectStorageUrlsFromValue(item, target));
+    }
+    return target;
+}
+
+async function deleteStorageUrls(urls) {
+    if (!firebase?.storage) return;
+    const uid = auth?.currentUser?.uid;
+    const uniqueUrls = [...urls].filter(Boolean);
+    await Promise.allSettled(uniqueUrls.map(async (url) => {
+        const path = getFirebaseStoragePathFromUrl(url);
+        if (!path) return;
+        if (uid && !path.startsWith(`tasks/${uid}/`) && !path.startsWith(`wiki/${uid}/`)) return;
+        try {
+            await firebase.storage().ref().child(path).delete();
+        } catch (error) {
+            if (error.code !== 'storage/object-not-found') console.warn('[Storage] Failed to delete orphaned file:', path, error);
+        }
+    }));
+}
+
+async function reauthenticateForAccountDeletion(user) {
+    const providers = user.providerData.map(provider => provider.providerId);
+    if (providers.includes('google.com')) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await user.reauthenticateWithPopup(provider);
+        return;
+    }
+    if (providers.includes('password') && user.email) {
+        const password = prompt(t('deleteAccountPasswordPrompt'));
+        if (!password) throw new Error(t('recentLoginRequired'));
+        const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+        await user.reauthenticateWithCredential(credential);
+        return;
+    }
+    throw new Error(t('recentLoginRequired'));
+}
+
+async function deleteAccount() {
+    if (!auth || !auth.currentUser || !db) return;
+    const user = auth.currentUser;
+    const status = getEl('profile-delete-status');
+    const button = getEl('profile-delete-account-btn');
+    const setStatus = (message, type = '') => {
+        if (!status) return;
+        status.textContent = message;
+        status.className = `profile-status-text ${type}`.trim();
+    };
+
+    if (!confirm(t('deleteAccountConfirm'))) return;
+    if (user.email) {
+        const typedEmail = prompt(formatMessage('deleteAccountConfirmEmail', { email: user.email }));
+        if (typedEmail !== user.email) return;
+    }
+
+    try {
+        if (button) button.disabled = true;
+        setStatus(t('deletingAccount'));
+        await deleteCurrentUserData(user.uid);
+        await user.delete();
+        showToast(t('accountDeleted'));
+        window.location.href = 'signup.html';
+    } catch (error) {
+        if (error.code === 'auth/requires-recent-login') {
+            try {
+                await reauthenticateForAccountDeletion(user);
+                await deleteCurrentUserData(user.uid);
+                await user.delete();
+                showToast(t('accountDeleted'));
+                window.location.href = 'signup.html';
+                return;
+            } catch (reauthError) {
+                setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(reauthError)}`, 'error');
+                return;
+            }
+        }
+        setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(error)}`, 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
+function createDefaultOnboardingProgress() {
+    return GUIDE_STEP_IDS.reduce((progress, id) => {
+        progress[id] = 'pending';
+        return progress;
+    }, {});
+}
+
+function getUserGuideName(user = currentUser) {
+    if (!user) return t('defaultUserName');
+    return user.displayName || (user.email ? user.email.split('@')[0] : t('defaultUserName'));
+}
+
+function getSocialAuthProfile(user) {
+    if (!user) return {};
+    const hasSocialProvider = user.providerData.some(provider => provider.providerId !== 'password');
+    if (!hasSocialProvider) return {};
+    return {
+        displayName: user.displayName || null,
+        photoURL: user.photoURL || null
+    };
+}
+
+function normalizeOnboardingProgress(progress = {}) {
+    const legacy = progress || {};
+    return GUIDE_STEP_IDS.reduce((normalized, id) => {
+        if (id === 'taskCreate' && GUIDE_STATUS.includes(legacy.tasks)) {
+            normalized[id] = legacy.tasks;
+            return normalized;
+        }
+        const status = progress && GUIDE_STATUS.includes(progress[id]) ? progress[id] : 'pending';
+        normalized[id] = status;
+        return normalized;
+    }, {});
+}
+
+function getNextGuideStepId(progress = onboardingState?.progress) {
+    const normalized = normalizeOnboardingProgress(progress);
+    return GUIDE_STEP_IDS.find(id => normalized[id] === 'pending') || null;
+}
+
+function isOnboardingFinished(progress = onboardingState?.progress) {
+    return !getNextGuideStepId(progress);
+}
+
+function buildOnboardingState(data = {}) {
+    const progress = normalizeOnboardingProgress(data.onboardingProgress || {});
+    const currentStep = GUIDE_STEP_IDS.includes(data.onboardingCurrentStep) && progress[data.onboardingCurrentStep] === 'pending'
+        ? data.onboardingCurrentStep
+        : getNextGuideStepId(progress);
+    return {
+        completed: Boolean(data.onboardingCompleted),
+        progress,
+        currentStep
+    };
+}
+
+function clearOnboardingHighlight() {
+    if (onboardingHighlightTimer) {
+        clearTimeout(onboardingHighlightTimer);
+        onboardingHighlightTimer = null;
+    }
+    if (onboardingRepositionFrame) {
+        cancelAnimationFrame(onboardingRepositionFrame);
+        onboardingRepositionFrame = null;
+    }
+    if (onboardingScrollSettleTimer) {
+        clearTimeout(onboardingScrollSettleTimer);
+        onboardingScrollSettleTimer = null;
+    }
+    if (onboardingHighlightEl) {
+        onboardingHighlightEl.classList.remove('onboarding-highlight-target');
+        onboardingHighlightEl = null;
+    }
+    onboardingLastTargetRect = null;
+    onboardingSpotlightEls.forEach(el => el.remove());
+    onboardingSpotlightEls = [];
+    const modal = getEl('onboarding-modal');
+    const card = modal ? modal.querySelector('.onboarding-card') : null;
+    if (modal) modal.classList.remove('positioned');
+    if (card) {
+        card.style.top = '';
+        card.style.left = '';
+        card.style.right = '';
+        card.style.bottom = '';
+        card.style.width = '';
+        card.style.maxHeight = '';
+    }
+    document.body.classList.remove('onboarding-spotlight-active');
+}
+
+function lockOnboardingScroll() {
+    onboardingLockScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.documentElement.style.setProperty('--onboarding-lock-scroll-y', `${onboardingLockScrollY}px`);
+    document.body.classList.add('onboarding-interaction-locked');
+}
+
+function unlockOnboardingScroll() {
+    const shouldRestore = document.body.classList.contains('onboarding-interaction-locked');
+    document.body.classList.remove('onboarding-interaction-locked');
+    document.documentElement.style.removeProperty('--onboarding-lock-scroll-y');
+    if (shouldRestore) window.scrollTo(0, onboardingLockScrollY || 0);
+}
+
+function isOnboardingInteractionLocked() {
+    const modal = getEl('onboarding-modal');
+    return Boolean(modal && modal.classList.contains('active'));
+}
+
+function canScrollWithinOnboardingTarget(target, deltaY) {
+    let el = target;
+    while (el && el !== document.body) {
+        if (isOnboardingAllowedContainer(el)) {
+            const style = window.getComputedStyle(el);
+            const canScroll = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
+            if (canScroll) {
+                if (deltaY < 0 && el.scrollTop > 0) return true;
+                if (deltaY > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true;
+                return false;
+            }
+        }
+        el = el.parentElement;
+    }
+    return false;
+}
+
+function isOnboardingAllowedContainer(target) {
+    if (!target || !isOnboardingInteractionLocked()) return true;
+    const modalCard = document.querySelector('#onboarding-modal .onboarding-card');
+    if (modalCard && modalCard.contains(target)) return true;
+    return Boolean(onboardingHighlightEl && onboardingHighlightEl.contains(target));
+}
+
+function isAllowedOnboardingTarget(target) {
+    return isOnboardingAllowedContainer(target);
+}
+
+function blockOnboardingBackgroundEvent(event) {
+    if (!isOnboardingInteractionLocked()) return;
+    if (isAllowedOnboardingTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function blockOnboardingBackgroundScroll(event) {
+    if (!isOnboardingInteractionLocked()) return;
+    const deltaY = event.deltaY || 0;
+    if (isAllowedOnboardingTarget(event.target) && canScrollWithinOnboardingTarget(event.target, deltaY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function blockOnboardingBackgroundKeys(event) {
+    if (!isOnboardingInteractionLocked()) return;
+    if (isAllowedOnboardingTarget(event.target)) return;
+    const blockedKeys = [' ', 'Spacebar', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'];
+    if (!blockedKeys.includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function closeOnboarding() {
     const modal = getEl('onboarding-modal');
     if (modal) {
         modal.classList.remove('active');
+        modal.classList.remove('compact');
+        modal.classList.remove('steps-expanded');
+        modal.classList.remove('welcome');
         modal.setAttribute('aria-hidden', 'true');
+    }
+    onboardingWelcomeVisible = false;
+    clearOnboardingHighlight();
+    unlockOnboardingScroll();
+}
+
+async function saveOnboardingState({ progress, currentStep, completed } = {}) {
+    if (!currentUser || !db) return;
+    const nextProgress = normalizeOnboardingProgress(progress || onboardingState?.progress || {});
+    const done = completed ?? isOnboardingFinished(nextProgress);
+    onboardingState = {
+        completed: done,
+        progress: nextProgress,
+        currentStep: done ? null : (currentStep || getNextGuideStepId(nextProgress))
+    };
+    try {
+        const payload = {
+            uid: currentUser.uid,
+            onboardingCompleted: done,
+            onboardingProgress: nextProgress,
+            onboardingCurrentStep: onboardingState.currentStep,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (done) payload.onboardingCompletedAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('users').doc(currentUser.uid).set(payload, { merge: true });
+    } catch (error) {
+        console.warn('Onboarding state was not saved:', error);
     }
 }
 
-function openOnboarding() {
+async function completeOnboarding() {
+    const progress = normalizeOnboardingProgress(onboardingState?.progress || {});
+    GUIDE_STEP_IDS.forEach(id => {
+        if (progress[id] === 'pending') progress[id] = 'completed';
+    });
+    await saveOnboardingState({ progress, completed: true, currentStep: null });
+    closeOnboarding();
+}
+
+function getOnboardingTarget(step) {
+    return document.querySelector(step.focusSelector) || document.querySelector(step.fallbackSelector);
+}
+
+function getCurrentGuideStepId() {
+    return onboardingState?.currentStep || getNextGuideStepId();
+}
+
+function getGuideFocusFlow(step) {
+    return step?.focusFlow && step.focusFlow.length ? step.focusFlow : [{
+        selector: step.focusSelector,
+        fallbackSelector: step.fallbackSelector,
+        tipKey: step.tipKey,
+        targetKey: step.targetKey,
+        waitFor: 'none'
+    }];
+}
+
+function getCurrentGuideFocus() {
+    const step = GUIDE_STEPS[getCurrentGuideStepId()];
+    const flow = getGuideFocusFlow(step);
+    return flow[Math.min(onboardingFocusIndex, flow.length - 1)];
+}
+
+function getOnboardingFocusTarget(focus) {
+    if (!focus) return null;
+    return document.querySelector(focus.selector) || (focus.fallbackSelector ? document.querySelector(focus.fallbackSelector) : null);
+}
+
+function isTabletGuideLayout() {
+    return window.matchMedia('(min-width: 768px) and (max-width: 1366px)').matches;
+}
+
+function getTargetRectSnapshot(target) {
+    const rect = target.getBoundingClientRect();
+    return {
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height
+    };
+}
+
+function targetRectMovedEnough(rect, lastRect = onboardingLastTargetRect) {
+    if (!lastRect) return true;
+    return Math.abs(rect.top - lastRect.top) > 12 ||
+        Math.abs(rect.left - lastRect.left) > 12 ||
+        Math.abs(rect.width - lastRect.width) > 8 ||
+        Math.abs(rect.height - lastRect.height) > 8;
+}
+
+function canAdvanceGuideFocus() {
+    const focus = getCurrentGuideFocus();
+    const target = getOnboardingFocusTarget(focus);
+    if (!focus || !target) return false;
+    if (focus.waitFor === 'input-not-empty') {
+        return 'value' in target ? Boolean(String(target.value || '').trim()) : Boolean(target.textContent.trim());
+    }
+    return true;
+}
+
+function highlightCurrentGuideFocus(retryCount = 0) {
+    const step = GUIDE_STEPS[getCurrentGuideStepId()];
+    const focus = getCurrentGuideFocus();
+    if (!step || !focus) return;
+    highlightOnboardingTarget(step, focus, retryCount);
+}
+
+function highlightOnboardingTarget(stepOrId, focusConfig = null, retryCount = 0) {
+    clearOnboardingHighlight();
+    const step = typeof stepOrId === 'string' ? GUIDE_STEPS[stepOrId] : stepOrId;
+    if (!step) return;
+    const focus = focusConfig || getGuideFocusFlow(step)[0];
+    const target = getOnboardingFocusTarget(focus) || getOnboardingTarget(step);
+    if (!target && retryCount < 3) {
+        onboardingHighlightTimer = setTimeout(() => highlightOnboardingTarget(step, focus, retryCount + 1), 160);
+        return;
+    }
+    if (!target) return;
+    onboardingHighlightEl = target;
+    onboardingLastTargetRect = getTargetRectSnapshot(target);
+    document.body.classList.add('onboarding-spotlight-active');
+    target.classList.add('onboarding-highlight-target');
+    const isDesktopGuide = !isTabletGuideLayout() && !window.matchMedia('(max-width: 520px)').matches;
+    if (!onboardingSuppressAutoScroll && !isDesktopGuide) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    } else {
+        // avoid fighting user touch-driven scrolling; only jump if fully outside viewport
+        const rect = target.getBoundingClientRect();
+        if (!isDesktopGuide && (rect.top < 0 || rect.bottom > window.innerHeight)) {
+            target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+    }
+    positionOnboardingSpotlight(target);
+    positionOnboardingCardAroundTarget(target);
+    setTimeout(() => {
+        if (typeof target.focus === 'function') target.focus({ preventScroll: true });
+    }, 220);
+}
+
+function positionOnboardingSpotlight(target) {
+    if (!target) return;
+    if (!onboardingSpotlightEls.length) {
+        onboardingSpotlightEls = Array.from({ length: 4 }, () => {
+            const el = document.createElement('div');
+            el.className = 'onboarding-spotlight-shade';
+            document.body.appendChild(el);
+            return el;
+        });
+    }
+
+    requestAnimationFrame(() => {
+        const rect = target.getBoundingClientRect();
+        const padding = 10;
+        const left = Math.max(0, rect.left - padding);
+        const top = Math.max(0, rect.top - padding);
+        const right = Math.min(window.innerWidth, rect.right + padding);
+        const bottom = Math.min(window.innerHeight, rect.bottom + padding);
+        const areas = [
+            { left: 0, top: 0, width: window.innerWidth, height: top },
+            { left: 0, top: bottom, width: window.innerWidth, height: Math.max(0, window.innerHeight - bottom) },
+            { left: 0, top, width: left, height: Math.max(0, bottom - top) },
+            { left: right, top, width: Math.max(0, window.innerWidth - right), height: Math.max(0, bottom - top) }
+        ];
+        onboardingSpotlightEls.forEach((el, index) => {
+            const area = areas[index];
+            el.style.left = `${area.left}px`;
+            el.style.top = `${area.top}px`;
+            el.style.width = `${area.width}px`;
+            el.style.height = `${area.height}px`;
+        });
+    });
+}
+
+function positionOnboardingCardAroundTarget(target) {
+    const modal = getEl('onboarding-modal');
+    const card = modal ? modal.querySelector('.onboarding-card') : null;
+    if (!modal || !card || window.matchMedia('(max-width: 520px)').matches) return;
+    modal.classList.add('positioned');
+    modal.classList.toggle('tablet-stable', isTabletGuideLayout());
+    card.style.top = '';
+    card.style.left = '';
+    card.style.right = '';
+    card.style.bottom = '';
+    card.style.maxHeight = '';
+    card.style.width = '';
+    if (isTabletGuideLayout()) return;
+
+    requestAnimationFrame(() => {
+        const rect = target.getBoundingClientRect();
+        const margin = 18;
+        const viewportW = window.innerWidth;
+        const viewportH = window.innerHeight;
+        card.style.maxHeight = `${Math.max(320, Math.min(720, viewportH - margin * 2))}px`;
+        const cardRect = card.getBoundingClientRect();
+        const fitsRight = viewportW - rect.right >= cardRect.width + margin * 2;
+        const fitsLeft = rect.left >= cardRect.width + margin * 2;
+        const fitsBelow = viewportH - rect.bottom >= cardRect.height + margin * 2;
+        const fitsAbove = rect.top >= cardRect.height + margin * 2;
+        const targetSpansWide = rect.width > viewportW * 0.42;
+        let left;
+        let top;
+
+        if (targetSpansWide) {
+            const belowSpace = viewportH - rect.bottom - margin;
+            const aboveSpace = rect.top - margin;
+            const placeBelow = belowSpace >= aboveSpace || belowSpace >= 320;
+            const wideWidth = Math.min(Math.max(720, rect.width), viewportW - margin * 2);
+            card.style.width = `${wideWidth}px`;
+            const availableHeight = Math.max(320, Math.min(720, (placeBelow ? belowSpace : aboveSpace) - margin));
+            card.style.maxHeight = `${availableHeight}px`;
+            const nextCardRect = card.getBoundingClientRect();
+            left = Math.min(Math.max(rect.left + rect.width / 2 - nextCardRect.width / 2, margin), viewportW - nextCardRect.width - margin);
+            top = placeBelow ? rect.bottom + margin : rect.top - nextCardRect.height - margin;
+            card.style.left = `${left}px`;
+            card.style.top = `${Math.min(Math.max(top, margin), viewportH - nextCardRect.height - margin)}px`;
+            return;
+        }
+
+        if (fitsRight) {
+            left = rect.right + margin;
+            top = rect.top + rect.height / 2 - cardRect.height / 2;
+        } else if (fitsLeft) {
+            left = rect.left - cardRect.width - margin;
+            top = rect.top + rect.height / 2 - cardRect.height / 2;
+        } else if (fitsBelow) {
+            left = rect.left + rect.width / 2 - cardRect.width / 2;
+            top = rect.bottom + margin;
+        } else if (fitsAbove) {
+            left = rect.left + rect.width / 2 - cardRect.width / 2;
+            top = rect.top - cardRect.height - margin;
+        } else {
+            left = viewportW - cardRect.width - margin;
+            top = margin;
+        }
+
+        const clampLeft = value => Math.min(Math.max(value, margin), viewportW - cardRect.width - margin);
+        const clampTop = value => Math.min(Math.max(value, margin), viewportH - cardRect.height - margin);
+        const overlapArea = (candidateLeft, candidateTop) => {
+            const overlapW = Math.max(0, Math.min(candidateLeft + cardRect.width, rect.right) - Math.max(candidateLeft, rect.left));
+            const overlapH = Math.max(0, Math.min(candidateTop + cardRect.height, rect.bottom) - Math.max(candidateTop, rect.top));
+            return overlapW * overlapH;
+        };
+        let finalLeft = clampLeft(left);
+        let finalTop = clampTop(top);
+
+        if (overlapArea(finalLeft, finalTop) > 0) {
+            const candidates = [
+                { left: rect.right + margin, top: rect.top + rect.height / 2 - cardRect.height / 2 },
+                { left: rect.left - cardRect.width - margin, top: rect.top + rect.height / 2 - cardRect.height / 2 },
+                { left: rect.left + rect.width / 2 - cardRect.width / 2, top: rect.bottom + margin },
+                { left: rect.left + rect.width / 2 - cardRect.width / 2, top: rect.top - cardRect.height - margin }
+            ].map(candidate => {
+                const candidateLeft = clampLeft(candidate.left);
+                const candidateTop = clampTop(candidate.top);
+                return {
+                    left: candidateLeft,
+                    top: candidateTop,
+                    overlap: overlapArea(candidateLeft, candidateTop)
+                };
+            }).sort((a, b) => a.overlap - b.overlap || Math.abs(a.top - rect.top) - Math.abs(b.top - rect.top));
+            finalLeft = candidates[0].left;
+            finalTop = candidates[0].top;
+        }
+
+        card.style.left = `${finalLeft}px`;
+        card.style.top = `${finalTop}px`;
+    });
+}
+
+function renderOnboarding() {
+    const modal = getEl('onboarding-modal');
+    if (!modal || !onboardingState) return;
+    const progress = normalizeOnboardingProgress(onboardingState.progress);
+    const stepId = onboardingState.currentStep || getNextGuideStepId(progress) || GUIDE_STEP_IDS[GUIDE_STEP_IDS.length - 1];
+    const step = GUIDE_STEPS[stepId];
+    const flow = getGuideFocusFlow(step);
+    const currentFocus = flow[Math.min(onboardingFocusIndex, flow.length - 1)];
+    const currentIndex = GUIDE_STEP_IDS.indexOf(stepId);
+    const doneCount = GUIDE_STEP_IDS.filter(id => progress[id] !== 'pending').length;
+    const progressFill = getEl('onboarding-progress-fill');
+    const progressText = getEl('onboarding-progress-text');
+    const stepIcon = getEl('onboarding-step-icon');
+    const stepList = getEl('onboarding-step-list');
+    const startBtn = getEl('onboarding-start-btn');
+    const completeBtn = getEl('onboarding-complete-btn');
+    const skipBtn = getEl('onboarding-skip-btn');
+    const stepSummaryText = getEl('onboarding-step-summary-text');
+    const toggleStepsBtn = getEl('onboarding-toggle-steps-btn');
+
+    modal.classList.toggle('welcome', onboardingWelcomeVisible);
+    setText('#onboarding-welcome-title', t('onboardingWelcomeTitle').replace('{name}', getUserGuideName()));
+    setText('#onboarding-welcome-body', t('onboardingWelcomeBody'));
+    setText('#onboarding-welcome-hint', t('onboardingWelcomeHint'));
+    const languageChoice = modal.querySelector('.onboarding-language-choice');
+    if (languageChoice) languageChoice.setAttribute('aria-label', t('onboardingLanguageLabel'));
+    modal.querySelectorAll('.onboarding-language-option').forEach(button => {
+        const active = button.dataset.guideLanguage === currentLanguage;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    setText('#onboarding-step-title', t(step.titleKey));
+    setText('#onboarding-step-body', t(step.bodyKey));
+    setText('#onboarding-step-tip', t((currentFocus && currentFocus.tipKey) || step.tipKey));
+    setText('#onboarding-step-target', t((currentFocus && currentFocus.targetKey) || step.targetKey));
+    setText('#onboarding-step-why', t(step.whyKey));
+    setText('#onboarding-step-example', t(step.exampleKey));
+    setText('#onboarding-step-done', t(step.doneKey));
+    setText('#onboarding-why-label', t('onboardingWhyLabel'));
+    setText('#onboarding-example-label', t('onboardingExampleLabel'));
+    setText('#onboarding-done-label', t('onboardingDoneLabel'));
+    if (stepIcon) stepIcon.innerHTML = appIconSvg(step.icon, 20);
+    if (progressFill) progressFill.style.width = `${Math.max(doneCount, currentIndex + 1) / GUIDE_STEP_IDS.length * 100}%`;
+    if (progressText) progressText.textContent = t('onboardingProgressText')
+        .replace('{current}', String(Math.min(currentIndex + 1, GUIDE_STEP_IDS.length)))
+        .replace('{total}', String(GUIDE_STEP_IDS.length));
+
+    if (stepList) {
+        stepList.innerHTML = GUIDE_STEP_IDS.map(id => {
+            const item = GUIDE_STEPS[id];
+            const status = progress[id];
+            const labelKey = status === 'completed' ? 'onboardingDone' : (status === 'skipped' ? 'onboardingSkipped' : 'onboardingPending');
+            return `<div class="onboarding-step-pill ${id === stepId ? 'active' : ''} ${status}">
+                ${appIconSvg(item.icon, 16)}
+                <span>${t(item.titleKey)}</span>
+                <em>${t(labelKey)}</em>
+            </div>`;
+        }).join('');
+    }
+
+    if (stepSummaryText) {
+        stepSummaryText.textContent = t('onboardingStepSummary')
+            .replace('{done}', String(doneCount))
+            .replace('{current}', String(Math.min(currentIndex + 1, GUIDE_STEP_IDS.length)))
+            .replace('{remaining}', String(Math.max(GUIDE_STEP_IDS.length - doneCount - 1, 0)));
+    }
+    if (toggleStepsBtn && modal) {
+        toggleStepsBtn.textContent = modal.classList.contains('steps-expanded') ? t('onboardingHideSteps') : t('onboardingShowSteps');
+    }
+    if (startBtn) {
+        startBtn.textContent = onboardingWelcomeVisible ? t('onboardingBeginGuide') : t('onboardingStartStep');
+        startBtn.style.display = onboardingHighlightEl ? 'none' : 'inline-flex';
+    }
+    if (completeBtn) {
+        completeBtn.style.display = onboardingHighlightEl && !onboardingWelcomeVisible ? 'inline-flex' : 'none';
+        completeBtn.textContent = onboardingFocusIndex >= flow.length - 1 ? t('onboardingClickToComplete') : t('onboardingNextFocus');
+    }
+    if (skipBtn) {
+        skipBtn.disabled = isOnboardingFinished(progress);
+        skipBtn.style.display = onboardingWelcomeVisible ? 'none' : 'inline-flex';
+    }
+}
+
+async function markGuideStepComplete(stepId) {
+    if (!currentUser || !db || !GUIDE_STEPS[stepId] || onboardingState?.completed) return;
+    const progress = normalizeOnboardingProgress(onboardingState?.progress || {});
+    if (progress[stepId] !== 'pending') return;
+    progress[stepId] = 'completed';
+    const nextStep = getNextGuideStepId(progress);
+    await saveOnboardingState({ progress, currentStep: nextStep, completed: !nextStep });
+    onboardingFocusIndex = 0;
+    if (!nextStep) {
+        closeOnboarding();
+        return;
+    }
+    clearOnboardingHighlight();
+    renderOnboarding();
+}
+
+window.PlanaryGuide = {
+    markComplete: markGuideStepComplete
+};
+
+function repositionActiveOnboardingGuide() {
+    if (!onboardingHighlightEl) return;
+    const now = Date.now();
+    if (now - onboardingLastReposition < onboardingRepositionThrottleMs) return;
+    onboardingLastReposition = now;
+    const step = GUIDE_STEPS[getCurrentGuideStepId()];
+    const focus = getCurrentGuideFocus();
+    if (onboardingRepositionFrame) cancelAnimationFrame(onboardingRepositionFrame);
+    onboardingRepositionFrame = requestAnimationFrame(() => {
+        onboardingRepositionFrame = null;
+        const rect = getTargetRectSnapshot(onboardingHighlightEl);
+        if (!targetRectMovedEnough(rect)) return;
+        onboardingLastTargetRect = rect;
+        positionOnboardingSpotlight(onboardingHighlightEl);
+        if (!isTabletGuideLayout()) {
+            positionOnboardingCardAroundTarget(onboardingHighlightEl);
+        }
+    });
+}
+
+function openOnboarding(options = {}) {
     const modal = getEl('onboarding-modal');
     if (!modal) return;
+    lockOnboardingScroll();
+    modal.classList.remove('compact');
+    const baseProgress = normalizeOnboardingProgress(onboardingState?.progress || {});
+    const shouldRestart = options.restart || isOnboardingFinished(baseProgress);
+    const progress = shouldRestart ? createDefaultOnboardingProgress() : baseProgress;
+    const isFreshGuide = GUIDE_STEP_IDS.every(id => progress[id] === 'pending');
+    onboardingState = {
+        completed: false,
+        progress,
+        currentStep: options.stepId || getNextGuideStepId(progress) || GUIDE_STEP_IDS[0]
+    };
+    onboardingFocusIndex = 0;
+    onboardingWelcomeVisible = options.showWelcome ?? isFreshGuide;
+    renderOnboarding();
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
 }
 
-function focusGuideTarget(selector) {
+async function startCurrentOnboardingStep() {
+    if (onboardingWelcomeVisible) {
+        onboardingWelcomeVisible = false;
+        const modal = getEl('onboarding-modal');
+        if (modal) modal.classList.remove('welcome');
+        renderOnboarding();
+    }
+    const stepId = onboardingState?.currentStep || getNextGuideStepId();
+    const step = GUIDE_STEPS[stepId];
+    if (!step) {
+        await completeOnboarding();
+        return;
+    }
+    if (step.pageId === 'page-tasks') navigateAppPage(step.pageId, step.filter || 'all');
+    else navigateAppPage(step.pageId);
+    onboardingFocusIndex = 0;
+    const modal = getEl('onboarding-modal');
+    if (modal) modal.classList.add('compact');
     setTimeout(() => {
-        const el = document.querySelector(selector);
-        if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (typeof el.focus === 'function') el.focus();
+        highlightCurrentGuideFocus();
+        renderOnboarding();
     }, 120);
 }
 
-function runOnboardingAction(action) {
-    closeOnboardingModal();
-    const actions = {
-        'task-create': () => {
-            navigateAppPage('page-tasks', 'all');
-            focusGuideTarget('#todo-input');
-        },
-        'task-priority': () => {
-            navigateAppPage('page-tasks', 'all');
-            focusGuideTarget('#priority-select');
-        },
-        'task-reminder': () => {
-            navigateAppPage('page-tasks', 'all');
-            focusGuideTarget('#due-date');
-        },
-        'task-drag': () => {
-            navigateAppPage('page-tasks', 'all');
-            focusGuideTarget('#todo-list .task-card, #todo-input');
-        },
-        'note-create': () => {
-            navigateAppPage('page-notes');
-            focusGuideTarget('#note-input');
-        },
-        'note-drag': () => {
-            navigateAppPage('page-notes');
-            focusGuideTarget('#notes-list .note-card, #note-input');
-        },
-        'project-create': () => {
-            navigateAppPage('page-projects');
-            focusGuideTarget('#project-input');
-        },
-        'wiki-create': () => {
-            navigateAppPage('page-wiki');
-            focusGuideTarget('#new-wiki-btn, #wiki-empty-create-btn');
-        }
-    };
-    if (actions[action]) actions[action]();
+function advanceGuideFocus() {
+    const step = GUIDE_STEPS[getCurrentGuideStepId()];
+    if (!step) return;
+    const flow = getGuideFocusFlow(step);
+    if (!canAdvanceGuideFocus()) {
+        showToast(t('onboardingNeedInput'), 'error');
+        highlightCurrentGuideFocus();
+        return;
+    }
+    if (onboardingFocusIndex < flow.length - 1) {
+        onboardingFocusIndex += 1;
+        highlightCurrentGuideFocus();
+        renderOnboarding();
+        return;
+    }
+    highlightCurrentGuideFocus();
+    showToast(t('onboardingClickToComplete'));
 }
 
-function skipOnboardingStep(button) {
-    const step = button.closest('.onboarding-step');
-    if (!step) return;
-    step.classList.add('skipped');
-    button.textContent = t('onboardingStepSkipped');
-    button.disabled = true;
+async function skipCurrentOnboardingStep() {
+    const stepId = onboardingState?.currentStep || getNextGuideStepId();
+    if (!stepId) return completeOnboarding();
+    onboardingWelcomeVisible = false;
+    const progress = normalizeOnboardingProgress(onboardingState.progress);
+    progress[stepId] = 'skipped';
+    const nextStep = getNextGuideStepId(progress);
+    await saveOnboardingState({ progress, currentStep: nextStep, completed: !nextStep });
+    onboardingFocusIndex = 0;
+    if (!nextStep) {
+        closeOnboarding();
+        return;
+    }
+    clearOnboardingHighlight();
+    renderOnboarding();
+}
+
+async function completeCurrentOnboardingStep() {
+    const stepId = onboardingState?.currentStep || getNextGuideStepId();
+    if (!stepId) return completeOnboarding();
+    const progress = normalizeOnboardingProgress(onboardingState.progress);
+    progress[stepId] = 'completed';
+    const nextStep = getNextGuideStepId(progress);
+    await saveOnboardingState({ progress, currentStep: nextStep, completed: !nextStep });
+    if (!nextStep) {
+        closeOnboarding();
+        return;
+    }
+    clearOnboardingHighlight();
+    renderOnboarding();
+}
+
+async function userHasNoWork(uid) {
+    if (!uid || !db) return false;
+    const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
+    const checks = collections.map(name =>
+        db.collection(name).where('uid', '==', uid).limit(1).get()
+    );
+    const snapshots = await Promise.all(checks);
+    return snapshots.every(snapshot => snapshot.empty);
 }
 
 async function showOnboardingIfNeeded(user) {
@@ -803,38 +2043,86 @@ async function showOnboardingIfNeeded(user) {
         const ref = db.collection('users').doc(user.uid);
         const snapshot = await ref.get();
         if (!snapshot.exists) {
+            const progress = createDefaultOnboardingProgress();
+            const socialProfile = getSocialAuthProfile(user);
             await ref.set({
                 uid: user.uid,
                 email: user.email || null,
-                displayName: user.displayName || null,
+                displayName: socialProfile.displayName || user.displayName || null,
+                photoURL: socialProfile.photoURL || null,
                 onboardingCompleted: false,
+                onboardingCompletedAt: null,
+                onboardingProgress: progress,
+                onboardingCurrentStep: GUIDE_STEP_IDS[0],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
+            setAppleCalendarEnabled(false);
+            onboardingState = buildOnboardingState({ onboardingProgress: progress, onboardingCurrentStep: GUIDE_STEP_IDS[0] });
+            if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user);
             openOnboarding();
             return;
         }
-        if (!snapshot.data().onboardingCompleted) openOnboarding();
+        const data = snapshot.data();
+        setAppleCalendarEnabled(data?.notifPrefs?.apple === true);
+        if (getEl('profile-joined-days')) getEl('profile-joined-days').textContent = formatJoinedDays(user, data);
+        const socialProfile = getSocialAuthProfile(user);
+        const profileUpdates = {};
+        if (!data.displayName && socialProfile.displayName) profileUpdates.displayName = socialProfile.displayName;
+        if (!data.photoURL && socialProfile.photoURL) profileUpdates.photoURL = socialProfile.photoURL;
+        if (Object.keys(profileUpdates).length) {
+            await ref.set({
+                ...profileUpdates,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+        onboardingState = buildOnboardingState(data);
+        const hasExpandedGuideProgress = data.onboardingProgress && GUIDE_STEP_IDS.every(id => GUIDE_STATUS.includes(data.onboardingProgress[id]));
+        const hasNoWork = await userHasNoWork(user.uid);
+        if (!data.onboardingCompleted || !hasExpandedGuideProgress || hasNoWork) {
+            openOnboarding({ restart: hasNoWork && data.onboardingCompleted });
+        }
     } catch (error) {
         console.warn('Onboarding state unavailable:', error);
     }
 }
 
 // --- RENDER FUNCTIONS ---
+function getTaskEmptyState() {
+    return TASK_EMPTY_STATES[currentFilter] || TASK_EMPTY_STATES.all;
+}
+
+function isEclassTask(todo) {
+    return todo?.source === 'eclass' || todo?.source === 'eclass-exam';
+}
+
+function renderEclassGroupHeader(todo) {
+    const project = allProjects.find(p => p.id === todo.projectId);
+    const courseName = project?.name || todo.courseTitle || 'e-Class';
+    const courseTasks = allTodos.filter(item => !item.archived && isEclassTask(item) && (item.projectId === todo.projectId || (!todo.projectId && item.courseTitle === todo.courseTitle)));
+    const code = String(courseName).match(/[A-Z]{2,}\d{3,}/)?.[0] || '';
+    return `
+        <div class="eclass-course-divider">
+            <span class="eclass-course-dot" style="background:${project?.color || 'var(--accent)'}"></span>
+            <strong>${escapeHtml(courseName)}</strong>
+            <em>${courseTasks.length}</em>
+            <span>${escapeHtml(code)}</span>
+        </div>
+    `;
+}
+
 function renderTodos(todos) {
     const todoList = getEl('todo-list');
     if (!todoList) return;
+    const emptyState = getTaskEmptyState();
     todoList.innerHTML = todos.length ? '' : `
         <div class="wiki-empty-container task-empty-container">
             <div class="wiki-empty-content task-empty-content">
                 <div class="wiki-empty-illustration task-empty-illustration">
-                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 11l3 3L22 4"></path>
-                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                    </svg>
+                    ${appIconSvg(emptyState.icon, 80)}
                 </div>
-                <h2>${t('firstTaskTitle')}</h2>
-                <p>${t('firstTaskBody')}</p>
+                <h2>${t(emptyState.titleKey)}</h2>
+                <p>${t(emptyState.bodyKey)}</p>
                 <button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     <span style="vertical-align: middle;">${t('firstTaskButton')}</span>
@@ -855,7 +2143,17 @@ function renderTodos(todos) {
     
     const today = new Date().toISOString().split('T')[0];
 
+    let lastEclassGroupKey = null;
     todos.forEach(todo => {
+        if (isEclassTask(todo)) {
+            const groupKey = todo.projectId || todo.courseTitle || 'eclass';
+            if (groupKey !== lastEclassGroupKey) {
+                todoList.insertAdjacentHTML('beforeend', renderEclassGroupHeader(todo));
+                lastEclassGroupKey = groupKey;
+            }
+        } else {
+            lastEclassGroupKey = null;
+        }
         const isDueToday = todo.dueDate === today && !todo.completed && !todo.archived;
         const card = document.createElement('div');
         card.className = `task-card${todo.completed ? ' completed' : ''}`;
@@ -876,44 +2174,68 @@ function renderTodos(todos) {
             const cards = [...todoList.querySelectorAll('.task-card')];
             cards.forEach((c, i) => {
                 const t = allTodos.find(x => x.id === c.dataset.id);
-                if (t && t.orderIndex !== i) db.collection('todos').doc(t.id).update({ orderIndex: i });
+                const nextOrder = cards.length - i;
+                if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder });
             });
         };
 
         const p = todo.priority || 'medium';
         const proj = allProjects.find(px => px.id === todo.projectId);
-        const tag = proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${proj.name}</span>` : '';
+        const sourceTag = isEclassTask(todo) ? `<span class="project-tag eclass-source-tag">e-Class</span>` : '';
+        const typeTag = todo.source === 'eclass-exam' ? `<span class="project-tag eclass-type-tag">시험·발표</span>` : '';
+        const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
         const img = todo.imageUrl ? `<img src="${todo.imageUrl}" class="tc-img" alt="task image" onclick="window.open('${todo.imageUrl}', '_blank')">` : '';
         
         const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';
-        const priorityText = `${t(p)} ${t('priorityLabel')}`.toUpperCase();
+        const priorityText = `${t(p)} ${t('priorityLabel')}`;
 
         card.innerHTML = `
-            <button class="tc-delete" data-id="${todo.id}">×</button>
             <div class="tc-top">
                 <h3 class="tc-title">${todo.text}${dueBadge}</h3>
-                <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
+                <div class="tc-top-actions">
+                    <span class="tc-priority-chip ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}">
+                        <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
+                        ${priorityText}
+                    </span>
+                    <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">&times;</button>
+                </div>
             </div>
-            <div class="tc-subtitle">${priorityText} ${todo.dueDate ? '• 📅 ' + todo.dueDate : ''}</div>
+            <div class="tc-subtitle">${todo.dueDate ? '📅 ' + todo.dueDate + (todo.dueTime ? ' ' + todo.dueTime : '') : t('noDate')}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
             ${img}<p class="tc-desc">${todo.memo || t('noNotes')}</p><div style="margin-top: 8px;">${tag}</div>
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
                 <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">${t('edit')}</button>
+                ${appleCalendarEnabled && todo.dueDate ? `<button class="tc-action-btn btn-apple-calendar" data-id="${todo.id}">Apple</button>` : ''}
                 <button class="tc-action-btn btn-archive" data-id="${todo.id}">${todo.archived ? t('restore') : t('archiveVerb')}</button>
             </div>`;
         todoList.appendChild(card);
     });
 
     todoList.querySelectorAll('.btn-toggle').forEach(b => b.onclick = () => {
-        const t = allTodos.find(x => x.id === b.dataset.id);
-        db.collection('todos').doc(b.dataset.id).update({ completed: !t.completed });
+        const task = allTodos.find(x => x.id === b.dataset.id);
+        if (!task) return;
+        const completed = !task.completed;
+        db.collection('todos').doc(b.dataset.id).update({
+            completed,
+            completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
+            completedDate: completed ? localDateKey() : null
+        });
+        markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.btn-archive').forEach(b => b.onclick = () => {
         const t = allTodos.find(x => x.id === b.dataset.id);
         db.collection('todos').doc(b.dataset.id).update({ archived: !t.archived });
+        markGuideStepComplete('taskManage');
     });
-    todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => confirm(t('deleteConfirm')) && db.collection('todos').doc(b.dataset.id).delete());
-    todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => openEditModal('todo', b.dataset.id));
+    todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => openTaskDeleteDialog(b.dataset.id));
+    todoList.querySelectorAll('.btn-edit-task').forEach(b => b.onclick = () => {
+        markGuideStepComplete('taskManage');
+        openEditModal('todo', b.dataset.id);
+    });
+    todoList.querySelectorAll('.btn-apple-calendar').forEach(b => b.onclick = () => {
+        const task = allTodos.find(x => x.id === b.dataset.id);
+        if (task) downloadAppleCalendarEvent(task);
+    });
 }
 
 function getDragAfterElement(container, y) {
@@ -967,8 +2289,14 @@ function renderNotes(notes) {
         list.appendChild(card);
         setupDragging(card);
     });
-    list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => db.collection('notes').doc(b.dataset.id).delete());
-    list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => openEditModal('note', b.dataset.id));
+    list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => {
+        markGuideStepComplete('notesManage');
+        db.collection('notes').doc(b.dataset.id).delete();
+    });
+    list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => {
+        markGuideStepComplete('notesManage');
+        openEditModal('note', b.dataset.id);
+    });
 }
 
 function setupDragging(el) {
@@ -998,10 +2326,78 @@ function setupDragging(el) {
 function updateDashboardUI() {
     if (!getEl('page-home')) return;
     const total = allTodos.filter(t => !t.archived).length, completed = allTodos.filter(t => t.completed && !t.archived).length, percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const today = new Date().toISOString().split('T')[0];
+    const activeTodos = allTodos.filter(todo => !todo.completed && !todo.archived);
+    const todayDueTodos = activeTodos.filter(todo => todo.dueDate === today);
+    const importantTodos = activeTodos.filter(todo => todo.priority === 'high');
+    const activeProjects = allProjects.filter(project => activeTodos.some(todo => todo.projectId === project.id));
+    const focusTodos = [...activeTodos]
+        .filter(todo => todo.dueDate === today || todo.priority === 'high')
+        .sort((a, b) => {
+            if ((a.dueDate === today) !== (b.dueDate === today)) return a.dueDate === today ? -1 : 1;
+            if ((a.priority === 'high') !== (b.priority === 'high')) return a.priority === 'high' ? -1 : 1;
+            return getTaskSortValue(b) - getTaskSortValue(a);
+        })
+        .slice(0, 4);
+
+    if (getEl('today-due-count')) getEl('today-due-count').textContent = todayDueTodos.length;
+    if (getEl('today-important-count')) getEl('today-important-count').textContent = importantTodos.length;
+    if (getEl('today-project-count')) getEl('today-project-count').textContent = activeProjects.length;
+    if (getEl('today-hub-summary')) {
+        getEl('today-hub-summary').textContent = formatText('todayHubSummary', {
+            due: todayDueTodos.length,
+            important: importantTodos.length,
+            projects: activeProjects.length
+        });
+    }
+
     if (getEl('stat-total-tasks')) getEl('stat-total-tasks').textContent = total;
     if (getEl('stat-completed-tasks')) getEl('stat-completed-tasks').textContent = completed;
     if (getEl('stat-progress-percent')) getEl('stat-progress-percent').textContent = `${percent}%`;
     if (getEl('stat-progress-bar')) getEl('stat-progress-bar').style.width = `${percent}%`;
+
+    const focusList = getEl('today-focus-list');
+    if (focusList) {
+        focusList.innerHTML = focusTodos.length ? '' : `<p class="empty-msg">${t('noTodayFocus')}</p>`;
+        focusTodos.forEach(todo => {
+            const project = allProjects.find(p => p.id === todo.projectId);
+            const isToday = todo.dueDate === today;
+            const div = document.createElement('button');
+            div.className = 'today-focus-item';
+            div.type = 'button';
+            div.innerHTML = `
+                <span class="today-focus-dot ${todo.priority === 'high' ? 'high' : 'normal'}"></span>
+                <span class="today-focus-text">${todo.text}</span>
+                <span class="today-focus-meta">${isToday ? t('todayDue') : (project ? project.name : t('noProject'))}</span>
+            `;
+            div.onclick = () => {
+                currentFilter = isToday ? 'reminders' : 'important';
+                switchPage('page-tasks');
+            };
+            focusList.appendChild(div);
+        });
+    }
+
+    const projectList = getEl('today-projects-list');
+    if (projectList) {
+        projectList.innerHTML = activeProjects.length ? '' : `<p class="empty-msg">${t('noActiveProjectsToday')}</p>`;
+        activeProjects.slice(0, 4).forEach(project => {
+            const projectTasks = activeTodos.filter(todo => todo.projectId === project.id);
+            const div = document.createElement('button');
+            div.className = 'today-project-item';
+            div.type = 'button';
+            div.innerHTML = `
+                <span class="today-project-color" style="background:${project.color || 'var(--blue)'}"></span>
+                <span class="today-project-name">${project.name}</span>
+                <span class="today-project-count">${projectTasks.length}</span>
+            `;
+            div.onclick = () => {
+                selectedProjectOverviewId = project.id;
+                switchPage('page-projects');
+            };
+            projectList.appendChild(div);
+        });
+    }
 
     const recentNotesList = getEl('dash-recent-notes');
     if (recentNotesList) {
@@ -1017,7 +2413,6 @@ function updateDashboardUI() {
 
     const reminderList = getEl('dash-reminders-list');
     if (reminderList) {
-        const today = new Date().toISOString().split('T')[0];
         const upcoming = allTodos.filter(t => !t.completed && !t.archived && t.dueDate).sort((a,b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 5);
         
         reminderList.innerHTML = upcoming.length ? '' : `<p class="empty-msg" style="font-size:0.85rem; color:var(--text-3);">${t('noUpcomingReminders')}</p>`;
@@ -1029,7 +2424,11 @@ function updateDashboardUI() {
                 <span class="reminder-text">${todo.text}</span>
                 <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : todo.dueDate}</span>
             `;
-            div.onclick = () => { currentFilter = 'reminders'; switchPage('page-tasks'); };
+            div.onclick = () => {
+                markGuideStepComplete('taskViews');
+                currentFilter = 'reminders';
+                switchPage('page-tasks');
+            };
             reminderList.appendChild(div);
         });
     }
@@ -1037,6 +2436,7 @@ function updateDashboardUI() {
 
 function checkDueNotifications() {
     if (!('Notification' in window)) return;
+    if (!notificationSettings.dailyTasks) return;
     const today = new Date().toISOString().split('T')[0];
     const due = allTodos.filter(t => !t.completed && !t.archived && t.dueDate === today);
     
@@ -1073,11 +2473,97 @@ function showDueNotification(count) {
     localStorage.setItem('last-notified-date', today);
 }
 
+function notifyUser(title, body, tag) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const options = { body, icon: '/icon.svg', badge: '/icon.svg', tag };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options));
+    } else {
+        new Notification(title, options);
+    }
+}
+
+function setAppleCalendarEnabled(enabled) {
+    appleCalendarEnabled = !!enabled;
+    const button = getEl('task-apple-calendar-btn');
+    if (button) button.hidden = !appleCalendarEnabled;
+    applyFilters();
+}
+
+const firedReminderKeys = new Set();
+
+function reminderSlotKey(id, dueDate, dueTime) {
+    return `${id}|${dueDate || ''}|${dueTime || ''}`;
+}
+
+function scheduleReminderNotifications() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+        reminderNotificationTimers.forEach(timer => clearTimeout(timer));
+        reminderNotificationTimers.clear();
+        return;
+    }
+
+    const now = Date.now();
+    const desiredKeys = new Set();
+
+    if (notificationSettings.dailyTasks) {
+        const today = new Date();
+        const [hour, minute] = (notificationSettings.dailyTime || '09:00').split(':').map(Number);
+        const scheduled = new Date(today);
+        scheduled.setHours(hour || 9, minute || 0, 0, 0);
+        const todayKey = today.toISOString().slice(0, 10);
+        const activeToday = allTodos.filter(task => !task.completed && !task.archived && task.dueDate === todayKey);
+        const dailyKey = `daily-tasks|${todayKey}|${notificationSettings.dailyTime || '09:00'}`;
+        if (activeToday.length && scheduled.getTime() > now && !firedReminderKeys.has(dailyKey)) {
+            desiredKeys.add(dailyKey);
+            if (!reminderNotificationTimers.has(dailyKey)) {
+                const timer = setTimeout(() => {
+                    firedReminderKeys.add(dailyKey);
+                    reminderNotificationTimers.delete(dailyKey);
+                    notifyUser('Planary', formatText('todayTaskNotificationBody', { count: activeToday.length }), 'daily-tasks');
+                }, scheduled.getTime() - now);
+                reminderNotificationTimers.set(dailyKey, timer);
+            }
+        }
+    }
+
+    if (notificationSettings.reminders !== false) {
+        allTodos
+            .filter(task => !task.completed && !task.archived && task.dueDate && task.dueTime)
+            .forEach(task => {
+                const trigger = new Date(`${task.dueDate}T${task.dueTime}:00`).getTime();
+                if (!Number.isFinite(trigger) || trigger <= now) return;
+                const key = reminderSlotKey(task.id, task.dueDate, task.dueTime);
+                if (firedReminderKeys.has(key)) return;
+                desiredKeys.add(key);
+                if (reminderNotificationTimers.has(key)) return;
+                const timer = setTimeout(() => {
+                    firedReminderKeys.add(key);
+                    reminderNotificationTimers.delete(key);
+                    notifyUser(task.text || t('untitledTask'), formatText('reminderNotificationBody', { time: task.dueTime }), `task-${task.id}`);
+                }, trigger - now);
+                reminderNotificationTimers.set(key, timer);
+            });
+    }
+
+    reminderNotificationTimers.forEach((timer, key) => {
+        if (!desiredKeys.has(key)) {
+            clearTimeout(timer);
+            reminderNotificationTimers.delete(key);
+        }
+    });
+}
+
 function renderArchive() {
     const archiveListEl = getEl('archive-tasks-list'); if (!archiveListEl) return;
     const archived = allTodos.filter(t => t.archived);
+    const completedTasks = allTodos.filter(t => t.completed);
+    const activity = buildCompletedTaskActivity(allTodos);
     if (getEl('archive-total-items')) getEl('archive-total-items').textContent = archived.length;
-    if (getEl('archive-total-completed')) getEl('archive-total-completed').textContent = allTodos.filter(t => t.completed).length;
+    if (getEl('archive-total-completed')) getEl('archive-total-completed').textContent = completedTasks.length;
+    const streakEl = getEl('archive-current-streak');
+    if (streakEl) streakEl.textContent = `${activity.streak}${t('daySuffix')}`;
+    renderArchiveHeatmap(activity.dates);
     archiveListEl.innerHTML = archived.length ? '' : `
         <div class="wiki-empty-container collection-empty-container archive-empty-container">
             <div class="wiki-empty-content collection-empty-content">
@@ -1118,8 +2604,24 @@ function renderArchive() {
         archiveListEl.appendChild(item);
     });
     archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => db.collection('todos').doc(b.dataset.id).update({ archived: false }));
-    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => confirm(t('permanentDeleteConfirm')) && db.collection('todos').doc(b.dataset.id).delete());
+    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = async () => {
+        if (!confirm(t('permanentDeleteConfirm'))) return;
+        const task = allTodos.find(item => item.id === b.dataset.id);
+        await db.collection('todos').doc(b.dataset.id).delete();
+        if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+    });
     window.refreshInspiration();
+}
+
+function renderArchiveHeatmap(dates) {
+    const heatmapEl = getEl('archive-activity-heatmap');
+    if (!heatmapEl) return;
+    const max = Math.max(1, ...dates.map(day => day.count));
+    heatmapEl.innerHTML = dates.map(day => {
+        const level = day.count === 0 ? 0 : Math.max(1, Math.ceil((day.count / max) * 4));
+        const label = `${day.key}: ${day.count}`;
+        return `<span class="archive-heatmap-cell level-${level}" title="${label}" aria-label="${label}"></span>`;
+    }).join('');
 }
 
 window.refreshInspiration = () => {
@@ -1132,7 +2634,7 @@ window.refreshInspiration = () => {
         textEl.textContent = `"${r.text || r.memo}"`;
         dateEl.textContent = r.createdAt ? new Date(r.createdAt.toMillis ? r.createdAt.toMillis() : r.createdAt).toLocaleDateString() : t('stayInspired');
     } else {
-        textEl.textContent = currentLanguage === 'ko' ? '"기록은 기억을 지배합니다."' : '"Records shape memory."'; dateEl.textContent = t('stayInspired');
+        textEl.textContent = t('inspirationQuote'); dateEl.textContent = t('stayInspired');
     }
 };
 
@@ -1143,6 +2645,18 @@ function renderProjectsDropdown() {
     select.innerHTML = `<option value="">${t('noProject')}</option>`;
     allProjects.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
     select.value = current;
+}
+
+function renderTaskProjectSelect(select, currentProjectIdValue = '') {
+    if (!select) return;
+    select.innerHTML = `<option value="">${t('noProject')}</option>`;
+    allProjects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = project.name;
+        select.appendChild(option);
+    });
+    select.value = currentProjectIdValue || '';
 }
 
 function renderProjectManagementList() {
@@ -1337,7 +2851,419 @@ function renderBookmarks() {
 }
 window.deleteBookmark = (id) => confirm(t('deleteBookmarkConfirm')) && db.collection('bookmarks').doc(id).delete();
 
+function setTaskModalOpen(modalId, open) {
+    const modal = getEl(modalId);
+    if (!modal) return;
+    modal.classList.toggle('active', open);
+    modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function openTaskDeleteDialog(id) {
+    pendingDeleteTaskId = id;
+    setTaskModalOpen('task-delete-modal', true);
+}
+
+function closeTaskDeleteDialog() {
+    pendingDeleteTaskId = null;
+    setTaskModalOpen('task-delete-modal', false);
+}
+
+async function confirmTaskDelete() {
+    if (!pendingDeleteTaskId || !db) return;
+    const id = pendingDeleteTaskId;
+    const task = allTodos.find(item => item.id === id);
+    closeTaskDeleteDialog();
+    await deleteTaskGoogleCalendarEvent(task);
+    await db.collection('todos').doc(id).delete();
+    if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+}
+
+function openTaskEditDialog(id) {
+    const item = allTodos.find(x => x.id === id);
+    if (!item) return;
+    editingTaskId = id;
+    if (getEl('task-edit-text')) getEl('task-edit-text').value = item.text || '';
+    if (getEl('task-edit-memo')) getEl('task-edit-memo').value = item.memo || '';
+    if (getEl('task-edit-due-date')) getEl('task-edit-due-date').value = item.dueDate || '';
+    if (getEl('task-edit-due-time')) getEl('task-edit-due-time').value = item.dueTime || '';
+    if (getEl('task-edit-calendar-reminder')) getEl('task-edit-calendar-reminder').value = String(item.calendarReminderMinutes ?? 30);
+    if (getEl('task-edit-priority')) getEl('task-edit-priority').value = item.priority || 'medium';
+    renderTaskProjectSelect(getEl('task-edit-project'), item.projectId || '');
+    setTaskModalOpen('task-edit-modal', true);
+    setTimeout(() => {
+        const input = getEl('task-edit-text');
+        if (input) input.focus();
+    }, 50);
+}
+
+function closeTaskEditDialog() {
+    editingTaskId = null;
+    setTaskModalOpen('task-edit-modal', false);
+}
+
+function syncNotificationSettingsUI() {
+    const dailyToggle = getEl('notify-daily-tasks-toggle');
+    const dailyTime = getEl('notify-daily-time');
+    const remindersToggle = getEl('notify-reminders-toggle');
+    const status = getEl('notification-status-text');
+    if (dailyToggle) dailyToggle.checked = !!notificationSettings.dailyTasks;
+    if (dailyTime) dailyTime.value = notificationSettings.dailyTime || '09:00';
+    if (remindersToggle) remindersToggle.checked = notificationSettings.reminders !== false;
+    if (status && 'Notification' in window) {
+        status.textContent = Notification.permission === 'granted'
+            ? t('notificationsAllowed')
+            : Notification.permission === 'denied'
+                ? t('notificationsDenied')
+                : '';
+    }
+}
+
+function bindNotificationSettings() {
+    const dailyToggle = getEl('notify-daily-tasks-toggle');
+    const dailyTime = getEl('notify-daily-time');
+    const remindersToggle = getEl('notify-reminders-toggle');
+    const permissionBtn = getEl('notification-permission-btn');
+    if (dailyToggle && !dailyToggle.dataset.bound) {
+        dailyToggle.dataset.bound = 'true';
+        dailyToggle.onchange = () => {
+            notificationSettings.dailyTasks = dailyToggle.checked;
+            saveNotificationSettings();
+            scheduleReminderNotifications();
+        };
+    }
+    if (dailyTime && !dailyTime.dataset.bound) {
+        dailyTime.dataset.bound = 'true';
+        dailyTime.onchange = () => {
+            notificationSettings.dailyTime = dailyTime.value || '09:00';
+            saveNotificationSettings();
+            scheduleReminderNotifications();
+        };
+    }
+    if (remindersToggle && !remindersToggle.dataset.bound) {
+        remindersToggle.dataset.bound = 'true';
+        remindersToggle.onchange = () => {
+            notificationSettings.reminders = remindersToggle.checked;
+            saveNotificationSettings();
+            scheduleReminderNotifications();
+        };
+    }
+    if (permissionBtn && !permissionBtn.dataset.bound) {
+        permissionBtn.dataset.bound = 'true';
+        permissionBtn.onclick = async () => {
+            if (!('Notification' in window)) return;
+            await Notification.requestPermission();
+            syncNotificationSettingsUI();
+            scheduleReminderNotifications();
+            registerFcmToken();
+        };
+    }
+    syncNotificationSettingsUI();
+}
+
+let fcmRegistering = false;
+let fcmOnMessageBound = false;
+
+async function registerFcmToken() {
+    if (fcmRegistering) return;
+    if (!currentUser) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (typeof firebase === 'undefined' || !firebase.messaging) return;
+    if (typeof firebase.messaging.isSupported === 'function' && !firebase.messaging.isSupported()) return;
+    if (!navigator.serviceWorker) return;
+    const vapidKey = window.PLANARY_FCM_VAPID_KEY;
+    if (!vapidKey) return;
+
+    fcmRegistering = true;
+    try {
+        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const messaging = firebase.messaging();
+        const token = await messaging.getToken({ vapidKey, serviceWorkerRegistration: swReg });
+        if (!token) return;
+
+        const platform = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile-web' : 'desktop-web';
+        const ref = db.collection('fcm_tokens').doc(token);
+        const existing = await ref.get();
+        const ts = firebase.firestore.FieldValue.serverTimestamp();
+        const payload = {
+            uid: currentUser.uid,
+            token,
+            platform,
+            userAgent: navigator.userAgent.slice(0, 200),
+            lastSeenAt: ts
+        };
+        if (!existing.exists) payload.createdAt = ts;
+        await ref.set(payload, { merge: true });
+        localStorage.setItem('planary-fcm-token', token);
+
+        if (!fcmOnMessageBound) {
+            fcmOnMessageBound = true;
+            messaging.onMessage(payload => {
+                const title = (payload.notification && payload.notification.title) || 'Planary';
+                const body = (payload.notification && payload.notification.body) || '';
+                notifyUser(title, body, (payload.data && payload.data.todoId) || 'fcm');
+            });
+        }
+    } catch (error) {
+        console.warn('[fcm] register failed', error && error.message);
+    } finally {
+        fcmRegistering = false;
+    }
+}
+
+async function unregisterFcmToken() {
+    const token = localStorage.getItem('planary-fcm-token');
+    localStorage.removeItem('planary-fcm-token');
+    if (!token) return;
+    try { await db.collection('fcm_tokens').doc(token).delete(); } catch (e) {}
+    try {
+        if (firebase.messaging && (!firebase.messaging.isSupported || firebase.messaging.isSupported())) {
+            await firebase.messaging().deleteToken();
+        }
+    } catch (e) {}
+}
+
+async function ensureTaskCalendarAccess() {
+    const user = auth?.currentUser || (typeof firebase !== 'undefined' ? firebase.auth().currentUser : null);
+    if (!user) throw new Error(t('loginFirst'));
+    if (taskCalendarAccessToken) return taskCalendarAccessToken;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+    provider.addScope('https://www.googleapis.com/auth/calendar.events');
+    const result = await user.reauthenticateWithPopup(provider);
+    const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+    if (!credential || !credential.accessToken) throw new Error(t('calendarTokenMissing'));
+    taskCalendarAccessToken = credential.accessToken;
+    const connectBtn = getEl('task-calendar-connect-btn');
+    if (connectBtn) connectBtn.classList.add('active');
+    const importBtn = getEl('task-calendar-import-btn');
+    if (importBtn) importBtn.classList.add('active');
+    return taskCalendarAccessToken;
+}
+
+function parseGoogleCalendarDate(value) {
+    if (!value) return { dueDate: null, dueTime: null };
+    if (value.date) return { dueDate: value.date, dueTime: null };
+    if (!value.dateTime) return { dueDate: null, dueTime: null };
+    const parsed = new Date(value.dateTime);
+    if (Number.isNaN(parsed.getTime())) return { dueDate: null, dueTime: null };
+    return {
+        dueDate: parsed.toISOString().slice(0, 10),
+        dueTime: parsed.toTimeString().slice(0, 5)
+    };
+}
+
+function normalizeReminderMinutes(input, fallback = [30]) {
+    const arr = Array.isArray(input) ? input : (input == null ? [] : [input]);
+    const cleaned = arr.map(Number).filter(value => Number.isFinite(value) && value >= 0);
+    const unique = [...new Set(cleaned)].sort((a, b) => b - a);
+    return unique.length ? unique : fallback;
+}
+
+function resolveReminderMinutesList(task) {
+    if (!task) return [30];
+    return normalizeReminderMinutes(
+        Array.isArray(task.calendarReminderMinutesList) && task.calendarReminderMinutesList.length
+            ? task.calendarReminderMinutesList
+            : task.calendarReminderMinutes
+    );
+}
+
+function buildTaskCalendarEvent(task) {
+    if (!task || !task.dueDate) return null;
+    const start = new Date(`${task.dueDate}T${task.dueTime || '09:00'}:00`);
+    if (Number.isNaN(start.getTime())) return null;
+    const end = new Date(start);
+    end.setMinutes(end.getMinutes() + 30);
+    const minutesList = resolveReminderMinutesList(task);
+    return {
+        summary: task.text || t('untitledTask'),
+        description: task.memo || '',
+        start: { dateTime: start.toISOString() },
+        end: { dateTime: end.toISOString() },
+        reminders: {
+            useDefault: false,
+            overrides: minutesList.map(minutes => ({ method: 'popup', minutes }))
+        }
+    };
+}
+
+async function syncTaskToGoogleCalendar(task) {
+    if (!task || !task.dueDate || !task.syncCalendar) return null;
+    const token = await ensureTaskCalendarAccess();
+    const body = buildTaskCalendarEvent(task);
+    if (!body) return null;
+    const eventId = task.calendarEventId ? encodeURIComponent(task.calendarEventId) : '';
+    const url = eventId
+        ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`
+        : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+    const response = await fetch(url, {
+        method: eventId ? 'PUT' : 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    return response.json();
+}
+
+async function deleteTaskGoogleCalendarEvent(task) {
+    if (!task?.calendarEventId) return;
+    if (task.source === 'google-calendar') return;
+    try {
+        const token = await ensureTaskCalendarAccess();
+        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(task.calendarEventId)}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`Google Calendar ${response.status}`);
+    } catch (error) {
+        console.warn('Calendar event delete failed:', error);
+    }
+}
+
+async function importGoogleCalendarTasks() {
+    if (!currentUser || !db) throw new Error(t('loginFirst'));
+    const token = await ensureTaskCalendarAccess();
+    const now = new Date();
+    const until = new Date(now);
+    until.setDate(until.getDate() + 30);
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(now.toISOString())}&timeMax=${encodeURIComponent(until.toISOString())}`;
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    const data = await response.json();
+    const events = (data.items || []).filter(event => event.status !== 'cancelled' && event.id && event.summary);
+    let imported = 0;
+    for (const event of events) {
+        const existing = await db.collection('todos')
+            .where('uid', '==', currentUser.uid)
+            .where('source', '==', 'google-calendar')
+            .where('sourceItemId', '==', event.id)
+            .limit(1)
+            .get();
+        if (!existing.empty) continue;
+        const start = parseGoogleCalendarDate(event.start || {});
+        await db.collection('todos').add({
+            uid: currentUser.uid,
+            text: event.summary || t('untitledEvent'),
+            memo: event.description || null,
+            dueDate: start.dueDate,
+            dueTime: start.dueTime,
+            calendarReminderMinutes: Number(event.reminders?.overrides?.[0]?.minutes ?? 30),
+            calendarReminderMinutesList: normalizeReminderMinutes(
+                (event.reminders?.overrides || []).map(o => o.minutes)
+            ),
+            syncCalendar: true,
+            calendarEventId: event.id,
+            priority: 'medium',
+            projectId: null,
+            imageUrl: null,
+            completed: false,
+            archived: false,
+            source: 'google-calendar',
+            sourceItemId: event.id,
+            sourceUrl: event.htmlLink || null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            orderIndex: Date.now() - imported
+        });
+        imported += 1;
+    }
+    lastCalendarImportAt = new Date();
+    return imported;
+}
+
+function toIcsDate(date) {
+    return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function downloadAppleCalendarEvent(task) {
+    const event = buildTaskCalendarEvent(task);
+    if (!event) {
+        showToast(t('dueDateLabel') + ' / ' + t('dueTimeLabel'), 'error');
+        return;
+    }
+    const start = new Date(event.start.dateTime);
+    const end = new Date(event.end.dateTime);
+    const title = (event.summary || t('untitledTask')).replace(/([,;\\])/g, '\\$1');
+    const description = (event.description || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+    const minutesList = resolveReminderMinutesList(task);
+    const alarms = minutesList.flatMap(minutes => [
+        'BEGIN:VALARM',
+        `TRIGGER:-PT${minutes}M`,
+        'ACTION:DISPLAY',
+        `DESCRIPTION:${title}`,
+        'END:VALARM'
+    ]);
+    const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Planary//Reminder//EN',
+        'BEGIN:VEVENT',
+        `UID:${task.id || Date.now()}@planary`,
+        `DTSTAMP:${toIcsDate(new Date())}`,
+        `DTSTART:${toIcsDate(start)}`,
+        `DTEND:${toIcsDate(end)}`,
+        `SUMMARY:${title}`,
+        `DESCRIPTION:${description}`,
+        ...alarms,
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(task.text || 'planary-event').replace(/[\\/:*?"<>|]/g, '-')}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast(t('appleCalendarDownloaded'), 'success');
+}
+
+async function saveTaskEditDialog() {
+    if (!editingTaskId || !db) return;
+    const text = (getEl('task-edit-text')?.value || '').trim();
+    if (!text) {
+        const input = getEl('task-edit-text');
+        if (input) input.focus();
+        return;
+    }
+    const priority = getEl('task-edit-priority')?.value || 'medium';
+    const existing = allTodos.find(item => item.id === editingTaskId);
+    const editMinutes = Number(getEl('task-edit-calendar-reminder')?.value || 30);
+    const editList = normalizeReminderMinutes(editMinutes);
+    const payload = {
+        text,
+        memo: (getEl('task-edit-memo')?.value || '').trim() || null,
+        dueDate: getEl('task-edit-due-date')?.value || null,
+        dueTime: getEl('task-edit-due-time')?.value || null,
+        calendarReminderMinutes: editList[0],
+        calendarReminderMinutesList: editList,
+        priority: ['low', 'medium', 'high'].includes(priority) ? priority : 'medium',
+        projectId: getEl('task-edit-project')?.value || null,
+        syncCalendar: !!(existing?.calendarEventId || taskCalendarAccessToken)
+    };
+    if (payload.syncCalendar && payload.dueDate) {
+        try {
+            const event = await syncTaskToGoogleCalendar({ ...existing, ...payload });
+            if (event?.id) payload.calendarEventId = event.id;
+        } catch (error) {
+            console.error('Calendar update failed:', error);
+            showToast(t('calendarSyncFailed') + ': ' + (error.message || error), 'error');
+        }
+    }
+    await db.collection('todos').doc(editingTaskId).update(payload);
+    closeTaskEditDialog();
+    showToast(t('taskUpdated'));
+}
+
 function openEditModal(type, id) {
+    if (type === 'todo') {
+        openTaskEditDialog(id);
+        return;
+    }
     const item = type === 'todo' ? allTodos.find(x => x.id === id) : allNotes.find(x => x.id === id);
     if (!item) return;
     const next = prompt(t('editContent'), item.text);
@@ -1353,6 +3279,7 @@ try {
 } catch (e) { console.error("Firebase Init Error", e); }
 
 document.addEventListener('DOMContentLoaded', () => {
+    placeEclassPanelNearProfileTop();
     // Auth State Listener
     if (auth) {
         auth.onAuthStateChanged(user => {
@@ -1364,9 +3291,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUser = user;
                 updateProfileUI(user);
                 if (isAuthPage) window.location.replace('/');
-                else { 
-                    loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects();
+                else {
+                    loadTodos(); loadNotes(); loadProjects(); loadBookmarks(); loadWikiPagesForProjects(); loadEclassStatus();
+                    startEclassForegroundSync();
                     showOnboardingIfNeeded(user);
+                    registerFcmToken();
                 }
             }
         });
@@ -1375,13 +3304,65 @@ document.addEventListener('DOMContentLoaded', () => {
     // Theme & Navigation Init
     const savedTheme = localStorage.getItem('app-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    applyAppFont(currentAppFont);
     applyLanguage(currentLanguage);
     
     // Hash router
     window.addEventListener('hashchange', handleHash);
+    window.addEventListener('resize', () => repositionActiveOnboardingGuide());
+    document.addEventListener('click', blockOnboardingBackgroundEvent, true);
+    document.addEventListener('mousedown', blockOnboardingBackgroundEvent, true);
+    document.addEventListener('pointerdown', blockOnboardingBackgroundEvent, true);
+    document.addEventListener('touchstart', blockOnboardingBackgroundEvent, { capture: true, passive: false });
+    document.addEventListener('touchmove', blockOnboardingBackgroundScroll, { capture: true, passive: false });
+    document.addEventListener('wheel', blockOnboardingBackgroundScroll, { capture: true, passive: false });
+    document.addEventListener('keydown', blockOnboardingBackgroundKeys, true);
+    window.addEventListener('scroll', (event) => {
+        if (event.target && event.target.closest && event.target.closest('.onboarding-card')) return;
+        if (isTabletGuideLayout()) {
+            if (onboardingScrollSettleTimer) clearTimeout(onboardingScrollSettleTimer);
+            onboardingScrollSettleTimer = setTimeout(repositionActiveOnboardingGuide, 180);
+            return;
+        }
+        repositionActiveOnboardingGuide();
+    }, true);
+
+    // suppress auto-scroll when user is interacting via touch to avoid fighting user scroll on mobile/tablet
+    document.addEventListener('touchstart', () => {
+        onboardingSuppressAutoScroll = true;
+        if (onboardingSuppressTimer) clearTimeout(onboardingSuppressTimer);
+    }, { passive: true });
+    document.addEventListener('touchmove', () => {
+        onboardingSuppressAutoScroll = true;
+        if (onboardingSuppressTimer) clearTimeout(onboardingSuppressTimer);
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+        if (onboardingSuppressTimer) clearTimeout(onboardingSuppressTimer);
+        onboardingSuppressTimer = setTimeout(() => { onboardingSuppressAutoScroll = false; }, 250);
+    }, { passive: true });
+
     handleHash();
 
     // Event Listeners
+    if (getEl('empty-archive-btn')) getEl('empty-archive-btn').onclick = async () => {
+        const archived = allTodos.filter(item => item.archived);
+        if (!archived.length) { showToast(t('archiveAlreadyEmpty')); return; }
+        if (!confirm(t('emptyArchiveConfirm'))) return;
+        try {
+            const urls = new Set();
+            const batch = db.batch();
+            archived.forEach(task => {
+                batch.delete(db.collection('todos').doc(task.id));
+                if (task.imageUrl) urls.add(task.imageUrl);
+            });
+            await batch.commit();
+            if (urls.size) await deleteStorageUrls(urls);
+            showToast(t('archiveEmptied'));
+        } catch (err) {
+            console.error('[Archive] empty failed:', err);
+            showToast((t('archiveEmptyFailed') || 'Failed') + ': ' + (err.message || err), 'error');
+        }
+    };
     if (getEl('theme-toggle-btn')) getEl('theme-toggle-btn').onclick = () => {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const next = isDark ? 'light' : 'dark';
@@ -1391,11 +3372,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('app-language-select')) {
         getEl('app-language-select').onchange = (event) => applyLanguage(event.target.value);
     }
+    document.querySelectorAll('.onboarding-language-option').forEach(button => {
+        button.onclick = () => applyLanguage(button.dataset.guideLanguage || 'ko');
+    });
+    if (getEl('app-font-select')) {
+        getEl('app-font-select').onchange = (event) => applyAppFont(event.target.value);
+    }
+    bindNotificationSettings();
 
     if (getEl('search-input')) getEl('search-input').oninput = () => applyFilters();
 
+    if (getEl('task-details-toggle')) {
+        getEl('task-details-toggle').onclick = () => {
+            const composer = getEl('task-details-toggle').closest('.composer');
+            composer?.classList.toggle('details-open');
+        };
+    }
+
     document.querySelectorAll('.filter-chip').forEach(chip => {
         chip.onclick = () => {
+            if (['important', 'reminders'].includes(chip.dataset.filter)) markGuideStepComplete('taskViews');
             navigateAppPage('page-tasks', chip.dataset.filter || 'all');
         };
     });
@@ -1405,6 +3401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.onclick = (e) => {
             e.preventDefault();
             const tid = link.dataset.target;
+            if (tid === 'page-tasks' && ['important', 'reminders'].includes(link.dataset.filter)) markGuideStepComplete('taskViews');
             navigateAppPage(tid, link.dataset.filter || null);
         };
     });
@@ -1423,8 +3420,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     if (fabTrigger) fabTrigger.onclick = (e) => { e.stopPropagation(); fabContainer.classList.toggle('active'); };
-    if (menuToggle) menuToggle.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('nav-open'); };
-    if (overlay) overlay.onclick = () => document.body.classList.remove('nav-open');
+    if (menuToggle && !menuToggle.dataset.mobileNavBound) {
+        menuToggle.onclick = (e) => { e.stopPropagation(); document.body.classList.toggle('nav-open'); };
+    }
+    if (overlay && !overlay.dataset.mobileNavBound) overlay.onclick = () => document.body.classList.remove('nav-open');
     document.addEventListener('click', (e) => { if (fabContainer && !fabContainer.contains(e.target)) fabContainer.classList.remove('active'); });
 
     // Task Add
@@ -1457,8 +3456,46 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    if (getEl('task-calendar-connect-btn')) {
+        getEl('task-calendar-connect-btn').onclick = async () => {
+            try {
+                await ensureTaskCalendarAccess();
+                showToast(t('calendarConnected'), 'success');
+            } catch (error) {
+                console.error('Calendar connect failed:', error);
+                showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            }
+        };
+    }
+
+    if (getEl('task-calendar-import-btn')) {
+        getEl('task-calendar-import-btn').onclick = async () => {
+            try {
+                const count = await importGoogleCalendarTasks();
+                showToast(count ? `${t('calendarImportDone')} (${count})` : t('calendarImportEmpty'), count ? 'success' : 'info');
+            } catch (error) {
+                console.error('Calendar import failed:', error);
+                showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            }
+        };
+    }
+
+    if (getEl('task-apple-calendar-btn')) {
+        getEl('task-apple-calendar-btn').onclick = () => {
+            const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), timeInput = getEl('due-time'), reminderInput = getEl('calendar-reminder-select');
+            const task = {
+                text: input?.value?.trim() || t('untitledTask'),
+                memo: memoInput?.value?.trim() || '',
+                dueDate: dateInput?.value || null,
+                dueTime: timeInput?.value || '09:00',
+                calendarReminderMinutes: Number(reminderInput?.value || 30)
+            };
+            downloadAppleCalendarEvent(task);
+        };
+    }
+
     if (getEl('add-btn')) getEl('add-btn').onclick = async () => {
-        const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), priorityInput = getEl('priority-select'), projectInput = getEl('todo-project-select');
+        const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), timeInput = getEl('due-time'), reminderInput = getEl('calendar-reminder-select'), priorityInput = getEl('priority-select'), projectInput = getEl('todo-project-select');
         const text = input.value.trim();
         if (!text || !currentUser) return;
 
@@ -1479,11 +3516,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedPriority = priorityInput && ['low', 'medium', 'high'].includes(priorityInput.value)
             ? priorityInput.value
             : 'medium';
+        const addList = normalizeReminderMinutes(Number(reminderInput?.value || 30));
         const payload = {
             uid: currentUser.uid,
             text,
             memo: memoInput.value.trim() || null,
             dueDate: dateInput.value || null,
+            dueTime: timeInput.value || null,
+            calendarReminderMinutes: addList[0],
+            calendarReminderMinutesList: addList,
+            syncCalendar: !!dateInput.value && !!taskCalendarAccessToken,
             priority: selectedPriority,
             projectId: projectInput.value || null,
             imageUrl,
@@ -1494,16 +3536,30 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
+            let calendarEvent = null;
+            if (payload.syncCalendar) {
+                try {
+                    calendarEvent = await syncTaskToGoogleCalendar(payload);
+                    if (calendarEvent?.id) payload.calendarEventId = calendarEvent.id;
+                } catch (calendarError) {
+                    console.error('Calendar sync failed:', calendarError);
+                    showToast(t('calendarSyncFailed') + ': ' + (calendarError.message || calendarError), 'error');
+                }
+            }
             await db.collection('todos').add(payload);
+            markGuideStepComplete('taskCreate');
+            if (payload.memo || payload.dueDate || payload.priority !== 'medium') markGuideStepComplete('taskDetails');
             input.value = '';
             memoInput.value = '';
             dateInput.value = '';
+            if (timeInput) timeInput.value = '';
             if (priorityInput) priorityInput.value = 'medium';
             if (projectInput) projectInput.value = '';
             if (getEl('remove-task-img')) getEl('remove-task-img').click();
-            showToast(t('added'));
+            showToast(calendarEvent?.id ? t('calendarTaskSynced') : t('added'));
         } catch (error) {
             console.error("Task creation failed:", error, payload);
+            if (imageUrl) await deleteStorageUrls(new Set([imageUrl]));
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
         }
     };
@@ -1533,6 +3589,7 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             if (projectInput) projectInput.value = '';
+            markGuideStepComplete('projects');
             showToast(t('projectCreated'));
         });
     };
@@ -1556,6 +3613,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('project-view-reminders-btn')) {
         getEl('project-view-reminders-btn').onclick = () => {
             if (!selectedProjectOverviewId) return;
+            markGuideStepComplete('taskViews');
             currentProjectId = selectedProjectOverviewId;
             currentFilter = 'reminders';
             switchPage('page-tasks');
@@ -1573,10 +3631,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: formatText('projectNotesTitle', { project: project.name }),
                     parentId: null,
                     projectId: project.id,
-                    content: { blocks: [] },
+                    content: { time: Date.now(), blocks: [], version: '2.28.2' },
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                markGuideStepComplete('wiki');
                 window.location.hash = `wiki/${docRef.id}`;
             } catch (error) {
                 console.error("Project wiki creation failed:", error);
@@ -1600,6 +3659,7 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             if (noteInput) noteInput.value = '';
+            markGuideStepComplete('notesCreate');
             showToast(t('noteAdded'));
         });
     };
@@ -1616,19 +3676,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Logout
     if (getEl('profile-password-btn')) getEl('profile-password-btn').onclick = connectEmailPasswordLogin;
-    if (getEl('onboarding-skip-btn')) getEl('onboarding-skip-btn').onclick = completeOnboarding;
+    if (getEl('onboarding-exit-btn')) getEl('onboarding-exit-btn').onclick = closeOnboarding;
+    if (getEl('onboarding-skip-btn')) getEl('onboarding-skip-btn').onclick = skipCurrentOnboardingStep;
     if (getEl('onboarding-start-btn')) {
-        getEl('onboarding-start-btn').onclick = completeOnboarding;
+        getEl('onboarding-start-btn').onclick = startCurrentOnboardingStep;
     }
-    document.querySelectorAll('.onboarding-action-btn').forEach(btn => {
-        btn.onclick = () => runOnboardingAction(btn.dataset.guideAction);
+    if (getEl('onboarding-complete-btn')) getEl('onboarding-complete-btn').onclick = advanceGuideFocus;
+    if (getEl('onboarding-toggle-steps-btn')) {
+        getEl('onboarding-toggle-steps-btn').onclick = () => {
+            const modal = getEl('onboarding-modal');
+            if (!modal) return;
+            modal.classList.toggle('steps-expanded');
+            renderOnboarding();
+        };
+    }
+    if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = () => openOnboarding();
+    if (getEl('task-edit-close-btn')) getEl('task-edit-close-btn').onclick = closeTaskEditDialog;
+    if (getEl('task-edit-cancel-btn')) getEl('task-edit-cancel-btn').onclick = closeTaskEditDialog;
+    if (getEl('task-edit-save-btn')) getEl('task-edit-save-btn').onclick = saveTaskEditDialog;
+    if (getEl('task-delete-cancel-btn')) getEl('task-delete-cancel-btn').onclick = closeTaskDeleteDialog;
+    if (getEl('task-delete-confirm-btn')) getEl('task-delete-confirm-btn').onclick = confirmTaskDelete;
+    document.querySelectorAll('.task-modal').forEach(modal => {
+        modal.addEventListener('click', (event) => {
+            if (event.target !== modal) return;
+            if (modal.id === 'task-edit-modal') closeTaskEditDialog();
+            if (modal.id === 'task-delete-modal') closeTaskDeleteDialog();
+        });
     });
-    document.querySelectorAll('.onboarding-step-skip').forEach(btn => {
-        btn.onclick = () => skipOnboardingStep(btn);
-    });
-    if (getEl('profile-guide-btn')) getEl('profile-guide-btn').onclick = openOnboarding;
 
-    const logout = () => confirm(t('logoutConfirm')) && auth.signOut().then(() => window.location.href = 'login.html');
+    const logout = () => confirm(t('logoutConfirm')) && unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html'));
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
+    if (getEl('profile-delete-account-btn')) getEl('profile-delete-account-btn').onclick = deleteAccount;
+    if (getEl('profile-eclass-save-btn')) getEl('profile-eclass-save-btn').onclick = saveEclassConnection;
+    if (getEl('profile-eclass-sync-btn')) getEl('profile-eclass-sync-btn').onclick = syncEclassNow;
 });

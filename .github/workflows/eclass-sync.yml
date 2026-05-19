@@ -1,0 +1,18 @@
+name: E-class Sync
+
+on:
+  # Safety net only — the primary 5-minute sync runs on the self-hosted Ubuntu worker
+  # (see worker/README.md). This cron just covers worker outages.
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger E-class sync
+        run: |
+          curl --fail --show-error --silent \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.ECLASS_SYNC_URL || 'https://memo-omega-lyart.vercel.app/api/eclass/sync' }}"

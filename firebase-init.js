@@ -1,6 +1,8 @@
+window.PLANARY_FCM_VAPID_KEY = 'BDze8v6d3kzvd876XKywyIEXPZ4Flrsbctoi_xAtwYEqxz6fxvmGNOS_8rouEBQVvB_r_yzTs3rtJW_rVVlrlH4';
+
 (function () {
     if (typeof firebase === 'undefined') {
-        console.error('Firebase SDK is not loaded.');
+        console.warn('Firebase SDK is not loaded.');
         return;
     }
 

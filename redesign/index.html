@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-accent="violet" data-font="jakarta">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Planary — 생각을 정리하는 워크스페이스</title>
+
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Planary — 생각을 정리하는 워크스페이스" />
+  <meta name="description" content="할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 조용하고 단정하게 하루를 정리하세요." />
+  <meta name="keywords" content="플래너, 위키, 할일관리, 메모, 생산성, PWA, Notion-style" />
+  <meta name="author" content="Planner Team" />
+
+  <!-- Open Graph / Facebook / Kakao -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://yourplanary.vercel.app/" />
+  <meta property="og:title" content="Planary — 생각을 정리하는 워크스페이스" />
+  <meta property="og:description" content="할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 조용하고 단정하게 하루를 정리하세요." />
+  <meta property="og:image" content="https://yourplanary.vercel.app/api/og?kind=home&v=3" />
+  <meta property="og:image:secure_url" content="https://yourplanary.vercel.app/api/og?kind=home&v=3" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Planary — 따뜻한 베이지 톤의 생각 정리 워크스페이스 미리보기" />
+  <meta property="og:site_name" content="Planary" />
+  <meta property="og:locale" content="ko_KR" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://yourplanary.vercel.app/" />
+  <meta property="twitter:title" content="Planary — 생각을 정리하는 워크스페이스" />
+  <meta property="twitter:description" content="할 일, 리마인더, 위키, 프로젝트를 한 곳에서. 조용하고 단정하게 하루를 정리하세요." />
+  <meta property="twitter:image" content="https://yourplanary.vercel.app/api/og?kind=home&v=3" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Gaegu:wght@400;700&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" />
+
+  <!-- Tokens + Styles -->
+  <link rel="stylesheet" href="/redesign/src/tokens.css" />
+  <link rel="stylesheet" href="/redesign/src/app.css" />
+  <link rel="stylesheet" href="/redesign/src/onboarding.css" />
+
+  <!-- React + Babel (pinned) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Firebase (compat SDK — same as legacy app + auth pages) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script src="/firebase-init.js?v=v1"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Tweaks panel (provides TweaksPanel, useTweaks, TweakRadio, etc as globals) -->
+  <script type="text/babel" src="/redesign/src/tweaks-panel.jsx"></script>
+
+  <!-- Planary modules — order matters: data → icons → i18n → components → pages → app → firebase-bridge.
+       Absolute paths so the bundle works whether the URL is /redesign/ or /redesign (Vercel's
+       trailingSlash:false rewrites the trailing slash away). -->
+  <script type="text/babel" src="/redesign/src/icons.jsx"></script>
+  <script type="text/babel" src="/redesign/src/data.jsx"></script>
+  <script type="text/babel" src="/redesign/src/i18n.jsx"></script>
+  <script type="text/babel" src="/redesign/src/components.jsx"></script>
+  <script type="text/babel" src="/redesign/src/pages-home-tasks.jsx"></script>
+  <script type="text/babel" src="/redesign/src/pages-rest.jsx"></script>
+  <script type="text/babel" src="/redesign/src/onboarding.jsx"></script>
+  <script type="text/babel" src="/redesign/src/user-guide.jsx"></script>
+  <script type="text/babel" src="/redesign/src/app.jsx"></script>
+  <script type="text/babel" src="/redesign/src/firebase-bridge.jsx"></script>
+</body>
+</html>
