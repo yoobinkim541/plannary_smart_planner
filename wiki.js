@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPageId = null;
     let currentPageMeta = { icon: '📄', coverUrl: '', coverPosition: 50, coverPositionX: 50, coverHeight: 180, coverZoom: 100, coverCropMode: 'cover' };
     let wikiDraggingBlockIndex = null;
+    let pendingEditorRenderToken = 0;
 
     const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
     const storage = typeof firebase !== 'undefined' ? firebase.storage() : null;
@@ -477,6 +478,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (index < 0) return false;
         const block = editor.blocks.getBlockByIndex(index);
 
+        if ((event.key === 'Enter' || event.key === ' ') && block?.name === 'paragraph') {
+            const editable = event.target.closest?.('[contenteditable="true"]');
+            if (parseMarkdownMath(editable ? editable.innerHTML : '')) {
+                event.preventDefault();
+                convertFocusedMarkdownMathBlock(index, blockEl);
+                return true;
+            }
+        }
+
         if (event.key === 'Enter' && block?.name === 'header') {
             const editable = event.target.closest?.('[contenteditable="true"]');
             if (!isCaretAtEnd(editable)) return false;
@@ -595,15 +605,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const normalizeEditorData = (data) => {
+    const normalizeEditorDataRaw = (data) => {
         if (!data || !Array.isArray(data.blocks)) return { blocks: [] };
         const blocks = data.blocks
-            .map((block) => convertMarkdownMathBlock(normalizeEditorBlock(block)))
+            .map((block) => normalizeEditorBlock(block))
             .filter(Boolean);
         return {
             time: data.time || Date.now(),
             blocks,
             version: data.version || '2.31.0'
+        };
+    };
+
+    const normalizeEditorData = (data) => {
+        const normalized = normalizeEditorDataRaw(data);
+        return {
+            ...normalized,
+            blocks: normalized.blocks.map(convertMarkdownMathBlock)
         };
     };
 
@@ -721,11 +739,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const convertMarkdownMathData = (data) => {
-        const normalized = normalizeEditorData(data);
+        const normalized = normalizeEditorDataRaw(data);
         return {
             ...normalized,
             blocks: normalized.blocks.map(convertMarkdownMathBlock)
         };
+    };
+
+    const convertFocusedMarkdownMathBlock = async (index, blockEl) => {
+        if (!editor || isRestoringUndo || isConvertingMarkdownMath || index < 0) return;
+        const editable = blockEl?.querySelector?.('[contenteditable="true"]');
+        const mathText = parseMarkdownMath(editable ? editable.innerHTML : '');
+        if (!mathText) return;
+
+        try {
+            const current = normalizeEditorDataRaw(await editor.save());
+            if (!current.blocks[index] || current.blocks[index].type !== 'paragraph') return;
+            current.blocks[index] = { type: 'math', data: { text: mathText } };
+            isConvertingMarkdownMath = true;
+            await editor.render(current);
+            const renderedBlock = document.querySelectorAll('#editorjs .ce-block')[index];
+            const mathInput = renderedBlock?.querySelector?.('.math-input');
+            if (mathInput) {
+                mathInput.focus();
+                mathInput.setSelectionRange(mathInput.value.length, mathInput.value.length);
+            }
+            markDirty();
+            scheduleUndoSnapshot();
+        } catch (error) {
+            console.warn('[Wiki] Markdown math conversion skipped:', error);
+        } finally {
+            isConvertingMarkdownMath = false;
+        }
     };
 
     const scheduleMarkdownMathConversion = () => {
@@ -734,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
         markdownMathTimer = setTimeout(async () => {
             if (!editor || isRestoringUndo || isConvertingMarkdownMath) return;
             try {
-                const current = normalizeEditorData(await editor.save());
+                const current = normalizeEditorDataRaw(await editor.save());
                 const converted = convertMarkdownMathData(current);
                 if (serializeEditorData(current) === serializeEditorData(converted)) return;
                 isConvertingMarkdownMath = true;
@@ -973,11 +1018,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- EDITOR INITIALIZATION ---
-    const initEditor = (data) => {
+    const initEditor = (data, renderToken = pendingEditorRenderToken) => {
+        if (renderToken !== pendingEditorRenderToken) return;
         if (editor) {
             removeHeadingShortcutHandler();
             editor.destroy();
         }
+        if (renderToken !== pendingEditorRenderToken) return;
 
         clearTimeout(undoCaptureTimer);
         resetUndoHistory(data);
@@ -1131,6 +1178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tools: tools,
             inlineToolbar: true,
             onReady: () => {
+                if (renderToken !== pendingEditorRenderToken) return;
                 const holder = document.getElementById('editorjs');
                 removeHeadingShortcutHandler();
                 headingShortcutHandler = createHeadingShortcutHandler();
@@ -1423,6 +1471,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const navigateToPage = (pageId) => {
+        const page = getPageById(pageId);
+        if (page) openPage(page);
         window.location.hash = `wiki/${pageId}`;
     };
 
@@ -1646,20 +1696,17 @@ document.addEventListener('DOMContentLoaded', () => {
         setWikiPanelState('widgets', localStorage.getItem('planary-wiki-widgets-collapsed') === 'true' || window.matchMedia('(max-width: 1120px)').matches);
     };
 
-    const openPage = (page) => {
-        if (currentPageId === page.id) return;
-        cleanupPendingWikiUploads();
-        currentPageId = page.id;
-        renderPageList();
-
+    const renderPageShell = (page) => {
         // Notion-like: Hide list on small screens, show editor as full page
         pageWiki.classList.add('editor-active');
 
-        wikiEmptyView.style.display = 'none';
-        wikiEditorView.style.display = 'flex';
-        wikiEditorView.classList.add('fade-in');
+        if (wikiEmptyView) wikiEmptyView.style.display = 'none';
+        if (wikiEditorView) {
+            wikiEditorView.style.display = 'flex';
+            wikiEditorView.classList.add('fade-in');
+        }
 
-        wikiTitleInput.value = page.title || '';
+        if (wikiTitleInput) wikiTitleInput.value = page.title || '';
         if (parentBtn) {
             const parentPage = page.parentId ? getPageById(page.parentId) : null;
             parentBtn.hidden = !parentPage;
@@ -1686,15 +1733,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveWikiBtn) saveWikiBtn.disabled = true;
         if (saveStateEl) saveStateEl.textContent = tr('saved');
         setWikiLoading(true);
-        initEditor(page.content);
         resetMetaUndoHistory();
         renderSubpages(page.id);
         renderWidgets();
         setTimeout(() => { if (saveWikiBtn) saveWikiBtn.disabled = false; }, 500);
     };
 
+    const renderPageEditor = (page, renderToken) => {
+        const schedule = window.requestAnimationFrame || ((callback) => setTimeout(callback, 0));
+        schedule(() => {
+            if (renderToken !== pendingEditorRenderToken || currentPageId !== page.id) return;
+            initEditor(page.content, renderToken);
+        });
+    };
+
+    const openPage = (page) => {
+        if (currentPageId === page.id) return;
+        cleanupPendingWikiUploads();
+        currentPageId = page.id;
+        pendingEditorRenderToken += 1;
+        const renderToken = pendingEditorRenderToken;
+        renderPageList();
+        renderPageShell(page);
+        renderPageEditor(page, renderToken);
+    };
+
     const closeEditor = () => {
         cleanupPendingWikiUploads();
+        pendingEditorRenderToken += 1;
         currentPageId = null;
         if (parentBtn) {
             parentBtn.hidden = true;
