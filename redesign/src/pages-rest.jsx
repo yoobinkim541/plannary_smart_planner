@@ -1090,6 +1090,7 @@ function WikiPage() {
   const [coverHeight, setCoverHeight] = useStateO(180); // 120-360
   const [coverZoom, setCoverZoom] = useStateO(100); // 100-220
   const fileInputRef = useRefO(null);
+  const docScrollRef = useRefO(null);
   const [favorite, setFavorite] = useStateO(false);
   const [moreMenuOpen, setMoreMenuOpen] = useStateO(false);
   const [historyOpen, setHistoryOpen] = useStateO(false);
@@ -1098,7 +1099,13 @@ function WikiPage() {
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
   const active = tree.find((w) => w.id === activeId) || tree[0] || { id: "", title: "", icon: "📄", tags: [], parent: null };
   const activeIcon = pageIcons[activeId] !== undefined ? pageIcons[activeId] : active.icon;
-  const setActiveIcon = (v) => setPageIcons(prev => ({ ...prev, [activeId]: v }));
+  const setActiveIcon = (v) => {
+    setPageIcons(prev => ({ ...prev, [activeId]: v }));
+    setTree(prev => prev.map(w => w.id === activeId ? { ...w, icon: v } : w));
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch: { icon: v } },
+    }));
+  };
   const currentPageMeta = useMemoO(() => {
     const chain = [];
     let cur = active;
@@ -1140,13 +1147,21 @@ function WikiPage() {
   { id: "g6", label: "Sky", style: { background: "linear-gradient(135deg, #60a5fa, #34d399)" } }];
 
 
+  const persistCoverMeta = (patch) => {
+    window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+      detail: { id: activeId, patch },
+    }));
+  };
+
   const handleFilePick = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setCoverImage(`url("${reader.result}")`);
+      const img = `url("${reader.result}")`;
+      setCoverImage(img);
       setCoverMenuOpen(false);
+      persistCoverMeta({ coverImage: img });
     };
     reader.readAsDataURL(file);
   };
@@ -1154,19 +1169,22 @@ function WikiPage() {
   const handleAddByUrl = () => {
     const url = window.prompt("이미지 URL을 입력하세요", "");
     if (!url) return;
-    setCoverImage(`url("${url.replace(/"/g, '\\"')}")`);
+    const img = `url("${url.replace(/"/g, '\\"')}")`;
+    setCoverImage(img);
     setCoverMenuOpen(false);
+    persistCoverMeta({ coverImage: img });
   };
 
   const handlePickGallery = (g) => {
-    // for gallery use the CSS background directly
     setCoverImage(g.style.background);
     setCoverMenuOpen(false);
+    persistCoverMeta({ coverImage: g.style.background });
   };
 
   const handleRemoveCover = () => {
     setCoverImage(null);
     setCoverPanelOpen(false);
+    persistCoverMeta({ coverImage: null });
   };
 
   // Build tree: roots and children
@@ -1194,6 +1212,11 @@ function WikiPage() {
     window.addEventListener("planary:wiki-loaded", onLoaded);
     return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
   }, []);
+
+  // Scroll doc area to top on page change
+  useEffectO(() => {
+    if (docScrollRef.current) docScrollRef.current.scrollTop = 0;
+  }, [activeId]);
 
   // Collect a page and all its descendants
   const collectDescendants = (id) => {
@@ -1615,7 +1638,7 @@ function WikiPage() {
           </button>
         </aside>}
 
-        <div className="wiki-doc">
+        <div className="wiki-doc" ref={docScrollRef}>
           <div
             className={`wiki-cover ${coverPanelOpen ? "is-editing" : ""}`}
             style={{ height: coverHeight, "--cover-pos-x": `${coverPosX}%`, "--cover-pos-y": `${coverPosY}%`, "--cover-zoom": `${coverZoom}%` }}>
@@ -1734,19 +1757,19 @@ function WikiPage() {
                 </div>
                 <div className="cover-slider-row">
                   <label>가로 위치 <span className="val">{coverPosX}%</span></label>
-                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosX} onChange={(e) => setCoverPosX(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosX} onChange={(e) => setCoverPosX(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverPosX: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>세로 위치 <span className="val">{coverPosY}%</span></label>
-                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosY} onChange={(e) => setCoverPosY(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="0" max="100" value={coverPosY} onChange={(e) => setCoverPosY(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverPosY: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>면적 (높이) <span className="val">{coverHeight}px</span></label>
-                  <input className="cover-slider" type="range" min="120" max="360" value={coverHeight} onChange={(e) => setCoverHeight(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="120" max="360" value={coverHeight} onChange={(e) => setCoverHeight(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverHeight: Number(e.target.value) })} />
                 </div>
                 <div className="cover-slider-row">
                   <label>확대 <span className="val">{coverZoom}%</span></label>
-                  <input className="cover-slider" type="range" min="100" max="220" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} />
+                  <input className="cover-slider" type="range" min="100" max="220" value={coverZoom} onChange={(e) => setCoverZoom(Number(e.target.value))} onPointerUp={(e) => persistCoverMeta({ coverZoom: Number(e.target.value) })} />
                 </div>
                 <button className="btn btn-sm" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => setCoverPanelOpen(false)}>
                   완료
@@ -1868,7 +1891,7 @@ function WikiPage() {
                       <Icon name="star" size={14} style={favorites.has(activeId) ? { color: "var(--warn)", fill: "var(--warn)" } : undefined} />
                       <span style={{ flex: 1 }}>{favorites.has(activeId) ? "즐겨찾기에서 제거" : "즐겨찾기에 추가"}</span>
                     </div>
-                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); window.Planary.toast?.({ type: "ok", title: "복제됨", sub: `"${active.title}의 사본"이 만들어졌어요` }); }}>
+                    <div className="popover-item" onClick={() => { setMoreMenuOpen(false); setDuplicating({ node: active }); }}>
                       <Icon name="copy" size={14} />페이지 복제
                     </div>
                     <div className="popover-item" onClick={() => { setMoreMenuOpen(false); navigator.clipboard?.writeText(`https://planary.app/w/${active.id}`); window.Planary.toast?.({ type: "ok", title: "링크가 복사됐어요" }); }}>
@@ -1899,12 +1922,7 @@ function WikiPage() {
                     <div className="popover-sep" />
                     <div
                       className="popover-item is-danger"
-                      onClick={() => {
-                        setMoreMenuOpen(false);
-                        if (window.confirm(`"${active.title}" 페이지를 삭제할까요?`)) {
-                          window.Planary.toast?.({ type: "err", title: "페이지가 삭제됐어요", sub: "30일 후 영구 삭제됩니다" });
-                        }
-                      }}
+                      onClick={() => { setMoreMenuOpen(false); setPendingDelete(active); }}
                     >
                       <Icon name="trash" size={14} />페이지 삭제
                     </div>
@@ -1918,7 +1936,25 @@ function WikiPage() {
             {currentPageMeta.tags.map((tag) => <span key={tag} className="tag">#{tag}</span>)}
             <button className="chip" style={{ borderStyle: "dashed", color: "var(--text-faint)" }} onClick={addPageTag}><Icon name="plus" size={10} />태그</button>
           </div>
-          <h1 className="wiki-doc-title">{active.title}</h1>
+          <h1
+            className="wiki-doc-title"
+            contentEditable
+            suppressContentEditableWarning
+            key={activeId}
+            onBlur={(e) => {
+              const v = e.currentTarget.textContent.trim();
+              if (!v || v === active.title) return;
+              setTree(prev => prev.map(w => w.id === activeId ? { ...w, title: v } : w));
+              window.dispatchEvent(new CustomEvent("planary:update-wiki-page-meta", {
+                detail: { id: activeId, patch: { title: v } },
+              }));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+              if (e.key === "Escape") { e.currentTarget.textContent = active.title; e.currentTarget.blur(); }
+            }}
+            dangerouslySetInnerHTML={{ __html: active.title }}
+          />
 
           <WikiBlocks activeId={activeId} onBlocksChange={setDocBlocks} />
         </div>
@@ -5744,7 +5780,10 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           slashMenu={slashMenu}
           onClose={() => setSlashMenu(null)}
           onPick={(type) => {
-            updateBlock(slashMenu.blockId, { type, content: "" });
+            // Preserve existing content (strip any trailing "/" that opened the menu)
+            const cur = liveBlocksRef.current.find(b => b.id === slashMenu.blockId);
+            const content = cur ? cur.content.replace(/\/\s*$/, "").trimEnd() : "";
+            updateBlock(slashMenu.blockId, { type, content });
             setFocusBlockId(slashMenu.blockId);
             setSlashMenu(null);
           }}
