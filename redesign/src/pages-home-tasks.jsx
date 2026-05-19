@@ -1181,7 +1181,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
     const id = "t" + Date.now();
     const time = dueDate && dueDate.id !== "none" ? dueDate.label : null;
     const selectedDueDate = dueDateISO(dueDate);
-    setTasks(prev => [{
+    const newTask = {
       id,
       title: composerText.trim(),
       memo: null,
@@ -1195,7 +1195,9 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
       attachment: attachment || null,
       done: false,
       tags: [],
-    }, ...prev]);
+    };
+    setTasks(prev => [newTask, ...prev]);
+    window.dispatchEvent(new CustomEvent("planary:create-task", { detail: newTask }));
     window.Planary.toast?.({
       type: "ok",
       title: "작업이 추가됐어요",

@@ -1182,7 +1182,7 @@
   border-radius: var(--r-xl);
   border: 1px solid var(--border);
   background: var(--surface);
-  overflow: hidden;
+  overflow: auto;
 }
 .note {
   position: absolute;
@@ -2996,8 +2996,28 @@
 }
 
 /* ---------- NOTIF EMPTY STATE ---------- */
+.notif-empty {
   padding: 28px 18px 22px;
   text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--text-lo);
+  font-size: 12px;
+}
+.notif-empty > svg {
+  color: var(--text-faint);
+}
+.notif-empty > div {
+  color: var(--text-hi);
+  font-size: 13px;
+  font-weight: 700;
+}
+.notif-empty > span {
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.45;
+  max-width: 240px;
 }
 .notif-empty-icon {
   width: 48px; height: 48px;
