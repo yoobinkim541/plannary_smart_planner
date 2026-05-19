@@ -1182,7 +1182,7 @@
   border-radius: var(--r-xl);
   border: 1px solid var(--border);
   background: var(--surface);
-  overflow: hidden;
+  overflow: auto;
 }
 .note {
   position: absolute;

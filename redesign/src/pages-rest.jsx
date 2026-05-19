@@ -583,7 +583,6 @@ function NotesPage() {
   const [draftColor, setDraftColor] = useStateO("yellow");
   const [draft, setDraft] = useStateO("");
   const [view, setView] = useStateO("board"); // board | grid
-  const [boardW, setBoardW] = useStateO(0);
   const [editing, setEditing] = useStateO(null); // { id, text, color } | null
   const [colorMenuFor, setColorMenuFor] = useStateO(null); // note id whose color menu is open
   const [search, setSearch] = useStateO("");
@@ -591,6 +590,27 @@ function NotesPage() {
   const boardRef = useRefO(null);
   const dragRef = useRefO(null);
   const editAreaRef = useRefO(null);
+  const NOTE_W = 200;
+  const NOTE_H = 144;
+  const BOARD_PAD = 8;
+  const getBoardBounds = () => {
+    const el = boardRef.current;
+    if (!el) return { width: 0, height: 0 };
+    const rect = el.getBoundingClientRect();
+    return {
+      width: Math.max(rect.width, el.scrollWidth || 0),
+      height: Math.max(rect.height, el.scrollHeight || 0)
+    };
+  };
+  const clampNotePosition = (x, y) => {
+    const bounds = getBoardBounds();
+    const maxX = Math.max(0, bounds.width - NOTE_W - BOARD_PAD);
+    const maxY = Math.max(0, bounds.height - NOTE_H - BOARD_PAD);
+    return {
+      x: Math.max(0, Math.min(maxX, x)),
+      y: Math.max(0, Math.min(maxY, y))
+    };
+  };
 
   // Focus textarea when entering edit mode
   useEffectO(() => {
@@ -660,16 +680,6 @@ function NotesPage() {
     }));
   };
 
-  // Track board width so notes can clamp to its bounds on every render & resize
-  useEffectO(() => {
-    if (!boardRef.current) return;
-    const update = () => setBoardW(boardRef.current.getBoundingClientRect().width);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(boardRef.current);
-    return () => ro.disconnect();
-  }, [view]);
-
   const onPointerDown = (e, note) => {
     if (e.target.closest(".note-foot") || e.target.closest(".note-toolbar") || e.target.tagName === "BUTTON" || e.target.tagName === "TEXTAREA") return;
     // Don't drag the note we're editing
@@ -700,8 +710,10 @@ function NotesPage() {
         d.moved = true;
       }
       const rect = boardRef.current.getBoundingClientRect();
-      const x = Math.max(0, Math.min(rect.width - 200, e.clientX - rect.left - d.offX));
-      const y = Math.max(0, Math.min(rect.height - 144, e.clientY - rect.top - d.offY));
+      const { x, y } = clampNotePosition(
+        e.clientX - rect.left - d.offX,
+        e.clientY - rect.top - d.offY
+      );
       setNotes((prev) => prev.map((n) => n.id === d.id ? { ...n, x, y } : n));
     };
     const onUp = () => {
@@ -911,9 +923,6 @@ function NotesPage() {
       {view === "board" ?
       <div className="board" ref={boardRef} style={{ height: boardH, touchAction: "none" }}>
           {filteredNotes.map((n) => {
-        const NOTE_W = 200, NOTE_H = 144, PAD = 8;
-        const maxX = Math.max(0, boardW - NOTE_W - PAD);
-        const safeX = boardW > 0 ? Math.min(n.x, maxX) : n.x;
         const isEditing = editing && editing.id === n.id;
         const displayColor = isEditing ? editing.color : n.color;
         return (
@@ -921,7 +930,7 @@ function NotesPage() {
           key={n.id}
           className={`note note-${displayColor} ${n.dragging ? "dragging" : ""} ${isEditing ? "is-editing" : ""}`}
           style={{
-            left: safeX, top: n.y,
+            left: n.x, top: n.y,
             transform: isEditing ? "rotate(0deg) scale(1.06)" : `rotate(${n.dragging ? 0 : n.rot}deg)${n.dragging ? " scale(1.04)" : ""}`,
             zIndex: isEditing ? 20 : (n.dragging ? 10 : "auto"),
             touchAction: "none",
