@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/notifications/check-reminders",
-      "schedule": "* * * * *"
+      "schedule": "0 * * * *"
     }
   ],
   "redirects": [

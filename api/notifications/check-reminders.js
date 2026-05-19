@@ -2,9 +2,8 @@ const { getAdmin } = require('../eclass/_admin');
 const { sendPushToUser } = require('./_send-fcm');
 
 // Maximum age of an unsent reminder to still fire it.
-// 90 s covers a 1-minute cron with up to 30 s of clock jitter.
-// Increase to e.g. 65 * 60 * 1000 if using an hourly cron.
-const LATE_WINDOW_MS = 90 * 1000;
+// 10 minutes covers a 5-minute GitHub Actions schedule with typical delay.
+const LATE_WINDOW_MS = 10 * 60 * 1000;
 
 function buildTimeLabel(mins) {
   if (mins >= 10080) return `${Math.round(mins / 10080)}주 전`;
