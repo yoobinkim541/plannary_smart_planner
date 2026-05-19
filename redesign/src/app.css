@@ -1373,11 +1373,16 @@
   font-size: var(--text-sm);
   color: var(--text-md);
   cursor: pointer;
-  transition: all var(--dur-fast);
+  transition: background-color 80ms var(--ease-out), color 80ms var(--ease-out), box-shadow 80ms var(--ease-out);
   position: relative;
 }
 .wiki-tree-item:hover { background: var(--hover); color: var(--text-hi); }
-.wiki-tree-item.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.wiki-tree-item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
 .wiki-tree-item.is-drag-src { opacity: 0.4; }
 /* Drop indicators */
 .wiki-tree-item.drop-before::before,
@@ -1488,6 +1493,14 @@
 .wiki-doc {
   background: var(--bg);
   padding: 0 12px;
+}
+.wiki-doc.is-switching .wiki-doc-title,
+.wiki-doc.is-switching .wiki-block {
+  animation: wikiPageSnap 120ms var(--ease-out);
+}
+@keyframes wikiPageSnap {
+  from { opacity: 0.76; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .wiki-cover {
   position: relative;
