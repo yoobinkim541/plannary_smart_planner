@@ -55,25 +55,31 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
 
   const triggerSync = () => {
     setSyncing(true);
-    setTimeout(() => {
+    let resolved = false;
+    const handler = (e) => {
+      if (resolved) return;
+      resolved = true;
       setSyncing(false);
-      // Random success/failure for prototype demo (90% success)
-      const success = Math.random() > 0.1;
-      if (success) {
+      window.removeEventListener("planary:eclass-sync-done", handler);
+      if (e.detail?.error) {
+        window.Planary.toast({ type: "err", title: "동기화 실패", sub: e.detail.error, ttl: 4200 });
+      } else {
         window.Planary.toast({
           type: "ok",
           title: "동기화 완료",
-          sub: `${ECLASS_COURSES.length}개 강의에서 ${projTasks.length}개 항목 확인`
-        });
-      } else {
-        window.Planary.toast({
-          type: "err",
-          title: "동기화 실패",
-          sub: "e-Class 응답이 늦어요. 잠시 후 다시 시도해주세요.",
-          ttl: 4200
+          sub: `${ECLASS_COURSES.length}개 강의에서 항목 확인`,
         });
       }
-    }, 1400);
+    };
+    window.addEventListener("planary:eclass-sync-done", handler);
+    window.dispatchEvent(new CustomEvent("planary:eclass-sync"));
+    setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      setSyncing(false);
+      window.removeEventListener("planary:eclass-sync-done", handler);
+      window.Planary.toast({ type: "err", title: "동기화 시간 초과", sub: "e-Class 응답이 늦어요. 잠시 후 다시 시도해주세요.", ttl: 4200 });
+    }, 15000);
   };
 
   return (
