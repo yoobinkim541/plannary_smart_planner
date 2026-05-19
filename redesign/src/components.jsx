@@ -493,13 +493,53 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
-  const [notifs, setNotifs] = useState([
-    { icon: "bell", iconColor: "var(--accent)", title: "디자인 시스템 v3 토큰 정리", sub: "5분 전 · 리마인더", unread: true },
-    { icon: "user", iconColor: "var(--info)", title: "박서연님이 노트를 수정했습니다", sub: "디자인 시스템 / 컬러 토큰 · 12분 전", unread: true },
-    { icon: "check", iconColor: "var(--ok)", title: "랜딩 페이지 카피 2차 수정", sub: "완료됨 · 1시간 전", unread: false },
-    { icon: "calendar", iconColor: "var(--warn)", title: "Q4 콘텐츠 캘린더 초안", sub: "내일 마감 · 마감 임박", unread: false },
-  ]);
+  const buildNotifications = (tasks = []) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = today.toISOString().slice(0, 10);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowKey = tomorrow.toISOString().slice(0, 10);
+    return tasks
+      .filter(t => !t.done && !t.archived && (t.dueDate || t.reminder))
+      .map(t => {
+        const dueDate = t.dueDate || null;
+        const overdue = dueDate && dueDate < todayKey;
+        const dueToday = dueDate === todayKey;
+        const dueTomorrow = dueDate === tomorrowKey;
+        let sub = "리마인더";
+        if (overdue) sub = `${dueDate} · 지남`;
+        else if (dueToday) sub = t.due ? `오늘 ${t.due}` : "오늘 마감";
+        else if (dueTomorrow) sub = "내일 마감";
+        else if (dueDate) sub = `${dueDate} 마감`;
+        return {
+          id: t.id,
+          icon: overdue ? "bell" : (dueToday ? "zap" : "calendar"),
+          iconColor: overdue ? "var(--err)" : (dueToday ? "var(--accent)" : "var(--warn)"),
+          title: t.title || "제목 없는 작업",
+          sub,
+          unread: overdue || dueToday,
+          page: "tasks"
+        };
+      })
+      .sort((a, b) => Number(b.unread) - Number(a.unread))
+      .slice(0, 8);
+  };
+  const [notifs, setNotifs] = useState(() => buildNotifications(window.Planary?.TASKS || []));
   const [, setTick] = useState(0);
+  useEffect(() => {
+    const refresh = (event) => {
+      const tasks = Array.isArray(event?.detail) ? event.detail : (window.Planary?.TASKS || []);
+      setNotifs(buildNotifications(tasks));
+    };
+    window.addEventListener("planary:tasks-loaded", refresh);
+    window.addEventListener("planary:tasks-changed-for-projects", refresh);
+    refresh();
+    return () => {
+      window.removeEventListener("planary:tasks-loaded", refresh);
+      window.removeEventListener("planary:tasks-changed-for-projects", refresh);
+    };
+  }, []);
   useEffect(() => {
     if (!window.PlanaryI18n) return;
     return window.PlanaryI18n.subscribe(() => setTick(n => n + 1));
@@ -570,16 +610,32 @@ function Topbar({ page, setPage, crumbs, right, onCommandPalette, theme, setThem
               <div className="popover" style={{ top: "calc(100% + 6px)", right: 0, width: 320, zIndex: 100 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ padding: "8px 12px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>알림</div>
-                <button style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>모두 읽음으로</button>
+                {notifs.length > 0 && (
+                  <button
+                    style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}
+                    onClick={() => setNotifs(prev => prev.map(n => ({ ...n, unread: false })))}
+                  >
+                    모두 읽음으로
+                  </button>
+                )}
               </div>
               <div className="popover-sep" />
-              {[
-                { icon: "bell", iconColor: "var(--accent)", title: "디자인 시스템 v3 토큰 정리", sub: "5분 전 · 리마인더", unread: true },
-                { icon: "user", iconColor: "var(--info)", title: "박서연님이 노트를 수정했습니다", sub: "디자인 시스템 / 컬러 토큰 · 12분 전", unread: true },
-                { icon: "check", iconColor: "var(--ok)", title: "랜딩 페이지 카피 2차 수정", sub: "완료됨 · 1시간 전", unread: false },
-                { icon: "calendar", iconColor: "var(--warn)", title: "Q4 콘텐츠 캘린더 초안", sub: "내일 마감 · 마감 임박", unread: false },
-              ].map((n, i) => (
-                <div key={i} className="popover-item" style={{ alignItems: "start", padding: "8px 10px" }}>
+              {notifs.length === 0 ? (
+                <div className="notif-empty">
+                  <Icon name="bell" size={18} />
+                  <div>새 알림이 없습니다</div>
+                  <span>마감일이나 리마인더가 있는 작업이 생기면 여기에 표시됩니다.</span>
+                </div>
+              ) : notifs.map((n) => (
+                <div
+                  key={n.id}
+                  className="popover-item"
+                  style={{ alignItems: "start", padding: "8px 10px" }}
+                  onClick={() => {
+                    setNotifOpen(false);
+                    if (n.page && setPage) setPage(n.page);
+                  }}
+                >
                   <div style={{ width: 26, height: 26, borderRadius: 6, background: "var(--bg-elev)", display: "grid", placeItems: "center", flexShrink: 0, color: n.iconColor }}>
                     <Icon name={n.icon} size={13} />
                   </div>

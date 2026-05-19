@@ -10,6 +10,7 @@ const ECLASS_SOURCES = ['eclass', 'eclass-exam', 'eclass-course'];
 const ECLASS_PROJECT_NAME = 'e-Class';
 const ECLASS_PROJECT_COLOR = '#3b82f6';
 const BATCH_LIMIT = 400;
+const ECLASS_TASK_SOURCES = new Set(['eclass', 'eclass-exam']);
 
 function hasSavedCredentials(connection = {}) {
   return !!connection.encryptedSessionCookie || (!!connection.encryptedUsername && !!connection.encryptedPassword);
@@ -34,6 +35,10 @@ function normalizeDueDate(value) {
     return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
   }
   return null;
+}
+
+function todayDateKey() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function buildTodoPayload({ source, sourceItemId, text, dueDate, dueTime, reminders, priority, memo, sourceUrl, courseTitle, ddayText, uid, ts, projectId }) {
@@ -168,6 +173,7 @@ async function syncConnection(uid, connection, options = {}) {
   const admin = getAdmin();
   const db = admin.firestore();
   const ts = admin.firestore.FieldValue.serverTimestamp();
+  const completedDate = todayDateKey();
   const connectionRef = db.collection('eclass_connections').doc(uid);
 
   const sessionCookie = connection.encryptedSessionCookie ? decrypt(connection.encryptedSessionCookie) : '';
@@ -268,16 +274,25 @@ async function syncConnection(uid, connection, options = {}) {
     }, { merge: true }));
   });
 
-  // Archive stale e-class todos + migrate any existing todos to the single
-  // e-Class project (handles older per-course projectIds and null projectIds).
+  // Move stale e-Class task todos out of the active list. Course anchors are
+  // archived only; disappeared task/exam todos are also marked complete.
   allDocs.forEach(doc => {
     const data = doc.data();
     const key = `${data.source}:${data.sourceItemId}`;
     if (data.projectId !== eclassProjectId) {
       ops.push(batch => batch.set(doc.ref, { projectId: eclassProjectId, syncedAt: ts }, { merge: true }));
     }
-    if (!activeKeys.has(key) && !data.archived) {
-      ops.push(batch => batch.set(doc.ref, { archived: true, syncedAt: ts }, { merge: true }));
+    if (!activeKeys.has(key)) {
+      const stalePatch = { syncedAt: ts };
+      if (!data.archived) stalePatch.archived = true;
+      if (ECLASS_TASK_SOURCES.has(data.source) && !data.completed) {
+        stalePatch.completed = true;
+        stalePatch.completedAt = ts;
+        stalePatch.completedDate = completedDate;
+      }
+      if (Object.keys(stalePatch).length > 1) {
+        ops.push(batch => batch.set(doc.ref, stalePatch, { merge: true }));
+      }
     }
   });
 
