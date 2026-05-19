@@ -104,6 +104,7 @@ let onboardingRepositionFrame = null;
 let onboardingScrollSettleTimer = null;
 let onboardingLastTargetRect = null;
 let onboardingLockScrollY = 0;
+const LOCAL_CACHE_PREFIX = 'planary-cache';
 
 const GUIDE_STEP_IDS = ['taskCreate', 'taskDetails', 'taskManage', 'taskViews', 'projects', 'notesCreate', 'notesManage', 'wiki'];
 const GUIDE_STATUS = ['pending', 'completed', 'skipped'];
@@ -133,6 +134,60 @@ function localDateKey(date = new Date()) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function getUserCacheKey(collection) {
+    if (!currentUser) return null;
+    return `${LOCAL_CACHE_PREFIX}:${currentUser.uid}:${collection}`;
+}
+
+function readUserCache(collection) {
+    const key = getUserCacheKey(collection);
+    if (!key) return [];
+    try {
+        const value = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(value) ? value : [];
+    } catch (error) {
+        console.warn(`[Cache] Failed to read ${collection}:`, error);
+        return [];
+    }
+}
+
+function writeUserCache(collection, items) {
+    const key = getUserCacheKey(collection);
+    if (!key) return;
+    try {
+        localStorage.setItem(key, JSON.stringify(items || []));
+    } catch (error) {
+        console.warn(`[Cache] Failed to write ${collection}:`, error);
+    }
+}
+
+function upsertUserCacheItem(collection, item) {
+    if (!item || !item.id) return;
+    const items = readUserCache(collection);
+    const index = items.findIndex(existing => existing.id === item.id);
+    if (index >= 0) items[index] = { ...items[index], ...item };
+    else items.unshift(item);
+    writeUserCache(collection, items);
+}
+
+function hydrateTodosFromCache() {
+    const cached = readUserCache('todos');
+    if (!cached.length) return false;
+    allTodos = cached;
+    applyFilters();
+    updateDashboardUI();
+    return true;
+}
+
+function hydrateNotesFromCache() {
+    const cached = readUserCache('notes');
+    if (!cached.length) return false;
+    allNotes = cached;
+    renderNotes(allNotes);
+    updateDashboardUI();
+    return true;
 }
 
 function parseTaskDateKey(value) {
@@ -572,6 +627,8 @@ function applyLanguage(lang = currentLanguage) {
     setText('#task-calendar-import-btn', t('calendarImportTask'));
     setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
     setTitle('#task-apple-calendar-btn', t('appleCalendarTask'));
+    const dueDateInput = getEl('due-date');
+    if (dueDateInput) dueDateInput.setAttribute('aria-label', t('dueDateLabel'));
     const dueTimeInput = getEl('due-time');
     if (dueTimeInput) dueTimeInput.setAttribute('aria-label', t('dueTimeLabel'));
     const calendarReminderSelect = getEl('calendar-reminder-select');
@@ -772,6 +829,7 @@ function applyLanguage(lang = currentLanguage) {
 // --- CORE BUSINESS LOGIC (HOISTED) ---
 function loadTodos() {
     if (!currentUser || !db) return;
+    hydrateTodosFromCache();
     db.collection('todos').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
         allTodos = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -796,6 +854,11 @@ function loadTodos() {
         renderProjectManagementList();
         checkDueNotifications(); // Check for reminders when data updates
         scheduleReminderNotifications();
+        writeUserCache('todos', allTodos);
+    }, error => {
+        console.error('Task load failed:', error);
+        hydrateTodosFromCache();
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
@@ -972,10 +1035,16 @@ function startEclassForegroundSync() {
 
 function loadNotes() {
     if (!currentUser || !db) return;
+    hydrateNotesFromCache();
     db.collection('notes').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
         allNotes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderNotes(allNotes);
         updateDashboardUI();
+        writeUserCache('notes', allNotes);
+    }, error => {
+        console.error('Note load failed:', error);
+        hydrateNotesFromCache();
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
@@ -2284,7 +2353,9 @@ function renderNotes(notes) {
     notes.forEach(note => {
         const card = document.createElement('div');
         card.className = `note-card color-${note.color || 'yellow'}`;
-        card.dataset.id = note.id; card.style.left = (note.x || 20) + 'px'; card.style.top = (note.y || 20) + 'px';
+        card.dataset.id = note.id;
+        if (String(note.id || '').startsWith('local-')) card.dataset.localOnly = 'true';
+        card.style.left = (note.x || 20) + 'px'; card.style.top = (note.y || 20) + 'px';
         card.innerHTML = `<div class="note-content">${note.text}</div><div class="note-footer"><button class="note-edit-btn" data-id="${note.id}">${t('edit')}</button><button class="note-delete-btn" data-id="${note.id}">${t('delete')}</button></div>`;
         list.appendChild(card);
         setupDragging(card);
@@ -2318,7 +2389,19 @@ function setupDragging(el) {
         isDragging = false; el.style.zIndex = 1;
         document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
         document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up);
-        db.collection('notes').doc(el.dataset.id).update({ x: parseInt(el.style.left), y: parseInt(el.style.top) });
+        const x = parseInt(el.style.left, 10);
+        const y = parseInt(el.style.top, 10);
+        const note = allNotes.find(item => item.id === el.dataset.id);
+        if (note) {
+            note.x = x;
+            note.y = y;
+            upsertUserCacheItem('notes', note);
+        }
+        if (el.dataset.localOnly === 'true') return;
+        db.collection('notes').doc(el.dataset.id).update({ x, y }).catch(error => {
+            console.error('Note position save failed:', error);
+            showToast(error && error.message ? error.message : t('taskCreationFailed'), 'error');
+        });
     };
     el.addEventListener('mousedown', down); el.addEventListener('touchstart', down, { passive: true });
 }
@@ -3554,7 +3637,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(t('calendarSyncFailed') + ': ' + (calendarError.message || calendarError), 'error');
                 }
             }
-            await db.collection('todos').add(payload);
+            const localTask = {
+                ...payload,
+                id: `local-${Date.now()}`,
+                createdAt: Date.now()
+            };
+            allTodos = [localTask, ...allTodos];
+            upsertUserCacheItem('todos', localTask);
+            applyFilters();
+            updateDashboardUI();
+            const docRef = await db.collection('todos').add(payload);
+            const savedTask = { ...localTask, id: docRef.id };
+            allTodos = allTodos.map(item => item.id === localTask.id ? savedTask : item);
+            upsertUserCacheItem('todos', savedTask);
+            writeUserCache('todos', allTodos);
             markGuideStepComplete('taskCreate');
             if (payload.memo || payload.dueDate || payload.priority !== 'medium') markGuideStepComplete('taskDetails');
             input.value = '';
@@ -3657,7 +3753,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = noteInput ? noteInput.value.trim() : '';
         if (!text || !currentUser) return;
 
-        db.collection('notes').add({
+        const payload = {
             uid: currentUser.uid,
             text,
             color: selectedNoteColor || 'yellow',
@@ -3665,10 +3761,28 @@ document.addEventListener('DOMContentLoaded', () => {
             y: 20 + (allNotes.length % 4) * 28,
             archived: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
+        };
+        const localNote = {
+            ...payload,
+            id: `local-${Date.now()}`,
+            createdAt: Date.now()
+        };
+        allNotes = [localNote, ...allNotes];
+        upsertUserCacheItem('notes', localNote);
+        renderNotes(allNotes);
+        updateDashboardUI();
+
+        db.collection('notes').add(payload).then((docRef) => {
+            const savedNote = { ...localNote, id: docRef.id };
+            allNotes = allNotes.map(item => item.id === localNote.id ? savedNote : item);
+            upsertUserCacheItem('notes', savedNote);
+            writeUserCache('notes', allNotes);
             if (noteInput) noteInput.value = '';
             markGuideStepComplete('notesCreate');
             showToast(t('noteAdded'));
+        }).catch(error => {
+            console.error('Note creation failed:', error);
+            showToast(error && error.message ? error.message : t('taskCreationFailed'), 'error');
         });
     };
 

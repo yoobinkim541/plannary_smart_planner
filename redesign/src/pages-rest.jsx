@@ -1091,7 +1091,7 @@ function NoteToolbar({ note, isEditing, editing, setEditing, onEdit, onCommit, o
    =========================================================== */
 function WikiPage() {
   const [tree, setTree] = useStateO(() => [...(window.Planary.WIKI_TREE || [])]);
-  const [activeId, setActiveId] = useStateO("w3"); // "컬러 토큰"
+  const [activeId, setActiveId] = useStateO(() => window.Planary.WIKI_TREE?.[0]?.id || "");
   const [docBlocks, setDocBlocks] = useStateO([]); // sync from <WikiBlocks/>
   const [pendingDelete, setPendingDelete] = useStateO(null); // node being confirmed for deletion
   const [treeMenuFor, setTreeMenuFor] = useStateO(null); // node id whose ··· menu is open
@@ -1319,7 +1319,7 @@ function WikiPage() {
       const d = e.detail || {};
       if (Array.isArray(d.tree)) {
         setTree(d.tree);
-        setActiveId((cur) => d.tree.some((w) => w.id === cur) ? cur : (d.tree[0]?.id || cur));
+        setActiveId((cur) => d.tree.some((w) => w.id === cur) ? cur : (d.tree[0]?.id || ""));
       }
     };
     window.addEventListener("planary:wiki-loaded", onLoaded);
@@ -1329,7 +1329,7 @@ function WikiPage() {
   // Scroll doc area to top on page change
   useEffectO(() => {
     if (docScrollRef.current) docScrollRef.current.scrollTop = 0;
-  }, [activeId]);
+  }, [activeId, activeBlockId]);
 
   // Collect a page and all its descendants
   const collectDescendants = (id) => {
@@ -5849,20 +5849,6 @@ function FormField({ label, hint, children }) {
    WIKI BLOCKS — editable + drag-reorderable
    =========================================================== */
 const INITIAL_BLOCKS_BY_PAGE = {
-  w3: [
-    { id: "b1", type: "p", content: "Planary는 <strong>단일 악센트 컬러</strong> 위에 풍부한 중성색 스택을 쌓아 정보 위계를 만듭니다. 다크 모드를 기본으로 하고, 라이트 모드는 동일한 위계를 반전 톤으로 유지합니다." },
-    { id: "b2", type: "callout", variant: "ok", title: "설계 원칙.", body: "새로운 hex를 추가하지 마세요. 악센트의 투명도 단계(<code>--accent-soft</code>, <code>--accent-softer</code>)와 <code>color-mix(in oklab, ...)</code>로 충분히 표현 가능합니다." },
-    { id: "b3", type: "h2", content: "코어 토큰" },
-    { id: "b4", type: "p", content: "모든 컬러는 <code>var(--*)</code>로만 접근합니다. 가공이 필요할 때는 <code>color-mix</code>로 표현해 다크/라이트 자동 호환을 보장합니다." },
-    { id: "b5", type: "h3", content: "악센트 팔레트" },
-    { id: "b6", type: "p", content: "사용자는 6가지 악센트 중 자신의 워크스페이스 톤을 선택할 수 있습니다. 모두 같은 시각적 무게를 가지도록 조정되어 있습니다." },
-    { id: "b7", type: "h3", content: "텍스트 스택" },
-    { id: "b8", type: "p", content: "슬레이트 5단계로 위계를 만듭니다. 본문 안에 <code>--text-md</code>, 헤딩에 <code>--text-hi</code>, 메타에 <code>--text-lo</code>, 빈 상태에 <code>--text-mute</code>." },
-    { id: "b9", type: "quote", content: "좋은 위계는 무엇이 중요한지 말해주지 않습니다. 그저 보이게 만들 뿐이에요." },
-    { id: "b10", type: "callout", variant: "warn", title: "주의.", body: "본문 안에 <code>--text-hi</code>를 쓰면 위계가 망가집니다. 본문은 무조건 <code>--text-md</code>." },
-    { id: "b11", type: "h2", content: "그림자 & 글로우" },
-    { id: "b12", type: "p", content: "물리적 그림자 3단계 + 악센트 글로우 1종. 활성 CTA·로고에만 사용해 브랜드 시그니처로 살립니다." },
-  ],
 };
 
 function WikiBlocks({ activeId, onBlocksChange }) {
@@ -5992,15 +5978,37 @@ function WikiBlocks({ activeId, onBlocksChange }) {
     scheduleAutoSave();
   };
 
-  // Ctrl+S to force save now, Ctrl+Z to undo.
+  // Ctrl+S to force save now, Ctrl+Z to undo, Delete to remove a selected block.
   useEffectO(() => {
     const onKey = (e) => {
-      if (!(e.ctrlKey || e.metaKey) || e.isComposing) return;
+      if (e.isComposing) return;
+      const active = document.activeElement;
+      const inWiki = active && (active.isContentEditable || active.closest?.(".wiki-block"));
+      const isEditableTarget = active && (
+        active.isContentEditable ||
+        ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)
+      );
+
+      if ((e.key === "Delete" || e.key === "Backspace") && activeBlockId && inWiki && !isEditableTarget) {
+        e.preventDefault();
+        e.stopPropagation();
+        setBlocks(prev => {
+          const idx = prev.findIndex(b => b.id === activeBlockId);
+          if (idx < 0) return prev;
+          const next = prev.filter(b => b.id !== activeBlockId);
+          const fallback = next[Math.max(0, idx - 1)] || next[0] || null;
+          setActiveBlockId(fallback ? fallback.id : null);
+          return next.length ? next : [{ id: `b${Date.now()}`, type: "p", content: "" }];
+        });
+        scheduleAutoSave();
+        return;
+      }
+
+      if (!(e.ctrlKey || e.metaKey)) return;
       const k = (e.key || "").toLowerCase();
       if (k === "s") {
         e.preventDefault();
         e.stopPropagation();
-        const active = document.activeElement;
         if (active && active.isContentEditable) {
           const editable = active;
           // Find which block this belongs to by walking up to nearest [data-block-id]
@@ -6017,8 +6025,6 @@ function WikiBlocks({ activeId, onBlocksChange }) {
         return;
       }
       if (k === "z" && !e.shiftKey) {
-        const active = document.activeElement;
-        const inWiki = active && (active.isContentEditable || active.closest?.(".wiki-block"));
         if (!inWiki) return;
         if (undoStackRef.current.length < 2) return;
         e.preventDefault();
@@ -6084,6 +6090,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
 
   // Drag handlers
   const onDragStart = (e, id) => {
+    setActiveBlockId(id);
     setDragId(id);
     e.dataTransfer.effectAllowed = "move";
     try { e.dataTransfer.setData("text/plain", id); } catch (_) {}
@@ -6332,9 +6339,18 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
       className={`wiki-block-row ${isActive ? "is-active" : ""} ${isDragging ? "is-dragging" : ""} ${dropIndicator ? `drop-${dropIndicator}` : ""}`}
       data-block-id={block.id}
       data-block-type={block.type}
+      draggable
+      tabIndex={0}
       onClick={(e) => { e.stopPropagation(); onActivate(); }}
+      onMouseDown={(e) => {
+        if (e.button !== 0) return;
+        onActivate();
+      }}
+      onFocus={onActivate}
+      onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
       <div className="wiki-block-handles">
         <button

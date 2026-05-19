@@ -766,6 +766,39 @@ textarea.composer-input {
 
 #todo-input::placeholder, .composer-input::placeholder { color: var(--text-3); }
 
+.task-date-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text-2);
+    flex: 0 0 auto;
+}
+
+.task-date-picker:focus-within {
+    border-color: var(--blue);
+}
+
+.task-date-picker svg {
+    color: var(--text-3);
+    flex: 0 0 auto;
+}
+
+.task-date-picker input[type="date"] {
+    width: 126px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+    padding: 0;
+}
+
 #add-btn, .composer-submit-btn {
     padding: 8px 20px;
     background: var(--btn-bg);
@@ -3613,6 +3646,8 @@ body.onboarding-spotlight-active #main-area {
     /* Composer Adjustments */
     .composer { padding: 12px 16px; }
     .composer-top { flex-direction: column; gap: 8px; align-items: stretch; }
+    .task-date-picker { width: 100%; justify-content: flex-start; }
+    .task-date-picker input[type="date"] { width: 100%; }
     #add-btn, .composer-submit-btn { width: 100%; padding: 10px; }
     .composer-details { left: 12px; right: 12px; flex-wrap: wrap; gap: 8px; }
     .composer.details-open { margin-bottom: 190px; }
