@@ -209,7 +209,7 @@ function OnbWelcome() {
   return (
     <div className="onb-step onb-step-center">
       <div className="onb-hero-logo">
-        <img src="/redesign/assets/icons/icon-512.png" alt="Planary" className="onb-logo" />
+        <img src="/redesign/assets/icons/planary-logo.png" alt="Planary" className="onb-logo" />
         <div className="onb-spark onb-spark-1" />
         <div className="onb-spark onb-spark-2" />
         <div className="onb-spark onb-spark-3" />

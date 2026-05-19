@@ -572,11 +572,17 @@
     },
     async saveNotifPrefs(patch) {
       if (!this.uid) return;
-      await db.collection("users").doc(this.uid).set({
-        uid: this.uid,
-        notifPrefs: patch || {},
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      const dotPatch = {};
+      Object.entries(patch || {}).forEach(([k, v]) => { dotPatch[`notifPrefs.${k}`] = v; });
+      dotPatch.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = db.collection("users").doc(this.uid);
+      try {
+        await ref.update(dotPatch);
+      } catch (err) {
+        if (err.code === "not-found") {
+          await ref.set({ uid: this.uid, notifPrefs: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        } else throw err;
+      }
     },
     async saveOnboarding({ progress, currentStep, completed }) {
       if (!this.uid) return;
