@@ -88,8 +88,7 @@ body.landing-page {
 .landing-final h2 { text-wrap: balance; }
 
 .landing-shell {
-  max-width: var(--landing-content);
-  margin: 0 auto;
+  width: 100%;
   padding: 0 var(--landing-gutter);
 }
 
@@ -506,8 +505,7 @@ body.landing-page {
   background: linear-gradient(180deg, transparent 0%, var(--surface) 40%, var(--surface) 60%, transparent 100%);
 }
 .landing-section-inner {
-  max-width: 960px;
-  margin: 0 auto;
+  width: 100%;
 }
 .landing-section-title {
   text-align: center;
