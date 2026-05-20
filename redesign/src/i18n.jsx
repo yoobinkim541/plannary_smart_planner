@@ -477,6 +477,21 @@ const PATTERNS = [
     src: { ko: /^(\d+)개 진행$/,      en: /^(\d+) in progress$/,    ja: /^(\d+)件進行中$/,      zh: /^(\d+) 个进行中$/,  es: /^(\d+) en curso$/ } },
   { tpl: { ko: "오늘 마감 $1개",     en: "$1 due today",            ja: "今日締切 $1件",        zh: "今日截止 $1 个",    es: "$1 vencen hoy" },
     src: { ko: /^오늘 마감 (\d+)개$/, en: /^(\d+) due today$/,      ja: /^今日締切 (\d+)件$/,   zh: /^今日截止 (\d+) 个$/, es: /^(\d+) vencen hoy$/ } },
+  { tpl: { ko: "$1일 전",            en: "$1 d ago",                ja: "$1日前",               zh: "$1 天前",           es: "hace $1 d" },
+    src: { ko: /^(\d+)일 전$/,        en: /^(\d+) d ago$/,          ja: /^(\d+)日前$/,          zh: /^(\d+) 天前$/,      es: /^hace (\d+) d$/ } },
+  { tpl: { ko: "$1주 전",            en: "$1 w ago",                ja: "$1週間前",             zh: "$1 周前",           es: "hace $1 sem" },
+    src: { ko: /^(\d+)주 전$/,        en: /^(\d+) w ago$/,          ja: /^(\d+)週間前$/,        zh: /^(\d+) 周前$/,      es: /^hace (\d+) sem$/ } },
+  // Korean weekday single letters
+  { tpl: { ko: "월", en: "Mon", ja: "月", zh: "周一", es: "L" }, src: { ko: /^월$/, en: /^Mon$/, ja: /^月$/, zh: /^周一$/, es: /^L$/ } },
+  { tpl: { ko: "화", en: "Tue", ja: "火", zh: "周二", es: "M" }, src: { ko: /^화$/, en: /^Tue$/, ja: /^火$/, zh: /^周二$/, es: /^M$/ } },
+  { tpl: { ko: "수", en: "Wed", ja: "水", zh: "周三", es: "X" }, src: { ko: /^수$/, en: /^Wed$/, ja: /^水$/, zh: /^周三$/, es: /^X$/ } },
+  { tpl: { ko: "목", en: "Thu", ja: "木", zh: "周四", es: "J" }, src: { ko: /^목$/, en: /^Thu$/, ja: /^木$/, zh: /^周四$/, es: /^J$/ } },
+  { tpl: { ko: "금", en: "Fri", ja: "金", zh: "周五", es: "V" }, src: { ko: /^금$/, en: /^Fri$/, ja: /^金$/, zh: /^周五$/, es: /^V$/ } },
+  { tpl: { ko: "토", en: "Sat", ja: "土", zh: "周六", es: "S" }, src: { ko: /^토$/, en: /^Sat$/, ja: /^土$/, zh: /^周六$/, es: /^S$/ } },
+  { tpl: { ko: "일", en: "Sun", ja: "日", zh: "周日", es: "D" }, src: { ko: /^일$/, en: /^Sun$/, ja: /^日$/, zh: /^周日$/, es: /^D$/ } },
+  // Korean date "5월 18일 월요일" — residual weekday letter is translated by _translateResidualKo
+  { tpl: { ko: "$1월 $2일 $3요일",   en: "$3, $1/$2",               ja: "$1月$2日($3)",         zh: "$1月$2日 周$3",     es: "$3 $2/$1" },
+    src: { ko: /^(\d+)월 (\d+)일 (.+)요일$/ } },
 ];
 
 const PATTERNS_OLD = [
@@ -491,24 +506,30 @@ const PATTERNS_OLD = [
   { ko: /^(\d+) 진행 중$/,        en: "$1 in progress",     ja: "$1 進行中",         zh: "$1 进行中",      es: "$1 en curso" },
 ];
 
-// Build inverse lookup: any-lang-text -> phrase entry
+// Build inverse lookup: any-lang-text -> phrase entry.
+// `window.__PLANARY_EXTRA_PHRASES` is set by i18n-phrases-extra.js (loaded
+// before this file) and carries the bulk auto-generated translations.
+const ALL_PHRASES = PHRASES.concat(
+  (typeof window !== "undefined" && Array.isArray(window.__PLANARY_EXTRA_PHRASES))
+    ? window.__PLANARY_EXTRA_PHRASES : []
+);
 const _phraseLookup = new Map();
-PHRASES.forEach(p => {
+ALL_PHRASES.forEach(p => {
   ["ko", "en", "ja", "zh", "es"].forEach(lng => {
     const v = p[lng];
-    if (v && !_phraseLookup.has(v)) _phraseLookup.set(v, p);
+    // Use `v !== undefined` so explicit empty-string translations (e.g.
+    // Korean honorific "님" → "" in non-Japanese) are still indexed.
+    if (v !== undefined && v !== null && !_phraseLookup.has(v) && v !== "") _phraseLookup.set(v, p);
   });
 });
 
-function tr(text) {
-  if (text == null) return text;
-  const trimmed = String(text).trim();
-  if (!trimmed) return text;
+function _trDirect(trimmed) {
   const entry = _phraseLookup.get(trimmed);
   if (entry) {
-    const target = entry[_currentLang] || entry.ko;
-    if (target !== trimmed) return text.replace(trimmed, target);
-    return text;
+    const target = entry[_currentLang];
+    // Allow explicit empty-string translations (e.g. honorific "님" → "")
+    if (target !== undefined && target !== null) return target;
+    return entry.ko;
   }
   // Try patterns — match against any language's source regex
   for (const pat of PATTERNS) {
@@ -518,12 +539,50 @@ function tr(text) {
       const m = trimmed.match(re);
       if (m) {
         const tpl = pat.tpl[_currentLang];
-        if (!tpl) return text;
-        const out = tpl.replace(/\$(\d+)/g, (_, n) => m[Number(n)] || "");
-        if (out === trimmed) return text;
-        return text.replace(trimmed, out);
+        if (tpl == null) return null;
+        return tpl.replace(/\$(\d+)/g, (_, n) => m[Number(n)] || "");
       }
     }
+  }
+  return null;
+}
+
+function _translateResidualKo(s) {
+  // After pattern/segment translation, sweep any remaining Korean tokens.
+  // Catches single-char weekday letters etc. that survive the wider match.
+  if (_currentLang === "ko") return s;
+  return s.replace(/[가-힯]+/g, (m) => {
+    const r = _trDirect(m);
+    return r != null ? r : m;
+  });
+}
+
+function tr(text) {
+  if (text == null) return text;
+  const trimmed = String(text).trim();
+  if (!trimmed) return text;
+  // 1) Exact-match whole-string lookup (phrases + patterns)
+  const direct = _trDirect(trimmed);
+  if (direct != null) {
+    const finalDirect = _translateResidualKo(direct);
+    if (finalDirect === trimmed) return text;
+    return text.replace(trimmed, finalDirect);
+  }
+  // 2) Split-by-delimiter fallback — translate each segment individually.
+  // Catches things like "WORKSPACE · 프로젝트", "작업 · 노트 · 리마인더".
+  const SEGMENT_DELIM = /\s*([·•|/]|\s—\s|\s-\s)\s*/;
+  if (SEGMENT_DELIM.test(trimmed)) {
+    const parts = trimmed.split(SEGMENT_DELIM);
+    let changed = false;
+    const out = parts.map(part => {
+      if (/^[·•|/—-]$/.test(part)) return part;
+      const seg = part.trim();
+      if (!seg) return part;
+      const r = _trDirect(seg);
+      if (r != null && r !== seg) { changed = true; return part.replace(seg, r); }
+      return part;
+    }).join("");
+    if (changed) return text.replace(trimmed, out);
   }
   return text;
 }
