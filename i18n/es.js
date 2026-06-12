@@ -69,7 +69,7 @@
         noTasksInProject: 'No hay tareas en este proyecto.', noActiveReminders: 'No hay recordatorios activos.',
         untitledDocument: 'Documento sin título', subpage: 'Subpágina', rootPage: 'Página raíz', noWikiInProject: 'No hay páginas Wiki vinculadas a este proyecto.',
         visitWebsite: 'Visitar sitio web', deleteBookmark: 'Eliminar marcador', deleteBookmarkConfirm: '¿Eliminar marcador?',
-        editContent: 'Editar contenido:', updated: 'Actualizado.', uploadingImage: 'Subiendo imagen...', uploadComplete: '¡Subida completa!', imageUploadFailed: 'Error al subir la imagen. Se guarda sin imagen.',
+        editContent: 'Editar contenido:', updated: 'Actualizado.', uploadingImage: 'Subiendo imagen...', uploadComplete: '¡Subida completa!', imageUploadFailed: 'Error al subir la imagen. Se guarda sin imagen.', imageTypeInvalid: 'Solo se permiten archivos de imagen.', imageTooLarge: 'La imagen debe ser menor de 5 MB.',
         added: 'Añadido.', taskCreationFailed: 'No se pudo crear la tarea.', bookmarkSaved: 'Marcador guardado.', invalidUrl: 'La URL debe comenzar con http:// o https://', runtimeError: 'Error de ejecución: ', eclassExamType: 'Examen/Presentación', confirmAction: 'Confirmar',
         projectCreated: 'Proyecto creado.', projectNotesTitle: 'Notas de {project}', failedCreateWiki: 'No se pudo crear la página Wiki.',
         noteAdded: 'Nota añadida.', logoutConfirm: '¿Cerrar sesión?', uploadImageTitle: 'Adjuntar imagen',

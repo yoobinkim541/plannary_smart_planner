@@ -3617,6 +3617,16 @@ document.addEventListener('DOMContentLoaded', () => {
         getEl('task-img-input').onchange = (e) => {
             const file = e.target.files[0];
             if (file) {
+                if (!file.type.startsWith('image/')) {
+                    showToast(t('imageTypeInvalid'), 'error');
+                    e.target.value = '';
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast(t('imageTooLarge'), 'error');
+                    e.target.value = '';
+                    return;
+                }
                 selectedTaskImgFile = file;
                 const reader = new FileReader();
                 reader.onload = (ev) => {

@@ -69,7 +69,7 @@
         noTasksInProject: 'No tasks in this project.', noActiveReminders: 'No active reminders.',
         untitledDocument: 'Untitled Document', subpage: 'Subpage', rootPage: 'Root page', noWikiInProject: 'No wiki pages linked to this project.',
         visitWebsite: 'Visit Website', deleteBookmark: 'Delete bookmark', deleteBookmarkConfirm: 'Delete bookmark?',
-        editContent: 'Edit content:', updated: 'Updated!', uploadingImage: 'Uploading image...', uploadComplete: 'Upload Complete!', imageUploadFailed: 'Image upload failed, saving task without image',
+        editContent: 'Edit content:', updated: 'Updated!', uploadingImage: 'Uploading image...', uploadComplete: 'Upload Complete!', imageUploadFailed: 'Image upload failed, saving task without image', imageTypeInvalid: 'Only image files are supported.', imageTooLarge: 'Image must be under 5 MB.',
         added: 'Added!', taskCreationFailed: 'Task creation failed.', bookmarkSaved: 'Bookmark saved!', invalidUrl: 'URL must start with http:// or https://', runtimeError: 'Runtime error: ', eclassExamType: 'Exam/Presentation', confirmAction: 'Confirm',
         projectCreated: 'Project created!', projectNotesTitle: '{project} Notes', failedCreateWiki: 'Failed to create wiki page.',
         noteAdded: 'Note added!', logoutConfirm: 'Logout?', uploadImageTitle: 'Attach Image',
