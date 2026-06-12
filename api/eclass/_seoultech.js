@@ -2,10 +2,28 @@ const cheerio = require('cheerio');
 
 const DEFAULT_BASE_URL = 'https://eclass.seoultech.ac.kr';
 
+function _isPrivateHost(hostname) {
+  const h = hostname.split(':')[0].toLowerCase().replace(/^\[|\]$/g, '');
+  if (h === 'localhost' || h === '::1') return true;
+  const v4 = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (v4) {
+    const [, a, b] = v4.map(Number);
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 0 || a >= 224) return true;
+  }
+  if (h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80')) return true;
+  return false;
+}
+
 function normalizeBaseUrl(value) {
   try {
     const url = new URL(value || DEFAULT_BASE_URL);
     if (url.protocol !== 'https:') throw new Error('HTTPS required');
+    if (_isPrivateHost(url.hostname)) throw new Error('Private network addresses are not allowed');
     return `https://${url.host}`;
   } catch (error) {
     return DEFAULT_BASE_URL;
