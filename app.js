@@ -19,6 +19,7 @@ let auth = null;
 
 let _modalTrigger = null;
 let _confirmCallback = null;
+let _confirmCancelCallback = null;
 
 function bindResilientMobileNav() {
     const menuToggle = getEl('menu-toggle');
@@ -3022,9 +3023,10 @@ function closeTaskEditDialog() {
     _modalTrigger?.focus();
 }
 
-function showConfirmModal(message, onConfirm) {
+function showConfirmModal(message, onConfirm, onCancel) {
     _modalTrigger = document.activeElement;
     _confirmCallback = onConfirm;
+    _confirmCancelCallback = onCancel || null;
     const title = getEl('confirm-modal-title');
     if (title) title.textContent = message;
     setTaskModalOpen('confirm-modal', true);
@@ -3033,11 +3035,18 @@ function showConfirmModal(message, onConfirm) {
 
 function closeConfirmModal(confirmed = false) {
     const cb = _confirmCallback;
+    const cancelCb = _confirmCancelCallback;
     _confirmCallback = null;
+    _confirmCancelCallback = null;
     setTaskModalOpen('confirm-modal', false);
     _modalTrigger?.focus();
     if (confirmed && cb) cb();
+    else if (!confirmed && cancelCb) cancelCb();
 }
+
+window.showConfirmModalAsync = (message) => new Promise(resolve => {
+    showConfirmModal(message, () => resolve(true), () => resolve(false));
+});
 
 function syncNotificationSettingsUI() {
     const dailyToggle = getEl('notify-daily-tasks-toggle');

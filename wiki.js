@@ -2167,7 +2167,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmMessage = descendantIds.length
                 ? fmt('deletePageWithSubpagesConfirm', { count: descendantIds.length })
                 : tr('deletePageConfirm');
-            if (!confirm(confirmMessage)) return false;
+            const confirmed = typeof window.showConfirmModalAsync === 'function'
+                ? await window.showConfirmModalAsync(confirmMessage)
+                : window.confirm(confirmMessage);
+            if (!confirmed) return false;
         }
         const batch = db.batch();
         const deletingIds = [pageId, ...descendantIds];
