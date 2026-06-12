@@ -1549,7 +1549,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
                 <span class="wiki-subpage-text">
                     <strong>${escapeHtml(page.title || tr('untitledDocument'))}</strong>
-                    <span>${page.updatedAt ? `${tr('updated')} ${new Date(page.updatedAt.toMillis()).toLocaleDateString()}` : tr('openSubpage')}</span>
+                    <span>${page.updatedAt ? `${tr('updated')} ${formatDate(page.updatedAt)}` : tr('openSubpage')}</span>
                 </span>
             `;
             item.onclick = () => navigateToPage(page.id);
