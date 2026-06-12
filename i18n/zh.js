@@ -58,7 +58,7 @@
         todayTaskNotificationBody: '今天有 {count} 项任务需要处理。', reminderNotificationBody: '将在 {time} 提醒。',
         deleteAccountTitle: '注销账户', deleteAccountDescription: '删除账户以及所有保存的任务、备忘、项目、Wiki 和书签。',
         deleteAccountButton: '注销账户', deleteAccountConfirm: '确认注销吗?此操作不可撤销。',
-        deleteAccountConfirmEmail: '输入邮箱以确认注销: {email}', deleteAccountPasswordPrompt: '请再次输入密码以删除此账户。',
+        deleteAccountConfirmEmail: '输入邮箱以确认注销: {email}', deleteAccountPasswordPrompt: '请再次输入密码以删除此账户。', deleteAccountEmailConfirmTitle: '确认邮箱',
         deletingAccount: '正在删除账户...', accountDeleted: '账户已删除。', accountDeleteFailed: '注销失败',
         cancel: '取消', taskUpdated: '任务已更新。', noNotes: '没有备忘', dueToday: '今日截止', priorityLabel: '优先级',
         low: '低', medium: '中', high: '高', noRecentNotes: '没有最近的备忘。', noUpcomingReminders: '没有即将到来的提醒。',

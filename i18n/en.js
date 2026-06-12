@@ -58,7 +58,7 @@
         todayTaskNotificationBody: 'You have {count} task(s) to handle today.', reminderNotificationBody: 'Scheduled for {time}.',
         deleteAccountTitle: 'Delete account', deleteAccountDescription: 'Delete your account and all saved tasks, notes, projects, wiki pages, and bookmarks.',
         deleteAccountButton: 'Delete account', deleteAccountConfirm: 'Delete your account? This cannot be undone.',
-        deleteAccountConfirmEmail: 'Type your email to confirm deletion: {email}', deleteAccountPasswordPrompt: 'Enter your password again to delete this account.',
+        deleteAccountConfirmEmail: 'Type your email to confirm deletion: {email}', deleteAccountPasswordPrompt: 'Enter your password again to delete this account.', deleteAccountEmailConfirmTitle: 'Confirm email',
         deletingAccount: 'Deleting account...', accountDeleted: 'Account deleted.', accountDeleteFailed: 'Failed to delete account',
         cancel: 'Cancel', taskUpdated: 'Task updated.', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
         low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',

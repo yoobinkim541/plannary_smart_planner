@@ -21,6 +21,7 @@ let _modalTrigger = null;
 let _confirmCallback = null;
 let _confirmCancelCallback = null;
 let editingNoteId = null;
+let _inputModalResolve = null;
 
 function bindResilientMobileNav() {
     const menuToggle = getEl('menu-toggle');
@@ -1400,7 +1401,7 @@ async function reauthenticateForAccountDeletion(user) {
         return;
     }
     if (providers.includes('password') && user.email) {
-        const password = prompt(t('deleteAccountPasswordPrompt'));
+        const password = await showInputModalAsync(t('deleteAccountPasswordPrompt'), '', 'password');
         if (!password) throw new Error(t('recentLoginRequired'));
         const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
         await user.reauthenticateWithCredential(credential);
@@ -1420,9 +1421,13 @@ async function deleteAccount() {
         status.className = `profile-status-text ${type}`.trim();
     };
 
-    if (!confirm(t('deleteAccountConfirm'))) return;
+    const confirmed = await showConfirmModalAsync(t('deleteAccountConfirm'));
+    if (!confirmed) return;
     if (user.email) {
-        const typedEmail = prompt(formatMessage('deleteAccountConfirmEmail', { email: user.email }));
+        const typedEmail = await showInputModalAsync(
+            t('deleteAccountEmailConfirmTitle') || t('deleteAccountConfirm'),
+            formatMessage('deleteAccountConfirmEmail', { email: user.email })
+        );
         if (typedEmail !== user.email) return;
     }
 
@@ -3049,6 +3054,29 @@ window.showConfirmModalAsync = (message) => new Promise(resolve => {
     showConfirmModal(message, () => resolve(true), () => resolve(false));
 });
 
+function showInputModalAsync(title, message, inputType = 'text') {
+    return new Promise(resolve => {
+        _inputModalResolve = resolve;
+        _modalTrigger = document.activeElement;
+        const titleEl = getEl('input-modal-title');
+        const msgEl = getEl('input-modal-message');
+        const field = getEl('input-modal-field');
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
+        if (field) { field.type = inputType; field.value = ''; }
+        setTaskModalOpen('input-modal', true);
+        if (field) field.focus();
+    });
+}
+
+function closeInputModal(value = null) {
+    const resolve = _inputModalResolve;
+    _inputModalResolve = null;
+    setTaskModalOpen('input-modal', false);
+    _modalTrigger?.focus();
+    if (resolve) resolve(value);
+}
+
 function syncNotificationSettingsUI() {
     const dailyToggle = getEl('notify-daily-tasks-toggle');
     const dailyTime = getEl('notify-daily-time');
@@ -3983,10 +4011,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modal.id === 'task-delete-modal') closeTaskDeleteDialog();
             if (modal.id === 'confirm-modal') closeConfirmModal(false);
             if (modal.id === 'note-edit-modal') closeNoteEditModal();
+            if (modal.id === 'input-modal') closeInputModal(null);
         });
     });
     document.addEventListener('keydown', (e) => {
-        const activeModal = ['task-edit-modal', 'task-delete-modal', 'confirm-modal', 'note-edit-modal']
+        const activeModal = ['task-edit-modal', 'task-delete-modal', 'confirm-modal', 'note-edit-modal', 'input-modal']
             .map(id => getEl(id))
             .find(m => m?.classList.contains('active'));
 
@@ -3995,6 +4024,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (getEl('task-delete-modal')?.classList.contains('active')) { closeTaskDeleteDialog(); return; }
             if (getEl('confirm-modal')?.classList.contains('active')) { closeConfirmModal(false); return; }
             if (getEl('note-edit-modal')?.classList.contains('active')) { closeNoteEditModal(); return; }
+            if (getEl('input-modal')?.classList.contains('active')) { closeInputModal(null); return; }
             return;
         }
 
@@ -4036,6 +4066,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+    if (getEl('input-modal-close')) getEl('input-modal-close').onclick = () => closeInputModal(null);
+    if (getEl('input-modal-cancel-btn')) getEl('input-modal-cancel-btn').onclick = () => closeInputModal(null);
+    if (getEl('input-modal-ok-btn')) getEl('input-modal-ok-btn').onclick = () => closeInputModal(getEl('input-modal-field')?.value ?? null);
+    const inputModalField = getEl('input-modal-field');
+    if (inputModalField) inputModalField.addEventListener('keydown', (e) => { if (e.key === 'Enter') closeInputModal(inputModalField.value); });
 
     const logout = () => showConfirmModal(t('logoutConfirm'), () => unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html')));
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;

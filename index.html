@@ -1185,6 +1185,21 @@
                 </div>
             </div>
         </div>
+
+        <div id="input-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="input-modal-title">
+                <div class="task-modal-header">
+                    <h2 id="input-modal-title" style="font-size:1.05rem;"></h2>
+                    <button class="task-modal-close" id="input-modal-close" type="button" aria-label="닫기">×</button>
+                </div>
+                <p id="input-modal-message" style="margin-bottom:12px;color:var(--text-2);font-size:0.9rem;"></p>
+                <input id="input-modal-field" class="composer-input" style="width:100%;margin-bottom:16px;padding:10px 12px;" autocomplete="off">
+                <div class="task-modal-actions">
+                    <button class="text-link-btn" id="input-modal-cancel-btn" type="button" data-i18n="cancel">취소</button>
+                    <button class="confirm-btn" id="input-modal-ok-btn" type="button" data-i18n="confirmAction">확인</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->
