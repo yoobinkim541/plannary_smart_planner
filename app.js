@@ -3722,7 +3722,7 @@ async function saveTaskEditDialog() {
         projectId: getEl('task-edit-project')?.value || null,
         syncCalendar: !!(existing?.calendarEventId || taskCalendarAccessToken)
     };
-    if (payload.syncCalendar && payload.dueDate) {
+    if (payload.syncCalendar && payload.dueDate && taskCalendarAccessToken) {
         try {
             const event = await syncTaskToGoogleCalendar({ ...existing, ...payload });
             if (event?.id) payload.calendarEventId = event.id;
