@@ -526,13 +526,13 @@
                         <textarea id="note-input" class="composer-input" placeholder="짧은 생각이나 아이디어를 적어보세요..." rows="3"></textarea>
                     </div>
                     <div class="composer-details composer-details--note">
-                        <div class="color-selector" id="note-color-picker">
-                            <div class="color-option opt-yellow selected" data-color="yellow" title="Yellow"></div>
-                            <div class="color-option opt-blue" data-color="blue" title="Blue"></div>
-                            <div class="color-option opt-green" data-color="green" title="Green"></div>
-                            <div class="color-option opt-pink" data-color="pink" title="Pink"></div>
-                            <div class="color-option opt-purple" data-color="purple" title="Purple"></div>
-                            <div class="color-option opt-orange" data-color="orange" title="Orange"></div>
+                        <div class="color-selector" id="note-color-picker" role="radiogroup" aria-label="메모 색상 선택">
+                            <button class="color-option opt-yellow selected" data-color="yellow" title="노랑" type="button" role="radio" aria-checked="true" aria-label="노랑"></button>
+                            <button class="color-option opt-blue" data-color="blue" title="파랑" type="button" role="radio" aria-checked="false" aria-label="파랑"></button>
+                            <button class="color-option opt-green" data-color="green" title="초록" type="button" role="radio" aria-checked="false" aria-label="초록"></button>
+                            <button class="color-option opt-pink" data-color="pink" title="분홍" type="button" role="radio" aria-checked="false" aria-label="분홍"></button>
+                            <button class="color-option opt-purple" data-color="purple" title="보라" type="button" role="radio" aria-checked="false" aria-label="보라"></button>
+                            <button class="color-option opt-orange" data-color="orange" title="주황" type="button" role="radio" aria-checked="false" aria-label="주황"></button>
                         </div>
                         <button id="add-note-btn" class="composer-submit-btn composer-submit-btn--note" type="button">+ 메모 추가</button>
                     </div>

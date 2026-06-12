@@ -3893,8 +3893,12 @@ document.addEventListener('DOMContentLoaded', () => {
         getEl('note-color-picker').querySelectorAll('.color-option').forEach(option => {
             option.onclick = () => {
                 selectedNoteColor = option.dataset.color || 'yellow';
-                getEl('note-color-picker').querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                getEl('note-color-picker').querySelectorAll('.color-option').forEach(el => {
+                    el.classList.remove('selected');
+                    el.setAttribute('aria-checked', 'false');
+                });
                 option.classList.add('selected');
+                option.setAttribute('aria-checked', 'true');
             };
         });
     }
