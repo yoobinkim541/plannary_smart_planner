@@ -2277,7 +2277,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await batch.commit();
             await deleteUnlinkedWikiStorageUrls(deletingUrls, getLinkedWikiStorageUrls(null, deletingIdSet));
-            if (currentPageId && deletingIdSet.has(currentPageId)) goBackToList();
+            if (currentPageId && deletingIdSet.has(currentPageId)) {
+                clearTimeout(autosaveTimer);
+                autosaveTimer = null;
+                currentPageId = null;
+                goBackToList();
+            }
             window.showToast(tr('pageDeleted'));
             return true;
         } catch (err) {
