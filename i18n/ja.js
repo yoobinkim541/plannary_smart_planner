@@ -64,7 +64,7 @@
         low: '低', medium: '中', high: '高', noRecentNotes: '最近のメモはありません。', noUpcomingReminders: '今後のリマインダーはありません。',
         today: '今日', active: '進行中', noDate: '日付なし', deletePermanently: '完全に削除',
         permanentDeleteConfirm: '完全に削除しますか?', stayInspired: '記録を続けましょう。', projectTasksUnit: 'タスク',
-        projectRemindersUnit: 'リマインダー', projectWikiUnit: 'Wiki', open: '開く', deleteProjectConfirm: 'プロジェクトを削除しますか?',
+        projectRemindersUnit: 'リマインダー', projectWikiUnit: 'Wiki', open: '開く', deleteProjectConfirm: 'プロジェクトを削除しますか?', deleteProjectTasksWillUnassign: '{count}件のタスクのプロジェクトが解除されます。',
         taskCountSummary: 'タスク{tasks}件、リマインダー{reminders}件、Wikiページ{wiki}件',
         noTasksInProject: 'このプロジェクトにはタスクがありません。', noActiveReminders: '有効なリマインダーはありません。',
         untitledDocument: '無題のドキュメント', subpage: 'サブページ', rootPage: 'ルートページ', noWikiInProject: 'このプロジェクトに紐付いたWikiページはありません。',

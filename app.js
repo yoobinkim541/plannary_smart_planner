@@ -2367,18 +2367,21 @@ function renderTodos(todos) {
         const task = allTodos.find(x => x.id === b.dataset.id);
         if (!task) return;
         const completed = !task.completed;
+        task.completed = completed;
         db.collection('todos').doc(b.dataset.id).update({
             completed,
             completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
             completedDate: completed ? localDateKey() : null
-        }).catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+        }).catch(err => { task.completed = !completed; showToast(err.message || t('taskCreationFailed'), 'error'); });
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.btn-archive').forEach(b => b.onclick = () => {
         const task = allTodos.find(x => x.id === b.dataset.id);
         if (!task) return;
-        db.collection('todos').doc(b.dataset.id).update({ archived: !task.archived })
-            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+        const archived = !task.archived;
+        task.archived = archived;
+        db.collection('todos').doc(b.dataset.id).update({ archived })
+            .catch(err => { task.archived = !archived; showToast(err.message || t('taskCreationFailed'), 'error'); });
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => openTaskDeleteDialog(b.dataset.id));
@@ -2907,8 +2910,18 @@ function renderProjectManagementList() {
     renderProjectOverview();
 }
 window.deleteProject = (id) => {
-    showConfirmModal(t('deleteProjectConfirm'), () => {
-        db.collection('projects').doc(id).delete()
+    const affectedTasks = allTodos.filter(task => task.projectId === id && !task.archived);
+    const taskCount = affectedTasks.length;
+    const message = taskCount > 0
+        ? `${t('deleteProjectConfirm')} ${formatText('deleteProjectTasksWillUnassign', { count: taskCount })}`
+        : t('deleteProjectConfirm');
+    showConfirmModal(message, () => {
+        const batch = db.batch();
+        batch.delete(db.collection('projects').doc(id));
+        affectedTasks.forEach(task => {
+            batch.update(db.collection('todos').doc(task.id), { projectId: null });
+        });
+        batch.commit()
             .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
     });
 };

@@ -64,7 +64,7 @@
         low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
         today: '오늘', active: '진행 중', noDate: '날짜 없음', deletePermanently: '영구 삭제',
         permanentDeleteConfirm: '영구 삭제할까요?', stayInspired: '계속 기록하세요.', projectTasksUnit: '작업',
-        projectRemindersUnit: '리마인더', projectWikiUnit: '위키', open: '열기', deleteProjectConfirm: '프로젝트를 삭제할까요?',
+        projectRemindersUnit: '리마인더', projectWikiUnit: '위키', open: '열기', deleteProjectConfirm: '프로젝트를 삭제할까요?', deleteProjectTasksWillUnassign: '{count}개의 작업이 프로젝트에서 해제됩니다.',
         taskCountSummary: '{tasks}개 작업, {reminders}개 리마인더, {wiki}개 위키 페이지',
         noTasksInProject: '이 프로젝트에 작업이 없습니다.', noActiveReminders: '활성 리마인더가 없습니다.',
         untitledDocument: '제목 없는 문서', subpage: '하위 페이지', rootPage: '루트 페이지', noWikiInProject: '이 프로젝트에 연결된 위키 페이지가 없습니다.',

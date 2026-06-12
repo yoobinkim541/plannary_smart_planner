@@ -64,7 +64,7 @@
         low: '低', medium: '中', high: '高', noRecentNotes: '没有最近的备忘。', noUpcomingReminders: '没有即将到来的提醒。',
         today: '今天', active: '进行中', noDate: '无日期', deletePermanently: '永久删除',
         permanentDeleteConfirm: '永久删除?', stayInspired: '继续记录。', projectTasksUnit: '任务',
-        projectRemindersUnit: '提醒', projectWikiUnit: 'Wiki', open: '打开', deleteProjectConfirm: '删除项目?',
+        projectRemindersUnit: '提醒', projectWikiUnit: 'Wiki', open: '打开', deleteProjectConfirm: '删除项目?', deleteProjectTasksWillUnassign: '{count} 个任务将被取消关联。',
         taskCountSummary: '{tasks} 项任务、{reminders} 项提醒、{wiki} 个 Wiki 页面',
         noTasksInProject: '该项目下没有任务。', noActiveReminders: '没有有效的提醒。',
         untitledDocument: '无标题文档', subpage: '子页面', rootPage: '根页面', noWikiInProject: '该项目下没有关联的 Wiki 页面。',

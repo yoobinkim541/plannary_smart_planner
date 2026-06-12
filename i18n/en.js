@@ -64,7 +64,7 @@
         low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
         today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
         permanentDeleteConfirm: 'Permanently delete?', stayInspired: 'Stay inspired.', projectTasksUnit: 'tasks',
-        projectRemindersUnit: 'reminders', projectWikiUnit: 'wiki', open: 'Open', deleteProjectConfirm: 'Delete project?',
+        projectRemindersUnit: 'reminders', projectWikiUnit: 'wiki', open: 'Open', deleteProjectConfirm: 'Delete project?', deleteProjectTasksWillUnassign: '{count} task(s) will be unassigned.',
         taskCountSummary: '{tasks} tasks, {reminders} reminders, {wiki} wiki pages',
         noTasksInProject: 'No tasks in this project.', noActiveReminders: 'No active reminders.',
         untitledDocument: 'Untitled Document', subpage: 'Subpage', rootPage: 'Root page', noWikiInProject: 'No wiki pages linked to this project.',

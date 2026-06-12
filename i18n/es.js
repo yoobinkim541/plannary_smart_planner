@@ -64,7 +64,7 @@
         low: 'Baja', medium: 'Media', high: 'Alta', noRecentNotes: 'No hay notas recientes.', noUpcomingReminders: 'No hay recordatorios próximos.',
         today: 'HOY', active: 'En curso', noDate: 'Sin fecha', deletePermanently: 'Eliminar permanentemente',
         permanentDeleteConfirm: '¿Eliminar permanentemente?', stayInspired: 'Sigue inspirado.', projectTasksUnit: 'tareas',
-        projectRemindersUnit: 'recordatorios', projectWikiUnit: 'wiki', open: 'Abrir', deleteProjectConfirm: '¿Eliminar el proyecto?',
+        projectRemindersUnit: 'recordatorios', projectWikiUnit: 'wiki', open: 'Abrir', deleteProjectConfirm: '¿Eliminar el proyecto?', deleteProjectTasksWillUnassign: '{count} tarea(s) serán desasignadas.',
         taskCountSummary: '{tasks} tareas, {reminders} recordatorios, {wiki} páginas Wiki',
         noTasksInProject: 'No hay tareas en este proyecto.', noActiveReminders: 'No hay recordatorios activos.',
         untitledDocument: 'Documento sin título', subpage: 'Subpágina', rootPage: 'Página raíz', noWikiInProject: 'No hay páginas Wiki vinculadas a este proyecto.',
