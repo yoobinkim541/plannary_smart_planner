@@ -29,18 +29,16 @@
   const PRIORITY_TO_UI = { low: "low", medium: "med", high: "high" };
   const PRIORITY_TO_DB = { low: "low", med: "medium", high: "high" };
 
-  const todayISO = () => {
+  const _localDateISO = (offset = 0) => {
     const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
-  };
-  const localISODate = () => {
-    const d = new Date();
+    if (offset) d.setDate(d.getDate() + offset);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+  const todayISO = () => _localDateISO(0);
+  const localISODate = () => _localDateISO(0);
   const dateFromBackendValue = (value) => {
     if (!value) return null;
     const d = value && typeof value.toDate === "function" ? value.toDate() : new Date(value);
@@ -56,18 +54,8 @@
     const days = Math.max(1, Math.floor((today - start) / 86400000) + 1);
     return `가입 ${days}일째`;
   };
-  const tomorrowISO = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
-  };
-  const offsetISO = (days) => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
-  };
+  const tomorrowISO = () => _localDateISO(1);
+  const offsetISO = (days) => _localDateISO(days);
   const monthLaterISO = () => {
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
