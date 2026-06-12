@@ -2369,11 +2369,13 @@ function renderTodos(todos) {
         if (!task) return;
         const completed = !task.completed;
         task.completed = completed;
+        applyFilters();
+        updateDashboardUI();
         db.collection('todos').doc(b.dataset.id).update({
             completed,
             completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
             completedDate: completed ? localDateKey() : null
-        }).catch(err => { task.completed = !completed; showToast(err.message || t('taskCreationFailed'), 'error'); });
+        }).catch(err => { task.completed = !completed; applyFilters(); updateDashboardUI(); showToast(err.message || t('taskCreationFailed'), 'error'); });
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.btn-archive').forEach(b => b.onclick = () => {
@@ -2381,8 +2383,10 @@ function renderTodos(todos) {
         if (!task) return;
         const archived = !task.archived;
         task.archived = archived;
+        applyFilters();
+        updateDashboardUI();
         db.collection('todos').doc(b.dataset.id).update({ archived })
-            .catch(err => { task.archived = !archived; showToast(err.message || t('taskCreationFailed'), 'error'); });
+            .catch(err => { task.archived = !archived; applyFilters(); updateDashboardUI(); showToast(err.message || t('taskCreationFailed'), 'error'); });
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => openTaskDeleteDialog(b.dataset.id));
