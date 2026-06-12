@@ -4341,6 +4341,10 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(t('noteAdded'));
         }).catch(error => {
             console.error('Note creation failed:', error);
+            allNotes = allNotes.filter(item => item.id !== localNote.id);
+            writeUserCache('notes', allNotes);
+            renderNotes(allNotes);
+            updateDashboardUI();
             showToast(error && error.message ? error.message : t('taskCreationFailed'), 'error');
         });
     };
