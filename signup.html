@@ -43,6 +43,8 @@
         <h2>회원가입</h2>
         <p class="auth-subtitle">할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 시작하세요.</p>
 
+        <div id="auth-msg" class="auth-error" hidden></div>
+
         <div class="auth-form-group">
             <label for="reg-email">이메일</label>
             <input type="email" id="reg-email" class="auth-input" placeholder="이메일을 입력하세요">
@@ -56,11 +58,11 @@
             <input type="password" id="reg-pw-confirm" class="auth-input" placeholder="비밀번호를 한 번 더 입력하세요">
         </div>
 
-        <button class="confirm-btn" id="signup-btn">회원가입</button>
+        <button class="confirm-btn" id="signup-btn" type="button">회원가입</button>
 
         <div class="divider">또는</div>
 
-        <button class="google-btn" id="google-signup-btn">
+        <button class="google-btn" id="google-signup-btn" type="button">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google 아이콘">
             Google로 회원가입
         </button>
@@ -92,6 +94,14 @@
         const secureBrowserLink = document.getElementById('secure-browser-link');
         const secureBrowserCopyBtn = document.getElementById('secure-browser-copy-btn');
         const googleSignupDefaultText = googleSignupBtn.textContent.trim();
+        const authMsgEl = document.getElementById('auth-msg');
+        const showAuthMsg = (msg, type = 'error') => {
+            if (!authMsgEl) return;
+            authMsgEl.textContent = msg;
+            authMsgEl.className = type === 'info' ? 'auth-warning' : 'auth-error';
+            authMsgEl.hidden = false;
+        };
+        const clearAuthMsg = () => { if (authMsgEl) authMsgEl.hidden = true; };
         const secureSignupUrl = window.location.origin + '/signup.html';
         const googleProvider = new firebase.auth.GoogleAuthProvider();
         googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -148,10 +158,10 @@
         const copySecureBrowserUrl = async () => {
             try {
                 await navigator.clipboard.writeText(secureSignupUrl);
-                alert('회원가입 링크를 복사했어요. Chrome, Safari 또는 기본 브라우저에 붙여넣어 주세요:\n' + secureSignupUrl);
+                showAuthMsg('링크를 복사했어요. Chrome, Safari 또는 기본 브라우저에 붙여넣어 주세요.', 'info');
             } catch (error) {
                 if (secureBrowserLink) secureBrowserLink.focus();
-                alert('아래 회원가입 링크를 Chrome, Safari 또는 기본 브라우저에 복사해 주세요:\n' + secureSignupUrl);
+                showAuthMsg('링크를 직접 복사해 주세요: ' + secureSignupUrl, 'info');
             }
         };
 
@@ -203,25 +213,29 @@
                     if (error.code === 'auth/operation-not-supported-in-this-environment' || error.code === 'auth/web-storage-unsupported' || /disallowed_useragent|embedded|webview/i.test(error.message || '')) {
                         openInSecureBrowser();
                     }
-                    alert('Google 회원가입에 실패했습니다: ' + getAuthErrorMessage(error));
+                    showAuthMsg('Google 회원가입에 실패했습니다: ' + getAuthErrorMessage(error));
                 });
         };
-        // Email Signup
-        signupBtn.addEventListener('click', () => {
+        const doEmailSignup = () => {
             const email = emailInput.value.trim();
             const password = pwInput.value;
             const confirmPw = pwConfirmInput.value;
-
-            if (!email || !password) return alert('이메일과 비밀번호를 모두 입력해주세요.');
-            if (password !== confirmPw) return alert('비밀번호가 일치하지 않습니다.');
-
+            if (!email || !password) { showAuthMsg('이메일과 비밀번호를 모두 입력해주세요.'); return; }
+            if (password !== confirmPw) { showAuthMsg('비밀번호가 일치하지 않습니다.'); return; }
+            clearAuthMsg();
             auth.createUserWithEmailAndPassword(email, password)
                 .then(goToApp)
-                .catch((error) => alert('회원가입에 실패했습니다: ' + getAuthErrorMessage(error)));
-        });
+                .catch((error) => showAuthMsg('회원가입에 실패했습니다: ' + getAuthErrorMessage(error)));
+        };
+        // Email Signup
+        signupBtn.addEventListener('click', doEmailSignup);
+        pwConfirmInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doEmailSignup(); });
+        pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') pwConfirmInput.focus(); });
+        emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') pwInput.focus(); });
 
         // Google Signup
         googleSignupBtn.addEventListener('click', () => {
+            clearAuthMsg();
             signInWithGoogle();
         });
 
@@ -230,7 +244,7 @@
                 if (result && result.user) goToApp();
             })
             .catch((error) => {
-                alert('Google 회원가입에 실패했습니다: ' + getAuthErrorMessage(error));
+                showAuthMsg('Google 회원가입에 실패했습니다: ' + getAuthErrorMessage(error));
             });
 
         auth.onAuthStateChanged((user) => {
