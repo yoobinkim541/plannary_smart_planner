@@ -2465,6 +2465,8 @@ function setupDragging(el) {
     let isDragging = false, startX, startY, initL, initT;
     const down = (e) => {
         if (e.target.tagName === 'BUTTON') return;
+        const container = el.parentElement;
+        if (container && getComputedStyle(container).display === 'flex') return;
         if (e.type === 'touchstart') e.preventDefault();
         isDragging = true; el.style.zIndex = 1000;
         const touch = e.type === 'touchstart' ? e.touches[0] : e;
