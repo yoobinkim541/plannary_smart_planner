@@ -1426,7 +1426,7 @@ async function deleteAccount() {
     if (user.email) {
         const typedEmail = await showInputModalAsync(
             t('deleteAccountEmailConfirmTitle') || t('deleteAccountConfirm'),
-            formatMessage('deleteAccountConfirmEmail', { email: user.email })
+            formatText('deleteAccountConfirmEmail', { email: user.email })
         );
         if (typedEmail === null) return;
         if (typedEmail !== user.email) { showToast(t('emailMismatch') || '이메일이 일치하지 않습니다.', 'error'); return; }
