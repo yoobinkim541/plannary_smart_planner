@@ -3253,17 +3253,24 @@ async function importGoogleCalendarTasks() {
     if (!response.ok) handleCalendarApiError(response.status);
     const data = await response.json();
     const events = (data.items || []).filter(event => event.status !== 'cancelled' && event.id && event.summary);
-    let imported = 0;
-    for (const event of events) {
-        const existing = await db.collection('todos')
-            .where('uid', '==', currentUser.uid)
-            .where('source', '==', 'google-calendar')
-            .where('sourceItemId', '==', event.id)
-            .limit(1)
-            .get();
-        if (!existing.empty) continue;
+    if (!events.length) { lastCalendarImportAt = new Date(); return 0; }
+
+    // Fetch all existing google-calendar sourceItemIds in one query to avoid N+1.
+    const existingSnap = await db.collection('todos')
+        .where('uid', '==', currentUser.uid)
+        .where('source', '==', 'google-calendar')
+        .get();
+    const existingIds = new Set(existingSnap.docs.map(d => d.data().sourceItemId).filter(Boolean));
+
+    const newEvents = events.filter(e => !existingIds.has(e.id));
+    if (!newEvents.length) { lastCalendarImportAt = new Date(); return 0; }
+
+    const batch = db.batch();
+    const baseTs = Date.now();
+    newEvents.forEach((event, i) => {
         const start = parseGoogleCalendarDate(event.start || {});
-        await db.collection('todos').add({
+        const ref = db.collection('todos').doc();
+        batch.set(ref, {
             uid: currentUser.uid,
             text: event.summary || t('untitledEvent'),
             memo: event.description || null,
@@ -3284,12 +3291,12 @@ async function importGoogleCalendarTasks() {
             sourceItemId: event.id,
             sourceUrl: event.htmlLink || null,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            orderIndex: Date.now() - imported
+            orderIndex: baseTs - i
         });
-        imported += 1;
-    }
+    });
+    await batch.commit();
     lastCalendarImportAt = new Date();
-    return imported;
+    return newEvents.length;
 }
 
 function toIcsDate(date) {
@@ -3664,6 +3671,7 @@ document.addEventListener('DOMContentLoaded', () => {
             orderIndex: Date.now()
         };
 
+        let localTask = null;
         try {
             let calendarEvent = null;
             if (payload.syncCalendar) {
@@ -3675,7 +3683,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(t('calendarSyncFailed') + ': ' + (calendarError.message || calendarError), 'error');
                 }
             }
-            const localTask = {
+            localTask = {
                 ...payload,
                 id: `local-${Date.now()}`,
                 createdAt: Date.now()
@@ -3701,6 +3709,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(calendarEvent?.id ? t('calendarTaskSynced') : t('added'));
         } catch (error) {
             console.error("Task creation failed:", error, payload);
+            if (localTask) {
+                allTodos = allTodos.filter(item => item.id !== localTask.id);
+                applyFilters();
+                updateDashboardUI();
+            }
             if (imageUrl) await deleteStorageUrls(new Set([imageUrl]));
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
         }
