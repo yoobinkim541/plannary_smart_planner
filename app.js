@@ -17,7 +17,7 @@ if ('serviceWorker' in navigator) {
 let db = null;
 let auth = null;
 
-let _modalTrigger = null;
+let _modalTriggerStack = [];
 let _confirmCallback = null;
 let _confirmCancelCallback = null;
 let editingNoteId = null;
@@ -2354,7 +2354,10 @@ function renderTodos(todos) {
             cards.forEach((c, i) => {
                 const t = allTodos.find(x => x.id === c.dataset.id);
                 const nextOrder = cards.length - i;
-                if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
+                if (t && t.orderIndex !== nextOrder) {
+                    t.orderIndex = nextOrder;
+                    db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
+                }
             });
         };
 
@@ -2391,7 +2394,10 @@ function renderTodos(todos) {
                 cards.forEach((c, idx) => {
                     const t = allTodos.find(x => x.id === c.dataset.id);
                     const nextOrder = cards.length - idx;
-                    if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
+                    if (t && t.orderIndex !== nextOrder) {
+                        t.orderIndex = nextOrder;
+                        db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
+                    }
                 });
             };
             document.addEventListener('touchmove', onMove, { passive: false });
@@ -3193,7 +3199,7 @@ function setTaskModalOpen(modalId, open) {
 }
 
 function openTaskDeleteDialog(id) {
-    _modalTrigger = document.activeElement;
+    _modalTriggerStack.push(document.activeElement);
     pendingDeleteTaskId = id;
     setTaskModalOpen('task-delete-modal', true);
 }
@@ -3201,7 +3207,7 @@ function openTaskDeleteDialog(id) {
 function closeTaskDeleteDialog() {
     pendingDeleteTaskId = null;
     setTaskModalOpen('task-delete-modal', false);
-    _modalTrigger?.focus();
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
 }
 
 async function confirmTaskDelete() {
@@ -3225,7 +3231,7 @@ async function confirmTaskDelete() {
 function openTaskEditDialog(id) {
     const item = allTodos.find(x => x.id === id);
     if (!item) return;
-    _modalTrigger = document.activeElement;
+    _modalTriggerStack.push(document.activeElement);
     editingTaskId = id;
     if (getEl('task-edit-text')) getEl('task-edit-text').value = item.text || '';
     if (getEl('task-edit-memo')) getEl('task-edit-memo').value = item.memo || '';
@@ -3244,11 +3250,11 @@ function openTaskEditDialog(id) {
 function closeTaskEditDialog() {
     editingTaskId = null;
     setTaskModalOpen('task-edit-modal', false);
-    _modalTrigger?.focus();
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
 }
 
 function showConfirmModal(message, onConfirm, onCancel) {
-    _modalTrigger = document.activeElement;
+    _modalTriggerStack.push(document.activeElement);
     _confirmCallback = onConfirm;
     _confirmCancelCallback = onCancel || null;
     const title = getEl('confirm-modal-title');
@@ -3263,7 +3269,7 @@ function closeConfirmModal(confirmed = false) {
     _confirmCallback = null;
     _confirmCancelCallback = null;
     setTaskModalOpen('confirm-modal', false);
-    _modalTrigger?.focus();
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
     if (confirmed && cb) cb();
     else if (!confirmed && cancelCb) cancelCb();
 }
@@ -3275,7 +3281,7 @@ window.showConfirmModalAsync = (message) => new Promise(resolve => {
 function showInputModalAsync(title, message, inputType = 'text') {
     return new Promise(resolve => {
         _inputModalResolve = resolve;
-        _modalTrigger = document.activeElement;
+        _modalTriggerStack.push(document.activeElement);
         const titleEl = getEl('input-modal-title');
         const msgEl = getEl('input-modal-message');
         const field = getEl('input-modal-field');
@@ -3291,7 +3297,7 @@ function closeInputModal(value = null) {
     const resolve = _inputModalResolve;
     _inputModalResolve = null;
     setTaskModalOpen('input-modal', false);
-    _modalTrigger?.focus();
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
     if (resolve) resolve(value);
 }
 
@@ -3694,7 +3700,7 @@ function openEditModal(type, id) {
 }
 
 function openNoteEditModal(note) {
-    _modalTrigger = document.activeElement;
+    _modalTriggerStack.push(document.activeElement);
     editingNoteId = note.id;
     const textarea = getEl('note-edit-text');
     if (textarea) textarea.value = note.text || '';
@@ -3713,7 +3719,7 @@ function openNoteEditModal(note) {
 function closeNoteEditModal() {
     editingNoteId = null;
     setTaskModalOpen('note-edit-modal', false);
-    _modalTrigger?.focus();
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
 }
 
 function saveNoteEdit() {
@@ -3964,8 +3970,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    if (getEl('task-calendar-connect-btn')) {
-        getEl('task-calendar-connect-btn').onclick = async () => {
+    const calendarConnectBtn = getEl('task-calendar-connect-btn');
+    if (calendarConnectBtn) {
+        calendarConnectBtn.onclick = async () => {
+            if (calendarConnectBtn.disabled) return;
+            calendarConnectBtn.disabled = true;
             try {
                 await ensureTaskCalendarAccess();
                 showToast(t('calendarConnected'), 'success');
@@ -3973,12 +3982,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
                 console.error('Calendar connect failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarConnectBtn.disabled = false;
             }
         };
     }
 
-    if (getEl('task-calendar-import-btn')) {
-        getEl('task-calendar-import-btn').onclick = async () => {
+    const calendarImportBtn = getEl('task-calendar-import-btn');
+    if (calendarImportBtn) {
+        calendarImportBtn.onclick = async () => {
+            if (calendarImportBtn.disabled) return;
+            calendarImportBtn.disabled = true;
             try {
                 const count = await importGoogleCalendarTasks();
                 showToast(count ? `${t('calendarImportDone')} (${count})` : t('calendarImportEmpty'), count ? 'success' : 'info');
@@ -3986,6 +4000,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
                 console.error('Calendar import failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarImportBtn.disabled = false;
             }
         };
     }
