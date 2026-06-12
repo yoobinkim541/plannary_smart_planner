@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('./_admin');
 const { syncAll, syncConnection } = require('./sync-core');
 const { sendPushToUser } = require('../notifications/_send-fcm');
@@ -7,7 +8,14 @@ module.exports = async function handler(req, res) {
   try {
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = req.headers.authorization || '';
-    if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    const isCron = cronSecret && (() => {
+      try {
+        const expected = Buffer.from(`Bearer ${cronSecret}`);
+        const actual = Buffer.from(authHeader);
+        return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+      } catch { return false; }
+    })();
+    if (isCron) {
       const result = await syncAll();
       return sendJson(res, 200, { ok: true, ...result });
     }
