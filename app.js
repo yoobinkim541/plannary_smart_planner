@@ -165,6 +165,9 @@ function writeUserCache(collection, items) {
     try {
         localStorage.setItem(key, JSON.stringify(items || []));
     } catch (error) {
+        if (error && (error.name === 'QuotaExceededError' || error.code === 22)) {
+            showToast(t('storageFull') || 'Offline cache full — some data may not be available offline', 'warning');
+        }
         console.warn(`[Cache] Failed to write ${collection}:`, error);
     }
 }
@@ -3834,7 +3837,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         repositionActiveOnboardingGuide();
-    }, true);
+    }, { capture: true, passive: true });
 
     // suppress auto-scroll when user is interacting via touch to avoid fighting user scroll on mobile/tablet
     document.addEventListener('touchstart', () => {
