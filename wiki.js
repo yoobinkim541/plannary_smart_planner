@@ -1749,6 +1749,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openPage = (page) => {
         if (currentPageId === page.id) return;
+        // Flush any pending auto-save for the current page before switching.
+        if (autosaveTimer && currentPageId) {
+            clearTimeout(autosaveTimer);
+            autosaveTimer = null;
+            if (!autosaveInFlight) savePage({ silent: true }).catch(() => {});
+        }
         cleanupPendingWikiUploads();
         currentPageId = page.id;
         pendingEditorRenderToken += 1;
@@ -2056,31 +2062,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!silent) window.showToast(tr('cannotSaveNotReady'), 'error');
             return;
         }
+        // Capture all mutable state synchronously before any await so that
+        // rapid page switches don't corrupt which document gets saved.
+        const savedPageId = currentPageId;
         const title = wikiTitleInput ? wikiTitleInput.value.trim() || tr('untitledDocument') : tr('untitledDocument');
         const projectId = wikiProjectSelect && wikiProjectSelect.value ? wikiProjectSelect.value : null;
+        const savedMeta = { ...currentPageMeta };
 
         if (saveWikiBtn) { saveWikiBtn.textContent = tr('saving'); saveWikiBtn.disabled = true; }
 
         try {
-            const previousPage = getCurrentPage();
+            const previousPage = allPages.find(p => p.id === savedPageId);
             const previousUrls = getWikiPageStorageUrls(previousPage);
             const contentData = normalizeEditorData(await editor.save());
             const nextPage = {
                 ...(previousPage || {}),
-                id: currentPageId,
-                coverUrl: currentPageMeta.coverUrl || '',
+                id: savedPageId,
+                coverUrl: savedMeta.coverUrl || '',
                 content: contentData
             };
-            await db.collection('wiki_pages').doc(currentPageId).update({
+            await db.collection('wiki_pages').doc(savedPageId).update({
                 title: title,
                 projectId,
-                icon: currentPageMeta.icon || '📄',
-                coverUrl: currentPageMeta.coverUrl || '',
-                coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
-                coverPositionX: toBoundedNumber(currentPageMeta.coverPositionX, 50, 0, 100),
-                coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360),
-                coverZoom: toBoundedNumber(currentPageMeta.coverZoom, 100, 100, 220),
-                coverCropMode: currentPageMeta.coverCropMode || 'cover',
+                icon: savedMeta.icon || '📄',
+                coverUrl: savedMeta.coverUrl || '',
+                coverPosition: toBoundedNumber(savedMeta.coverPosition, 50, 0, 100),
+                coverPositionX: toBoundedNumber(savedMeta.coverPositionX, 50, 0, 100),
+                coverHeight: toBoundedNumber(savedMeta.coverHeight, 180, 120, 360),
+                coverZoom: toBoundedNumber(savedMeta.coverZoom, 100, 100, 220),
+                coverCropMode: savedMeta.coverCropMode || 'cover',
                 content: contentData,
                 ogTried: false,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
