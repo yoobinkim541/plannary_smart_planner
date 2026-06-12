@@ -1898,9 +1898,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = anchorEl.getBoundingClientRect();
         popover.hidden = false;
         const pw = popover.offsetWidth || 200;
+        const ph = popover.offsetHeight || 60;
         const left = Math.min(rect.left, window.innerWidth - pw - 8);
         popover.style.left = Math.max(8, left) + 'px';
-        popover.style.top = (rect.bottom + 6) + 'px';
+        const spaceBelow = window.innerHeight - rect.bottom - 8;
+        popover.style.top = spaceBelow >= ph
+            ? (rect.bottom + 6) + 'px'
+            : Math.max(8, rect.top - ph - 6) + 'px';
         const firstInput = popover.querySelector('input');
         if (firstInput) { firstInput.focus(); firstInput.select(); }
     };

@@ -75,7 +75,7 @@
         noteAdded: 'Nota añadida.', logoutConfirm: '¿Cerrar sesión?', uploadImageTitle: 'Adjuntar imagen',
         pasteUrl: 'Pega la URL', customTitle: 'Título personalizado', tagsPlaceholder: 'Etiquetas...', newPage: '+ Nueva página',
         uploadingProgress: 'Subiendo... 0%', subpages: 'Subpáginas', newSubpage: 'Nueva subpágina', deletePage: 'Eliminar página',
-        archiveDescription: 'Revisa las tareas completadas y los registros pasados.', totalAchievements: 'Logros totales', itemsArchived: 'Elementos archivados',
+        archiveDescription: 'Revisa las tareas completadas y los registros pasados.', totalAchievements: 'Logros totales', itemsArchived: 'Elementos archivados', currentStreak: 'Racha actual', activityHeatmap: 'Mapa de actividad', lastTwelveWeeksCompleted: 'Completadas en las últimas 12 semanas', daySuffix: 'd',
         joinedDaysLabel: 'Miembro desde:', joinedDaysValue: '{days} días',
         monospace: 'Monoespaciada', serif: 'Serif', handwritten: 'Manuscrita', fontNanumGothic: 'Nanum Gothic',
         emptyTasksAllTitle: 'Llena tu lista de tareas',

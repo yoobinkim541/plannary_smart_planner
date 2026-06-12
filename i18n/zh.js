@@ -75,7 +75,7 @@
         noteAdded: '备忘已添加。', logoutConfirm: '要退出登录吗?', uploadImageTitle: '附加图片',
         pasteUrl: '粘贴 URL', customTitle: '自定义标题', tagsPlaceholder: '标签...', newPage: '+ 新建页面',
         uploadingProgress: '正在上传... 0%', subpages: '子页面', newSubpage: '新建子页面', deletePage: '删除页面',
-        archiveDescription: '回顾已完成的任务和过去的记录。', totalAchievements: '总成就', itemsArchived: '已归档项',
+        archiveDescription: '回顾已完成的任务和过去的记录。', totalAchievements: '总成就', itemsArchived: '已归档项', currentStreak: '连续完成', activityHeatmap: '活动热力图', lastTwelveWeeksCompleted: '最近12周完成记录', daySuffix: '天',
         joinedDaysLabel: '加入时间:', joinedDaysValue: '第 {days} 天',
         monospace: '等宽', serif: '衬线', handwritten: '手写体', fontNanumGothic: 'Nanum Gothic',
         emptyTasksAllTitle: '来添加任务吧',
