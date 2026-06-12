@@ -889,8 +889,8 @@ textarea.composer-input {
     position: absolute;
     top: 2px;
     right: 2px;
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
     background: rgba(0,0,0,0.5);
     color: #fff;
     border: none;
@@ -2412,6 +2412,9 @@ body.onboarding-spotlight-active #main-area {
     display: inline-block;
     flex-shrink: 0;
 }
+@media (pointer: coarse) {
+    .color-option { min-width: 44px; min-height: 44px; }
+}
 .color-option:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
 .color-option:hover { transform: scale(1.15); border-color: var(--text-2); }
@@ -3351,6 +3354,9 @@ body.onboarding-spotlight-active #main-area {
     font-size: 18px;
     color: var(--text-3);
     transition: background 0.15s ease, color 0.15s ease;
+}
+@media (pointer: coarse) {
+    .bm-delete-btn { min-width: 44px; min-height: 44px; }
 }
 
 .bm-delete-btn:hover {
@@ -6351,4 +6357,10 @@ body.onboarding-spotlight-active #main-area {
     align-items: center;
     flex: 1;
     gap: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .due-today-badge { animation: none; }
+    .task-card, .note-card, .wiki-page-card { animation: none; }
+    .toast { animation: none; }
 }
