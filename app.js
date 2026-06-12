@@ -2266,7 +2266,7 @@ function renderTodos(todos) {
             cards.forEach((c, i) => {
                 const t = allTodos.find(x => x.id === c.dataset.id);
                 const nextOrder = cards.length - i;
-                if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder });
+                if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
             });
         };
 
@@ -2979,7 +2979,8 @@ function renderBookmarks() {
         list.appendChild(div);
     });
 }
-window.deleteBookmark = (id) => showConfirmModal(t('deleteBookmarkConfirm'), () => db.collection('bookmarks').doc(id).delete());
+window.deleteBookmark = (id) => showConfirmModal(t('deleteBookmarkConfirm'), () =>
+    db.collection('bookmarks').doc(id).delete().catch(err => showToast(err.message || t('taskCreationFailed'), 'error')));
 
 function setTaskModalOpen(modalId, open) {
     const modal = getEl(modalId);
@@ -3005,9 +3006,13 @@ async function confirmTaskDelete() {
     const id = pendingDeleteTaskId;
     const task = allTodos.find(item => item.id === id);
     closeTaskDeleteDialog();
-    await deleteTaskGoogleCalendarEvent(task);
-    await db.collection('todos').doc(id).delete();
-    if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+    try {
+        await deleteTaskGoogleCalendarEvent(task);
+        await db.collection('todos').doc(id).delete();
+        if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+    } catch (err) {
+        showToast(err.message || t('taskCreationFailed'), 'error');
+    }
 }
 
 function openTaskEditDialog(id) {
@@ -3069,7 +3074,7 @@ function showInputModalAsync(title, message, inputType = 'text') {
         const field = getEl('input-modal-field');
         if (titleEl) titleEl.textContent = title;
         if (msgEl) msgEl.textContent = message;
-        if (field) { field.type = inputType; field.value = ''; }
+        if (field) { field.type = inputType; field.value = ''; field.autocomplete = inputType === 'password' ? 'current-password' : 'off'; }
         setTaskModalOpen('input-modal', true);
         if (field) field.focus();
     });
@@ -3867,7 +3872,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
         db.collection('bookmarks').add({
             uid: currentUser.uid, url, title: titleInput.value.trim(), tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => { urlInput.value = ''; titleInput.value = ''; tagsInput.value = ''; showToast(t('bookmarkSaved')); });
+        }).then(() => { urlInput.value = ''; titleInput.value = ''; tagsInput.value = ''; showToast(t('bookmarkSaved')); })
+          .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
     };
 
     if (getEl('add-project-btn')) getEl('add-project-btn').onclick = async () => {
@@ -3887,7 +3893,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (projectInput) projectInput.value = '';
             markGuideStepComplete('projects');
             showToast(t('projectCreated'));
-        });
+        }).catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
     };
 
     if (getEl('project-detail-close')) {

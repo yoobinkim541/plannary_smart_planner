@@ -1235,19 +1235,19 @@
     <script src="i18n/ja.js?v=v2"></script>
     <script src="i18n/zh.js?v=v2"></script>
     <script src="i18n/es.js?v=v2"></script>
-    <script src="app.js?v=v35"></script>
-    <script src="wiki.js?v=v21"></script>
+    <script src="app.js?v=v36"></script>
+    <script src="wiki.js?v=v22"></script>
 
     <!-- Wiki inline popovers (icon + cover URL) -->
     <div id="wiki-icon-popover" hidden style="position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;gap:8px;align-items:center;">
         <input id="wiki-icon-input" type="text" maxlength="4" placeholder="📄" style="width:60px;font-size:1.5rem;text-align:center;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--surface);color:var(--text);">
-        <button id="wiki-icon-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;">적용</button>
-        <button id="wiki-icon-popover-close" type="button" class="text-link-btn" aria-label="닫기">✕</button>
+        <button id="wiki-icon-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;" data-i18n="confirmAction">적용</button>
+        <button id="wiki-icon-popover-close" type="button" class="text-link-btn" data-i18n-title="close" aria-label="닫기">✕</button>
     </div>
     <div id="wiki-cover-url-popover" hidden style="position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;gap:8px;align-items:center;min-width:280px;">
         <input id="wiki-cover-url-input" type="url" placeholder="https://..." style="flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--surface);color:var(--text);">
-        <button id="wiki-cover-url-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;">적용</button>
-        <button id="wiki-cover-url-popover-close" type="button" class="text-link-btn" aria-label="닫기">✕</button>
+        <button id="wiki-cover-url-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;" data-i18n="confirmAction">적용</button>
+        <button id="wiki-cover-url-popover-close" type="button" class="text-link-btn" data-i18n-title="close" aria-label="닫기">✕</button>
     </div>
 </body>
 
