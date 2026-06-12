@@ -5,7 +5,8 @@ const DEFAULT_BASE_URL = 'https://eclass.seoultech.ac.kr';
 function normalizeBaseUrl(value) {
   try {
     const url = new URL(value || DEFAULT_BASE_URL);
-    return `${url.protocol}//${url.host}`;
+    if (url.protocol !== 'https:') throw new Error('HTTPS required');
+    return `https://${url.host}`;
   } catch (error) {
     return DEFAULT_BASE_URL;
   }
