@@ -1,43 +1,40 @@
-const CACHE_NAME = 'todo-pwa-cache-v71';
+const CACHE_NAME = 'todo-pwa-cache-v72';
 const urlsToCache = [
   '/',
-  '/redesign/',
-  '/redesign/index.html',
+  '/index.html',
+  '/style.css',
+  '/app.js',
+  '/wiki.js',
   '/manifest.json',
   '/landing.html',
+  '/landing.css',
+  '/login.html',
+  '/signup.html',
+  '/auth.css',
   '/privacy.html',
   '/terms.html',
-  '/landing.css',
   '/firebase-init.js',
   '/favicon.ico',
   '/icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
-  '/redesign/src/tweaks-panel.jsx',
-  '/redesign/src/icons.jsx',
-  '/redesign/src/data.jsx',
-  '/redesign/src/i18n.jsx',
-  '/redesign/src/components.jsx',
-  '/redesign/src/pages-home-tasks.jsx',
-  '/redesign/src/pages-rest.jsx',
-  '/redesign/src/onboarding.jsx',
-  '/redesign/src/user-guide.jsx',
-  '/redesign/src/app.jsx',
-  '/redesign/src/firebase-bridge.jsx',
-  '/redesign/src/app.css',
-  '/redesign/src/tokens.css',
-  '/redesign/src/onboarding.css'
+  '/i18n/en.js',
+  '/i18n/ko.js',
+  '/i18n/ja.js',
+  '/i18n/zh.js',
+  '/i18n/es.js'
 ];
 
 const APP_SHELL_ASSETS = new Set([
   '/',
-  '/redesign/',
-  '/redesign/index.html',
+  '/index.html',
   '/landing.html',
+  '/login.html',
+  '/signup.html',
   '/privacy.html',
   '/terms.html',
-  '/landing.css',
+  '/auth.css',
   '/firebase-init.js',
   '/manifest.json'
 ]);
@@ -92,7 +89,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(networkFirst(event.request, '/redesign/index.html'));
+    event.respondWith(networkFirst(event.request, '/'));
     return;
   }
 
@@ -138,7 +135,7 @@ self.addEventListener('notificationclick', event => {
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('/redesign/');
+        return clients.openWindow('/');
       }
     })
   );
