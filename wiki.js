@@ -1898,6 +1898,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderNoteSidebarTree();
                 }
             }
+            scheduleAutosave();
         });
     }
 
