@@ -4616,7 +4616,7 @@ function ListBlock({ block, onUpdate }) {
               if (e.key === "Backspace" && e.currentTarget.textContent === "") { e.preventDefault(); removeItem(i); }
             }}
             style={{ outline: "none", display: "block", minHeight: 22 }}
-            dangerouslySetInnerHTML={{ __html: item || "" }}
+            dangerouslySetInnerHTML={{ __html: _sanitizeRichHtml(item || "") }}
           />
         </li>
       ))}
@@ -4673,7 +4673,7 @@ function ChecklistBlock({ block, onUpdate }) {
               textDecoration: it.checked ? "line-through" : "none",
               textDecorationColor: "var(--text-faint)",
             }}
-            dangerouslySetInnerHTML={{ __html: it.text || "" }}
+            dangerouslySetInnerHTML={{ __html: _sanitizeRichHtml(it.text || "") }}
           />
         </div>
       ))}
@@ -6241,11 +6241,32 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   );
 }
 
+function _sanitizeRichHtml(html) {
+  if (!html || !html.includes('<')) return html;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const DANGEROUS = new Set(['script','iframe','object','embed','form','input','button','select','textarea','style','link','meta','base','noscript']);
+  (function walk(node) {
+    for (let i = node.childNodes.length - 1; i >= 0; i--) {
+      const child = node.childNodes[i];
+      if (child.nodeType !== 1) continue;
+      if (DANGEROUS.has(child.tagName.toLowerCase())) { node.removeChild(child); continue; }
+      for (const attr of [...child.attributes]) {
+        const n = attr.name.toLowerCase();
+        if (n.startsWith('on') || (/^(href|src|action)$/.test(n) && /^\s*javascript:/i.test(attr.value)))
+          child.removeAttribute(attr.name);
+      }
+      walk(child);
+    }
+  })(tmp);
+  return tmp.innerHTML;
+}
+
 function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onLiveEdit, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const ref = useRefO(null);
   const bodyRef = useRefO(null);
 
-  const commitContent = (key, val) => onUpdate({ [key]: val });
+  const commitContent = (key, val) => onUpdate({ [key]: typeof val === 'string' ? _sanitizeRichHtml(val) : val });
   const defaultsForType = (type, content = "") => {
     if (type === "ul" || type === "ol") return { type, items: [content] };
     if (type === "todo") return { type, items: [{ text: content, checked: false }] };
@@ -6337,11 +6358,12 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
 
   const renderContent = () => {
     const t = block.type;
-    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
-    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: block.content }} />;
+    const safeContent = _sanitizeRichHtml(block.content || '');
+    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
     if (t === "ul" || t === "ol") {
       return <ListBlock block={block} onUpdate={onUpdate} />;
     }
@@ -6375,19 +6397,19 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
               contentEditable suppressContentEditableWarning
               onBlur={e => commitContent("title", e.currentTarget.textContent)}
               style={{ color: "var(--text-hi)" }}
-              dangerouslySetInnerHTML={{ __html: block.title || "" }}
+              dangerouslySetInnerHTML={{ __html: _sanitizeRichHtml(block.title || "") }}
             />{" "}
             <span
               contentEditable suppressContentEditableWarning
               onBlur={e => commitContent("body", e.currentTarget.innerHTML)}
-              dangerouslySetInnerHTML={{ __html: block.body || "" }}
+              dangerouslySetInnerHTML={{ __html: _sanitizeRichHtml(block.body || "") }}
             />
           </div>
         </div>
       );
     }
     if (t === "divider") return <hr style={{ border: 0, borderTop: "1px solid var(--border)", margin: "16px 0" }} />;
-    return <p ref={ref} contentEditable dangerouslySetInnerHTML={{ __html: block.content }} />;
+    return <p ref={ref} contentEditable dangerouslySetInnerHTML={{ __html: safeContent }} />;
   };
 
   return (

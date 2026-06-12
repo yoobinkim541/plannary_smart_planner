@@ -47,6 +47,8 @@ window.__PLANARY_EXTRA_PHRASES = [
   { ko: "잠시 후 다시 시도해주세요.", en: "Try again shortly.", ja: "少し後にお試しください。", zh: "请稍后再试。", es: "Vuelve a intentarlo." },
   { ko: "문제가 발생했어요", en: "Something went wrong", ja: "問題が発生しました", zh: "出现问题", es: "Algo salió mal" },
   { ko: "준비 중이에요", en: "Coming soon", ja: "準備中", zh: "敬请期待", es: "Próximamente" },
+  { ko: "노트 저장 실패", en: "Failed to save note", ja: "ノートの保存に失敗", zh: "笔记保存失败", es: "Error al guardar nota" },
+  { ko: "페이지 생성 실패", en: "Failed to create page", ja: "ページの作成に失敗", zh: "页面创建失败", es: "Error al crear página" },
 
   // Page-level chrome
   { ko: "오늘 할 일", en: "Today's to-do", ja: "今日のやること", zh: "今日待办", es: "Para hoy" },
