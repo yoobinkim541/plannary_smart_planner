@@ -1667,7 +1667,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(doc => {
                         if (!doc.exists) {
                             window.showToast(tr('pageNotFound') || 'Page not found', 'error');
-                            window.location.hash = '#page-wiki';
+                            window.location.hash = 'page-wiki';
                             return;
                         }
                         const loadedPage = { id: doc.id, ...doc.data() };
