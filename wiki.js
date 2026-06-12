@@ -2015,6 +2015,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const coverUrlPopoverClose = document.getElementById('wiki-cover-url-popover-close');
     if (coverUrlPopoverClose) coverUrlPopoverClose.onclick = () => hideWikiPopover('wiki-cover-url-popover');
 
+    const coverRemoveBtn = document.getElementById('wiki-cover-remove-btn');
+    if (coverRemoveBtn) {
+        coverRemoveBtn.onclick = () => {
+            if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
+            pushMetaUndoSnapshot();
+            applyPageMeta({ ...getMetaSnapshot(), coverUrl: '' });
+            pushMetaUndoSnapshot();
+        };
+    }
+
     if (coverAdjustBtn && coverPanel) {
         coverAdjustBtn.onclick = () => {
             if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
