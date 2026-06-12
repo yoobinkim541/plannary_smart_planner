@@ -236,7 +236,7 @@
         untitledTask: 'Tarea sin título', untitledEvent: 'Evento sin título', calendar: 'Calendario', googleCalendarConnect: 'Conectar Google',
         calendarNotConnected: 'No conectado.', calendarConnected: 'Google Calendar conectado',
         noCalendarEvents: 'No hay eventos próximos', calendarTokenMissing: 'No se pudo obtener el token de Calendar',
-        calendarConnectFailed: 'Error al conectar el calendario', calendarEventCreated: 'Evento creado',
+        calendarConnectFailed: 'Error al conectar el calendario', calendarTokenExpired: 'Acceso al calendario expirado — por favor reconecta', calendarEventCreated: 'Evento creado',
         calendarEventCreateFailed: 'Error al crear el evento', createCalendarFromPage: 'Crear evento desde el título del documento',
         pageIconPrompt: 'Introduce un emoji para el icono de la página.',
         coverImagePrompt: 'Pega la URL de una imagen de portada o déjalo vacío y pulsa Aceptar para subir un archivo.',

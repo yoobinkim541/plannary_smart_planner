@@ -1226,6 +1226,9 @@ function updateProfileUI(user) {
 
 function getAuthActionErrorMessage(error) {
     if (!error) return t('authUnknownError');
+    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return null;
+    }
     if (error.code === 'auth/requires-recent-login') {
         return t('recentLoginRequired');
     }
@@ -1294,7 +1297,8 @@ async function connectEmailPasswordLogin() {
         setStatus(t('emailPasswordDone'), 'success');
         showToast(t('emailPasswordEnabled'));
     } catch (error) {
-        setStatus(getAuthActionErrorMessage(error), 'error');
+        const msg = getAuthActionErrorMessage(error);
+        if (msg) setStatus(msg, 'error');
     } finally {
         if (button) button.disabled = false;
     }
@@ -1428,11 +1432,13 @@ async function deleteAccount() {
                 window.location.href = 'signup.html';
                 return;
             } catch (reauthError) {
-                setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(reauthError)}`, 'error');
+                const msg = getAuthActionErrorMessage(reauthError);
+                if (msg) setStatus(`${t('accountDeleteFailed')}: ${msg}`, 'error');
                 return;
             }
         }
-        setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(error)}`, 'error');
+        const outerMsg = getAuthActionErrorMessage(error);
+        if (outerMsg) setStatus(`${t('accountDeleteFailed')}: ${outerMsg}`, 'error');
     } finally {
         if (button) button.disabled = false;
     }
@@ -3179,6 +3185,18 @@ function buildTaskCalendarEvent(task) {
     };
 }
 
+function handleCalendarApiError(status) {
+    if (status === 401 || status === 403) {
+        taskCalendarAccessToken = null;
+        const connectBtn = getEl('task-calendar-connect-btn');
+        if (connectBtn) connectBtn.classList.remove('active');
+        const importBtn = getEl('task-calendar-import-btn');
+        if (importBtn) importBtn.classList.remove('active');
+        throw new Error(t('calendarTokenExpired') || 'Calendar access expired — please reconnect');
+    }
+    throw new Error(`Google Calendar ${status}`);
+}
+
 async function syncTaskToGoogleCalendar(task) {
     if (!task || !task.dueDate || !task.syncCalendar) return null;
     const token = await ensureTaskCalendarAccess();
@@ -3196,7 +3214,7 @@ async function syncTaskToGoogleCalendar(task) {
         },
         body: JSON.stringify(body)
     });
-    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    if (!response.ok) handleCalendarApiError(response.status);
     return response.json();
 }
 
@@ -3209,7 +3227,7 @@ async function deleteTaskGoogleCalendarEvent(task) {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` }
         });
-        if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`Google Calendar ${response.status}`);
+        if (!response.ok && response.status !== 404 && response.status !== 410) handleCalendarApiError(response.status);
     } catch (error) {
         console.warn('Calendar event delete failed:', error);
     }
@@ -3223,7 +3241,7 @@ async function importGoogleCalendarTasks() {
     until.setDate(until.getDate() + 30);
     const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(now.toISOString())}&timeMax=${encodeURIComponent(until.toISOString())}`;
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    if (!response.ok) handleCalendarApiError(response.status);
     const data = await response.json();
     const events = (data.items || []).filter(event => event.status !== 'cancelled' && event.id && event.summary);
     let imported = 0;
@@ -3562,6 +3580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await ensureTaskCalendarAccess();
                 showToast(t('calendarConnected'), 'success');
             } catch (error) {
+                if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
                 console.error('Calendar connect failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
             }
@@ -3574,6 +3593,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const count = await importGoogleCalendarTasks();
                 showToast(count ? `${t('calendarImportDone')} (${count})` : t('calendarImportEmpty'), count ? 'success' : 'info');
             } catch (error) {
+                if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
                 console.error('Calendar import failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
             }

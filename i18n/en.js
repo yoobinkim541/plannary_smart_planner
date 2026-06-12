@@ -237,7 +237,7 @@
         untitledTask: 'Untitled task', untitledEvent: 'Untitled event', calendar: 'Calendar', googleCalendarConnect: 'Connect Google',
         calendarNotConnected: 'Not connected.', calendarConnected: 'Google Calendar connected',
         noCalendarEvents: 'No upcoming events', calendarTokenMissing: 'Could not get Calendar permission token',
-        calendarConnectFailed: 'Calendar connection failed', calendarEventCreated: 'Calendar event created',
+        calendarConnectFailed: 'Calendar connection failed', calendarTokenExpired: 'Calendar access expired — please reconnect', calendarEventCreated: 'Calendar event created',
         calendarEventCreateFailed: 'Event creation failed', createCalendarFromPage: 'Create event from page title',
         pageIconPrompt: 'Enter an emoji for this page icon.',
         coverImagePrompt: 'Paste a cover image URL, or leave blank and press OK to upload a file.',

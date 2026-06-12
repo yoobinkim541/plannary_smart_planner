@@ -236,7 +236,7 @@
         untitledTask: '无标题任务', untitledEvent: '无标题日程', calendar: '日历', googleCalendarConnect: '连接 Google',
         calendarNotConnected: '未连接。', calendarConnected: 'Google Calendar 已连接',
         noCalendarEvents: '没有即将到来的日程', calendarTokenMissing: '未能获取 Calendar 权限令牌',
-        calendarConnectFailed: '日历连接失败', calendarEventCreated: '已创建日程',
+        calendarConnectFailed: '日历连接失败', calendarTokenExpired: '日历访问已过期 — 请重新连接', calendarEventCreated: '已创建日程',
         calendarEventCreateFailed: '日程创建失败', createCalendarFromPage: '用文档标题创建日程',
         pageIconPrompt: '输入用作页面图标的表情符号。',
         coverImagePrompt: '粘贴封面图片 URL,或留空并按确认以上传文件。',

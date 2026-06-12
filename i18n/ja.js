@@ -236,7 +236,7 @@
         untitledTask: '無題のタスク', untitledEvent: '無題の予定', calendar: 'カレンダー', googleCalendarConnect: 'Googleを連携',
         calendarNotConnected: '未接続です。', calendarConnected: 'Google Calendar連携済み',
         noCalendarEvents: '今後の予定はありません', calendarTokenMissing: 'Calendar権限トークンを取得できませんでした',
-        calendarConnectFailed: 'カレンダー連携に失敗', calendarEventCreated: '予定を作成しました',
+        calendarConnectFailed: 'カレンダー連携に失敗', calendarTokenExpired: 'カレンダーアクセスが期限切れです — 再接続してください', calendarEventCreated: '予定を作成しました',
         calendarEventCreateFailed: '予定作成に失敗', createCalendarFromPage: 'ドキュメントタイトルで予定を作成',
         pageIconPrompt: 'ページアイコンに使う絵文字を入力してください。',
         coverImagePrompt: 'カバー画像URLを貼り付けるか、空欄のままOKを押すとファイルをアップロードします。',

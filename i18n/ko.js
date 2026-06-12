@@ -237,7 +237,7 @@
         untitledTask: '제목 없는 작업', untitledEvent: '제목 없는 일정', calendar: '캘린더', googleCalendarConnect: 'Google 연결',
         calendarNotConnected: '연결 전입니다.', calendarConnected: 'Google Calendar 연결됨',
         noCalendarEvents: '다가오는 일정이 없습니다', calendarTokenMissing: 'Calendar 권한 토큰을 받지 못했습니다',
-        calendarConnectFailed: '캘린더 연결 실패', calendarEventCreated: '일정을 만들었습니다',
+        calendarConnectFailed: '캘린더 연결 실패', calendarTokenExpired: '캘린더 접근이 만료되었습니다 — 다시 연결해 주세요', calendarEventCreated: '일정을 만들었습니다',
         calendarEventCreateFailed: '일정 생성 실패', createCalendarFromPage: '문서 제목으로 일정 만들기',
         pageIconPrompt: '페이지 아이콘으로 쓸 이모지를 입력하세요.',
         coverImagePrompt: '커버 이미지 URL을 붙여넣거나, 비워두고 확인을 누르면 파일을 업로드합니다.',
