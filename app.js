@@ -2926,7 +2926,7 @@ window.refreshInspiration = () => {
 function renderProjectsDropdown() {
     const select = getEl('todo-project-select'); // Fixed ID
     if (!select) return;
-    const current = select.value;
+    const current = select.value || currentProjectId || '';
     select.innerHTML = `<option value="">${t('noProject')}</option>`;
     allProjects.forEach(p => {
         const opt = document.createElement('option');
@@ -4074,7 +4074,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dateInput.value = '';
             if (timeInput) timeInput.value = '';
             if (priorityInput) priorityInput.value = 'medium';
-            if (projectInput) projectInput.value = '';
+            if (projectInput) projectInput.value = currentProjectId || '';
             if (getEl('remove-task-img')) getEl('remove-task-img').click();
             const docRef = await db.collection('todos').add(payload);
             const savedTask = { ...localTask, id: docRef.id };
