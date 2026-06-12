@@ -1119,18 +1119,27 @@ function applyFilters() {
     
     filtered.sort((a, b) => getTaskSortValue(b) - getTaskSortValue(a));
 
-    // Ensure eclass tasks from the same course are contiguous so renderTodos shows
-    // only one group header per course, even when tasks are interleaved by date.
-    const eclassTasks = filtered.filter(isEclassTask);
-    if (eclassTasks.length > 1) {
-        const regularTasks = filtered.filter(t => !isEclassTask(t));
-        eclassTasks.sort((a, b) => {
-            const keyA = a.projectId || a.courseTitle || 'eclass';
-            const keyB = b.projectId || b.courseTitle || 'eclass';
-            if (keyA !== keyB) return keyA.localeCompare(keyB);
-            return getTaskSortValue(b) - getTaskSortValue(a);
-        });
-        filtered = [...eclassTasks, ...regularTasks];
+    // Within each contiguous "island" of eclass tasks, sort by course key so
+    // same-course tasks are adjacent and renderTodos shows only one group header
+    // per course per island. This preserves the user's drag-and-drop ordering of
+    // eclass tasks relative to regular tasks.
+    if (filtered.some(isEclassTask)) {
+        const result = [];
+        let i = 0;
+        while (i < filtered.length) {
+            if (!isEclassTask(filtered[i])) { result.push(filtered[i++]); continue; }
+            let j = i;
+            while (j < filtered.length && isEclassTask(filtered[j])) j++;
+            const island = filtered.slice(i, j).sort((a, b) => {
+                const keyA = a.projectId || a.courseTitle || 'eclass';
+                const keyB = b.projectId || b.courseTitle || 'eclass';
+                if (keyA !== keyB) return keyA.localeCompare(keyB);
+                return getTaskSortValue(b) - getTaskSortValue(a);
+            });
+            result.push(...island);
+            i = j;
+        }
+        filtered = result;
     }
 
     renderTodos(filtered);
