@@ -196,7 +196,8 @@ window.__PLANARY_EXTRA_PHRASES = [
   { ko: "개 강의", en: "courses", ja: "件の講義", zh: "门课程", es: "cursos" },
   { ko: "개 강의 · 24학점", en: "courses · 24 credits", ja: "件の講義・24単位", zh: "门课程 · 24 学分", es: "cursos · 24 créditos" },
   { ko: "학점", en: "credits", ja: "単位", zh: "学分", es: "créditos" },
-  { ko: "개 전체", en: "total", ja: "件 全体", zh: "项 总计", es: "total" },
+  { ko: "개 전체", en: " total", ja: " 件全体", zh: " 项", es: " total" },
+  { ko: "개 표시", en: " shown", ja: " 件表示", zh: " 个显示", es: " mostrados" },
 
   // Common short tags
   { ko: "디자인", en: "Design", ja: "デザイン", zh: "设计", es: "Diseño" },
@@ -378,9 +379,67 @@ window.__PLANARY_EXTRA_PHRASES = [
   // Tasks page extras
   { ko: "AI 정리", en: "AI organize", ja: "AI整理", zh: "AI 整理", es: "Organizar con IA" },
   { ko: "모두 미루기", en: "Postpone all", ja: "すべて延期", zh: "全部推迟", es: "Posponer todo" },
+  { ko: "시간순", en: "By time", ja: "時間順", zh: "按时间", es: "Por tiempo" },
+  { ko: "나중에", en: "Later", ja: "後で", zh: "稍后", es: "Más tarde" },
+  { ko: "비어있음", en: "Empty", ja: "空", zh: "空", es: "Vacío" },
+  { ko: "표시할 작업이 없어요.", en: "No tasks to show.", ja: "表示するタスクがありません。", zh: "没有任务可显示。", es: "No hay tareas." },
+  { ko: "표시할 위젯이 없어요", en: "No widgets to show", ja: "表示するウィジェットがありません", zh: "没有小组件", es: "Sin componentes" },
+  { ko: "지연", en: "Overdue", ja: "遅延", zh: "已逾期", es: "Atrasado" },
+  { ko: "재예약", en: "Reschedule", ja: "再スケジュール", zh: "重新安排", es: "Reprogramar" },
+  { ko: "미뤘어요", en: "postponed", ja: "延期しました", zh: "已推迟", es: "pospuesto" },
+  { ko: "재예약했어요", en: "rescheduled", ja: "再スケジュールしました", zh: "已重新安排", es: "reprogramado" },
+  { ko: "첨부 제거", en: "Remove attachment", ja: "添付を削除", zh: "删除附件", es: "Quitar adjunto" },
+  { ko: "파일 첨부", en: "Attach file", ja: "ファイルを添付", zh: "附加文件", es: "Adjuntar archivo" },
+  { ko: "첨부", en: "Attach", ja: "添付", zh: "附件", es: "Adjunto" },
+  { ko: "Apple Calendar에 추가", en: "Add to Apple Calendar", ja: "Apple Calendarに追加", zh: "添加到 Apple Calendar", es: "Añadir a Apple Calendar" },
+  { ko: "새 작업 추가… 또는 검색하기", en: "Add task… or search", ja: "タスク追加…または検索", zh: "添加任务…或搜索", es: "Añadir tarea… o buscar" },
+  { ko: "무엇을 해야 하나요? — '내일 3시 디자인 리뷰' 처럼 입력해보세요", en: "What needs doing? — try '3pm design review tomorrow'", ja: "何をすべきですか？ — 例：「明日15時 デザインレビュー」", zh: "需要做什么？— 试试"明天下午3点设计评审"", es: "¿Qué hay que hacer? — p. ej., 'Revisión mañana a las 3pm'" },
+  { ko: "AI가 작업을 중요도 순으로 정리했어요", en: "AI sorted tasks by priority", ja: "AIが優先度順にタスクを整理しました", zh: "AI 已按优先级排序任务", es: "IA ordenó tareas por prioridad" },
   { ko: "Q4 콘텐츠 캘린더 초안", en: "Q4 content calendar draft", ja: "Q4コンテンツカレンダー草案", zh: "Q4 内容日历草稿", es: "Borrador del calendario Q4" },
   { ko: "팀", en: "Team", ja: "チーム", zh: "团队", es: "Equipo" },
   { ko: "랜딩 페이지 카피 2차 수정", en: "Landing page copy — 2nd pass", ja: "ランディングコピー第2稿", zh: "落地页文案二稿", es: "Copy del landing — 2ª pasada" },
+
+  // Notifications
+  { ko: "새 알림이 없습니다", en: "No new notifications", ja: "新しい通知はありません", zh: "没有新通知", es: "Sin notificaciones" },
+  { ko: "마감일이나 리마인더가 있는 작업이 생기면 여기에 표시됩니다.", en: "Tasks with due dates or reminders will appear here.", ja: "期限やリマインダーのあるタスクがここに表示されます。", zh: "有截止日期或提醒的任务将显示在这里。", es: "Las tareas con fechas o recordatorios aparecerán aquí." },
+  { ko: "내일 마감", en: "Due tomorrow", ja: "明日締切", zh: "明天截止", es: "Vence mañana" },
+  { ko: "제목 없는 작업", en: "Untitled task", ja: "タイトルなしのタスク", zh: "未命名任务", es: "Tarea sin título" },
+
+  // Account / auth dialogs
+  { ko: "다른 계정으로 전환하거나 새 계정을 추가합니다", en: "Switch to another account or add a new one", ja: "別のアカウントに切り替えるか新しいアカウントを追加", zh: "切换到其他账号或添加新账号", es: "Cambia de cuenta o añade una nueva" },
+  { ko: "다른 계정 추가", en: "Add another account", ja: "別のアカウントを追加", zh: "添加其他账号", es: "Añadir otra cuenta" },
+  { ko: "이메일·Google·Apple로 로그인", en: "Sign in with Email · Google · Apple", ja: "メール・Google・Appleでログイン", zh: "用邮箱·Google·Apple登录", es: "Inicia con Email · Google · Apple" },
+  { ko: "계정을 전환해도 다른 기기에는 영향이 없어요", en: "Switching accounts won't affect other devices", ja: "アカウント切替は他のデバイスに影響しません", zh: "切换账号不会影响其他设备", es: "Cambiar cuenta no afecta a otros dispositivos" },
+  { ko: "곧 로그아웃됩니다…", en: "Signing out…", ja: "まもなくログアウトします…", zh: "即将退出登录…", es: "Cerrando sesión…" },
+  { ko: "로그아웃 하시겠어요?", en: "Sign out?", ja: "ログアウトしますか？", zh: "确定退出登录？", es: "¿Cerrar sesión?" },
+
+  // Shortcuts dialog
+  { ko: "빠르게 작업하기 위한 단축키 모음", en: "Keyboard shortcuts for getting things done fast", ja: "素早く作業するためのショートカット集", zh: "快速完成工作的快捷键", es: "Atajos para trabajar más rápido" },
+  { ko: "⌘ + / 로 언제든 열 수 있어요", en: "Open anytime with ⌘ + /", ja: "いつでも ⌘ + / で開けます", zh: "随时按 ⌘ + / 打开", es: "Ábrelo con ⌘ + / en cualquier momento" },
+
+  // Icon picker / media
+  { ko: "아이콘 변경", en: "Change icon", ja: "アイコン変更", zh: "更改图标", es: "Cambiar icono" },
+  { ko: "이모지", en: "Emoji", ja: "絵文字", zh: "表情", es: "Emoji" },
+  { ko: "이미지 업로드", en: "Upload image", ja: "画像アップロード", zh: "上传图片", es: "Subir imagen" },
+  { ko: "PNG · JPG · WebP · 정사각형 권장", en: "PNG · JPG · WebP · Square recommended", ja: "PNG · JPG · WebP · 正方形推奨", zh: "PNG · JPG · WebP · 推荐正方形", es: "PNG · JPG · WebP · Cuadrado recomendado" },
+  { ko: "이미지 제거", en: "Remove image", ja: "画像を削除", zh: "删除图片", es: "Eliminar imagen" },
+  { ko: "이미지를 불러올 수 없어요", en: "Can't load image", ja: "画像を読み込めません", zh: "无法加载图片", es: "No se puede cargar la imagen" },
+  { ko: "미리보기", en: "Preview", ja: "プレビュー", zh: "预览", es: "Vista previa" },
+  { ko: "적용", en: "Apply", ja: "適用", zh: "应用", es: "Aplicar" },
+
+  // Date picker
+  { ko: "이전 달", en: "Previous month", ja: "前月", zh: "上个月", es: "Mes anterior" },
+  { ko: "다음 달", en: "Next month", ja: "来月", zh: "下个月", es: "Mes siguiente" },
+  { ko: "날짜 제거", en: "Remove date", ja: "日付を削除", zh: "删除日期", es: "Quitar fecha" },
+
+  // Misc missing
+  { ko: "더보기", en: "More", ja: "もっと見る", zh: "更多", es: "Más" },
+  { ko: "메뉴 열기", en: "Open menu", ja: "メニューを開く", zh: "打开菜单", es: "Abrir menú" },
+  { ko: "Apple Calendar 파일을 만들었어요", en: "Apple Calendar file created", ja: "Apple Calendarファイルを作成しました", zh: "Apple Calendar 文件已创建", es: "Archivo de Apple Calendar creado" },
+  { ko: "서울과기대 e-Class에서 동기화됨", en: "Synced from SeoulTech e-Class", ja: "SeoulTech e-Classから同期", zh: "已从首尔科技 e-Class 同步", es: "Sincronizado desde e-Class SeoulTech" },
+  { ko: "시험 / 큰 일정 — e-Class 강의계획서", en: "Exam / major event — e-Class syllabus", ja: "試験/大きな予定 — e-Classシラバス", zh: "考试/大型日程 — e-Class 课程表", es: "Examen / evento importante — e-Class" },
+  { ko: "시험·발표", en: "Exam · Presentation", ja: "試験・発表", zh: "考试·演示", es: "Examen · Presentación" },
+  { ko: "다른 키워드로 시도해보세요", en: "Try a different keyword", ja: "別のキーワードで試してみてください", zh: "请尝试其他关键词", es: "Prueba otra palabra clave" },
 
   // Sticky notes
   { ko: "그리드", en: "Grid", ja: "グリッド", zh: "网格", es: "Cuadrícula" },
