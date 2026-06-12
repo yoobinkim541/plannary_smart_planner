@@ -4593,7 +4593,7 @@ function ListBlock({ block, onUpdate }) {
   };
   const updateItem = (i, val) => {
     const next = [...items];
-    next[i] = val;
+    next[i] = _sanitizeRichHtml(val);
     onUpdate({ items: next });
   };
   const addItem = (afterIdx) => {
@@ -4662,7 +4662,7 @@ function ChecklistBlock({ block, onUpdate }) {
             data-checklist-index={i}
             contentEditable
             suppressContentEditableWarning
-            onBlur={(e) => update(i, { text: e.currentTarget.innerHTML })}
+            onBlur={(e) => update(i, { text: _sanitizeRichHtml(e.currentTarget.innerHTML) })}
             onKeyDown={(e) => {
               if (e.key === "Enter") { e.preventDefault(); addItem(i); }
               if (e.key === "Backspace" && e.currentTarget.textContent === "") { e.preventDefault(); removeItem(i); }
