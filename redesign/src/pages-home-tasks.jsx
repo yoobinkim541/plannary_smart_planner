@@ -1552,13 +1552,22 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
             { id: "med",   label: "보통",  items: filtered.filter(t => !t.done && (t.priority === "med" || !t.priority)) },
             { id: "low",   label: "낮음",  items: filtered.filter(t => !t.done && t.priority === "low") },
             { id: "done",  label: "완료",  items: filtered.filter(t => t.done) },
-          ] : groupBy === "project" ? [
-            ...([...new Set(filtered.filter(t => !t.done && t.project).map(t => t.project))]).map(proj => ({
-              id: proj, label: proj, items: filtered.filter(t => !t.done && t.project === proj),
-            })),
-            { id: "none", label: "프로젝트 없음", items: filtered.filter(t => !t.done && !t.project) },
-            { id: "done", label: "완료", items: filtered.filter(t => t.done) },
-          ] : [
+          ] : groupBy === "project" ? (
+            (() => {
+              const byProject = {};
+              const doneGroup = [], noneGroup = [];
+              filtered.forEach(t => {
+                if (t.done) { doneGroup.push(t); return; }
+                if (t.project) (byProject[t.project] = byProject[t.project] || []).push(t);
+                else noneGroup.push(t);
+              });
+              return [
+                ...Object.entries(byProject).map(([proj, items]) => ({ id: proj, label: proj, items })),
+                { id: "none", label: "프로젝트 없음", items: noneGroup },
+                { id: "done", label: "완료", items: doneGroup },
+              ];
+            })()
+          ) : [
             { id: "overdue", label: "지연", items: filtered.filter(t => !t.done && t.time === "어제"), action: "재예약", actionKind: "reschedule" },
             { id: "today",   label: "오늘", items: filtered.filter(t => t.time && t.time.startsWith("오늘") && !t.done), action: "모두 미루기", actionKind: "postpone" },
             { id: "week",    label: "이번 주", items: filtered.filter(t => !t.done && t.time && !t.time.startsWith("오늘") && t.time !== "어제") },
