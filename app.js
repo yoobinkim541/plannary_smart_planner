@@ -2479,9 +2479,17 @@ function renderNotes(notes) {
     });
     list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => {
         markGuideStepComplete('notesManage');
+        const noteId = b.dataset.id;
         showConfirmModal(t('deleteNoteConfirm'), () => {
-            db.collection('notes').doc(b.dataset.id).delete()
-                .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+            const deletedNote = allNotes.find(n => n.id === noteId);
+            allNotes = allNotes.filter(n => n.id !== noteId);
+            renderNotes(allNotes);
+            updateDashboardUI();
+            db.collection('notes').doc(noteId).delete()
+                .catch(err => {
+                    if (deletedNote) { allNotes = [deletedNote, ...allNotes]; renderNotes(allNotes); updateDashboardUI(); }
+                    showToast(err.message || t('taskCreationFailed'), 'error');
+                });
         });
     });
     list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => {
@@ -3643,10 +3651,19 @@ function saveNoteEdit() {
     const selectedColor = picker?.querySelector('.color-option[aria-checked="true"]')?.dataset?.color || 'yellow';
     const saveBtn = getEl('note-edit-save-btn');
     if (saveBtn) saveBtn.disabled = true;
-    db.collection('notes').doc(editingNoteId)
+    const savedId = editingNoteId;
+    const note = allNotes.find(n => n.id === savedId);
+    const originalText = note?.text;
+    const originalColor = note?.color;
+    if (note) { note.text = text; note.color = selectedColor; renderNotes(allNotes); updateDashboardUI(); }
+    closeNoteEditModal();
+    showToast(t('updated'));
+    db.collection('notes').doc(savedId)
         .update({ text, color: selectedColor })
-        .then(() => { showToast(t('updated')); closeNoteEditModal(); })
-        .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'))
+        .catch(err => {
+            if (note) { note.text = originalText; note.color = originalColor; renderNotes(allNotes); updateDashboardUI(); }
+            showToast(err.message || t('taskCreationFailed'), 'error');
+        })
         .finally(() => { if (saveBtn) saveBtn.disabled = false; });
 }
 
