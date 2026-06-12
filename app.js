@@ -2825,7 +2825,7 @@ function renderProjectManagementList() {
 window.deleteProject = (id) => {
     if (!confirm(t('deleteProjectConfirm'))) return;
     db.collection('projects').doc(id).delete()
-        .catch(err => showToast(err.message || t('deleteFailed'), 'error'));
+        .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
 };
 
 function openProjectOverview(projectId) {
