@@ -3730,6 +3730,13 @@ async function saveTaskEditDialog() {
             console.error('Calendar update failed:', error);
             showToast(t('calendarSyncFailed') + ': ' + (error.message || error), 'error');
         }
+    } else if (!payload.dueDate && existing?.calendarEventId) {
+        try {
+            await deleteTaskGoogleCalendarEvent(existing);
+        } catch (error) {
+            console.warn('Calendar event removal failed:', error);
+        }
+        payload.calendarEventId = null;
     }
     const originalTask = existing ? { ...existing } : null;
     if (existing) { Object.assign(existing, payload); applyFilters(); updateDashboardUI(); }
