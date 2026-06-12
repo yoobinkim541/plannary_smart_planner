@@ -1015,6 +1015,14 @@ textarea.composer-input {
     color: var(--text-3);
 }
 
+.task-card.overdue {
+    border-left: 3px solid rgba(220, 38, 38, 0.5);
+}
+
+[data-theme="dark"] .task-card.overdue {
+    border-left-color: rgba(239, 68, 68, 0.6);
+}
+
 @keyframes fadeSlideUp {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -6013,6 +6021,18 @@ body.onboarding-spotlight-active #main-area {
     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
     70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
     100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+[data-theme="dark"] .due-today-badge {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+[data-theme="dark"] .due-today-badge.overdue-badge {
+    background: rgba(220, 38, 38, 0.25);
+    color: #f87171;
+    border-color: rgba(220, 38, 38, 0.5);
 }
 
 #dash-reminders-list {
