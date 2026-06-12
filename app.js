@@ -407,7 +407,13 @@ const GUIDE_STEPS = {
 const getEl = (id) => document.getElementById(id);
 
 function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container') || document.body.appendChild(Object.assign(document.createElement('div'), {id: 'toast-container'}));
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = Object.assign(document.createElement('div'), { id: 'toast-container' });
+        container.setAttribute('aria-live', 'polite');
+        container.setAttribute('role', 'status');
+        document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
