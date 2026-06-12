@@ -2883,6 +2883,15 @@ function renderProjectOverview() {
 
 function renderBookmarks() {
     const list = getEl('bookmarks-list'); if (!list) return;
+    if (!list.dataset.visitHandlerBound) {
+        list.dataset.visitHandlerBound = 'true';
+        list.addEventListener('click', e => {
+            const btn = e.target.closest('.bm-visit-btn');
+            if (!btn) return;
+            const url = btn.dataset.url || '';
+            if (/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
     list.innerHTML = allBookmarks.length ? '' : `
         <div class="wiki-empty-container collection-empty-container bookmark-empty-container">
             <div class="wiki-empty-content collection-empty-content">
@@ -2922,12 +2931,12 @@ function renderBookmarks() {
                 <img src="${favicon}" class="bm-favicon" onerror="this.src='icon.svg'">
                 <div class="bm-info">
                     <div class="bm-title">${bm.title || domain}</div>
-                    <div class="bm-url">${bm.url}</div>
+                    <div class="bm-url">${escapeHtml(bm.url)}</div>
                 </div>
             </div>
             <div style="margin-top:12px;">${tags}</div>
             <div class="tc-actions" style="margin-top:auto; padding-top:16px;">
-                <button class="tc-action-btn" onclick="window.open('${bm.url}', '_blank')">${t('visitWebsite')}</button>
+                <button class="tc-action-btn bm-visit-btn" data-url="${escapeHtml(bm.url)}">${t('visitWebsite')}</button>
             </div>`;
         list.appendChild(div);
     });
@@ -3672,6 +3681,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('add-bm-btn')) getEl('add-bm-btn').onclick = async () => {
         const urlInput = getEl('bm-url-input'), titleInput = getEl('bm-title-input'), tagsInput = getEl('bm-tags-input');
         const url = urlInput.value.trim(); if (!url || !currentUser) return;
+        if (!/^https?:\/\//i.test(url)) { showToast(t('invalidUrl') || 'URL은 http:// 또는 https://로 시작해야 합니다', 'error'); return; }
         const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
         db.collection('bookmarks').add({
             uid: currentUser.uid, url, title: titleInput.value.trim(), tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
