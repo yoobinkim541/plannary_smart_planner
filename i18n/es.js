@@ -272,6 +272,7 @@
         reauthPasswordPrompt: 'Introduce tu contraseña actual para continuar.',
         offlineMode: 'Sin conexión',
         backOnline: 'Conexión restaurada',
-        storageFull: 'Caché sin conexión llena — algunos datos podrían no estar disponibles sin conexión'
+        storageFull: 'Caché sin conexión llena — algunos datos podrían no estar disponibles sin conexión',
+        appUpdateAvailable: 'App actualizada — actualiza la página para usar la última versión'
     };
 })();
