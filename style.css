@@ -3671,8 +3671,8 @@ body.onboarding-spotlight-active #main-area {
 
     /* Main Area Adjustments */
     #main-area {
-        padding: 24px 20px;
-        height: calc(100vh - 60px); 
+        padding: 24px 20px 96px;
+        height: calc(100vh - 60px);
         height: calc(100svh - 60px);
     }
 

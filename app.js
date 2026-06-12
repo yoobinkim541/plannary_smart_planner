@@ -2604,8 +2604,7 @@ function updateDashboardUI() {
                 <span class="today-focus-meta">${isToday ? t('todayDue') : (project ? escapeHtml(project.name) : t('noProject'))}</span>
             `;
             div.onclick = () => {
-                currentFilter = isToday ? 'reminders' : 'important';
-                switchPage('page-tasks');
+                navigateAppPage('page-tasks', isToday ? 'reminders' : 'important');
             };
             focusList.appendChild(div);
         });
@@ -2740,7 +2739,8 @@ function scheduleReminderNotifications() {
                 const timer = setTimeout(() => {
                     firedReminderKeys.add(dailyKey);
                     reminderNotificationTimers.delete(dailyKey);
-                    notifyUser('Planary', formatText('todayTaskNotificationBody', { count: activeToday.length }), 'daily-tasks');
+                    const liveCount = allTodos.filter(task => !task.completed && !task.archived && task.dueDate === todayKey).length;
+                    notifyUser('Planary', formatText('todayTaskNotificationBody', { count: liveCount }), 'daily-tasks');
                 }, scheduled.getTime() - now);
                 reminderNotificationTimers.set(dailyKey, timer);
             }
