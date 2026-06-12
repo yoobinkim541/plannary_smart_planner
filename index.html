@@ -1159,6 +1159,31 @@
                 </div>
             </div>
         </div>
+
+        <div id="note-edit-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="note-edit-modal-title">
+                <div class="task-modal-header">
+                    <div>
+                        <span class="task-modal-kicker" data-i18n="edit">수정</span>
+                        <h2 id="note-edit-modal-title" data-i18n="editNote">메모 수정</h2>
+                    </div>
+                    <button class="task-modal-close" id="note-edit-modal-close" type="button" aria-label="닫기">×</button>
+                </div>
+                <textarea id="note-edit-text" class="composer-input" rows="6" style="width:100%;resize:vertical;margin-bottom:12px;"></textarea>
+                <div class="color-selector" id="note-edit-color-picker" role="radiogroup" aria-label="메모 색상 선택" style="margin-bottom:16px;">
+                    <button class="color-option opt-yellow" data-color="yellow" title="노랑" type="button" role="radio" aria-checked="false" aria-label="노랑"></button>
+                    <button class="color-option opt-blue" data-color="blue" title="파랑" type="button" role="radio" aria-checked="false" aria-label="파랑"></button>
+                    <button class="color-option opt-green" data-color="green" title="초록" type="button" role="radio" aria-checked="false" aria-label="초록"></button>
+                    <button class="color-option opt-pink" data-color="pink" title="분홍" type="button" role="radio" aria-checked="false" aria-label="분홍"></button>
+                    <button class="color-option opt-purple" data-color="purple" title="보라" type="button" role="radio" aria-checked="false" aria-label="보라"></button>
+                    <button class="color-option opt-orange" data-color="orange" title="주황" type="button" role="radio" aria-checked="false" aria-label="주황"></button>
+                </div>
+                <div class="task-modal-actions">
+                    <button class="text-link-btn" id="note-edit-cancel-btn" type="button" data-i18n="cancel">취소</button>
+                    <button class="confirm-btn" id="note-edit-save-btn" type="button" data-i18n="saveChanges">저장</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->

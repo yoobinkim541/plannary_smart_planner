@@ -20,6 +20,7 @@ let auth = null;
 let _modalTrigger = null;
 let _confirmCallback = null;
 let _confirmCancelCallback = null;
+let editingNoteId = null;
 
 function bindResilientMobileNav() {
     const menuToggle = getEl('menu-toggle');
@@ -3430,15 +3431,46 @@ function openEditModal(type, id) {
         openTaskEditDialog(id);
         return;
     }
-    const item = type === 'todo' ? allTodos.find(x => x.id === id) : allNotes.find(x => x.id === id);
-    if (!item) return;
-    const next = prompt(t('editContent'), item.text);
-    if (next && next.trim()) {
-        db.collection(type === 'todo' ? 'todos' : 'notes').doc(id)
-            .update({ text: next.trim() })
-            .then(() => showToast(t('updated')))
-            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+    if (type === 'note') {
+        const note = allNotes.find(x => x.id === id);
+        if (note) openNoteEditModal(note);
     }
+}
+
+function openNoteEditModal(note) {
+    _modalTrigger = document.activeElement;
+    editingNoteId = note.id;
+    const textarea = getEl('note-edit-text');
+    if (textarea) textarea.value = note.text || '';
+    const picker = getEl('note-edit-color-picker');
+    if (picker) {
+        picker.querySelectorAll('.color-option').forEach(btn => {
+            const selected = btn.dataset.color === (note.color || 'yellow');
+            btn.setAttribute('aria-checked', String(selected));
+            btn.classList.toggle('selected', selected);
+        });
+    }
+    setTaskModalOpen('note-edit-modal', true);
+    if (textarea) textarea.focus();
+}
+
+function closeNoteEditModal() {
+    editingNoteId = null;
+    setTaskModalOpen('note-edit-modal', false);
+    _modalTrigger?.focus();
+}
+
+function saveNoteEdit() {
+    if (!editingNoteId) return;
+    const textarea = getEl('note-edit-text');
+    const text = textarea?.value?.trim();
+    if (!text) return;
+    const picker = getEl('note-edit-color-picker');
+    const selectedColor = picker?.querySelector('.color-option[aria-checked="true"]')?.dataset?.color || 'yellow';
+    db.collection('notes').doc(editingNoteId)
+        .update({ text, color: selectedColor })
+        .then(() => { showToast(t('updated')); closeNoteEditModal(); })
+        .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
 }
 
 function finishAppBoot() {
@@ -3950,17 +3982,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modal.id === 'task-edit-modal') closeTaskEditDialog();
             if (modal.id === 'task-delete-modal') closeTaskDeleteDialog();
             if (modal.id === 'confirm-modal') closeConfirmModal(false);
+            if (modal.id === 'note-edit-modal') closeNoteEditModal();
         });
     });
     document.addEventListener('keydown', (e) => {
-        const activeModal = ['task-edit-modal', 'task-delete-modal', 'confirm-modal']
+        const activeModal = ['task-edit-modal', 'task-delete-modal', 'confirm-modal', 'note-edit-modal']
             .map(id => getEl(id))
             .find(m => m?.classList.contains('active'));
 
         if (e.key === 'Escape') {
             if (getEl('task-edit-modal')?.classList.contains('active')) { closeTaskEditDialog(); return; }
             if (getEl('task-delete-modal')?.classList.contains('active')) { closeTaskDeleteDialog(); return; }
-            if (getEl('confirm-modal')?.classList.contains('active')) closeConfirmModal(false);
+            if (getEl('confirm-modal')?.classList.contains('active')) { closeConfirmModal(false); return; }
+            if (getEl('note-edit-modal')?.classList.contains('active')) { closeNoteEditModal(); return; }
             return;
         }
 
@@ -3986,6 +4020,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (getEl('confirm-modal-cancel-btn')) getEl('confirm-modal-cancel-btn').onclick = () => closeConfirmModal(false);
     if (getEl('confirm-modal-ok-btn')) getEl('confirm-modal-ok-btn').onclick = () => closeConfirmModal(true);
+    if (getEl('note-edit-modal-close')) getEl('note-edit-modal-close').onclick = closeNoteEditModal;
+    if (getEl('note-edit-cancel-btn')) getEl('note-edit-cancel-btn').onclick = closeNoteEditModal;
+    if (getEl('note-edit-save-btn')) getEl('note-edit-save-btn').onclick = saveNoteEdit;
+    const noteColorPicker = getEl('note-edit-color-picker');
+    if (noteColorPicker) {
+        noteColorPicker.querySelectorAll('.color-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                noteColorPicker.querySelectorAll('.color-option').forEach(b => {
+                    b.setAttribute('aria-checked', 'false');
+                    b.classList.remove('selected');
+                });
+                btn.setAttribute('aria-checked', 'true');
+                btn.classList.add('selected');
+            });
+        });
+    }
 
     const logout = () => showConfirmModal(t('logoutConfirm'), () => unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html')));
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
