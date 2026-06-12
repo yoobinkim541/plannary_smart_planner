@@ -440,6 +440,11 @@ window.__PLANARY_EXTRA_PHRASES = [
   { ko: "시험 / 큰 일정 — e-Class 강의계획서", en: "Exam / major event — e-Class syllabus", ja: "試験/大きな予定 — e-Classシラバス", zh: "考试/大型日程 — e-Class 课程表", es: "Examen / evento importante — e-Class" },
   { ko: "시험·발표", en: "Exam · Presentation", ja: "試験・発表", zh: "考试·演示", es: "Examen · Presentación" },
   { ko: "다른 키워드로 시도해보세요", en: "Try a different keyword", ja: "別のキーワードで試してみてください", zh: "请尝试其他关键词", es: "Prueba otra palabra clave" },
+  { ko: '"에 대한 결과가 없어요', en: '" — no results', ja: '"の結果はありません', zh: '"没有结果', es: '" — sin resultados' },
+  { ko: "비밀번호는 서버에서 암호화되어 저장됩니다. 언제든 연결을 해제할 수 있고, 해제 시 동기화된 작업은 보관함으로 이동합니다.", en: "Passwords are encrypted on the server. You can disconnect at any time; synced tasks will be moved to archive.", ja: "パスワードはサーバー上で暗号化されます。いつでも接続を解除でき、同期されたタスクはアーカイブに移動します。", zh: "密码在服务器上加密存储。您可以随时断开连接；同步的任务将移至归档。", es: "Las contraseñas se cifran en el servidor. Puedes desconectarte en cualquier momento; las tareas sincronizadas pasarán al archivo." },
+  { ko: "로그아웃해도 작업·노트·위키·북마크는 모두 안전하게 보관됩니다. 같은 계정으로 다시 로그인하면 그대로 이어집니다.", en: "Your tasks, notes, wiki, and bookmarks are kept safe when you sign out. Sign back in with the same account to pick up where you left off.", ja: "ログアウトしてもタスク・ノート・ウィキ・ブックマークはすべて安全に保管されます。同じアカウントで再ログインすれば続きから始められます。", zh: "退出登录后，您的任务、笔记、Wiki 和书签都会安全保留。用同一账号重新登录即可继续。", es: "Tus tareas, notas, wiki y marcadores se conservan al cerrar sesión. Vuelve a iniciar con la misma cuenta para continuar." },
+  { ko: "그룹 작업", en: "group tasks", ja: "グループタスク", zh: "组任务", es: "tareas del grupo" },
+  { ko: "개를 언제로 옮길까요?", en: " — when to reschedule?", ja: " — いつに移しますか？", zh: " — 移到何时？", es: " — ¿cuándo moverlas?" },
 
   // Sticky notes
   { ko: "그리드", en: "Grid", ja: "グリッド", zh: "网格", es: "Cuadrícula" },
