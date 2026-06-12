@@ -5959,8 +5959,14 @@ function WikiBlocks({ activeId, onBlocksChange }) {
       if (live && Array.isArray(live.blocks)) {
         const serialized = JSON.stringify(live.blocks);
         if (serialized !== lastSavedRef.current) {
-          setBlocks(live.blocks);
-          lastSavedRef.current = serialized;
+          // Skip if the user has already typed something beyond what was initially loaded —
+          // overwriting their edits with stale Firestore data would cause data loss.
+          const userHasEdited = JSON.stringify(liveBlocksRef.current) !== lastSavedRef.current;
+          if (!userHasEdited) {
+            setBlocks(live.blocks);
+            liveBlocksRef.current = live.blocks;
+            lastSavedRef.current = serialized;
+          }
         }
       }
     };
