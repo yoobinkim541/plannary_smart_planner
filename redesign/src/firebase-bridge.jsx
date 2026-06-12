@@ -783,6 +783,23 @@
       registerFCMToken();
     }
 
+    // Shared snapshot error handler: debounced toast — at most once per minute
+    let _lastSyncErrToast = 0;
+    const _onSnapErr = (label, err) => {
+      console.error(`[Planary] ${label} snapshot error:`, err);
+      const now = Date.now();
+      if (now - _lastSyncErrToast < 60_000) return;
+      _lastSyncErrToast = now;
+      const isOffline = err.code === 'unavailable';
+      const isDenied = err.code === 'permission-denied';
+      window.Planary?.toast?.({
+        type: 'err',
+        title: isOffline ? '오프라인 상태예요' : isDenied ? '동기화 권한 오류' : '데이터 동기화 실패',
+        sub: isOffline ? '인터넷 연결을 확인해 주세요' : isDenied ? '로그아웃 후 다시 로그인해 주세요' : err.message,
+        ttl: 6000,
+      });
+    };
+
     // Tasks
     unsubs.push(
       db.collection("todos").where("uid", "==", user.uid).onSnapshot(
@@ -794,7 +811,7 @@
           // Re-emit projects so progress numbers refresh
           window.dispatchEvent(new CustomEvent("planary:tasks-changed-for-projects"));
         },
-        (err) => console.error("[Planary] todos snapshot error:", err)
+        (err) => _onSnapErr("todos", err)
       )
     );
 
@@ -818,7 +835,7 @@
           window.dispatchEvent(new CustomEvent("planary:user-doc-loaded", { detail: d }));
           window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: api.user }));
         },
-        (err) => console.error("[Planary] user snapshot error:", err)
+        (err) => _onSnapErr("user", err)
       )
     );
 
@@ -830,7 +847,7 @@
           window.Planary.ECLASS_CONNECTION = data;
           window.dispatchEvent(new CustomEvent("planary:eclass-connection", { detail: data }));
         },
-        (err) => console.error("[Planary] eclass connection snapshot error:", err)
+        (err) => _onSnapErr("eclass-connection", err)
       )
     );
 
@@ -843,7 +860,7 @@
           window.dispatchEvent(new CustomEvent("planary:notes-loaded", { detail: notes }));
           window.dispatchEvent(new CustomEvent("planary:notes-changed", { detail: notes }));
         },
-        (err) => console.error("[Planary] notes snapshot error:", err)
+        (err) => _onSnapErr("notes", err)
       )
     );
 
@@ -860,7 +877,7 @@
           window.Planary.PROJECTS = projects;
           window.dispatchEvent(new CustomEvent("planary:projects-loaded", { detail: projects }));
         },
-        (err) => console.error("[Planary] projects snapshot error:", err)
+        (err) => _onSnapErr("projects", err)
       )
     );
 
@@ -872,7 +889,7 @@
           window.Planary.BOOKMARKS = bookmarks;
           window.dispatchEvent(new CustomEvent("planary:bookmarks-loaded", { detail: bookmarks }));
         },
-        (err) => console.error("[Planary] bookmarks snapshot error:", err)
+        (err) => _onSnapErr("bookmarks", err)
       )
     );
 
@@ -896,7 +913,7 @@
           window.Planary.WIKI_PAGES = byId;
           window.dispatchEvent(new CustomEvent("planary:wiki-loaded", { detail: { tree, byId } }));
         },
-        (err) => console.error("[Planary] wiki snapshot error:", err)
+        (err) => _onSnapErr("wiki", err)
       )
     );
   });
