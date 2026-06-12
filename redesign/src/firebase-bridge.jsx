@@ -916,7 +916,10 @@
   window.addEventListener("planary:toggle-task", (e) => {
     const id = e.detail;
     if (!id || typeof id !== "string") return;
-    api.toggleTask(id).catch(err => console.error("[Planary] toggle-task failed:", err));
+    api.toggleTask(id).catch(err => {
+      console.error("[Planary] toggle-task failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "저장 실패", sub: err.message });
+    });
   });
 
   window.addEventListener("planary:save-task", (e) => {
@@ -1085,7 +1088,7 @@
         if (!granted) {
           window.Planary?.toast?.({ type: "err", title: "알림 권한이 필요해요", sub: "브라우저 설정에서 알림을 허용해주세요" });
         }
-      });
+      }).catch(err => console.error("[Planary] requestPushPermission failed:", err));
     }
   });
   window.addEventListener("planary:save-preferences", (e) => {
