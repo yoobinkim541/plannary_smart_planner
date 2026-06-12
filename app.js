@@ -3020,6 +3020,8 @@ window.deleteProject = (id) => {
         if (selectedProjectOverviewId === id) {
             selectedProjectOverviewId = null;
         }
+        allProjects = allProjects.filter(p => p.id !== id);
+        renderProjectManagementList();
         const batch = db.batch();
         batch.delete(db.collection('projects').doc(id));
         affectedTasks.forEach(task => {
@@ -3785,6 +3787,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hash router
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('resize', () => repositionActiveOnboardingGuide());
+
+    // Online/offline indicator
+    window.addEventListener('offline', () => showToast(t('offlineMode') || 'Offline', 'warning'));
+    window.addEventListener('online', () => showToast(t('backOnline') || 'Back online', 'success'));
     document.addEventListener('click', blockOnboardingBackgroundEvent, true);
     document.addEventListener('mousedown', blockOnboardingBackgroundEvent, true);
     document.addEventListener('pointerdown', blockOnboardingBackgroundEvent, true);

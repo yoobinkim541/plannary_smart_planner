@@ -265,6 +265,8 @@
         colorPink: 'ピンク', colorPurple: '紫', colorOrange: 'オレンジ',
         inspirationRefreshLabel: 'インスピレーションを更新',
         reauthPasswordTitle: '本人確認',
-        reauthPasswordPrompt: '続行するには現在のパスワードを入力してください。'
+        reauthPasswordPrompt: '続行するには現在のパスワードを入力してください。',
+        offlineMode: 'オフラインです',
+        backOnline: 'オンラインに戻りました'
     };
 })();

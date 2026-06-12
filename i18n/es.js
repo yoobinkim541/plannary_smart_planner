@@ -265,6 +265,8 @@
         colorPink: 'Rosa', colorPurple: 'Morado', colorOrange: 'Naranja',
         inspirationRefreshLabel: 'Actualizar inspiración',
         reauthPasswordTitle: 'Verificar identidad',
-        reauthPasswordPrompt: 'Introduce tu contraseña actual para continuar.'
+        reauthPasswordPrompt: 'Introduce tu contraseña actual para continuar.',
+        offlineMode: 'Sin conexión',
+        backOnline: 'Conexión restaurada'
     };
 })();

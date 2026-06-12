@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -8,6 +8,7 @@
         if (window.location.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
+        (function() { var l = localStorage.getItem('planary-language'); if (l) document.documentElement.lang = l; })();
     </script>
     <title>Planary - Login</title>
     <meta name="description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">

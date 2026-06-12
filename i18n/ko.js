@@ -266,6 +266,8 @@
         colorPink: '분홍', colorPurple: '보라', colorOrange: '주황',
         inspirationRefreshLabel: '영감 새로고침',
         reauthPasswordTitle: '본인 확인',
-        reauthPasswordPrompt: '계속하려면 현재 비밀번호를 입력하세요.'
+        reauthPasswordPrompt: '계속하려면 현재 비밀번호를 입력하세요.',
+        offlineMode: '오프라인 상태입니다',
+        backOnline: '온라인으로 돌아왔습니다'
     };
 })();

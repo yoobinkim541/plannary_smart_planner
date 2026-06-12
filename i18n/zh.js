@@ -265,6 +265,8 @@
         colorPink: '粉色', colorPurple: '紫色', colorOrange: '橙色',
         inspirationRefreshLabel: '刷新灵感',
         reauthPasswordTitle: '身份验证',
-        reauthPasswordPrompt: '请输入当前密码以继续操作。'
+        reauthPasswordPrompt: '请输入当前密码以继续操作。',
+        offlineMode: '已离线',
+        backOnline: '已恢复联网'
     };
 })();

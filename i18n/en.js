@@ -265,6 +265,8 @@
         colorPink: 'Pink', colorPurple: 'Purple', colorOrange: 'Orange',
         inspirationRefreshLabel: 'Refresh inspiration',
         reauthPasswordTitle: 'Verify identity',
-        reauthPasswordPrompt: 'Enter your current password to confirm your identity.'
+        reauthPasswordPrompt: 'Enter your current password to confirm your identity.',
+        offlineMode: 'You are offline',
+        backOnline: 'Back online'
     };
 })();
