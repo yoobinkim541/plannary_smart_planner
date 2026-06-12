@@ -2259,14 +2259,14 @@ function renderTodos(todos) {
         const sourceTag = isEclassTask(todo) ? `<span class="project-tag eclass-source-tag">e-Class</span>` : '';
         const typeTag = todo.source === 'eclass-exam' ? `<span class="project-tag eclass-type-tag">시험·발표</span>` : '';
         const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
-        const img = todo.imageUrl ? `<img src="${todo.imageUrl}" class="tc-img" alt="task image" onclick="window.open('${todo.imageUrl}', '_blank')">` : '';
-        
+        const img = todo.imageUrl ? `<img src="${escapeHtml(todo.imageUrl)}" class="tc-img tc-img-btn" alt="task image" data-url="${escapeHtml(todo.imageUrl)}">` : '';
+
         const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';
         const priorityText = `${t(p)} ${t('priorityLabel')}`;
 
         card.innerHTML = `
             <div class="tc-top">
-                <h3 class="tc-title">${todo.text}${dueBadge}</h3>
+                <h3 class="tc-title">${escapeHtml(todo.text)}${dueBadge}</h3>
                 <div class="tc-top-actions">
                     <span class="tc-priority-chip ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}">
                         <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
@@ -2276,7 +2276,7 @@ function renderTodos(todos) {
                 </div>
             </div>
             <div class="tc-subtitle">${todo.dueDate ? '📅 ' + todo.dueDate + (todo.dueTime ? ' ' + todo.dueTime : '') : t('noDate')}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
-            ${img}<p class="tc-desc">${todo.memo || t('noNotes')}</p><div style="margin-top: 8px;">${tag}</div>
+            ${img}<p class="tc-desc">${escapeHtml(todo.memo || t('noNotes'))}</p><div style="margin-top: 8px;">${tag}</div>
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
                 <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">${t('edit')}</button>
@@ -2311,6 +2311,15 @@ function renderTodos(todos) {
         const task = allTodos.find(x => x.id === b.dataset.id);
         if (task) downloadAppleCalendarEvent(task);
     });
+    if (!todoList.dataset.imgHandlerBound) {
+        todoList.dataset.imgHandlerBound = 'true';
+        todoList.addEventListener('click', e => {
+            const img = e.target.closest('.tc-img-btn');
+            if (!img) return;
+            const url = img.dataset.url || '';
+            if (/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
 }
 
 function getDragAfterElement(container, y) {
@@ -2362,7 +2371,7 @@ function renderNotes(notes) {
         card.dataset.id = note.id;
         if (String(note.id || '').startsWith('local-')) card.dataset.localOnly = 'true';
         card.style.left = (note.x || 20) + 'px'; card.style.top = (note.y || 20) + 'px';
-        card.innerHTML = `<div class="note-content">${note.text}</div><div class="note-footer"><button class="note-edit-btn" data-id="${note.id}">${t('edit')}</button><button class="note-delete-btn" data-id="${note.id}">${t('delete')}</button></div>`;
+        card.innerHTML = `<div class="note-content">${escapeHtml(note.text)}</div><div class="note-footer"><button class="note-edit-btn" data-id="${note.id}">${t('edit')}</button><button class="note-delete-btn" data-id="${note.id}">${t('delete')}</button></div>`;
         list.appendChild(card);
         setupDragging(card);
     });
@@ -2456,8 +2465,8 @@ function updateDashboardUI() {
             div.type = 'button';
             div.innerHTML = `
                 <span class="today-focus-dot ${todo.priority === 'high' ? 'high' : 'normal'}"></span>
-                <span class="today-focus-text">${todo.text}</span>
-                <span class="today-focus-meta">${isToday ? t('todayDue') : (project ? project.name : t('noProject'))}</span>
+                <span class="today-focus-text">${escapeHtml(todo.text)}</span>
+                <span class="today-focus-meta">${isToday ? t('todayDue') : (project ? escapeHtml(project.name) : t('noProject'))}</span>
             `;
             div.onclick = () => {
                 currentFilter = isToday ? 'reminders' : 'important';
@@ -2477,7 +2486,7 @@ function updateDashboardUI() {
             div.type = 'button';
             div.innerHTML = `
                 <span class="today-project-color" style="background:${project.color || 'var(--blue)'}"></span>
-                <span class="today-project-name">${project.name}</span>
+                <span class="today-project-name">${escapeHtml(project.name)}</span>
                 <span class="today-project-count">${projectTasks.length}</span>
             `;
             div.onclick = () => {
@@ -2510,7 +2519,7 @@ function updateDashboardUI() {
             const div = document.createElement('div');
             div.className = 'dash-reminder-item';
             div.innerHTML = `
-                <span class="reminder-text">${todo.text}</span>
+                <span class="reminder-text">${escapeHtml(todo.text)}</span>
                 <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : todo.dueDate}</span>
             `;
             div.onclick = () => {
@@ -2673,7 +2682,7 @@ function renderArchive() {
         item.className = 'archive-task-item';
         item.innerHTML = `
             <div class="archive-item-left">
-                <div class="archive-item-title">${task.text}</div>
+                <div class="archive-item-title">${escapeHtml(task.text)}</div>
                 <div class="archive-item-meta">
                     <span class="archive-status-badge ${task.completed ? 'status-completed' : 'status-pending'}">
                         ${task.completed ? t('completed') : t('active')}
@@ -2732,7 +2741,7 @@ function renderProjectsDropdown() {
     if (!select) return;
     const current = select.value;
     select.innerHTML = `<option value="">${t('noProject')}</option>`;
-    allProjects.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+    allProjects.forEach(p => select.innerHTML += `<option value="${p.id}">${escapeHtml(p.name)}</option>`);
     select.value = current;
 }
 
