@@ -76,7 +76,7 @@ function HomePage({ tasks, setTasks, variant, setPage, setTaskFilter, interests,
   const completedToday = tasks.filter(t => t.done && t.time && t.time.startsWith("오늘"));
   const completionPct = tasks.length === 0 ? 0 : Math.round(tasks.filter(t => t.done).length / tasks.length * 100);
   const eclassToday = tasks.filter(t => t.project === "pe" && !t.done && t.time && t.time.startsWith("오늘"));
-  const eclassSoon  = tasks.filter(t => t.project === "pe" && !t.done && (t.time === "내일" || t.time.startsWith("오늘") || t.time === "수요일 23:59"));
+  const eclassSoon  = tasks.filter(t => t.project === "pe" && !t.done && (t.time === "내일" || (t.time && t.time.startsWith("오늘")) || t.time === "수요일 23:59"));
 
   const toggleTask = (id) =>
     setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
@@ -1167,13 +1167,13 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
     }).filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()));
   }, [tasks, taskFilter, search]);
 
-  const counts = {
+  const counts = useMemoHT(() => ({
     all: tasks.filter(t => !t.done).length,
     today: tasks.filter(t => t.time && t.time.startsWith("오늘")).length,
     important: tasks.filter(t => t.priority === "high" && !t.done).length,
     reminders: tasks.filter(t => t.reminder).length,
     completed: tasks.filter(t => t.done).length,
-  };
+  }), [tasks]);
 
   const toggleTask = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
   const addTask = () => {
