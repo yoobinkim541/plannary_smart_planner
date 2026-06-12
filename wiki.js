@@ -1101,6 +1101,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 uploadByFile(file) {
                     if (!currentUser || !storage) return Promise.reject(tr('loginFirstOrStorage'));
+                    if (!file.type.startsWith('image/')) { window.showToast(tr('imageTypeInvalid'), 'error'); return Promise.reject(new Error(tr('imageTypeInvalid'))); }
+                    if (file.size > 5 * 1024 * 1024) { window.showToast(tr('imageTooLarge'), 'error'); return Promise.reject(new Error(tr('imageTooLarge'))); }
                     
                     const progressContainer = document.getElementById('wiki-upload-progress');
                     const progressBar = document.getElementById('wiki-upload-bar');
@@ -1900,6 +1902,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const uploadCoverFile = (file) => {
         if (!file || !currentUser || !storage) return Promise.reject(new Error(tr('loginFirstOrStorage')));
+        if (!file.type.startsWith('image/')) { window.showToast(tr('imageTypeInvalid'), 'error'); return Promise.reject(new Error(tr('imageTypeInvalid'))); }
+        if (file.size > 5 * 1024 * 1024) { window.showToast(tr('imageTooLarge'), 'error'); return Promise.reject(new Error(tr('imageTooLarge'))); }
         const filePath = `wiki/${currentUser.uid}/covers/${Date.now()}_${file.name}`;
         return storage.ref().child(filePath).put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(url => {
             uploadedWikiStorageUrls.add(url);
