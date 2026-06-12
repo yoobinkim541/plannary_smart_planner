@@ -2475,7 +2475,11 @@ function setupDragging(el) {
         if (!isDragging) return;
         if (e.cancelable) e.preventDefault();
         const touch = e.type === 'touchmove' ? e.touches[0] : e;
-        el.style.left = (initL + touch.clientX - startX) + 'px'; el.style.top = (initT + touch.clientY - startY) + 'px';
+        const container = el.parentElement;
+        const maxLeft = container ? Math.max(0, container.offsetWidth - el.offsetWidth) : 99999;
+        const maxTop = container ? Math.max(0, container.offsetHeight - el.offsetHeight) : 99999;
+        el.style.left = Math.max(0, Math.min(initL + touch.clientX - startX, maxLeft)) + 'px';
+        el.style.top = Math.max(0, Math.min(initT + touch.clientY - startY, maxTop)) + 'px';
     };
     const up = () => {
         isDragging = false; el.style.zIndex = 1;
