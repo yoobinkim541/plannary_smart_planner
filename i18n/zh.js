@@ -70,7 +70,7 @@
         untitledDocument: '无标题文档', subpage: '子页面', rootPage: '根页面', noWikiInProject: '该项目下没有关联的 Wiki 页面。',
         visitWebsite: '访问网站', deleteBookmark: '删除书签', deleteBookmarkConfirm: '删除书签?',
         editContent: '编辑内容:', updated: '已更新。', uploadingImage: '正在上传图片...', uploadComplete: '上传完成！', imageUploadFailed: '图片上传失败,将以无图片方式保存。',
-        added: '已添加。', taskCreationFailed: '任务创建失败。', bookmarkSaved: '书签已保存。', invalidUrl: 'URL必须以http://或https://开头。', runtimeError: '运行时错误: ', eclassExamType: '考试·演示',
+        added: '已添加。', taskCreationFailed: '任务创建失败。', bookmarkSaved: '书签已保存。', invalidUrl: 'URL必须以http://或https://开头。', runtimeError: '运行时错误: ', eclassExamType: '考试·演示', confirmAction: '确认',
         projectCreated: '项目已创建。', projectNotesTitle: '{project} 备忘', failedCreateWiki: '创建 Wiki 页面失败。',
         noteAdded: '备忘已添加。', logoutConfirm: '要退出登录吗?', uploadImageTitle: '附加图片',
         pasteUrl: '粘贴 URL', customTitle: '自定义标题', tagsPlaceholder: '标签...', newPage: '+ 新建页面',

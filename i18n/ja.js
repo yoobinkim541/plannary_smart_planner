@@ -70,7 +70,7 @@
         untitledDocument: '無題のドキュメント', subpage: 'サブページ', rootPage: 'ルートページ', noWikiInProject: 'このプロジェクトに紐付いたWikiページはありません。',
         visitWebsite: 'ウェブサイトを開く', deleteBookmark: 'ブックマークを削除', deleteBookmarkConfirm: 'ブックマークを削除しますか?',
         editContent: '内容を編集:', updated: '更新しました。', uploadingImage: '画像をアップロード中...', uploadComplete: 'アップロード完了！', imageUploadFailed: '画像アップロードに失敗したため、画像なしで保存します。',
-        added: '追加しました。', taskCreationFailed: 'タスクの作成に失敗しました。', bookmarkSaved: 'ブックマークを保存しました。', invalidUrl: 'URLはhttp://またはhttps://で始まる必要があります。', runtimeError: 'ランタイムエラー: ', eclassExamType: '試験・発表',
+        added: '追加しました。', taskCreationFailed: 'タスクの作成に失敗しました。', bookmarkSaved: 'ブックマークを保存しました。', invalidUrl: 'URLはhttp://またはhttps://で始まる必要があります。', runtimeError: 'ランタイムエラー: ', eclassExamType: '試験・発表', confirmAction: '確認',
         projectCreated: 'プロジェクトを作成しました。', projectNotesTitle: '{project} メモ', failedCreateWiki: 'Wikiページの作成に失敗しました。',
         noteAdded: 'メモを追加しました。', logoutConfirm: 'ログアウトしますか?', uploadImageTitle: '画像を添付',
         pasteUrl: 'URLを貼り付け', customTitle: 'カスタムタイトル', tagsPlaceholder: 'タグ...', newPage: '+ 新規ページ',

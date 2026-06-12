@@ -18,6 +18,7 @@ let db = null;
 let auth = null;
 
 let _modalTrigger = null;
+let _confirmCallback = null;
 
 function bindResilientMobileNav() {
     const menuToggle = getEl('menu-toggle');
@@ -2700,10 +2701,12 @@ function renderArchive() {
     });
     archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => db.collection('todos').doc(b.dataset.id).update({ archived: false }));
     archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = async () => {
-        if (!confirm(t('permanentDeleteConfirm'))) return;
-        const task = allTodos.find(item => item.id === b.dataset.id);
-        await db.collection('todos').doc(b.dataset.id).delete();
-        if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+        const id = b.dataset.id;
+        showConfirmModal(t('permanentDeleteConfirm'), async () => {
+            const task = allTodos.find(item => item.id === id);
+            await db.collection('todos').doc(id).delete();
+            if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+        });
     });
     window.refreshInspiration();
 }
@@ -2738,7 +2741,12 @@ function renderProjectsDropdown() {
     if (!select) return;
     const current = select.value;
     select.innerHTML = `<option value="">${t('noProject')}</option>`;
-    allProjects.forEach(p => select.innerHTML += `<option value="${p.id}">${escapeHtml(p.name)}</option>`);
+    allProjects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+    });
     select.value = current;
 }
 
@@ -2812,9 +2820,10 @@ function renderProjectManagementList() {
     renderProjectOverview();
 }
 window.deleteProject = (id) => {
-    if (!confirm(t('deleteProjectConfirm'))) return;
-    db.collection('projects').doc(id).delete()
-        .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+    showConfirmModal(t('deleteProjectConfirm'), () => {
+        db.collection('projects').doc(id).delete()
+            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+    });
 };
 
 function openProjectOverview(projectId) {
@@ -2957,7 +2966,7 @@ function renderBookmarks() {
         list.appendChild(div);
     });
 }
-window.deleteBookmark = (id) => confirm(t('deleteBookmarkConfirm')) && db.collection('bookmarks').doc(id).delete();
+window.deleteBookmark = (id) => showConfirmModal(t('deleteBookmarkConfirm'), () => db.collection('bookmarks').doc(id).delete());
 
 function setTaskModalOpen(modalId, open) {
     const modal = getEl(modalId);
@@ -3011,6 +3020,23 @@ function closeTaskEditDialog() {
     editingTaskId = null;
     setTaskModalOpen('task-edit-modal', false);
     _modalTrigger?.focus();
+}
+
+function showConfirmModal(message, onConfirm) {
+    _modalTrigger = document.activeElement;
+    _confirmCallback = onConfirm;
+    const title = getEl('confirm-modal-title');
+    if (title) title.textContent = message;
+    setTaskModalOpen('confirm-modal', true);
+    setTimeout(() => getEl('confirm-modal-cancel-btn')?.focus(), 50);
+}
+
+function closeConfirmModal(confirmed = false) {
+    const cb = _confirmCallback;
+    _confirmCallback = null;
+    setTaskModalOpen('confirm-modal', false);
+    _modalTrigger?.focus();
+    if (confirmed && cb) cb();
 }
 
 function syncNotificationSettingsUI() {
@@ -3488,24 +3514,25 @@ document.addEventListener('DOMContentLoaded', () => {
     handleHash();
 
     // Event Listeners
-    if (getEl('empty-archive-btn')) getEl('empty-archive-btn').onclick = async () => {
+    if (getEl('empty-archive-btn')) getEl('empty-archive-btn').onclick = () => {
         const archived = allTodos.filter(item => item.archived);
         if (!archived.length) { showToast(t('archiveAlreadyEmpty')); return; }
-        if (!confirm(t('emptyArchiveConfirm'))) return;
-        try {
-            const urls = new Set();
-            const batch = db.batch();
-            archived.forEach(task => {
-                batch.delete(db.collection('todos').doc(task.id));
-                if (task.imageUrl) urls.add(task.imageUrl);
-            });
-            await batch.commit();
-            if (urls.size) await deleteStorageUrls(urls);
-            showToast(t('archiveEmptied'));
-        } catch (err) {
-            console.error('[Archive] empty failed:', err);
-            showToast((t('archiveEmptyFailed') || 'Failed') + ': ' + (err.message || err), 'error');
-        }
+        showConfirmModal(t('emptyArchiveConfirm'), async () => {
+            try {
+                const urls = new Set();
+                const batch = db.batch();
+                archived.forEach(task => {
+                    batch.delete(db.collection('todos').doc(task.id));
+                    if (task.imageUrl) urls.add(task.imageUrl);
+                });
+                await batch.commit();
+                if (urls.size) await deleteStorageUrls(urls);
+                showToast(t('archiveEmptied'));
+            } catch (err) {
+                console.error('[Archive] empty failed:', err);
+                showToast((t('archiveEmptyFailed') || 'Failed') + ': ' + (err.message || err), 'error');
+            }
+        });
     };
     if (getEl('theme-toggle-btn')) getEl('theme-toggle-btn').onclick = () => {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -3885,15 +3912,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.target !== modal) return;
             if (modal.id === 'task-edit-modal') closeTaskEditDialog();
             if (modal.id === 'task-delete-modal') closeTaskDeleteDialog();
+            if (modal.id === 'confirm-modal') closeConfirmModal(false);
         });
     });
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
         if (getEl('task-edit-modal')?.classList.contains('active')) { closeTaskEditDialog(); return; }
-        if (getEl('task-delete-modal')?.classList.contains('active')) closeTaskDeleteDialog();
+        if (getEl('task-delete-modal')?.classList.contains('active')) { closeTaskDeleteDialog(); return; }
+        if (getEl('confirm-modal')?.classList.contains('active')) closeConfirmModal(false);
     });
+    if (getEl('confirm-modal-cancel-btn')) getEl('confirm-modal-cancel-btn').onclick = () => closeConfirmModal(false);
+    if (getEl('confirm-modal-ok-btn')) getEl('confirm-modal-ok-btn').onclick = () => closeConfirmModal(true);
 
-    const logout = () => confirm(t('logoutConfirm')) && unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html'));
+    const logout = () => showConfirmModal(t('logoutConfirm'), () => unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html')));
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
     if (getEl('profile-delete-account-btn')) getEl('profile-delete-account-btn').onclick = deleteAccount;
