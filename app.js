@@ -2457,6 +2457,20 @@ function renderTodos(todos) {
         todoList.appendChild(card);
     });
 
+    const saveCurrentDndOrder = () => {
+        const cards = [...todoList.querySelectorAll('.task-card')];
+        cards.forEach((c, i) => {
+            const t = allTodos.find(x => x.id === c.dataset.id);
+            const nextOrder = cards.length - i;
+            if (t && t.orderIndex !== nextOrder) {
+                t.orderIndex = nextOrder;
+                db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(err => console.warn('[DnD] orderIndex save failed:', err));
+            }
+        });
+    };
+    todoList.ondragover = (e) => { e.preventDefault(); };
+    todoList.ondrop = (e) => { e.preventDefault(); saveCurrentDndOrder(); };
+
     todoList.querySelectorAll('.btn-toggle').forEach(b => b.onclick = () => {
         const task = allTodos.find(x => x.id === b.dataset.id);
         if (!task) return;
