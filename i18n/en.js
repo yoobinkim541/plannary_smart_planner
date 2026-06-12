@@ -69,7 +69,7 @@
         noTasksInProject: 'No tasks in this project.', noActiveReminders: 'No active reminders.',
         untitledDocument: 'Untitled Document', subpage: 'Subpage', rootPage: 'Root page', noWikiInProject: 'No wiki pages linked to this project.',
         visitWebsite: 'Visit Website', deleteBookmark: 'Delete bookmark', deleteBookmarkConfirm: 'Delete bookmark?',
-        editContent: 'Edit content:', updated: 'Updated!', uploadingImage: 'Uploading image...', imageUploadFailed: 'Image upload failed, saving task without image',
+        editContent: 'Edit content:', updated: 'Updated!', uploadingImage: 'Uploading image...', uploadComplete: 'Upload Complete!', imageUploadFailed: 'Image upload failed, saving task without image',
         added: 'Added!', taskCreationFailed: 'Task creation failed.', bookmarkSaved: 'Bookmark saved!',
         projectCreated: 'Project created!', projectNotesTitle: '{project} Notes', failedCreateWiki: 'Failed to create wiki page.',
         noteAdded: 'Note added!', logoutConfirm: 'Logout?', uploadImageTitle: 'Attach Image',

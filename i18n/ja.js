@@ -69,7 +69,7 @@
         noTasksInProject: 'このプロジェクトにはタスクがありません。', noActiveReminders: '有効なリマインダーはありません。',
         untitledDocument: '無題のドキュメント', subpage: 'サブページ', rootPage: 'ルートページ', noWikiInProject: 'このプロジェクトに紐付いたWikiページはありません。',
         visitWebsite: 'ウェブサイトを開く', deleteBookmark: 'ブックマークを削除', deleteBookmarkConfirm: 'ブックマークを削除しますか?',
-        editContent: '内容を編集:', updated: '更新しました。', uploadingImage: '画像をアップロード中...', imageUploadFailed: '画像アップロードに失敗したため、画像なしで保存します。',
+        editContent: '内容を編集:', updated: '更新しました。', uploadingImage: '画像をアップロード中...', uploadComplete: 'アップロード完了！', imageUploadFailed: '画像アップロードに失敗したため、画像なしで保存します。',
         added: '追加しました。', taskCreationFailed: 'タスクの作成に失敗しました。', bookmarkSaved: 'ブックマークを保存しました。',
         projectCreated: 'プロジェクトを作成しました。', projectNotesTitle: '{project} メモ', failedCreateWiki: 'Wikiページの作成に失敗しました。',
         noteAdded: 'メモを追加しました。', logoutConfirm: 'ログアウトしますか?', uploadImageTitle: '画像を添付',

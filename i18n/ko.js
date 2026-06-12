@@ -69,7 +69,7 @@
         noTasksInProject: '이 프로젝트에 작업이 없습니다.', noActiveReminders: '활성 리마인더가 없습니다.',
         untitledDocument: '제목 없는 문서', subpage: '하위 페이지', rootPage: '루트 페이지', noWikiInProject: '이 프로젝트에 연결된 위키 페이지가 없습니다.',
         visitWebsite: '웹사이트 방문', deleteBookmark: '북마크 삭제', deleteBookmarkConfirm: '북마크를 삭제할까요?',
-        editContent: '내용 수정:', updated: '수정되었습니다.', uploadingImage: '이미지 업로드 중...', imageUploadFailed: '이미지 업로드에 실패해 이미지 없이 저장합니다.',
+        editContent: '내용 수정:', updated: '수정되었습니다.', uploadingImage: '이미지 업로드 중...', uploadComplete: '업로드 완료!', imageUploadFailed: '이미지 업로드에 실패해 이미지 없이 저장합니다.',
         added: '추가되었습니다.', taskCreationFailed: '작업 생성에 실패했습니다.', bookmarkSaved: '북마크가 저장되었습니다.',
         projectCreated: '프로젝트가 생성되었습니다.', projectNotesTitle: '{project} 메모', failedCreateWiki: '위키 페이지 생성에 실패했습니다.',
         noteAdded: '메모가 추가되었습니다.', logoutConfirm: '로그아웃할까요?', uploadImageTitle: '이미지 첨부',

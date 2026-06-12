@@ -1206,7 +1206,13 @@ function updateProfileUI(user) {
     if (getEl('user-photo')) {
         if (user.photoURL) getEl('user-photo').src = user.photoURL;
         const mobileAvatar = getEl('mobile-user-avatar');
-        if (mobileAvatar) mobileAvatar.innerHTML = `<img src="${user.photoURL || getEl('user-photo').src}" alt="avatar">`;
+        if (mobileAvatar) {
+            const avatarImg = document.createElement('img');
+            avatarImg.src = user.photoURL || getEl('user-photo').src;
+            avatarImg.alt = 'avatar';
+            mobileAvatar.innerHTML = '';
+            mobileAvatar.appendChild(avatarImg);
+        }
     }
     if (getEl('profile-view-name')) getEl('profile-view-name').textContent = name;
     if (getEl('profile-view-email')) getEl('profile-view-email').textContent = user.email;
@@ -2294,12 +2300,14 @@ function renderTodos(todos) {
             completed,
             completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
             completedDate: completed ? localDateKey() : null
-        });
+        }).catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.btn-archive').forEach(b => b.onclick = () => {
-        const t = allTodos.find(x => x.id === b.dataset.id);
-        db.collection('todos').doc(b.dataset.id).update({ archived: !t.archived });
+        const task = allTodos.find(x => x.id === b.dataset.id);
+        if (!task) return;
+        db.collection('todos').doc(b.dataset.id).update({ archived: !task.archived })
+            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => openTaskDeleteDialog(b.dataset.id));
@@ -2814,7 +2822,11 @@ function renderProjectManagementList() {
     });
     renderProjectOverview();
 }
-window.deleteProject = (id) => confirm(t('deleteProjectConfirm')) && db.collection('projects').doc(id).delete();
+window.deleteProject = (id) => {
+    if (!confirm(t('deleteProjectConfirm'))) return;
+    db.collection('projects').doc(id).delete()
+        .catch(err => showToast(err.message || t('deleteFailed'), 'error'));
+};
 
 function openProjectOverview(projectId) {
     selectedProjectOverviewId = projectId;
@@ -3393,7 +3405,12 @@ function openEditModal(type, id) {
     const item = type === 'todo' ? allTodos.find(x => x.id === id) : allNotes.find(x => x.id === id);
     if (!item) return;
     const next = prompt(t('editContent'), item.text);
-    if (next && next.trim()) db.collection(type === 'todo' ? 'todos' : 'notes').doc(id).update({ text: next.trim() }).then(() => showToast(t('updated')));
+    if (next && next.trim()) {
+        db.collection(type === 'todo' ? 'todos' : 'notes').doc(id)
+            .update({ text: next.trim() })
+            .then(() => showToast(t('updated')))
+            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+    }
 }
 
 function finishAppBoot() {

@@ -1130,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             () => {
                                 uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
                                     if (progressBar) progressBar.style.width = '100%';
-                                    if (progressText) progressText.innerText = `${label} Upload Complete!`;
+                                    if (progressText) progressText.innerText = `${label} ${tr('uploadComplete')}`;
 
                                     setTimeout(() => {
                                         if (progressContainer) progressContainer.style.display = 'none';
