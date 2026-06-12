@@ -2372,7 +2372,7 @@ function renderTodos(todos) {
                 const nextOrder = cards.length - i;
                 if (t && t.orderIndex !== nextOrder) {
                     t.orderIndex = nextOrder;
-                    db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
+                    db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(err => console.warn('[DnD] orderIndex save failed:', err));
                 }
             });
         };
@@ -2412,7 +2412,7 @@ function renderTodos(todos) {
                     const nextOrder = cards.length - idx;
                     if (t && t.orderIndex !== nextOrder) {
                         t.orderIndex = nextOrder;
-                        db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
+                        db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(err => console.warn('[DnD] orderIndex save failed:', err));
                     }
                 });
             };
@@ -2446,7 +2446,7 @@ function renderTodos(todos) {
                     <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">&times;</button>
                 </div>
             </div>
-            <div class="tc-subtitle">${todo.dueDate ? '📅 ' + todo.dueDate + (todo.dueTime ? ' ' + todo.dueTime : '') : t('noDate')}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
+            <div class="tc-subtitle">${todo.dueDate ? '📅 ' + escapeHtml(todo.dueDate) + (todo.dueTime ? ' ' + escapeHtml(todo.dueTime) : '') : t('noDate')}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
             ${img}<p class="tc-desc">${escapeHtml(todo.memo || t('noNotes'))}</p><div style="margin-top: 8px;">${tag}</div>
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
