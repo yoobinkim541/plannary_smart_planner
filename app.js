@@ -2709,13 +2709,16 @@ function renderArchive() {
         `;
         archiveListEl.appendChild(item);
     });
-    archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => db.collection('todos').doc(b.dataset.id).update({ archived: false }));
-    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = async () => {
+    archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () =>
+        db.collection('todos').doc(b.dataset.id).update({ archived: false })
+            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error')));
+    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => {
         const id = b.dataset.id;
         showConfirmModal(t('permanentDeleteConfirm'), async () => {
             const task = allTodos.find(item => item.id === id);
-            await db.collection('todos').doc(id).delete();
-            if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+            db.collection('todos').doc(id).delete()
+                .then(() => { if (task?.imageUrl) deleteStorageUrls(new Set([task.imageUrl])); })
+                .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
         });
     });
     window.refreshInspiration();
