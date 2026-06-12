@@ -78,6 +78,8 @@
         archiveDescription: 'Revisa las tareas completadas y los registros pasados.', totalAchievements: 'Logros totales', itemsArchived: 'Elementos archivados', currentStreak: 'Racha actual', activityHeatmap: 'Mapa de actividad', lastTwelveWeeksCompleted: 'Completadas en las últimas 12 semanas', daySuffix: 'd',
         joinedDaysLabel: 'Miembro desde:', joinedDaysValue: '{days} días',
         monospace: 'Monoespaciada', serif: 'Serif', handwritten: 'Manuscrita', fontNanumGothic: 'Nanum Gothic',
+        searchNoResultsTitle: 'Sin resultados',
+        searchNoResultsBody: 'Ninguna tarea coincide con tu búsqueda. Prueba con otra palabra.',
         emptyTasksAllTitle: 'Llena tu lista de tareas',
         emptyTasksAllBody: 'Reúne pendientes, fechas y notas en un mismo lugar.<br>Añade tu primera tarea arriba para empezar el flujo.',
         emptyTasksCompletedTitle: 'Aún no hay tareas completadas',

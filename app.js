@@ -2292,19 +2292,23 @@ function renderEclassGroupHeader(todo) {
 function renderTodos(todos) {
     const todoList = getEl('todo-list');
     if (!todoList) return;
+    const searchTerm = getEl('search-input')?.value?.trim() || '';
+    const isSearchActive = searchTerm.length > 0 || !!currentProjectId;
     const emptyState = getTaskEmptyState();
+    const emptyTitle = isSearchActive ? t('searchNoResultsTitle') : t(emptyState.titleKey);
+    const emptyBody = isSearchActive ? t('searchNoResultsBody') : t(emptyState.bodyKey);
     todoList.innerHTML = todos.length ? '' : `
         <div class="wiki-empty-container task-empty-container">
             <div class="wiki-empty-content task-empty-content">
                 <div class="wiki-empty-illustration task-empty-illustration">
-                    ${appIconSvg(emptyState.icon, 80)}
+                    ${appIconSvg(isSearchActive ? 'tasks' : emptyState.icon, 80)}
                 </div>
-                <h2>${t(emptyState.titleKey)}</h2>
-                <p>${t(emptyState.bodyKey)}</p>
-                <button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
+                <h2>${emptyTitle}</h2>
+                <p>${emptyBody}</p>
+                ${isSearchActive ? '' : `<button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     <span style="vertical-align: middle;">${t('firstTaskButton')}</span>
-                </button>
+                </button>`}
             </div>
         </div>`;
 

@@ -79,6 +79,8 @@
         currentStreak: 'Current Streak', activityHeatmap: 'Activity Heatmap', lastTwelveWeeksCompleted: 'Completed in the last 12 weeks', daySuffix: 'd',
         joinedDaysLabel: 'Member for:', joinedDaysValue: '{days} days',
         monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', fontNanumGothic: 'Nanum Gothic',
+        searchNoResultsTitle: 'No results found',
+        searchNoResultsBody: 'No tasks match your search. Try a different keyword.',
         emptyTasksAllTitle: 'Fill your task list',
         emptyTasksAllBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',
         emptyTasksCompletedTitle: 'No completed tasks yet',

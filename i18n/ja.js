@@ -78,6 +78,8 @@
         archiveDescription: '完了したタスクや過去の記録を振り返ります。', totalAchievements: '達成数', itemsArchived: 'アーカイブ件数', currentStreak: '連続完了', activityHeatmap: 'アクティビティヒートマップ', lastTwelveWeeksCompleted: '直近12週間の完了記録', daySuffix: '日',
         joinedDaysLabel: '利用期間:', joinedDaysValue: '{days}日目',
         monospace: '等幅', serif: 'セリフ', handwritten: '手書き', fontNanumGothic: 'ナヌムゴシック',
+        searchNoResultsTitle: '検索結果がありません',
+        searchNoResultsBody: '検索キーワードに一致するタスクがありません。別のキーワードをお試しください。',
         emptyTasksAllTitle: 'タスクを追加しましょう',
         emptyTasksAllBody: 'やること、期限、メモを一か所で整理する場所です。<br>上の入力欄から最初のタスクを追加して流れを始めましょう。',
         emptyTasksCompletedTitle: 'まだ完了したタスクがありません',
