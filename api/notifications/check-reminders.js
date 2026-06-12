@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
           title: `⏰ ${todo.text}`,
           body: `${timeLabel} · ${dateStr}`,
           tag: `reminder-${doc.id}-${mins}`,
-          url: '/redesign/',
+          url: '/',
           data: { todoId: doc.id, type: 'reminder', reminderMinutes: key },
         });
         await doc.ref.update({

@@ -25,9 +25,9 @@ async function sendPushToUser(uid, { title, body, url, tag, data = {} }) {
         tag: tag || 'planary',
         requireInteraction: false,
       },
-      fcmOptions: { link: url || '/redesign/' },
+      fcmOptions: { link: url || '/' },
     },
-    data: { url: url || '/redesign/', ...data },
+    data: { url: url || '/', ...data },
   });
 
   // Clean up invalid / unregistered tokens

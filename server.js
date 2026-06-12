@@ -55,7 +55,7 @@ app.all('/api/notifications/check-reminders', require('./api/notifications/check
 app.all('/api/og',                            require('./api/og-node'));
 
 // ── Static / SPA ──────────────────────────────────────────────────────────────
-app.get('/', (req, res) => res.redirect(302, '/redesign/'));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/redesign', (req, res) => res.redirect(302, '/redesign/'));
 
 // Serve redesign SPA
