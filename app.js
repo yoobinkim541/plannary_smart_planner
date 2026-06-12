@@ -860,7 +860,7 @@ function loadTodos() {
             const data = doc.data();
             let dueDate = data.dueDate || null;
             if (dueDate && typeof dueDate !== 'string' && typeof dueDate.toDate === 'function') {
-                dueDate = dueDate.toDate().toISOString().slice(0, 10);
+                dueDate = localDateKey(dueDate.toDate());
             }
             if (dueDate === '') dueDate = null;
             return {
@@ -3391,7 +3391,7 @@ function parseGoogleCalendarDate(value) {
     const parsed = new Date(value.dateTime);
     if (Number.isNaN(parsed.getTime())) return { dueDate: null, dueTime: null };
     return {
-        dueDate: parsed.toISOString().slice(0, 10),
+        dueDate: localDateKey(parsed),
         dueTime: parsed.toTimeString().slice(0, 5)
     };
 }
