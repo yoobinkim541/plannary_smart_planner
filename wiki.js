@@ -1797,8 +1797,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPageList();
     };
 
+    let _createPageInFlight = false;
     const createNewPage = (parentId = null) => {
         if (!currentUser) return window.showToast(tr('loginFirst'), 'error');
+        if (_createPageInFlight) return;
+        _createPageInFlight = true;
         const parentPage = parentId ? getPageById(parentId) : null;
         const rootPage = parentId ? getRootPage(parentId) : null;
         const inheritedProjectId = parentPage
@@ -1829,7 +1832,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(err => {
             console.error("Creation error:", err);
             window.showToast(tr('failedCreatePage') + ': ' + err.message, "error");
-        });
+        }).finally(() => { _createPageInFlight = false; });
     };
 
     const getDescendantPageIds = (pageId) => {
@@ -2098,6 +2101,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (calendarConnectBtn) {
         calendarConnectBtn.onclick = async () => {
+            if (calendarConnectBtn.disabled) return;
+            calendarConnectBtn.disabled = true;
             try {
                 await requestCalendarToken();
                 await loadCalendarEvents();
@@ -2105,12 +2110,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('[Wiki] Calendar connect failed:', error);
                 window.showToast(tr('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarConnectBtn.disabled = false;
             }
         };
     }
 
     if (calendarCreateBtn) {
         calendarCreateBtn.onclick = async () => {
+            if (calendarCreateBtn.disabled) return;
+            calendarCreateBtn.disabled = true;
             try {
                 if (!calendarAccessToken) await requestCalendarToken();
                 const title = wikiTitleInput?.value?.trim() || tr('untitledDocument');
@@ -2137,6 +2146,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('[Wiki] Calendar event creation failed:', error);
                 window.showToast(tr('calendarEventCreateFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarCreateBtn.disabled = false;
             }
         };
     }
