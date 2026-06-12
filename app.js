@@ -1083,6 +1083,9 @@ function loadProjects() {
         allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderProjectsDropdown();
         renderProjectManagementList();
+    }, error => {
+        console.error('Project load failed:', error);
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
@@ -1091,6 +1094,9 @@ function loadBookmarks() {
     db.collection('bookmarks').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
         allBookmarks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderBookmarks();
+    }, error => {
+        console.error('Bookmark load failed:', error);
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
@@ -1100,6 +1106,9 @@ function loadWikiPagesForProjects() {
         allWikiPages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderProjectManagementList();
         renderProjectOverview();
+    }, error => {
+        console.error('Wiki pages load failed:', error);
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
