@@ -1026,7 +1026,10 @@
   window.addEventListener("planary:save-wiki-blocks", (e) => {
     const { id, blocks } = e.detail || {};
     if (!id) return;
-    api.saveWikiBlocks(id, blocks || []).catch(err => console.error("[Planary] save-wiki-blocks failed:", err));
+    api.saveWikiBlocks(id, blocks || []).catch(err => {
+      console.error("[Planary] save-wiki-blocks failed:", err);
+      window.Planary?.toast?.({ type: "err", title: "노트 저장 실패", sub: err.message });
+    });
   });
   window.addEventListener("planary:update-wiki-page-meta", (e) => {
     const { id, patch } = e.detail || {};
