@@ -3369,8 +3369,8 @@ function EclassConnectionCard() {
         onResult: (res) => {
           if (res && res.ok) {
             setConnected(true);
-            setPwInput("");
           }
+          setPwInput("");
         },
       },
     }));
@@ -5750,6 +5750,10 @@ function ProfileEditDialog({ user, onClose, onSave }) {
   const handleFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      window.Planary?.toast?.({ type: "err", title: "파일이 너무 커요", sub: "5MB 이하 이미지를 선택해 주세요" });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => update("avatar", `url("${reader.result}")`);
     reader.readAsDataURL(file);
