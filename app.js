@@ -2791,9 +2791,17 @@ function renderArchive() {
         `;
         archiveListEl.appendChild(item);
     });
-    archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () =>
-        db.collection('todos').doc(b.dataset.id).update({ archived: false })
-            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error')));
+    archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => {
+        const id = b.dataset.id;
+        const task = allTodos.find(x => x.id === id);
+        if (!task) return;
+        task.archived = false;
+        renderArchive();
+        applyFilters();
+        updateDashboardUI();
+        db.collection('todos').doc(id).update({ archived: false })
+            .catch(err => { task.archived = true; renderArchive(); applyFilters(); updateDashboardUI(); showToast(err.message || t('taskCreationFailed'), 'error'); });
+    });
     archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => {
         const id = b.dataset.id;
         showConfirmModal(t('permanentDeleteConfirm'), async () => {
