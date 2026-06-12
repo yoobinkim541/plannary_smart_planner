@@ -3060,13 +3060,8 @@ window.deleteProject = (id) => {
         const prevProjectId = currentProjectId;
         const prevOverviewId = selectedProjectOverviewId;
 
-        if (currentProjectId === id) {
-            currentProjectId = null;
-            applyFilters();
-        }
-        if (selectedProjectOverviewId === id) {
-            selectedProjectOverviewId = null;
-        }
+        if (currentProjectId === id) currentProjectId = null;
+        if (selectedProjectOverviewId === id) selectedProjectOverviewId = null;
         allProjects = allProjects.filter(p => p.id !== id);
         allTodos = allTodos.map(t => t.projectId === id ? { ...t, projectId: null } : t);
         const affectedWikiPages = allWikiPages.filter(page => page.projectId === id);
