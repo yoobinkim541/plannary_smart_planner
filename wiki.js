@@ -1625,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'wiki-widget-item';
-                button.innerHTML = `<strong>${escapeHtml(task.text || tr('untitledTask'))}</strong><small>${task.dueDate || tr(task.priority || 'tasks')}</small>`;
+                button.innerHTML = `<strong>${escapeHtml(task.text || tr('untitledTask'))}</strong><small>${task.dueDate ? escapeHtml(task.dueDate) : tr(task.priority || 'tasks')}</small>`;
                 button.onclick = () => {
                     if (typeof navigateAppPage === 'function') navigateAppPage('page-tasks', 'all');
                     else window.location.hash = 'page-tasks';
