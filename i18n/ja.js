@@ -58,7 +58,7 @@
         todayTaskNotificationBody: '今日対応するタスクが{count}件あります。', reminderNotificationBody: '{time}に予定されたタスクです。',
         deleteAccountTitle: '退会', deleteAccountDescription: 'アカウントと保存されたタスク、メモ、プロジェクト、Wiki、ブックマークをすべて削除します。',
         deleteAccountButton: '退会', deleteAccountConfirm: '本当に退会しますか? この操作は取り消せません。',
-        deleteAccountConfirmEmail: '退会を確定するにはメールを入力してください: {email}', deleteAccountPasswordPrompt: 'アカウント削除のためにパスワードを再入力してください。', deleteAccountEmailConfirmTitle: 'メールアドレスの確認',
+        deleteAccountConfirmEmail: '退会を確定するにはメールを入力してください: {email}', deleteAccountPasswordPrompt: 'アカウント削除のためにパスワードを再入力してください。', deleteAccountEmailConfirmTitle: 'メールアドレスの確認', deleteAccountPasswordTitle: 'パスワードの確認',
         deletingAccount: 'アカウント削除中...', accountDeleted: 'アカウントを削除しました。', accountDeleteFailed: '退会に失敗しました',
         cancel: 'キャンセル', taskUpdated: 'タスクを更新しました。', noNotes: 'メモなし', dueToday: '本日締切', priorityLabel: '優先度',
         low: '低', medium: '中', high: '高', noRecentNotes: '最近のメモはありません。', noUpcomingReminders: '今後のリマインダーはありません。',

@@ -1401,7 +1401,7 @@ async function reauthenticateForAccountDeletion(user) {
         return;
     }
     if (providers.includes('password') && user.email) {
-        const password = await showInputModalAsync(t('deleteAccountPasswordPrompt'), '', 'password');
+        const password = await showInputModalAsync(t('deleteAccountPasswordTitle') || '비밀번호 확인', t('deleteAccountPasswordPrompt'), 'password');
         if (!password) throw new Error(t('recentLoginRequired'));
         const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
         await user.reauthenticateWithCredential(credential);
