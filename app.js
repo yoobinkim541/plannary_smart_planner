@@ -4084,6 +4084,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         let localTask = null;
+        let savedText = '', savedMemo = '', savedDate = '', savedTime = '', savedPriority = 'medium';
         try {
             let calendarEvent = null;
             if (payload.syncCalendar) {
@@ -4104,6 +4105,11 @@ document.addEventListener('DOMContentLoaded', () => {
             upsertUserCacheItem('todos', localTask);
             applyFilters();
             updateDashboardUI();
+            savedText = input.value;
+            savedMemo = memoInput.value;
+            savedDate = dateInput.value;
+            savedTime = timeInput ? timeInput.value : '';
+            savedPriority = priorityInput ? priorityInput.value : 'medium';
             input.value = '';
             memoInput.value = '';
             dateInput.value = '';
@@ -4126,6 +4132,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 allTodos = allTodos.filter(item => item.id !== localTask.id);
                 applyFilters();
                 updateDashboardUI();
+                input.value = savedText || '';
+                memoInput.value = savedMemo || '';
+                dateInput.value = savedDate || '';
+                if (timeInput) timeInput.value = savedTime || '';
+                if (priorityInput) priorityInput.value = savedPriority || 'medium';
             }
             if (imageUrl) await deleteStorageUrls(new Set([imageUrl]));
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
