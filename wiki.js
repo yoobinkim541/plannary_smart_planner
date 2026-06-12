@@ -2280,8 +2280,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentPageId && deletingIdSet.has(currentPageId)) {
                 clearTimeout(autosaveTimer);
                 autosaveTimer = null;
-                currentPageId = null;
-                goBackToList();
+                closeEditor();
+                window.location.hash = 'page-wiki';
             }
             window.showToast(tr('pageDeleted'));
             return true;
