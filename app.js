@@ -3853,7 +3853,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Theme & Navigation Init
-    const savedTheme = localStorage.getItem('app-theme') || 'light';
+    const savedTheme = localStorage.getItem('app-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', savedTheme);
     applyAppFont(currentAppFont);
     applyLanguage(currentLanguage);
