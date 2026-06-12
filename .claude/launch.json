@@ -7,6 +7,13 @@
       "runtimeArgs": ["--yes", "serve", "."],
       "port": 4173,
       "autoPort": true
+    },
+    {
+      "name": "planary-main",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "C:\\Users\\asus\\Desktop\\memo"],
+      "port": 4174,
+      "autoPort": true
     }
   ]
 }
