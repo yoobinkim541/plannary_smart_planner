@@ -68,7 +68,7 @@
         taskCountSummary: '{tasks} 项任务、{reminders} 项提醒、{wiki} 个 Wiki 页面',
         noTasksInProject: '该项目下没有任务。', noActiveReminders: '没有有效的提醒。',
         untitledDocument: '无标题文档', subpage: '子页面', rootPage: '根页面', noWikiInProject: '该项目下没有关联的 Wiki 页面。',
-        visitWebsite: '访问网站', deleteBookmark: '删除书签', deleteBookmarkConfirm: '删除书签?',
+        visitWebsite: '访问网站', deleteBookmark: '删除书签', deleteBookmarkConfirm: '删除书签?', deleteNoteConfirm: '删除此备忘录?',
         editContent: '编辑内容:', updated: '已更新。', uploadingImage: '正在上传图片...', uploadComplete: '上传完成！', imageUploadFailed: '图片上传失败,将以无图片方式保存。', imageTypeInvalid: '只能附加图片文件。', imageTooLarge: '图片文件必须小于5MB。',
         added: '已添加。', taskCreationFailed: '任务创建失败。', bookmarkSaved: '书签已保存。', invalidUrl: 'URL必须以http://或https://开头。', runtimeError: '运行时错误: ', eclassExamType: '考试·演示', confirmAction: '确认', editNote: '编辑备忘',
         projectCreated: '项目已创建。', projectNotesTitle: '{project} 备忘', failedCreateWiki: '创建 Wiki 页面失败。',

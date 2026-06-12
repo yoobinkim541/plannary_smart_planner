@@ -2395,7 +2395,10 @@ function renderNotes(notes) {
     });
     list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => {
         markGuideStepComplete('notesManage');
-        db.collection('notes').doc(b.dataset.id).delete();
+        showConfirmModal(t('deleteNoteConfirm'), () => {
+            db.collection('notes').doc(b.dataset.id).delete()
+                .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+        });
     });
     list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => {
         markGuideStepComplete('notesManage');

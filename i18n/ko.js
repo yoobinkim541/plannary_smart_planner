@@ -68,7 +68,7 @@
         taskCountSummary: '{tasks}개 작업, {reminders}개 리마인더, {wiki}개 위키 페이지',
         noTasksInProject: '이 프로젝트에 작업이 없습니다.', noActiveReminders: '활성 리마인더가 없습니다.',
         untitledDocument: '제목 없는 문서', subpage: '하위 페이지', rootPage: '루트 페이지', noWikiInProject: '이 프로젝트에 연결된 위키 페이지가 없습니다.',
-        visitWebsite: '웹사이트 방문', deleteBookmark: '북마크 삭제', deleteBookmarkConfirm: '북마크를 삭제할까요?',
+        visitWebsite: '웹사이트 방문', deleteBookmark: '북마크 삭제', deleteBookmarkConfirm: '북마크를 삭제할까요?', deleteNoteConfirm: '이 메모를 삭제할까요?',
         editContent: '내용 수정:', updated: '수정되었습니다.', uploadingImage: '이미지 업로드 중...', uploadComplete: '업로드 완료!', imageUploadFailed: '이미지 업로드에 실패해 이미지 없이 저장합니다.', imageTypeInvalid: '이미지 파일만 첨부할 수 있습니다.', imageTooLarge: '이미지 파일은 5MB 이하여야 합니다.',
         added: '추가되었습니다.', taskCreationFailed: '작업 생성에 실패했습니다.', bookmarkSaved: '북마크가 저장되었습니다.', invalidUrl: 'URL은 http:// 또는 https://로 시작해야 합니다.', runtimeError: '런타임 에러: ', eclassExamType: '시험·발표', confirmAction: '확인', editNote: '메모 수정',
         projectCreated: '프로젝트가 생성되었습니다.', projectNotesTitle: '{project} 메모', failedCreateWiki: '위키 페이지 생성에 실패했습니다.',
