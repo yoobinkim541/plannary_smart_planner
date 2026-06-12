@@ -3450,6 +3450,8 @@ async function saveTaskEditDialog() {
         if (input) input.focus();
         return;
     }
+    const saveBtn = getEl('task-edit-save-btn');
+    if (saveBtn) saveBtn.disabled = true;
     const priority = getEl('task-edit-priority')?.value || 'medium';
     const existing = allTodos.find(item => item.id === editingTaskId);
     const editMinutes = Number(getEl('task-edit-calendar-reminder')?.value || 30);
@@ -3480,6 +3482,8 @@ async function saveTaskEditDialog() {
         showToast(t('taskUpdated'));
     } catch (err) {
         showToast(err.message || t('taskCreationFailed'), 'error');
+    } finally {
+        if (saveBtn) saveBtn.disabled = false;
     }
 }
 
