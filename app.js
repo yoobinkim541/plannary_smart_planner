@@ -2827,11 +2827,18 @@ function renderArchive() {
     });
     archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => {
         const id = b.dataset.id;
-        showConfirmModal(t('permanentDeleteConfirm'), async () => {
+        showConfirmModal(t('permanentDeleteConfirm'), () => {
             const task = allTodos.find(item => item.id === id);
+            allTodos = allTodos.filter(item => item.id !== id);
+            renderArchive();
+            applyFilters();
+            updateDashboardUI();
             db.collection('todos').doc(id).delete()
                 .then(() => { if (task?.imageUrl) deleteStorageUrls(new Set([task.imageUrl])); })
-                .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+                .catch(err => {
+                    if (task) { allTodos = [task, ...allTodos]; renderArchive(); applyFilters(); updateDashboardUI(); }
+                    showToast(err.message || t('taskCreationFailed'), 'error');
+                });
         });
     });
     window.refreshInspiration();
@@ -3108,8 +3115,16 @@ function renderBookmarks() {
         list.appendChild(div);
     });
 }
-window.deleteBookmark = (id) => showConfirmModal(t('deleteBookmarkConfirm'), () =>
-    db.collection('bookmarks').doc(id).delete().catch(err => showToast(err.message || t('taskCreationFailed'), 'error')));
+window.deleteBookmark = (id) => showConfirmModal(t('deleteBookmarkConfirm'), () => {
+    const deleted = allBookmarks.find(b => b.id === id);
+    allBookmarks = allBookmarks.filter(b => b.id !== id);
+    renderBookmarks();
+    db.collection('bookmarks').doc(id).delete()
+        .catch(err => {
+            if (deleted) { allBookmarks = [deleted, ...allBookmarks]; renderBookmarks(); }
+            showToast(err.message || t('taskCreationFailed'), 'error');
+        });
+});
 
 function setTaskModalOpen(modalId, open) {
     const modal = getEl(modalId);
