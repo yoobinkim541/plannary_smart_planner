@@ -2929,6 +2929,12 @@ window.deleteProject = (id) => {
         ? `${t('deleteProjectConfirm')} ${formatText('deleteProjectTasksWillUnassign', { count: taskCount })}`
         : t('deleteProjectConfirm');
     showConfirmModal(message, () => {
+        if (currentProjectId === id) {
+            currentProjectId = null;
+        }
+        if (selectedProjectOverviewId === id) {
+            selectedProjectOverviewId = null;
+        }
         const batch = db.batch();
         batch.delete(db.collection('projects').doc(id));
         affectedTasks.forEach(task => {
