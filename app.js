@@ -2337,7 +2337,7 @@ function renderTodos(todos) {
         card.className = `task-card${todo.completed ? ' completed' : ''}`;
         card.draggable = true;
         card.dataset.id = todo.id;
-        
+
         card.ondragstart = () => { card.classList.add('dragging'); };
         card.ondragend = () => { card.classList.remove('dragging'); };
         card.ondragover = (e) => {
@@ -2356,6 +2356,46 @@ function renderTodos(todos) {
                 if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
             });
         };
+
+        // Touch drag-and-drop: activate after 200ms long-press (avoids scroll conflict)
+        card.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            const startY = e.touches[0].clientY;
+            let active = false;
+            let moved = false;
+            const timer = setTimeout(() => {
+                if (moved) return;
+                active = true;
+                card.classList.add('dragging');
+                if (navigator.vibrate) navigator.vibrate(40);
+            }, 200);
+            const onMove = (ev) => {
+                if (!active) {
+                    if (Math.abs(ev.touches[0].clientY - startY) > 8) { moved = true; clearTimeout(timer); }
+                    return;
+                }
+                ev.preventDefault();
+                const after = getDragAfterElement(todoList, ev.touches[0].clientY);
+                if (!after) todoList.appendChild(card);
+                else todoList.insertBefore(card, after);
+            };
+            const onEnd = () => {
+                clearTimeout(timer);
+                document.removeEventListener('touchmove', onMove, { passive: false });
+                document.removeEventListener('touchend', onEnd);
+                if (!active) return;
+                active = false;
+                card.classList.remove('dragging');
+                const cards = [...todoList.querySelectorAll('.task-card')];
+                cards.forEach((c, idx) => {
+                    const t = allTodos.find(x => x.id === c.dataset.id);
+                    const nextOrder = cards.length - idx;
+                    if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(() => {});
+                });
+            };
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onEnd);
+        }, { passive: true });
 
         const p = todo.priority || 'medium';
         const proj = allProjects.find(px => px.id === todo.projectId);
