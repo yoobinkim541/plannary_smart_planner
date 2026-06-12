@@ -272,6 +272,7 @@
         reauthPasswordPrompt: '请输入当前密码以继续操作。',
         offlineMode: '已离线',
         backOnline: '已恢复联网',
-        storageFull: '离线缓存已满 — 部分数据可能无法在离线状态下使用'
+        storageFull: '离线缓存已满 — 部分数据可能无法在离线状态下使用',
+        appUpdateAvailable: '应用已更新 — 刷新页面以使用最新版本'
     };
 })();

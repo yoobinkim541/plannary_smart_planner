@@ -3,12 +3,25 @@ window.addEventListener('error', (event) => {
     console.error("Global error caught:", event.error);
     if (window.showToast) window.showToast((window.t?.('runtimeError') || 'Runtime error: ') + event.message, "error");
 });
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+});
 
 // Register PWA Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-            .then(registration => console.log('SW registered'))
+            .then(registration => {
+                console.log('SW registered');
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            if (window.showToast) window.showToast(window.t?.('appUpdateAvailable') || 'App updated — refresh to use the latest version', 'info');
+                        }
+                    });
+                });
+            })
             .catch(err => console.log('SW registration failed', err));
     });
 }
