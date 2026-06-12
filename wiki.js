@@ -1983,6 +1983,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyCoverUrl = (url) => {
         const trimmed = (url || '').trim();
         if (!trimmed) return;
+        if (!/^https?:\/\//i.test(trimmed)) { window.showToast(tr('invalidUrl') || 'URL은 https://로 시작해야 합니다.', 'error'); return; }
         pushMetaUndoSnapshot();
         applyPageMeta({ ...getMetaSnapshot(), coverUrl: trimmed });
         pushMetaUndoSnapshot();
