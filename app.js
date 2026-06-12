@@ -3019,6 +3019,11 @@ window.deleteProject = (id) => {
         ? `${t('deleteProjectConfirm')} ${formatText('deleteProjectTasksWillUnassign', { count: taskCount })}`
         : t('deleteProjectConfirm');
     showConfirmModal(message, () => {
+        const backupProjects = [...allProjects];
+        const backupTodos = allTodos.map(item => ({ ...item }));
+        const prevProjectId = currentProjectId;
+        const prevOverviewId = selectedProjectOverviewId;
+
         if (currentProjectId === id) {
             currentProjectId = null;
             applyFilters();
@@ -3027,14 +3032,24 @@ window.deleteProject = (id) => {
             selectedProjectOverviewId = null;
         }
         allProjects = allProjects.filter(p => p.id !== id);
+        allTodos = allTodos.map(t => t.projectId === id ? { ...t, projectId: null } : t);
         renderProjectManagementList();
+
         const batch = db.batch();
         batch.delete(db.collection('projects').doc(id));
         affectedTasks.forEach(task => {
             batch.update(db.collection('todos').doc(task.id), { projectId: null });
         });
         batch.commit()
-            .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+            .catch(err => {
+                allProjects = backupProjects;
+                allTodos = backupTodos;
+                currentProjectId = prevProjectId;
+                selectedProjectOverviewId = prevOverviewId;
+                applyFilters();
+                renderProjectManagementList();
+                showToast(err.message || t('taskCreationFailed'), 'error');
+            });
     });
 };
 
@@ -4078,7 +4093,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             localTask = {
                 ...payload,
-                id: `local-${Date.now()}`,
+                id: crypto.randomUUID ? crypto.randomUUID() : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 createdAt: Date.now()
             };
             allTodos = [localTask, ...allTodos];
