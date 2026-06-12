@@ -3070,6 +3070,8 @@ window.deleteProject = (id) => {
         const affectedWikiPages = allWikiPages.filter(page => page.projectId === id);
         allWikiPages = allWikiPages.map(page => page.projectId === id ? { ...page, projectId: null } : page);
         renderProjectManagementList();
+        applyFilters();
+        updateDashboardUI();
 
         const batch = db.batch();
         batch.delete(db.collection('projects').doc(id));
