@@ -1118,6 +1118,21 @@ function applyFilters() {
     else filtered = filtered.filter(t => !t.archived);
     
     filtered.sort((a, b) => getTaskSortValue(b) - getTaskSortValue(a));
+
+    // Ensure eclass tasks from the same course are contiguous so renderTodos shows
+    // only one group header per course, even when tasks are interleaved by date.
+    const eclassTasks = filtered.filter(isEclassTask);
+    if (eclassTasks.length > 1) {
+        const regularTasks = filtered.filter(t => !isEclassTask(t));
+        eclassTasks.sort((a, b) => {
+            const keyA = a.projectId || a.courseTitle || 'eclass';
+            const keyB = b.projectId || b.courseTitle || 'eclass';
+            if (keyA !== keyB) return keyA.localeCompare(keyB);
+            return getTaskSortValue(b) - getTaskSortValue(a);
+        });
+        filtered = [...eclassTasks, ...regularTasks];
+    }
+
     renderTodos(filtered);
 }
 
@@ -3112,11 +3127,15 @@ async function confirmTaskDelete() {
     const id = pendingDeleteTaskId;
     const task = allTodos.find(item => item.id === id);
     closeTaskDeleteDialog();
+    allTodos = allTodos.filter(item => item.id !== id);
+    applyFilters();
+    updateDashboardUI();
     try {
         await deleteTaskGoogleCalendarEvent(task);
         await db.collection('todos').doc(id).delete();
         if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
     } catch (err) {
+        if (task) { allTodos = [task, ...allTodos]; applyFilters(); updateDashboardUI(); }
         showToast(err.message || t('taskCreationFailed'), 'error');
     }
 }
@@ -3545,7 +3564,8 @@ async function saveTaskEditDialog() {
     const saveBtn = getEl('task-edit-save-btn');
     if (saveBtn) saveBtn.disabled = true;
     const priority = getEl('task-edit-priority')?.value || 'medium';
-    const existing = allTodos.find(item => item.id === editingTaskId);
+    const savedId = editingTaskId;
+    const existing = allTodos.find(item => item.id === savedId);
     const editMinutes = Number(getEl('task-edit-calendar-reminder')?.value || 30);
     const editList = normalizeReminderMinutes(editMinutes);
     const payload = {
@@ -3568,15 +3588,16 @@ async function saveTaskEditDialog() {
             showToast(t('calendarSyncFailed') + ': ' + (error.message || error), 'error');
         }
     }
-    try {
-        await db.collection('todos').doc(editingTaskId).update(payload);
-        closeTaskEditDialog();
-        showToast(t('taskUpdated'));
-    } catch (err) {
-        showToast(err.message || t('taskCreationFailed'), 'error');
-    } finally {
-        if (saveBtn) saveBtn.disabled = false;
-    }
+    const originalTask = existing ? { ...existing } : null;
+    if (existing) { Object.assign(existing, payload); applyFilters(); updateDashboardUI(); }
+    closeTaskEditDialog();
+    showToast(t('taskUpdated'));
+    db.collection('todos').doc(savedId).update(payload)
+        .catch(err => {
+            if (originalTask && existing) { Object.assign(existing, originalTask); applyFilters(); updateDashboardUI(); }
+            showToast(err.message || t('taskCreationFailed'), 'error');
+        })
+        .finally(() => { if (saveBtn) saveBtn.disabled = false; });
 }
 
 function openEditModal(type, id) {
