@@ -3455,9 +3455,13 @@ async function saveTaskEditDialog() {
             showToast(t('calendarSyncFailed') + ': ' + (error.message || error), 'error');
         }
     }
-    await db.collection('todos').doc(editingTaskId).update(payload);
-    closeTaskEditDialog();
-    showToast(t('taskUpdated'));
+    try {
+        await db.collection('todos').doc(editingTaskId).update(payload);
+        closeTaskEditDialog();
+        showToast(t('taskUpdated'));
+    } catch (err) {
+        showToast(err.message || t('taskCreationFailed'), 'error');
+    }
 }
 
 function openEditModal(type, id) {
