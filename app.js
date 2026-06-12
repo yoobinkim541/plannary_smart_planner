@@ -3756,6 +3756,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Submit on Enter for main text inputs
+    const todoInput = getEl('todo-input');
+    if (todoInput) todoInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); getEl('add-btn')?.click(); }
+    });
+    const bmUrlInput = getEl('bm-url-input');
+    if (bmUrlInput) bmUrlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); getEl('add-bm-btn')?.click(); }
+    });
+    const projectInput = getEl('project-input');
+    if (projectInput) projectInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); getEl('add-project-btn')?.click(); }
+    });
+
     // Bookmark Add
     if (getEl('add-bm-btn')) getEl('add-bm-btn').onclick = async () => {
         const urlInput = getEl('bm-url-input'), titleInput = getEl('bm-title-input'), tagsInput = getEl('bm-tags-input');
