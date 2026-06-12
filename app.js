@@ -3934,10 +3934,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape') return;
-        if (getEl('task-edit-modal')?.classList.contains('active')) { closeTaskEditDialog(); return; }
-        if (getEl('task-delete-modal')?.classList.contains('active')) { closeTaskDeleteDialog(); return; }
-        if (getEl('confirm-modal')?.classList.contains('active')) closeConfirmModal(false);
+        const activeModal = ['task-edit-modal', 'task-delete-modal', 'confirm-modal']
+            .map(id => getEl(id))
+            .find(m => m?.classList.contains('active'));
+
+        if (e.key === 'Escape') {
+            if (getEl('task-edit-modal')?.classList.contains('active')) { closeTaskEditDialog(); return; }
+            if (getEl('task-delete-modal')?.classList.contains('active')) { closeTaskDeleteDialog(); return; }
+            if (getEl('confirm-modal')?.classList.contains('active')) closeConfirmModal(false);
+            return;
+        }
+
+        if (e.key === 'Tab' && activeModal) {
+            const focusables = [...activeModal.querySelectorAll(
+                'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )].filter(el => el.offsetParent !== null);
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey) {
+                if (document.activeElement === first || !activeModal.contains(document.activeElement)) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else {
+                if (document.activeElement === last || !activeModal.contains(document.activeElement)) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        }
     });
     if (getEl('confirm-modal-cancel-btn')) getEl('confirm-modal-cancel-btn').onclick = () => closeConfirmModal(false);
     if (getEl('confirm-modal-ok-btn')) getEl('confirm-modal-ok-btn').onclick = () => closeConfirmModal(true);
