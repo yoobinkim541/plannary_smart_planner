@@ -600,7 +600,8 @@
                     <div class="wiki-editor-container" id="wiki-editor-view" style="display: none;">
                         <div class="wiki-cover" id="wiki-cover">
                             <div class="wiki-cover-actions">
-                                <button id="wiki-cover-btn" class="wiki-cover-action" type="button">커버 변경</button>
+                                <button id="wiki-cover-btn" class="wiki-cover-action" type="button">파일 업로드</button>
+                                <button id="wiki-cover-url-btn" class="wiki-cover-action" type="button">URL 입력</button>
                                 <button id="wiki-cover-adjust-btn" class="wiki-cover-action" type="button">위치/면적</button>
                             </div>
                             <div class="wiki-cover-panel" id="wiki-cover-panel" hidden>
@@ -1220,6 +1221,18 @@
     <script src="i18n/es.js?v=v1"></script>
     <script src="app.js?v=v34"></script>
     <script src="wiki.js?v=v20"></script>
+
+    <!-- Wiki inline popovers (icon + cover URL) -->
+    <div id="wiki-icon-popover" hidden style="position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;gap:8px;align-items:center;">
+        <input id="wiki-icon-input" type="text" maxlength="4" placeholder="📄" style="width:60px;font-size:1.5rem;text-align:center;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--surface);color:var(--text);">
+        <button id="wiki-icon-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;">적용</button>
+        <button id="wiki-icon-popover-close" type="button" class="text-link-btn" aria-label="닫기">✕</button>
+    </div>
+    <div id="wiki-cover-url-popover" hidden style="position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;gap:8px;align-items:center;min-width:280px;">
+        <input id="wiki-cover-url-input" type="url" placeholder="https://..." style="flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--surface);color:var(--text);">
+        <button id="wiki-cover-url-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;">적용</button>
+        <button id="wiki-cover-url-popover-close" type="button" class="text-link-btn" aria-label="닫기">✕</button>
+    </div>
 </body>
 
 </html>

@@ -1889,16 +1889,66 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const showWikiPopover = (popoverId, anchorEl) => {
+        const popover = document.getElementById(popoverId);
+        if (!popover) return;
+        document.querySelectorAll('[id$="-popover"]').forEach(p => { if (p !== popover) p.hidden = true; });
+        const rect = anchorEl.getBoundingClientRect();
+        popover.hidden = false;
+        const pw = popover.offsetWidth || 200;
+        const left = Math.min(rect.left, window.innerWidth - pw - 8);
+        popover.style.left = Math.max(8, left) + 'px';
+        popover.style.top = (rect.bottom + 6) + 'px';
+        const firstInput = popover.querySelector('input');
+        if (firstInput) { firstInput.focus(); firstInput.select(); }
+    };
+
+    const hideWikiPopover = (popoverId) => {
+        const popover = document.getElementById(popoverId);
+        if (popover) popover.hidden = true;
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('[id$="-popover"]:not([hidden])').forEach(p => { p.hidden = true; });
+        }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        document.querySelectorAll('[id$="-popover"]:not([hidden])').forEach(p => {
+            if (!p.contains(e.target)) p.hidden = true;
+        });
+    }, true);
+
+    const applyIconValue = (value) => {
+        if (value == null) return;
+        pushMetaUndoSnapshot();
+        applyPageMeta({ ...getMetaSnapshot(), icon: value.trim().slice(0, 4) || '📄' });
+        pushMetaUndoSnapshot();
+        hideWikiPopover('wiki-icon-popover');
+    };
+
     if (pageIconBtn) {
         pageIconBtn.onclick = () => {
             if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
-            const value = prompt(tr('pageIconPrompt'), currentPageMeta.icon || '📄');
-            if (value == null) return;
-            pushMetaUndoSnapshot();
-            applyPageMeta({ ...getMetaSnapshot(), icon: value.trim().slice(0, 4) || '📄' });
-            pushMetaUndoSnapshot();
+            const input = document.getElementById('wiki-icon-input');
+            if (input) input.value = currentPageMeta.icon || '📄';
+            showWikiPopover('wiki-icon-popover', pageIconBtn);
         };
     }
+    const iconApplyBtn = document.getElementById('wiki-icon-apply-btn');
+    if (iconApplyBtn) {
+        iconApplyBtn.onclick = () => {
+            const input = document.getElementById('wiki-icon-input');
+            applyIconValue(input?.value);
+        };
+    }
+    const iconInput = document.getElementById('wiki-icon-input');
+    if (iconInput) {
+        iconInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyIconValue(iconInput.value); });
+    }
+    const iconPopoverClose = document.getElementById('wiki-icon-popover-close');
+    if (iconPopoverClose) iconPopoverClose.onclick = () => hideWikiPopover('wiki-icon-popover');
 
     const uploadCoverFile = (file) => {
         if (!file || !currentUser || !storage) return Promise.reject(new Error(tr('loginFirstOrStorage')));
@@ -1911,17 +1961,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const chooseCoverImage = () => {
+    const openCoverFilePicker = () => {
         if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
-        const choice = prompt(tr('coverImagePrompt'), currentPageMeta.coverUrl || '');
-        if (choice == null) return;
-        const trimmed = choice.trim();
-        if (trimmed) {
-            pushMetaUndoSnapshot();
-            applyPageMeta({ ...getMetaSnapshot(), coverUrl: trimmed });
-            pushMetaUndoSnapshot();
-            return;
-        }
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -1939,7 +1980,39 @@ document.addEventListener('DOMContentLoaded', () => {
         input.click();
     };
 
-    if (coverBtn) coverBtn.onclick = chooseCoverImage;
+    const applyCoverUrl = (url) => {
+        const trimmed = (url || '').trim();
+        if (!trimmed) return;
+        pushMetaUndoSnapshot();
+        applyPageMeta({ ...getMetaSnapshot(), coverUrl: trimmed });
+        pushMetaUndoSnapshot();
+        hideWikiPopover('wiki-cover-url-popover');
+    };
+
+    if (coverBtn) coverBtn.onclick = openCoverFilePicker;
+
+    const coverUrlBtn = document.getElementById('wiki-cover-url-btn');
+    if (coverUrlBtn) {
+        coverUrlBtn.onclick = () => {
+            if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
+            const input = document.getElementById('wiki-cover-url-input');
+            if (input) input.value = currentPageMeta.coverUrl || '';
+            showWikiPopover('wiki-cover-url-popover', coverUrlBtn);
+        };
+    }
+    const coverUrlApplyBtn = document.getElementById('wiki-cover-url-apply-btn');
+    if (coverUrlApplyBtn) {
+        coverUrlApplyBtn.onclick = () => {
+            const input = document.getElementById('wiki-cover-url-input');
+            applyCoverUrl(input?.value);
+        };
+    }
+    const coverUrlInput = document.getElementById('wiki-cover-url-input');
+    if (coverUrlInput) {
+        coverUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyCoverUrl(coverUrlInput.value); });
+    }
+    const coverUrlPopoverClose = document.getElementById('wiki-cover-url-popover-close');
+    if (coverUrlPopoverClose) coverUrlPopoverClose.onclick = () => hideWikiPopover('wiki-cover-url-popover');
 
     if (coverAdjustBtn && coverPanel) {
         coverAdjustBtn.onclick = () => {
