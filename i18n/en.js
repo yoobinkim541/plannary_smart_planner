@@ -269,6 +269,7 @@
         reauthPasswordTitle: 'Verify identity',
         reauthPasswordPrompt: 'Enter your current password to confirm your identity.',
         offlineMode: 'You are offline',
-        backOnline: 'Back online'
+        backOnline: 'Back online',
+        storageFull: 'Offline cache full — some data may not be available offline'
     };
 })();

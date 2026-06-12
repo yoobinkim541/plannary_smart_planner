@@ -270,6 +270,7 @@
         reauthPasswordTitle: '본인 확인',
         reauthPasswordPrompt: '계속하려면 현재 비밀번호를 입력하세요.',
         offlineMode: '오프라인 상태입니다',
-        backOnline: '온라인으로 돌아왔습니다'
+        backOnline: '온라인으로 돌아왔습니다',
+        storageFull: '오프라인 캐시가 가득 찼습니다 — 일부 데이터가 오프라인에서 제공되지 않을 수 있습니다'
     };
 })();

@@ -269,6 +269,7 @@
         reauthPasswordTitle: '本人確認',
         reauthPasswordPrompt: '続行するには現在のパスワードを入力してください。',
         offlineMode: 'オフラインです',
-        backOnline: 'オンラインに戻りました'
+        backOnline: 'オンラインに戻りました',
+        storageFull: 'オフラインキャッシュが満杯です — 一部データがオフラインで利用できない場合があります'
     };
 })();

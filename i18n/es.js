@@ -269,6 +269,7 @@
         reauthPasswordTitle: 'Verificar identidad',
         reauthPasswordPrompt: 'Introduce tu contraseña actual para continuar.',
         offlineMode: 'Sin conexión',
-        backOnline: 'Conexión restaurada'
+        backOnline: 'Conexión restaurada',
+        storageFull: 'Caché sin conexión llena — algunos datos podrían no estar disponibles sin conexión'
     };
 })();
