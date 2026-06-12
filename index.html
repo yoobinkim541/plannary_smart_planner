@@ -9,7 +9,7 @@
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
         try {
-            document.documentElement.setAttribute('data-theme', localStorage.getItem('app-theme') || 'light');
+            document.documentElement.setAttribute('data-theme', localStorage.getItem('app-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
         } catch (error) {
             document.documentElement.setAttribute('data-theme', 'light');
         }
