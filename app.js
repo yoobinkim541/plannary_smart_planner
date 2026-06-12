@@ -17,6 +17,8 @@ if ('serviceWorker' in navigator) {
 let db = null;
 let auth = null;
 
+let _modalTrigger = null;
+
 function bindResilientMobileNav() {
     const menuToggle = getEl('menu-toggle');
     const overlay = getEl('sidebar-overlay');
@@ -2965,6 +2967,7 @@ function setTaskModalOpen(modalId, open) {
 }
 
 function openTaskDeleteDialog(id) {
+    _modalTrigger = document.activeElement;
     pendingDeleteTaskId = id;
     setTaskModalOpen('task-delete-modal', true);
 }
@@ -2972,6 +2975,7 @@ function openTaskDeleteDialog(id) {
 function closeTaskDeleteDialog() {
     pendingDeleteTaskId = null;
     setTaskModalOpen('task-delete-modal', false);
+    _modalTrigger?.focus();
 }
 
 async function confirmTaskDelete() {
@@ -2987,6 +2991,7 @@ async function confirmTaskDelete() {
 function openTaskEditDialog(id) {
     const item = allTodos.find(x => x.id === id);
     if (!item) return;
+    _modalTrigger = document.activeElement;
     editingTaskId = id;
     if (getEl('task-edit-text')) getEl('task-edit-text').value = item.text || '';
     if (getEl('task-edit-memo')) getEl('task-edit-memo').value = item.memo || '';
@@ -3005,6 +3010,7 @@ function openTaskEditDialog(id) {
 function closeTaskEditDialog() {
     editingTaskId = null;
     setTaskModalOpen('task-edit-modal', false);
+    _modalTrigger?.focus();
 }
 
 function syncNotificationSettingsUI() {
@@ -3880,6 +3886,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modal.id === 'task-edit-modal') closeTaskEditDialog();
             if (modal.id === 'task-delete-modal') closeTaskDeleteDialog();
         });
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (getEl('task-edit-modal')?.classList.contains('active')) { closeTaskEditDialog(); return; }
+        if (getEl('task-delete-modal')?.classList.contains('active')) closeTaskDeleteDialog();
     });
 
     const logout = () => confirm(t('logoutConfirm')) && unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html'));
