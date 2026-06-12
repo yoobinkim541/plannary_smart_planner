@@ -4120,10 +4120,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const tags = tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
         const title = titleInput.value.trim();
         urlInput.value = ''; titleInput.value = ''; tagsInput.value = '';
+        const localId = `local-${Date.now()}`;
+        allBookmarks = [{ id: localId, url, title, tags, uid: currentUser.uid }, ...allBookmarks];
+        renderBookmarks();
         db.collection('bookmarks').add({
             uid: currentUser.uid, url, title, tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => { showToast(t('bookmarkSaved')); })
-          .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+          .catch(err => {
+              allBookmarks = allBookmarks.filter(b => b.id !== localId);
+              renderBookmarks();
+              showToast(err.message || t('taskCreationFailed'), 'error');
+          });
     };
 
     if (getEl('add-project-btn')) getEl('add-project-btn').onclick = async () => {
@@ -4135,6 +4142,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const color = palette[allProjects.length % palette.length];
         if (projectInput) projectInput.value = '';
 
+        const localId = `local-${Date.now()}`;
+        allProjects = [...allProjects, { id: localId, name, color, uid: currentUser.uid }];
+        renderProjectsDropdown();
+        renderProjectManagementList();
+
         db.collection('projects').add({
             uid: currentUser.uid,
             name,
@@ -4143,7 +4155,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }).then(() => {
             markGuideStepComplete('projects');
             showToast(t('projectCreated'));
-        }).catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+        }).catch(err => {
+            allProjects = allProjects.filter(p => p.id !== localId);
+            renderProjectsDropdown();
+            renderProjectManagementList();
+            showToast(err.message || t('taskCreationFailed'), 'error');
+        });
     };
 
     if (getEl('project-detail-close')) {

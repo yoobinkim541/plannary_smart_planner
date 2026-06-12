@@ -1429,7 +1429,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.renderNoteSidebarTree = renderNoteSidebarTree;
 
     if (searchInput) {
-        searchInput.oninput = () => renderPageList();
+        let searchDebounceTimer;
+        searchInput.oninput = () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => renderPageList(), 200);
+        };
     }
 
     window.addEventListener('planary-language-change', () => {
