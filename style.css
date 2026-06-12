@@ -4585,6 +4585,12 @@ body.onboarding-spotlight-active #main-area {
     color: #ef4444;
 }
 
+@media (hover: none) {
+    .wiki-list-delete-btn {
+        opacity: 0.5;
+    }
+}
+
 .wiki-widget-toc-list {
     display: flex;
     flex-direction: column;
