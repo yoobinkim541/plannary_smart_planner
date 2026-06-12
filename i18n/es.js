@@ -80,6 +80,8 @@
         monospace: 'Monoespaciada', serif: 'Serif', handwritten: 'Manuscrita', fontNanumGothic: 'Nanum Gothic',
         searchNoResultsTitle: 'Sin resultados',
         searchNoResultsBody: 'Ninguna tarea coincide con tu búsqueda. Prueba con otra palabra.',
+        projectEmptyTitle: 'No hay tareas en este proyecto',
+        projectEmptyBody: 'Este proyecto está vacío. Añade una nueva tarea arriba para comenzar.',
         emptyTasksAllTitle: 'Llena tu lista de tareas',
         emptyTasksAllBody: 'Reúne pendientes, fechas y notas en un mismo lugar.<br>Añade tu primera tarea arriba para empezar el flujo.',
         emptyTasksCompletedTitle: 'Aún no hay tareas completadas',

@@ -80,6 +80,8 @@
         monospace: '等宽', serif: '衬线', handwritten: '手写体', fontNanumGothic: 'Nanum Gothic',
         searchNoResultsTitle: '没有找到结果',
         searchNoResultsBody: '没有匹配的任务。请尝试其他关键词。',
+        projectEmptyTitle: '此项目中没有任务',
+        projectEmptyBody: '该项目还没有任务。从上方输入框添加第一个任务。',
         emptyTasksAllTitle: '来添加任务吧',
         emptyTasksAllBody: '在这里集中管理待办、截止日期和备忘。<br>从上方输入框添加第一个任务,开始你的流程。',
         emptyTasksCompletedTitle: '还没有已完成的任务',

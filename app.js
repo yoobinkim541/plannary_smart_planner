@@ -2305,10 +2305,12 @@ function renderTodos(todos) {
     const todoList = getEl('todo-list');
     if (!todoList) return;
     const searchTerm = getEl('search-input')?.value?.trim() || '';
-    const isSearchActive = searchTerm.length > 0 || !!currentProjectId;
+    const isSearching = searchTerm.length > 0;
+    const isProjectOnly = !!currentProjectId && !isSearching;
+    const isSearchActive = isSearching || !!currentProjectId;
     const emptyState = getTaskEmptyState();
-    const emptyTitle = isSearchActive ? t('searchNoResultsTitle') : t(emptyState.titleKey);
-    const emptyBody = isSearchActive ? t('searchNoResultsBody') : t(emptyState.bodyKey);
+    const emptyTitle = isSearching ? t('searchNoResultsTitle') : isProjectOnly ? t('projectEmptyTitle') : t(emptyState.titleKey);
+    const emptyBody = isSearching ? t('searchNoResultsBody') : isProjectOnly ? t('projectEmptyBody') : t(emptyState.bodyKey);
     todoList.innerHTML = todos.length ? '' : `
         <div class="wiki-empty-container task-empty-container">
             <div class="wiki-empty-content task-empty-content">

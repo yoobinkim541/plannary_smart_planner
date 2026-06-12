@@ -81,6 +81,8 @@
         monospace: '고정폭', serif: '세리프', handwritten: '손글씨', fontNanumGothic: '나눔고딕',
         searchNoResultsTitle: '검색 결과가 없습니다',
         searchNoResultsBody: '검색어와 일치하는 작업이 없습니다. 다른 키워드를 시도해보세요.',
+        projectEmptyTitle: '이 프로젝트에 작업이 없습니다',
+        projectEmptyBody: '아직 작업이 없습니다. 위 입력창에서 첫 작업을 추가해보세요.',
         emptyTasksAllTitle: '할 일을 채워보세요',
         emptyTasksAllBody: '해야 할 일, 마감일, 메모를 한 번에 정리하는 공간입니다.<br>위 입력창에서 첫 작업을 추가해 흐름을 시작하세요.',
         emptyTasksCompletedTitle: '아직 완료한 작업이 없습니다',

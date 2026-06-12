@@ -80,6 +80,8 @@
         monospace: '等幅', serif: 'セリフ', handwritten: '手書き', fontNanumGothic: 'ナヌムゴシック',
         searchNoResultsTitle: '検索結果がありません',
         searchNoResultsBody: '検索キーワードに一致するタスクがありません。別のキーワードをお試しください。',
+        projectEmptyTitle: 'このプロジェクトにタスクがありません',
+        projectEmptyBody: 'まだタスクがありません。上の入力欄から最初のタスクを追加しましょう。',
         emptyTasksAllTitle: 'タスクを追加しましょう',
         emptyTasksAllBody: 'やること、期限、メモを一か所で整理する場所です。<br>上の入力欄から最初のタスクを追加して流れを始めましょう。',
         emptyTasksCompletedTitle: 'まだ完了したタスクがありません',

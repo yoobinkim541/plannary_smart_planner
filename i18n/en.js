@@ -81,6 +81,8 @@
         monospace: 'Monospace', serif: 'Serif', handwritten: 'Handwritten', fontNanumGothic: 'Nanum Gothic',
         searchNoResultsTitle: 'No results found',
         searchNoResultsBody: 'No tasks match your search. Try a different keyword.',
+        projectEmptyTitle: 'No tasks in this project',
+        projectEmptyBody: 'This project is empty. Add a new task above to get started.',
         emptyTasksAllTitle: 'Fill your task list',
         emptyTasksAllBody: 'Keep tasks, due dates, and notes in one place.<br>Add your first task above to start the flow.',
         emptyTasksCompletedTitle: 'No completed tasks yet',
