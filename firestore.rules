@@ -91,7 +91,7 @@ service cloud.firestore {
         'uid', 'text', 'memo', 'dueDate', 'priority', 'projectId',
         'imageUrl', 'completed', 'archived', 'createdAt', 'orderIndex',
         'completedAt', 'completedDate',
-        'dueTime', 'calendarReminderMinutes', 'calendarReminderMinutesList',
+        'dueTime', 'tzOffsetMinutes', 'calendarReminderMinutes', 'calendarReminderMinutesList',
         'syncCalendar', 'calendarEventId',
         'source', 'sourceItemId', 'sourceUrl', 'courseTitle', 'ddayText', 'syncedAt',
         'remindersSent', 'notifSentFor'
@@ -101,6 +101,7 @@ service cloud.firestore {
       isStringOrNull(request.resource.data.memo) &&
       isStringOrNull(request.resource.data.dueDate) &&
       (!request.resource.data.keys().hasAny(['dueTime']) || isStringOrNull(request.resource.data.dueTime)) &&
+      (!request.resource.data.keys().hasAny(['tzOffsetMinutes']) || isNumberOrNull(request.resource.data.tzOffsetMinutes)) &&
       isStringOrNull(request.resource.data.projectId) &&
       isStringOrNull(request.resource.data.imageUrl) &&
       (!request.resource.data.keys().hasAny(['calendarEventId']) || isStringOrNull(request.resource.data.calendarEventId)) &&
