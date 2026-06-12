@@ -45,12 +45,13 @@ module.exports = async function handler(req, res) {
     if (!Array.isArray(reminderList) || !reminderList.length) continue;
 
     const [h, m] = (todo.dueTime || '23:59').split(':').map(Number);
-    // Due times are stored in the user's local time (KST, UTC+9).
-    // Parse as UTC then subtract the KST offset so comparisons are correct.
-    const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+    // Due times are stored in the user's local timezone.
+    // tzOffsetMinutes (minutes ahead of UTC, e.g. KST=540) is saved with the task.
+    // Fall back to KST (540) for tasks created before this field was added.
+    const tzOffsetMs = (typeof todo.tzOffsetMinutes === 'number' ? todo.tzOffsetMinutes : 540) * 60 * 1000;
     const dueMs = new Date(
       `${todo.dueDate}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`
-    ).getTime() - KST_OFFSET_MS;
+    ).getTime() - tzOffsetMs;
     if (isNaN(dueMs)) continue;
 
     const sentFor = todo.notifSentFor || [];
