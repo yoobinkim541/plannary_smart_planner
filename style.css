@@ -2672,6 +2672,10 @@ body.onboarding-spotlight-active #main-area {
         white-space: normal;
     }
 
+    .filter-chip:nth-child(odd):last-child {
+        grid-column: span 2;
+    }
+
     .project-card {
         padding: 16px;
     }
