@@ -252,7 +252,7 @@
         eclassFailed: 'E-class処理に失敗', eclassCredentialsRequired: 'E-classのIDとパスワードを入力してください。',
         eclassSupportedSchools: '対応校を見る', eclassSupportedSeoultech: 'ソウル科学技術大学 e-Class',
         eclassRequestText: '他の学校の連携が必要な場合はメールでご依頼ください。', eclassRequestSchool: '学校追加をリクエスト',
-        changeCover: 'カバーを変更',
+        changeCover: 'カバーを変更', uploadCoverFile: 'ファイルをアップロード', coverUrlInput: 'URLを入力', removeCoverImage: 'カバーを削除',
         onboardingStepsLabel: 'ガイドステップ', koreanLanguage: '韓国語', englishLanguage: '英語',
         japaneseLanguage: '日本語', chineseLanguage: '簡体字中国語', spanishLanguage: 'スペイン語',
         close: '閉じる',

@@ -1455,7 +1455,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('wiki-widget-calendar-title', tr('calendar'));
         setText('wiki-calendar-connect-btn', tr('googleCalendarConnect'));
         setText('wiki-calendar-create-btn', tr('createCalendarFromPage'));
-        setText('wiki-cover-btn', tr('changeCover'));
+        setText('wiki-cover-btn', tr('uploadCoverFile') || tr('changeCover'));
+        setText('wiki-cover-url-btn', tr('coverUrlInput') || 'URL 입력');
+        setText('wiki-cover-remove-btn', tr('removeCoverImage') || '커버 제거');
         setText('wiki-cover-adjust-btn', tr('adjustCover'));
         setText('wiki-cover-position-x-label', tr('coverPositionX'));
         setText('wiki-cover-position-y-label', tr('coverPositionY'));

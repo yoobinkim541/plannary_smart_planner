@@ -252,7 +252,7 @@
         eclassFailed: 'E-class 处理失败', eclassCredentialsRequired: '请输入 E-class 账号和密码。',
         eclassSupportedSchools: '查看支持的学校', eclassSupportedSeoultech: '首尔科技大学 e-Class',
         eclassRequestText: '需要其他学校的关联请通过邮箱申请。', eclassRequestSchool: '申请添加学校',
-        changeCover: '更换封面',
+        changeCover: '更换封面', uploadCoverFile: '上传文件', coverUrlInput: '输入URL', removeCoverImage: '删除封面',
         onboardingStepsLabel: '指南步骤', koreanLanguage: '韩语', englishLanguage: '英语',
         japaneseLanguage: '日语', chineseLanguage: '简体中文', spanishLanguage: '西班牙语',
         close: '关闭',

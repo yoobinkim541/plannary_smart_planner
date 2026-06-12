@@ -252,7 +252,7 @@
         eclassFailed: 'La petición a E-class falló', eclassCredentialsRequired: 'Introduce tu ID y contraseña de E-class.',
         eclassSupportedSchools: 'Ver universidades compatibles', eclassSupportedSeoultech: 'E-Class de SeoulTech',
         eclassRequestText: '¿Necesitas otra universidad? Solicítala por correo.', eclassRequestSchool: 'Solicitar universidad',
-        changeCover: 'Cambiar portada',
+        changeCover: 'Cambiar portada', uploadCoverFile: 'Subir archivo', coverUrlInput: 'Introducir URL', removeCoverImage: 'Eliminar portada',
         onboardingStepsLabel: 'Pasos de la guía', koreanLanguage: 'Coreano', englishLanguage: 'Inglés',
         japaneseLanguage: 'Japonés', chineseLanguage: 'Chino simplificado', spanishLanguage: 'Español',
         close: 'Cerrar',

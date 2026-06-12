@@ -253,7 +253,7 @@
         eclassFailed: 'E-class 처리 실패', eclassCredentialsRequired: 'E-class 아이디와 비밀번호를 입력해주세요.',
         eclassSupportedSchools: '지원 학교 보기', eclassSupportedSeoultech: '서울과학기술대학교 e-Class',
         eclassRequestText: '다른 학교 연동이 필요하면 이메일로 요청해주세요.', eclassRequestSchool: '학교 추가 요청',
-        changeCover: '커버 변경',
+        changeCover: '커버 변경', uploadCoverFile: '파일 업로드', coverUrlInput: 'URL 입력', removeCoverImage: '커버 제거',
         onboardingStepsLabel: '가이드 단계', koreanLanguage: '한국어', englishLanguage: 'English',
         japaneseLanguage: '日本語', chineseLanguage: '简体中文', spanishLanguage: 'Español',
         close: '닫기',

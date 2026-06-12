@@ -241,7 +241,7 @@
         calendarEventCreateFailed: 'Event creation failed', createCalendarFromPage: 'Create event from page title',
         pageIconPrompt: 'Enter an emoji for this page icon.',
         coverImagePrompt: 'Paste a cover image URL, or leave blank and press OK to upload a file.',
-        changeCover: 'Change cover', adjustCover: 'Position/size', coverPosition: 'Image position',
+        changeCover: 'Change cover', uploadCoverFile: 'Upload file', coverUrlInput: 'Enter URL', removeCoverImage: 'Remove cover', adjustCover: 'Position/size', coverPosition: 'Image position',
         coverPositionX: 'Horizontal position', coverPositionY: 'Vertical position', coverHeight: 'Visible area',
         coverZoom: 'Zoom', resetCover: 'Reset', dragBlock: 'Move block', blockMoveFailed: 'Block move failed',
         eclassTitle: 'E-class sync', eclassDescription: 'Connect SeoulTech e-Class lectures and assignments to tasks.',
