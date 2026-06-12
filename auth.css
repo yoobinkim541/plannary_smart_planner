@@ -267,4 +267,5 @@ body.auth-layout {
 @media (max-width: 480px) {
   .auth-card { padding: 28px 22px; border-radius: var(--r-xl); }
   .auth-card h2 { font-size: 24px; }
+  .auth-input { font-size: 16px; }
 }
