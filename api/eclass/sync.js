@@ -37,8 +37,8 @@ module.exports = async function handler(req, res) {
       // Notify user about newly added tasks (fire-and-forget)
       if (result.newTodoCount > 0) {
         sendPushToUser(user.uid, {
-          title: 'e-Class 동기화 완료',
-          body: `새로운 항목 ${result.newTodoCount}개가 추가됐어요`,
+          title: 'e-Class sync complete',
+          body: `${result.newTodoCount} new item${result.newTodoCount === 1 ? '' : 's'} added`,
           tag: 'eclass-sync',
           url: '/',
           data: { type: 'eclass-sync', newCount: String(result.newTodoCount) },
