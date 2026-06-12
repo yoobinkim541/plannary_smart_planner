@@ -3216,7 +3216,7 @@ function renderBookmarks() {
         const div = document.createElement('div'); div.className = 'bookmark-card';
         const tags = bm.tags ? bm.tags.map(tag => `<span class="bm-tag">#${escapeHtml(tag)}</span>`).join(' ') : '';
         div.innerHTML = `
-            <button class="bm-delete-btn" onclick="deleteBookmark('${bm.id}')" aria-label="${t('deleteBookmark')}">×</button>
+            <button class="bm-delete-btn" data-id="${escapeHtml(bm.id)}" aria-label="${t('deleteBookmark')}">×</button>
             <div class="bm-main">
                 <img src="${favicon}" class="bm-favicon" onerror="this.onerror=null;this.src='icon.svg'">
                 <div class="bm-info">
@@ -3228,6 +3228,7 @@ function renderBookmarks() {
             <div class="tc-actions" style="margin-top:auto; padding-top:16px;">
                 <button class="tc-action-btn bm-visit-btn" data-url="${escapeHtml(bm.url)}">${t('visitWebsite')}</button>
             </div>`;
+        div.querySelector('.bm-delete-btn').onclick = () => window.deleteBookmark(bm.id);
         list.appendChild(div);
     });
 }
