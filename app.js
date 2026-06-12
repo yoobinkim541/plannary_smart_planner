@@ -4089,7 +4089,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputModalField = getEl('input-modal-field');
     if (inputModalField) inputModalField.addEventListener('keydown', (e) => { if (e.key === 'Enter') closeInputModal(inputModalField.value); });
 
-    const logout = () => showConfirmModal(t('logoutConfirm'), () => unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html')));
+    const logout = () => showConfirmModal(t('logoutConfirm'), () =>
+        unregisterFcmToken().finally(() => auth.signOut().catch(() => {}).finally(() => { window.location.href = 'login.html'; })));
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
     if (getEl('profile-delete-account-btn')) getEl('profile-delete-account-btn').onclick = deleteAccount;
