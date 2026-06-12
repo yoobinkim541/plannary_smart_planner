@@ -5998,6 +5998,13 @@ body.onboarding-spotlight-active #main-area {
     animation: pulse-red 2.5s infinite;
 }
 
+.due-today-badge.overdue-badge {
+    background: rgba(220, 38, 38, 0.15);
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, 0.4);
+    animation: none;
+}
+
 @keyframes pulse-red {
     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
     70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }

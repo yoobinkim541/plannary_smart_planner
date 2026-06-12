@@ -60,7 +60,7 @@
         deleteAccountButton: '注销账户', deleteAccountConfirm: '确认注销吗?此操作不可撤销。',
         deleteAccountConfirmEmail: '输入邮箱以确认注销: {email}', deleteAccountPasswordPrompt: '请再次输入密码以删除此账户。', deleteAccountEmailConfirmTitle: '确认邮箱', deleteAccountPasswordTitle: '确认密码', emailMismatch: '邮箱不匹配。',
         deletingAccount: '正在删除账户...', accountDeleted: '账户已删除。', accountDeleteFailed: '注销失败',
-        cancel: '取消', taskUpdated: '任务已更新。', noNotes: '没有备忘', dueToday: '今日截止', priorityLabel: '优先级',
+        cancel: '取消', taskUpdated: '任务已更新。', noNotes: '没有备忘', dueToday: '今日截止', overdue: '已逾期', priorityLabel: '优先级',
         low: '低', medium: '中', high: '高', noRecentNotes: '没有最近的备忘。', noUpcomingReminders: '没有即将到来的提醒。',
         today: '今天', active: '进行中', noDate: '无日期', deletePermanently: '永久删除',
         permanentDeleteConfirm: '永久删除?', stayInspired: '继续记录。', projectTasksUnit: '任务',

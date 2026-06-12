@@ -60,7 +60,7 @@
         deleteAccountButton: '退会', deleteAccountConfirm: '本当に退会しますか? この操作は取り消せません。',
         deleteAccountConfirmEmail: '退会を確定するにはメールを入力してください: {email}', deleteAccountPasswordPrompt: 'アカウント削除のためにパスワードを再入力してください。', deleteAccountEmailConfirmTitle: 'メールアドレスの確認', deleteAccountPasswordTitle: 'パスワードの確認', emailMismatch: 'メールアドレスが一致しません。',
         deletingAccount: 'アカウント削除中...', accountDeleted: 'アカウントを削除しました。', accountDeleteFailed: '退会に失敗しました',
-        cancel: 'キャンセル', taskUpdated: 'タスクを更新しました。', noNotes: 'メモなし', dueToday: '本日締切', priorityLabel: '優先度',
+        cancel: 'キャンセル', taskUpdated: 'タスクを更新しました。', noNotes: 'メモなし', dueToday: '本日締切', overdue: '期限超過', priorityLabel: '優先度',
         low: '低', medium: '中', high: '高', noRecentNotes: '最近のメモはありません。', noUpcomingReminders: '今後のリマインダーはありません。',
         today: '今日', active: '進行中', noDate: '日付なし', deletePermanently: '完全に削除',
         permanentDeleteConfirm: '完全に削除しますか?', stayInspired: '記録を続けましょう。', projectTasksUnit: 'タスク',

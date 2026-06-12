@@ -2333,8 +2333,9 @@ function renderTodos(todos) {
             lastEclassGroupKey = null;
         }
         const isDueToday = todo.dueDate === today && !todo.completed && !todo.archived;
+        const isOverdue = todo.dueDate && todo.dueDate < today && !todo.completed && !todo.archived;
         const card = document.createElement('div');
-        card.className = `task-card${todo.completed ? ' completed' : ''}`;
+        card.className = `task-card${todo.completed ? ' completed' : ''}${isOverdue ? ' overdue' : ''}`;
         card.draggable = true;
         card.dataset.id = todo.id;
 
@@ -2404,7 +2405,11 @@ function renderTodos(todos) {
         const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
         const img = todo.imageUrl ? `<img src="${escapeHtml(todo.imageUrl)}" class="tc-img tc-img-btn" alt="task image" data-url="${escapeHtml(todo.imageUrl)}" loading="lazy" decoding="async">` : '';
 
-        const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';
+        const dueBadge = isDueToday
+            ? `<span class="due-today-badge">${t('dueToday')}</span>`
+            : isOverdue
+                ? `<span class="due-today-badge overdue-badge">${t('overdue')}</span>`
+                : '';
         const priorityText = `${t(p)} ${t('priorityLabel')}`;
 
         card.innerHTML = `

@@ -60,7 +60,7 @@
         deleteAccountButton: 'Delete account', deleteAccountConfirm: 'Delete your account? This cannot be undone.',
         deleteAccountConfirmEmail: 'Type your email to confirm deletion: {email}', deleteAccountPasswordPrompt: 'Enter your password again to delete this account.', deleteAccountEmailConfirmTitle: 'Confirm email', deleteAccountPasswordTitle: 'Confirm password', emailMismatch: 'Email does not match.',
         deletingAccount: 'Deleting account...', accountDeleted: 'Account deleted.', accountDeleteFailed: 'Failed to delete account',
-        cancel: 'Cancel', taskUpdated: 'Task updated.', noNotes: 'No notes.', dueToday: 'Due Today', priorityLabel: 'Priority',
+        cancel: 'Cancel', taskUpdated: 'Task updated.', noNotes: 'No notes.', dueToday: 'Due Today', overdue: 'Overdue', priorityLabel: 'Priority',
         low: 'Low', medium: 'Medium', high: 'High', noRecentNotes: 'No recent notes.', noUpcomingReminders: 'No upcoming reminders.',
         today: 'TODAY', active: 'Active', noDate: 'No Date', deletePermanently: 'Delete Permanently',
         permanentDeleteConfirm: 'Permanently delete?', stayInspired: 'Stay inspired.', projectTasksUnit: 'tasks',

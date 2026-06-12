@@ -60,7 +60,7 @@
         deleteAccountButton: 'Eliminar cuenta', deleteAccountConfirm: '¿Eliminar tu cuenta? Esta acción no se puede deshacer.',
         deleteAccountConfirmEmail: 'Escribe tu correo para confirmar la eliminación: {email}', deleteAccountPasswordPrompt: 'Vuelve a introducir tu contraseña para eliminar la cuenta.', deleteAccountEmailConfirmTitle: 'Confirmar correo', deleteAccountPasswordTitle: 'Confirmar contraseña', emailMismatch: 'El correo no coincide.',
         deletingAccount: 'Eliminando cuenta...', accountDeleted: 'Cuenta eliminada.', accountDeleteFailed: 'No se pudo eliminar la cuenta',
-        cancel: 'Cancelar', taskUpdated: 'Tarea actualizada.', noNotes: 'Sin notas', dueToday: 'Vence hoy', priorityLabel: 'Prioridad',
+        cancel: 'Cancelar', taskUpdated: 'Tarea actualizada.', noNotes: 'Sin notas', dueToday: 'Vence hoy', overdue: 'Vencida', priorityLabel: 'Prioridad',
         low: 'Baja', medium: 'Media', high: 'Alta', noRecentNotes: 'No hay notas recientes.', noUpcomingReminders: 'No hay recordatorios próximos.',
         today: 'HOY', active: 'En curso', noDate: 'Sin fecha', deletePermanently: 'Eliminar permanentemente',
         permanentDeleteConfirm: '¿Eliminar permanentemente?', stayInspired: 'Sigue inspirado.', projectTasksUnit: 'tareas',
