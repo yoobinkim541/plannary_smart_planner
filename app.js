@@ -2330,7 +2330,7 @@ function renderTodos(todos) {
         const sourceTag = isEclassTask(todo) ? `<span class="project-tag eclass-source-tag">e-Class</span>` : '';
         const typeTag = todo.source === 'eclass-exam' ? `<span class="project-tag eclass-type-tag">${t('eclassExamType')}</span>` : '';
         const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
-        const img = todo.imageUrl ? `<img src="${escapeHtml(todo.imageUrl)}" class="tc-img tc-img-btn" alt="task image" data-url="${escapeHtml(todo.imageUrl)}">` : '';
+        const img = todo.imageUrl ? `<img src="${escapeHtml(todo.imageUrl)}" class="tc-img tc-img-btn" alt="task image" data-url="${escapeHtml(todo.imageUrl)}" loading="lazy" decoding="async">` : '';
 
         const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';
         const priorityText = `${t(p)} ${t('priorityLabel')}`;
