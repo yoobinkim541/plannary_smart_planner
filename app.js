@@ -3053,7 +3053,7 @@ function renderBookmarks() {
         div.innerHTML = `
             <button class="bm-delete-btn" onclick="deleteBookmark('${bm.id}')" aria-label="${t('deleteBookmark')}">×</button>
             <div class="bm-main">
-                <img src="${favicon}" class="bm-favicon" onerror="this.src='icon.svg'">
+                <img src="${favicon}" class="bm-favicon" onerror="this.onerror=null;this.src='icon.svg'">
                 <div class="bm-info">
                     <div class="bm-title">${escapeHtml(bm.title || domain)}</div>
                     <div class="bm-url">${escapeHtml(bm.url)}</div>
