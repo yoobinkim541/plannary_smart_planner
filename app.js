@@ -3883,10 +3883,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlInput = getEl('bm-url-input'), titleInput = getEl('bm-title-input'), tagsInput = getEl('bm-tags-input');
         const url = urlInput.value.trim(); if (!url || !currentUser) return;
         if (!/^https?:\/\//i.test(url)) { showToast(t('invalidUrl'), 'error'); return; }
-        const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+        const tags = tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+        const title = titleInput.value.trim();
+        urlInput.value = ''; titleInput.value = ''; tagsInput.value = '';
         db.collection('bookmarks').add({
-            uid: currentUser.uid, url, title: titleInput.value.trim(), tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => { urlInput.value = ''; titleInput.value = ''; tagsInput.value = ''; showToast(t('bookmarkSaved')); })
+            uid: currentUser.uid, url, title, tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => { showToast(t('bookmarkSaved')); })
           .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
     };
 
@@ -3897,6 +3899,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const palette = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
         const color = palette[allProjects.length % palette.length];
+        if (projectInput) projectInput.value = '';
 
         db.collection('projects').add({
             uid: currentUser.uid,
@@ -3904,7 +3907,6 @@ document.addEventListener('DOMContentLoaded', () => {
             color,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
-            if (projectInput) projectInput.value = '';
             markGuideStepComplete('projects');
             showToast(t('projectCreated'));
         }).catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
@@ -3981,6 +3983,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         allNotes = [localNote, ...allNotes];
         upsertUserCacheItem('notes', localNote);
+        if (noteInput) noteInput.value = '';
         renderNotes(allNotes);
         updateDashboardUI();
 
@@ -3989,7 +3992,6 @@ document.addEventListener('DOMContentLoaded', () => {
             allNotes = allNotes.map(item => item.id === localNote.id ? savedNote : item);
             upsertUserCacheItem('notes', savedNote);
             writeUserCache('notes', allNotes);
-            if (noteInput) noteInput.value = '';
             markGuideStepComplete('notesCreate');
             showToast(t('noteAdded'));
         }).catch(error => {
