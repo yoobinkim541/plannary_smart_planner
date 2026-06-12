@@ -3679,10 +3679,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuToggle = getEl('menu-toggle'), overlay = getEl('sidebar-overlay'), fabTrigger = getEl('fab-trigger'), fabContainer = getEl('mobile-nav-container');
     const appShell = getEl('app-shell'), sidebarToggleBtn = getEl('sidebar-toggle-btn');
     if (sidebarToggleBtn && appShell) {
+        const savedCollapsed = localStorage.getItem('planary-sidebar-collapsed') === 'true';
+        if (savedCollapsed) {
+            appShell.classList.add('sidebar-collapsed');
+            sidebarToggleBtn.setAttribute('aria-expanded', 'false');
+            sidebarToggleBtn.setAttribute('aria-label', t('expandSidebar'));
+            sidebarToggleBtn.setAttribute('title', t('expandSidebar'));
+        }
         sidebarToggleBtn.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
             const collapsed = appShell.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('planary-sidebar-collapsed', String(collapsed));
             sidebarToggleBtn.setAttribute('aria-expanded', String(!collapsed));
             sidebarToggleBtn.setAttribute('aria-label', collapsed ? t('expandSidebar') : t('collapseSidebar'));
             sidebarToggleBtn.setAttribute('title', collapsed ? t('expandSidebar') : t('collapseSidebar'));
