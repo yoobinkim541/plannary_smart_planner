@@ -3727,7 +3727,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (getEl('add-bm-btn')) getEl('add-bm-btn').onclick = async () => {
         const urlInput = getEl('bm-url-input'), titleInput = getEl('bm-title-input'), tagsInput = getEl('bm-tags-input');
         const url = urlInput.value.trim(); if (!url || !currentUser) return;
-        if (!/^https?:\/\//i.test(url)) { showToast(t('invalidUrl') || 'URL은 http:// 또는 https://로 시작해야 합니다', 'error'); return; }
+        if (!/^https?:\/\//i.test(url)) { showToast(t('invalidUrl'), 'error'); return; }
         const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
         db.collection('bookmarks').add({
             uid: currentUser.uid, url, title: titleInput.value.trim(), tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
