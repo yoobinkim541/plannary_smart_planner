@@ -58,7 +58,7 @@
         todayTaskNotificationBody: '오늘 처리할 일이 {count}개 있습니다.', reminderNotificationBody: '{time} 예정된 작업입니다.',
         deleteAccountTitle: '회원탈퇴', deleteAccountDescription: '계정과 저장된 작업, 메모, 프로젝트, 위키, 북마크를 모두 삭제합니다.',
         deleteAccountButton: '회원탈퇴', deleteAccountConfirm: '정말 탈퇴할까요? 이 작업은 되돌릴 수 없습니다.',
-        deleteAccountConfirmEmail: '탈퇴를 확인하려면 이메일을 입력하세요: {email}', deleteAccountPasswordPrompt: '계정 삭제를 위해 비밀번호를 다시 입력하세요.', deleteAccountEmailConfirmTitle: '이메일 확인', deleteAccountPasswordTitle: '비밀번호 확인',
+        deleteAccountConfirmEmail: '탈퇴를 확인하려면 이메일을 입력하세요: {email}', deleteAccountPasswordPrompt: '계정 삭제를 위해 비밀번호를 다시 입력하세요.', deleteAccountEmailConfirmTitle: '이메일 확인', deleteAccountPasswordTitle: '비밀번호 확인', emailMismatch: '이메일이 일치하지 않습니다.',
         deletingAccount: '계정 삭제 중...', accountDeleted: '계정이 삭제되었습니다.', accountDeleteFailed: '회원탈퇴 실패',
         cancel: '취소', taskUpdated: '작업이 수정되었습니다.', noNotes: '메모 없음', dueToday: '오늘 마감', priorityLabel: '우선순위',
         low: '낮음', medium: '보통', high: '높음', noRecentNotes: '최근 메모가 없습니다.', noUpcomingReminders: '다가오는 리마인더가 없습니다.',
