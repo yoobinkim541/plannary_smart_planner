@@ -219,6 +219,19 @@ service cloud.firestore {
       allow read, delete: if existingOwner();
       allow create: if incomingOwner() && validWikiPage();
       allow update: if existingOwner() && incomingOwner() && keepsSameOwner() && validWikiPage();
+
+      // Revision history snapshots written by saveWikiBlocks()
+      match /revisions/{revisionId} {
+        allow read: if isOwner(resource.data.uid);
+        allow create: if isSignedIn() &&
+          request.resource.data.keys().hasOnly(['uid', 'blocks', 'authorName', 'authorInitials', 'savedAt']) &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.blocks is list &&
+          isStringOrNull(request.resource.data.authorName) &&
+          isStringOrNull(request.resource.data.authorInitials) &&
+          isTimestampOrNull(request.resource.data.savedAt);
+        allow update, delete: if false;
+      }
     }
 
     match /eclass_items/{itemId} {

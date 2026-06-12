@@ -673,6 +673,7 @@
       const authorName = (user && (user.displayName || (user.email || "").split("@")[0])) || "나";
       const authorInitials = authorName.slice(0, 1).toUpperCase();
       await db.collection("wiki_pages").doc(id).collection("revisions").add({
+        uid: this.uid,
         blocks: encoded,
         authorName,
         authorInitials,
