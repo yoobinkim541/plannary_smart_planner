@@ -1322,13 +1322,19 @@ async function connectEmailPasswordLogin() {
         setStatus(t('emailPasswordDone'), 'success');
         showToast(t('emailPasswordEnabled'));
     } catch (error) {
-        if (error.code === 'auth/requires-recent-login' && hasPasswordProvider) {
+        if (error.code === 'auth/requires-recent-login') {
             try {
                 await reauthenticateForPasswordUpdate(user);
-                await auth.currentUser.updatePassword(password);
+                const freshUser = auth.currentUser;
+                if (hasPasswordProvider) {
+                    await freshUser.updatePassword(password);
+                } else {
+                    const credential = firebase.auth.EmailAuthProvider.credential(freshUser.email, password);
+                    await freshUser.linkWithCredential(credential);
+                }
                 if (passwordInput) passwordInput.value = '';
                 if (confirmInput) confirmInput.value = '';
-                await auth.currentUser.reload();
+                await freshUser.reload();
                 currentUser = auth.currentUser;
                 updateProfileUI(currentUser);
                 setStatus(t('emailPasswordDone'), 'success');
@@ -3702,7 +3708,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     bindNotificationSettings();
 
-    if (getEl('search-input')) getEl('search-input').oninput = () => applyFilters();
+    if (getEl('search-input')) {
+        let searchDebounceTimer = null;
+        getEl('search-input').oninput = () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(applyFilters, 150);
+        };
+    }
 
     if (getEl('task-details-toggle')) {
         getEl('task-details-toggle').onclick = () => {
