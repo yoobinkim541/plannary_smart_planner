@@ -2723,7 +2723,7 @@ function updateDashboardUI() {
             div.className = 'dash-reminder-item';
             div.innerHTML = `
                 <span class="reminder-text">${escapeHtml(todo.text)}</span>
-                <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : todo.dueDate}</span>
+                <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : escapeHtml(todo.dueDate)}</span>
             `;
             div.onclick = () => {
                 markGuideStepComplete('taskViews');
@@ -2877,7 +2877,7 @@ function renderArchive() {
                     <span class="archive-status-badge ${task.completed ? 'status-completed' : 'status-pending'}">
                         ${task.completed ? t('completed') : t('active')}
                     </span>
-                    <span>📅 ${task.dueDate || t('noDate')}</span>
+                    <span>📅 ${task.dueDate ? escapeHtml(task.dueDate) : t('noDate')}</span>
                 </div>
             </div>
             <div class="archive-item-actions">
@@ -3107,7 +3107,7 @@ function renderProjectOverview() {
                 <strong>${escapeHtml(task.text)}</strong>
                 <small>${task.memo ? escapeHtml(task.memo) : t('noNotes')}</small>
             </span>
-            <em>${task.completed ? t('completed') : (task.dueDate || t(task.priority || 'tasks'))}</em>
+            <em>${task.completed ? t('completed') : (task.dueDate ? escapeHtml(task.dueDate) : t(task.priority || 'tasks'))}</em>
         </button>
     `;
 
