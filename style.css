@@ -1040,6 +1040,8 @@ textarea.composer-input {
     color: var(--text-1);
     min-width: 0;
     flex: 1;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .tc-top-actions {
@@ -1097,6 +1099,8 @@ textarea.composer-input {
     color: var(--text-2);
     line-height: 1.6;
     margin-bottom: 20px;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .tc-img {

@@ -3016,6 +3016,7 @@ window.deleteProject = (id) => {
     showConfirmModal(message, () => {
         if (currentProjectId === id) {
             currentProjectId = null;
+            applyFilters();
         }
         if (selectedProjectOverviewId === id) {
             selectedProjectOverviewId = null;

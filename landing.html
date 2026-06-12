@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -8,6 +8,7 @@
         if (window.location.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
+        (function() { var l = localStorage.getItem('planary-language'); if (l) document.documentElement.lang = l; })();
     </script>
     <title>Planary - tasks, wiki, projects in one workspace</title>
     <meta name="title" content="Planary - tasks, wiki, projects in one workspace">
