@@ -263,6 +263,8 @@
         colorNotePickerLabel: 'Elegir color de nota',
         colorYellow: 'Amarillo', colorBlue: 'Azul', colorGreen: 'Verde',
         colorPink: 'Rosa', colorPurple: 'Morado', colorOrange: 'Naranja',
-        inspirationRefreshLabel: 'Actualizar inspiración'
+        inspirationRefreshLabel: 'Actualizar inspiración',
+        reauthPasswordTitle: 'Verificar identidad',
+        reauthPasswordPrompt: 'Introduce tu contraseña actual para continuar.'
     };
 })();

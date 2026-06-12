@@ -263,6 +263,8 @@
         colorNotePickerLabel: '选择便签颜色',
         colorYellow: '黄色', colorBlue: '蓝色', colorGreen: '绿色',
         colorPink: '粉色', colorPurple: '紫色', colorOrange: '橙色',
-        inspirationRefreshLabel: '刷新灵感'
+        inspirationRefreshLabel: '刷新灵感',
+        reauthPasswordTitle: '身份验证',
+        reauthPasswordPrompt: '请输入当前密码以继续操作。'
     };
 })();

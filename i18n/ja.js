@@ -263,6 +263,8 @@
         colorNotePickerLabel: 'メモの色を選択',
         colorYellow: '黄色', colorBlue: '青', colorGreen: '緑',
         colorPink: 'ピンク', colorPurple: '紫', colorOrange: 'オレンジ',
-        inspirationRefreshLabel: 'インスピレーションを更新'
+        inspirationRefreshLabel: 'インスピレーションを更新',
+        reauthPasswordTitle: '本人確認',
+        reauthPasswordPrompt: '続行するには現在のパスワードを入力してください。'
     };
 })();

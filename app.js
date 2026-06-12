@@ -1322,8 +1322,25 @@ async function connectEmailPasswordLogin() {
         setStatus(t('emailPasswordDone'), 'success');
         showToast(t('emailPasswordEnabled'));
     } catch (error) {
-        const msg = getAuthActionErrorMessage(error);
-        if (msg) setStatus(msg, 'error');
+        if (error.code === 'auth/requires-recent-login' && hasPasswordProvider) {
+            try {
+                await reauthenticateForPasswordUpdate(user);
+                await auth.currentUser.updatePassword(password);
+                if (passwordInput) passwordInput.value = '';
+                if (confirmInput) confirmInput.value = '';
+                await auth.currentUser.reload();
+                currentUser = auth.currentUser;
+                updateProfileUI(currentUser);
+                setStatus(t('emailPasswordDone'), 'success');
+                showToast(t('emailPasswordEnabled'));
+            } catch (reauthError) {
+                const msg = getAuthActionErrorMessage(reauthError);
+                if (msg) setStatus(msg, 'error');
+            }
+        } else {
+            const msg = getAuthActionErrorMessage(error);
+            if (msg) setStatus(msg, 'error');
+        }
     } finally {
         if (button) button.disabled = false;
     }
@@ -1417,6 +1434,24 @@ async function reauthenticateForAccountDeletion(user) {
         const password = await showInputModalAsync(t('deleteAccountPasswordTitle') || '비밀번호 확인', t('deleteAccountPasswordPrompt'), 'password');
         if (!password) throw new Error(t('recentLoginRequired'));
         const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+        await user.reauthenticateWithCredential(credential);
+        return;
+    }
+    throw new Error(t('recentLoginRequired'));
+}
+
+async function reauthenticateForPasswordUpdate(user) {
+    const providers = user.providerData.map(provider => provider.providerId);
+    if (providers.includes('google.com')) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await user.reauthenticateWithPopup(provider);
+        return;
+    }
+    if (providers.includes('password') && user.email) {
+        const currentPassword = await showInputModalAsync(t('reauthPasswordTitle'), t('reauthPasswordPrompt'), 'password');
+        if (!currentPassword) throw new Error(t('recentLoginRequired'));
+        const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
         await user.reauthenticateWithCredential(credential);
         return;
     }
@@ -2424,16 +2459,23 @@ function setupDragging(el) {
     let isDragging = false, startX, startY, initL, initT;
     const down = (e) => {
         if (e.target.tagName === 'BUTTON') return;
+        if (e.type === 'touchstart') e.preventDefault();
         isDragging = true; el.style.zIndex = 1000;
-        const t = e.type === 'touchstart' ? e.touches[0] : e;
-        startX = t.clientX; startY = t.clientY; initL = el.offsetLeft; initT = el.offsetTop;
-        document.addEventListener(e.type === 'touchstart' ? 'touchmove' : 'mousemove', move);
-        document.addEventListener(e.type === 'touchstart' ? 'touchend' : 'mouseup', up);
+        const touch = e.type === 'touchstart' ? e.touches[0] : e;
+        startX = touch.clientX; startY = touch.clientY; initL = el.offsetLeft; initT = el.offsetTop;
+        if (e.type === 'touchstart') {
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('touchend', up);
+        } else {
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+        }
     };
     const move = (e) => {
         if (!isDragging) return;
-        const t = e.type === 'touchmove' ? e.touches[0] : e;
-        el.style.left = (initL + t.clientX - startX) + 'px'; el.style.top = (initT + t.clientY - startY) + 'px';
+        if (e.cancelable) e.preventDefault();
+        const touch = e.type === 'touchmove' ? e.touches[0] : e;
+        el.style.left = (initL + touch.clientX - startX) + 'px'; el.style.top = (initT + touch.clientY - startY) + 'px';
     };
     const up = () => {
         isDragging = false; el.style.zIndex = 1;
@@ -2453,7 +2495,7 @@ function setupDragging(el) {
             showToast(error && error.message ? error.message : t('taskCreationFailed'), 'error');
         });
     };
-    el.addEventListener('mousedown', down); el.addEventListener('touchstart', down, { passive: true });
+    el.addEventListener('mousedown', down); el.addEventListener('touchstart', down, { passive: false });
 }
 
 function updateDashboardUI() {

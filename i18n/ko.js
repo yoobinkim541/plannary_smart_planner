@@ -264,6 +264,8 @@
         colorNotePickerLabel: '메모 색상 선택',
         colorYellow: '노랑', colorBlue: '파랑', colorGreen: '초록',
         colorPink: '분홍', colorPurple: '보라', colorOrange: '주황',
-        inspirationRefreshLabel: '영감 새로고침'
+        inspirationRefreshLabel: '영감 새로고침',
+        reauthPasswordTitle: '본인 확인',
+        reauthPasswordPrompt: '계속하려면 현재 비밀번호를 입력하세요.'
     };
 })();
