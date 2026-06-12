@@ -4127,7 +4127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         let localTask = null;
-        let savedText = '', savedMemo = '', savedDate = '', savedTime = '', savedPriority = 'medium';
+        let savedText = '', savedMemo = '', savedDate = '', savedTime = '', savedPriority = 'medium', savedProject = '';
         try {
             let calendarEvent = null;
             if (payload.syncCalendar) {
@@ -4153,6 +4153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             savedDate = dateInput.value;
             savedTime = timeInput ? timeInput.value : '';
             savedPriority = priorityInput ? priorityInput.value : 'medium';
+            savedProject = projectInput ? projectInput.value : '';
             input.value = '';
             memoInput.value = '';
             dateInput.value = '';
@@ -4180,6 +4181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dateInput.value = savedDate || '';
                 if (timeInput) timeInput.value = savedTime || '';
                 if (priorityInput) priorityInput.value = savedPriority || 'medium';
+                if (projectInput) projectInput.value = savedProject || '';
             }
             if (imageUrl) await deleteStorageUrls(new Set([imageUrl]));
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
