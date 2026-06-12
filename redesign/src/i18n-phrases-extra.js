@@ -95,6 +95,15 @@ window.__PLANARY_EXTRA_PHRASES = [
   { ko: "⌘K · ⌘N · / 등", en: "⌘K · ⌘N · / etc.", ja: "⌘K · ⌘N · / など", zh: "⌘K · ⌘N · / 等", es: "⌘K · ⌘N · / etc." },
   { ko: "활성", en: "Active", ja: "有効", zh: "已启用", es: "Activo" },
 
+  // Home greetings
+  { ko: "좋은 아침이에요", en: "Good morning", ja: "おはようございます", zh: "早上好", es: "Buenos días" },
+  { ko: "좋은 오후예요", en: "Good afternoon", ja: "こんにちは", zh: "下午好", es: "Buenas tardes" },
+  { ko: "수고하셨어요", en: "Good evening", ja: "お疲れさまです", zh: "晚上好", es: "Buenas noches" },
+
+  // Home widgets
+  { ko: "이번 주 스트릭", en: "This week's streak", ja: "今週のストリーク", zh: "本周连续", es: "Racha semanal" },
+  { ko: "e-Class에서 오늘 마감", en: "Due today from e-Class", ja: "e-Classの今日の締切", zh: "e-Class 今日到期", es: "Vence hoy en e-Class" },
+
   // Profile
   { ko: "프로필 편집", en: "Edit profile", ja: "プロフィール編集", zh: "编辑资料", es: "Editar perfil" },
   { ko: "이번 주 활동", en: "This week's activity", ja: "今週の活動", zh: "本周活动", es: "Esta semana" },
