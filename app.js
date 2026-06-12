@@ -877,6 +877,7 @@ function loadTodos() {
         applyFilters();
         updateDashboardUI();
         renderProjectManagementList();
+        if (getEl('page-archive')?.classList.contains('active')) renderArchive();
         checkDueNotifications(); // Check for reminders when data updates
         scheduleReminderNotifications();
         writeUserCache('todos', allTodos);
