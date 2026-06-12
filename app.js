@@ -2704,8 +2704,7 @@ function updateDashboardUI() {
             `;
             div.onclick = () => {
                 markGuideStepComplete('taskViews');
-                currentFilter = 'reminders';
-                switchPage('page-tasks');
+                navigateAppPage('page-tasks', 'reminders');
             };
             reminderList.appendChild(div);
         });
@@ -3189,6 +3188,8 @@ function setTaskModalOpen(modalId, open) {
     if (!modal) return;
     modal.classList.toggle('active', open);
     modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+    const anyOpen = document.querySelectorAll('.task-modal.active').length > 0;
+    document.body.style.overflow = anyOpen ? 'hidden' : '';
 }
 
 function openTaskDeleteDialog(id) {

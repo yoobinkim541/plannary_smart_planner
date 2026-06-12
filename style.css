@@ -3378,6 +3378,7 @@ body.onboarding-spotlight-active #main-area {
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100vh - 48px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid var(--border);
     border-radius: 18px;
     background: var(--surface);
