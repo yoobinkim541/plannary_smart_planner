@@ -2705,7 +2705,7 @@ body.onboarding-spotlight-active #main-area {
 
 /* Prevent iOS auto-zoom: inputs must be ≥16px on mobile */
 @media (max-width: 768px) {
-    #todo-input, .composer-input {
+    #todo-input, .composer-input, .auth-input {
         font-size: 16px;
     }
 }
