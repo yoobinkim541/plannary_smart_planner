@@ -2405,6 +2405,7 @@ function renderTodos(todos) {
                 clearTimeout(timer);
                 document.removeEventListener('touchmove', onMove, { passive: false });
                 document.removeEventListener('touchend', onEnd);
+                document.removeEventListener('touchcancel', onEnd);
                 if (!active) return;
                 active = false;
                 card.classList.remove('dragging');
@@ -2420,6 +2421,7 @@ function renderTodos(todos) {
             };
             document.addEventListener('touchmove', onMove, { passive: false });
             document.addEventListener('touchend', onEnd);
+            document.addEventListener('touchcancel', onEnd);
         }, { passive: true });
 
         const p = todo.priority || 'medium';

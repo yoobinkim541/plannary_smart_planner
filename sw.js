@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-pwa-cache-v143';
+const CACHE_NAME = 'todo-pwa-cache-v144';
 const urlsToCache = [
   '/',
   '/index.html',
