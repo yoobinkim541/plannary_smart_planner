@@ -4092,6 +4092,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (priorityInput) priorityInput.value = 'medium';
             if (projectInput) projectInput.value = currentProjectId || '';
             if (getEl('remove-task-img')) getEl('remove-task-img').click();
+            input.focus();
             const docRef = await db.collection('todos').add(payload);
             const savedTask = { ...localTask, id: docRef.id };
             allTodos = allTodos.map(item => item.id === localTask.id ? savedTask : item);
