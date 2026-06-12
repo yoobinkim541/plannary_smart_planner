@@ -1254,11 +1254,12 @@ function updateProfileUI(user) {
     if (getEl('user-name-sidebar')) getEl('user-name-sidebar').textContent = name;
     if (getEl('user-email-sidebar')) getEl('user-email-sidebar').textContent = user.email;
     if (getEl('user-photo')) {
-        if (user.photoURL) getEl('user-photo').src = user.photoURL;
+        const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'U')}&background=0D8ABC&color=fff&size=40`;
+        getEl('user-photo').src = user.photoURL || fallbackAvatar;
         const mobileAvatar = getEl('mobile-user-avatar');
         if (mobileAvatar) {
             const avatarImg = document.createElement('img');
-            avatarImg.src = user.photoURL || getEl('user-photo').src;
+            avatarImg.src = user.photoURL || fallbackAvatar;
             avatarImg.alt = 'avatar';
             mobileAvatar.innerHTML = '';
             mobileAvatar.appendChild(avatarImg);
