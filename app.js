@@ -2246,7 +2246,7 @@ function renderTodos(todos) {
         return;
     }
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateKey();
 
     let lastEclassGroupKey = null;
     todos.forEach(todo => {
@@ -2459,7 +2459,7 @@ function setupDragging(el) {
 function updateDashboardUI() {
     if (!getEl('page-home')) return;
     const total = allTodos.filter(t => !t.archived).length, completed = allTodos.filter(t => t.completed && !t.archived).length, percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateKey();
     const activeTodos = allTodos.filter(todo => !todo.completed && !todo.archived);
     const todayDueTodos = activeTodos.filter(todo => todo.dueDate === today);
     const importantTodos = activeTodos.filter(todo => todo.priority === 'high');
@@ -2570,7 +2570,7 @@ function updateDashboardUI() {
 function checkDueNotifications() {
     if (!('Notification' in window)) return;
     if (!notificationSettings.dailyTasks) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateKey();
     const due = allTodos.filter(t => !t.completed && !t.archived && t.dueDate === today);
     
     if (due.length > 0) {
@@ -2588,7 +2588,7 @@ function checkDueNotifications() {
 }
 
 function showDueNotification(count) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateKey();
     notifyUser('Planary', formatText('todayTaskNotificationBody', { count }), 'daily-tasks');
     localStorage.setItem('last-notified-date', today);
 }
@@ -2631,7 +2631,7 @@ function scheduleReminderNotifications() {
         const [hour, minute] = (notificationSettings.dailyTime || '09:00').split(':').map(Number);
         const scheduled = new Date(today);
         scheduled.setHours(hour || 9, minute || 0, 0, 0);
-        const todayKey = today.toISOString().slice(0, 10);
+        const todayKey = localDateKey();
         const activeToday = allTodos.filter(task => !task.completed && !task.archived && task.dueDate === todayKey);
         const dailyKey = `daily-tasks|${todayKey}|${notificationSettings.dailyTime || '09:00'}`;
         if (activeToday.length && scheduled.getTime() > now && !firedReminderKeys.has(dailyKey)) {
