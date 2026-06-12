@@ -3570,10 +3570,13 @@ function saveNoteEdit() {
     if (!text) return;
     const picker = getEl('note-edit-color-picker');
     const selectedColor = picker?.querySelector('.color-option[aria-checked="true"]')?.dataset?.color || 'yellow';
+    const saveBtn = getEl('note-edit-save-btn');
+    if (saveBtn) saveBtn.disabled = true;
     db.collection('notes').doc(editingNoteId)
         .update({ text, color: selectedColor })
         .then(() => { showToast(t('updated')); closeNoteEditModal(); })
-        .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'));
+        .catch(err => showToast(err.message || t('taskCreationFailed'), 'error'))
+        .finally(() => { if (saveBtn) saveBtn.disabled = false; });
 }
 
 function finishAppBoot() {
@@ -3830,9 +3833,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (getEl('add-btn')) getEl('add-btn').onclick = async () => {
+        const addBtn = getEl('add-btn');
+        if (addBtn && addBtn.disabled) return;
         const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), timeInput = getEl('due-time'), reminderInput = getEl('calendar-reminder-select'), priorityInput = getEl('priority-select'), projectInput = getEl('todo-project-select');
         const text = input.value.trim();
         if (!text || !currentUser) return;
+        if (addBtn) addBtn.disabled = true;
 
         let imageUrl = null;
         if (selectedTaskImgFile) {
@@ -3891,13 +3897,6 @@ document.addEventListener('DOMContentLoaded', () => {
             upsertUserCacheItem('todos', localTask);
             applyFilters();
             updateDashboardUI();
-            const docRef = await db.collection('todos').add(payload);
-            const savedTask = { ...localTask, id: docRef.id };
-            allTodos = allTodos.map(item => item.id === localTask.id ? savedTask : item);
-            upsertUserCacheItem('todos', savedTask);
-            writeUserCache('todos', allTodos);
-            markGuideStepComplete('taskCreate');
-            if (payload.memo || payload.dueDate || payload.priority !== 'medium') markGuideStepComplete('taskDetails');
             input.value = '';
             memoInput.value = '';
             dateInput.value = '';
@@ -3905,6 +3904,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (priorityInput) priorityInput.value = 'medium';
             if (projectInput) projectInput.value = '';
             if (getEl('remove-task-img')) getEl('remove-task-img').click();
+            const docRef = await db.collection('todos').add(payload);
+            const savedTask = { ...localTask, id: docRef.id };
+            allTodos = allTodos.map(item => item.id === localTask.id ? savedTask : item);
+            upsertUserCacheItem('todos', savedTask);
+            writeUserCache('todos', allTodos);
+            markGuideStepComplete('taskCreate');
+            if (payload.memo || payload.dueDate || payload.priority !== 'medium') markGuideStepComplete('taskDetails');
             showToast(calendarEvent?.id ? t('calendarTaskSynced') : t('added'));
         } catch (error) {
             console.error("Task creation failed:", error, payload);
@@ -3915,6 +3921,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (imageUrl) await deleteStorageUrls(new Set([imageUrl]));
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
+        } finally {
+            if (addBtn) addBtn.disabled = false;
         }
     };
 
