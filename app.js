@@ -2562,20 +2562,7 @@ function checkDueNotifications() {
 
 function showDueNotification(count) {
     const today = new Date().toISOString().split('T')[0];
-    const options = {
-        body: `오늘 마감인 할 일이 ${count}개 있습니다!`,
-        icon: '/icon.svg',
-        vibrate: [200, 100, 200],
-        badge: '/icon.svg'
-    };
-    
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification("Planary Reminder", options);
-        });
-    } else {
-        new Notification("Planary Reminder", options);
-    }
+    notifyUser('Planary', formatText('todayTaskNotificationBody', { count }), 'daily-tasks');
     localStorage.setItem('last-notified-date', today);
 }
 
@@ -2951,13 +2938,13 @@ function renderBookmarks() {
         const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
         
         const div = document.createElement('div'); div.className = 'bookmark-card';
-        const tags = bm.tags ? bm.tags.map(t => `<span class="bm-tag">#${t}</span>`).join(' ') : '';
+        const tags = bm.tags ? bm.tags.map(tag => `<span class="bm-tag">#${escapeHtml(tag)}</span>`).join(' ') : '';
         div.innerHTML = `
             <button class="bm-delete-btn" onclick="deleteBookmark('${bm.id}')" aria-label="${t('deleteBookmark')}">×</button>
             <div class="bm-main">
                 <img src="${favicon}" class="bm-favicon" onerror="this.src='icon.svg'">
                 <div class="bm-info">
-                    <div class="bm-title">${bm.title || domain}</div>
+                    <div class="bm-title">${escapeHtml(bm.title || domain)}</div>
                     <div class="bm-url">${escapeHtml(bm.url)}</div>
                 </div>
             </div>

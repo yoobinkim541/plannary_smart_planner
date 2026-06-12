@@ -2371,6 +2371,14 @@ body.onboarding-spotlight-active #main-area {
 .note-card.color-purple { background-color: #f3e5f5; border-color: #e1bee7; }
 .note-card.color-orange { background-color: #fff3e0; border-color: #ffe0b2; }
 
+[data-theme="dark"] .note-card                { background-color: #2a2510; border-color: #4a4320; }
+[data-theme="dark"] .note-card.color-yellow   { background-color: #2a2510; border-color: #4a4320; }
+[data-theme="dark"] .note-card.color-blue     { background-color: #0e1f30; border-color: #1e3f60; }
+[data-theme="dark"] .note-card.color-green    { background-color: #0e1f18; border-color: #1e3f28; }
+[data-theme="dark"] .note-card.color-pink     { background-color: #2a1020; border-color: #4a2040; }
+[data-theme="dark"] .note-card.color-purple   { background-color: #1e1030; border-color: #3e2060; }
+[data-theme="dark"] .note-card.color-orange   { background-color: #2a1a0e; border-color: #4a3020; }
+
 /* Color Picker UI */
 .color-selector {
     display: flex;
@@ -2399,8 +2407,15 @@ body.onboarding-spotlight-active #main-area {
 .opt-purple { background-color: #f3e5f5; }
 .opt-orange { background-color: #fff3e0; }
 
+[data-theme="dark"] .opt-yellow { background-color: #2a2510; }
+[data-theme="dark"] .opt-blue   { background-color: #0e1f30; }
+[data-theme="dark"] .opt-green  { background-color: #0e1f18; }
+[data-theme="dark"] .opt-pink   { background-color: #2a1020; }
+[data-theme="dark"] .opt-purple { background-color: #1e1030; }
+[data-theme="dark"] .opt-orange { background-color: #2a1a0e; }
+
 .note-content {
-    color: #333;
+    color: var(--text-1);
     font-size: 1rem;
     line-height: 1.5;
     white-space: pre-wrap;
@@ -2413,8 +2428,8 @@ body.onboarding-spotlight-active #main-area {
     align-items: center;
     margin-top: var(--spacing-md);
     font-size: 0.75rem;
-    color: #777;
-    border-top: 1px solid rgba(0,0,0,0.05);
+    color: var(--text-2);
+    border-top: 1px solid var(--border);
     padding-top: var(--spacing-sm);
 }
 
@@ -2983,7 +2998,7 @@ body.onboarding-spotlight-active #main-area {
     padding: 12px;
     border-radius: 8px;
     font-size: 0.9rem;
-    color: #333; /* Ensure text is dark on light yellow background */
+    color: var(--text-1);
     box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
     border: 1px solid rgba(0,0,0,0.1);
     transition: transform 0.2s;
@@ -2998,6 +3013,13 @@ body.onboarding-spotlight-active #main-area {
 .dash-recent-note-card.pink   { background-color: #fce4ec; border-color: #f8bbd0; }
 .dash-recent-note-card.purple { background-color: #f3e5f5; border-color: #e1bee7; }
 .dash-recent-note-card.orange { background-color: #fff3e0; border-color: #ffe0b2; }
+
+[data-theme="dark"] .dash-recent-note-card               { background-color: #2a2510; border-color: #4a4320; }
+[data-theme="dark"] .dash-recent-note-card.blue          { background-color: #0e1f30; border-color: #1e3f60; }
+[data-theme="dark"] .dash-recent-note-card.green         { background-color: #0e1f18; border-color: #1e3f28; }
+[data-theme="dark"] .dash-recent-note-card.pink          { background-color: #2a1020; border-color: #4a2040; }
+[data-theme="dark"] .dash-recent-note-card.purple        { background-color: #1e1030; border-color: #3e2060; }
+[data-theme="dark"] .dash-recent-note-card.orange        { background-color: #2a1a0e; border-color: #4a3020; }
 
 
 /* === PROJECTS PAGE === */
