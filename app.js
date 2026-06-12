@@ -829,6 +829,19 @@ function applyLanguage(lang = currentLanguage) {
         el.innerHTML = t(el.dataset.i18nHtml);
     });
 
+    document.querySelectorAll('#note-color-picker, #note-edit-color-picker').forEach(picker => {
+        picker.setAttribute('aria-label', t('colorNotePickerLabel'));
+        picker.querySelectorAll('[data-color]').forEach(btn => {
+            const key = 'color' + btn.dataset.color.charAt(0).toUpperCase() + btn.dataset.color.slice(1);
+            const label = t(key);
+            btn.setAttribute('aria-label', label);
+            btn.title = label;
+        });
+    });
+    setTitle('.inspiration-refresh', t('inspirationRefreshLabel'));
+    const heatmap = getEl('archive-activity-heatmap');
+    if (heatmap) heatmap.setAttribute('aria-label', t('lastTwelveWeeksCompleted'));
+
     window.dispatchEvent(new CustomEvent('planary-language-change'));
 }
 

@@ -259,6 +259,10 @@
         defaultUserName: 'there',
         inspirationQuote: '"Records shape memory."',
         appTagline: 'Planary is a productivity web app that keeps tasks, reminders, projects, and wikis in one workspace.',
-        eclassConnectingStatus: 'Not connected'
+        eclassConnectingStatus: 'Not connected',
+        colorNotePickerLabel: 'Choose note color',
+        colorYellow: 'Yellow', colorBlue: 'Blue', colorGreen: 'Green',
+        colorPink: 'Pink', colorPurple: 'Purple', colorOrange: 'Orange',
+        inspirationRefreshLabel: 'Refresh inspiration'
     };
 })();

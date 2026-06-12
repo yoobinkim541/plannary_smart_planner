@@ -260,6 +260,10 @@
         defaultUserName: '사용자',
         inspirationQuote: '"기록은 기억을 지배합니다."',
         appTagline: 'Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.',
-        eclassConnectingStatus: '연결 전'
+        eclassConnectingStatus: '연결 전',
+        colorNotePickerLabel: '메모 색상 선택',
+        colorYellow: '노랑', colorBlue: '파랑', colorGreen: '초록',
+        colorPink: '분홍', colorPurple: '보라', colorOrange: '주황',
+        inspirationRefreshLabel: '영감 새로고침'
     };
 })();

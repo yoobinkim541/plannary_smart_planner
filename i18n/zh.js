@@ -259,6 +259,10 @@
         defaultUserName: '用户',
         inspirationQuote: '"记录主宰记忆。"',
         appTagline: 'Planary 是一款将待办、提醒、项目和 Wiki 集中在同一工作空间的生产力 Web 应用。',
-        eclassConnectingStatus: '未连接'
+        eclassConnectingStatus: '未连接',
+        colorNotePickerLabel: '选择便签颜色',
+        colorYellow: '黄色', colorBlue: '蓝色', colorGreen: '绿色',
+        colorPink: '粉色', colorPurple: '紫色', colorOrange: '橙色',
+        inspirationRefreshLabel: '刷新灵感'
     };
 })();

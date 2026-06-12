@@ -259,6 +259,10 @@
         defaultUserName: 'amigo',
         inspirationQuote: '"Lo registrado gobierna lo recordado."',
         appTagline: 'Planary es una app web de productividad que reúne tareas, recordatorios, proyectos y wikis en un solo espacio de trabajo.',
-        eclassConnectingStatus: 'No conectado'
+        eclassConnectingStatus: 'No conectado',
+        colorNotePickerLabel: 'Elegir color de nota',
+        colorYellow: 'Amarillo', colorBlue: 'Azul', colorGreen: 'Verde',
+        colorPink: 'Rosa', colorPurple: 'Morado', colorOrange: 'Naranja',
+        inspirationRefreshLabel: 'Actualizar inspiración'
     };
 })();

@@ -259,6 +259,10 @@
         defaultUserName: 'ゲスト',
         inspirationQuote: '「記録は記憶を支配する。」',
         appTagline: 'Planaryはタスク、リマインダー、プロジェクト、Wikiを一つのワークスペースで管理する生産性Webアプリです。',
-        eclassConnectingStatus: '未接続'
+        eclassConnectingStatus: '未接続',
+        colorNotePickerLabel: 'メモの色を選択',
+        colorYellow: '黄色', colorBlue: '青', colorGreen: '緑',
+        colorPink: 'ピンク', colorPurple: '紫', colorOrange: 'オレンジ',
+        inspirationRefreshLabel: 'インスピレーションを更新'
     };
 })();
