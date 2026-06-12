@@ -1665,7 +1665,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 pendingPageFetches.add(id);
                 db.collection('wiki_pages').doc(id).get()
                     .then(doc => {
-                        if (!doc.exists) return;
+                        if (!doc.exists) {
+                            window.showToast(tr('pageNotFound') || 'Page not found', 'error');
+                            window.location.hash = '#page-wiki';
+                            return;
+                        }
                         const loadedPage = { id: doc.id, ...doc.data() };
                         if (loadedPage.uid !== currentUser.uid) return;
                         upsertLoadedPage(loadedPage);

@@ -109,7 +109,7 @@
         expandSidebar: 'Expand sidebar', collapseSidebar: 'Collapse sidebar',
         openPageFirst: 'Open a page first', untitledProject: 'Untitled Project', noPagesFound: 'No pages found',
         createFirstSubpage: 'Create first subpage', subpageEmptyHelp: 'Keep related notes nested under this page.',
-        openSubpage: 'Open subpage', loginFirst: 'Please login first', failedCreatePage: 'Failed to create page', loadFailed: 'Load failed',
+        openSubpage: 'Open subpage', loginFirst: 'Please login first', failedCreatePage: 'Failed to create page', loadFailed: 'Load failed', pageNotFound: 'Page not found',
         parentPage: 'Parent page',
         cannotSaveNotReady: 'Cannot save: not ready', saving: 'Saving...', pageSaved: 'Page saved',
         saveFailed: 'Save failed', deletePageConfirm: 'Delete this page?',

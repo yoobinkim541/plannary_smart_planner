@@ -109,7 +109,7 @@
         expandSidebar: '사이드바 펼치기', collapseSidebar: '사이드바 접기',
         openPageFirst: '먼저 페이지를 열어주세요', untitledProject: '제목 없는 프로젝트', noPagesFound: '페이지가 없습니다',
         createFirstSubpage: '첫 하위 페이지 만들기', subpageEmptyHelp: '관련 메모를 이 페이지 아래에 정리하세요.',
-        openSubpage: '하위 페이지 열기', loginFirst: '먼저 로그인해주세요', failedCreatePage: '페이지 생성 실패', loadFailed: '불러오기 실패',
+        openSubpage: '하위 페이지 열기', loginFirst: '먼저 로그인해주세요', failedCreatePage: '페이지 생성 실패', loadFailed: '불러오기 실패', pageNotFound: '페이지를 찾을 수 없습니다',
         parentPage: '상위 페이지',
         cannotSaveNotReady: '저장할 수 없습니다. 페이지가 준비되지 않았습니다.', saving: '저장 중...', pageSaved: '페이지가 저장되었습니다',
         saveFailed: '저장 실패', deletePageConfirm: '이 페이지를 삭제할까요?',

@@ -2412,7 +2412,8 @@ function renderTodos(todos) {
         const proj = allProjects.find(px => px.id === todo.projectId);
         const sourceTag = isEclassTask(todo) ? `<span class="project-tag eclass-source-tag">e-Class</span>` : '';
         const typeTag = todo.source === 'eclass-exam' ? `<span class="project-tag eclass-type-tag">${t('eclassExamType')}</span>` : '';
-        const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
+        const projColor = proj?.color || '#6366f1';
+        const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${projColor}33; color:${projColor}; border: 1px solid ${projColor}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
         const img = todo.imageUrl ? `<img src="${escapeHtml(todo.imageUrl)}" class="tc-img tc-img-btn" alt="task image" data-url="${escapeHtml(todo.imageUrl)}" loading="lazy" decoding="async">` : '';
 
         const dueBadge = isDueToday
@@ -2993,7 +2994,7 @@ function renderProjectManagementList() {
         const projectReminders = projectTasks.filter(t => t.dueDate && !t.completed);
         const projectWikiPages = allWikiPages.filter(page => page.projectId === p.id);
         div.innerHTML = `
-            <div class="stat-icon" style="background:${p.color}33; color:${p.color}; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+            <div class="stat-icon" style="background:${(p.color || '#6366f1')}33; color:${p.color || '#6366f1'}; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
                 ${appIconSvg('projects')}
             </div>
             <h3 style="margin-bottom:4px;">${escapeHtml(p.name)}</h3>

@@ -108,7 +108,7 @@
         expandSidebar: 'Expandir barra lateral', collapseSidebar: 'Plegar barra lateral',
         openPageFirst: 'Abre una página primero', untitledProject: 'Proyecto sin título', noPagesFound: 'No hay páginas',
         createFirstSubpage: 'Crear primera subpágina', subpageEmptyHelp: 'Organiza notas relacionadas debajo de esta página.',
-        openSubpage: 'Abrir subpágina', loginFirst: 'Inicia sesión primero', failedCreatePage: 'Error al crear la página', loadFailed: 'Error al cargar',
+        openSubpage: 'Abrir subpágina', loginFirst: 'Inicia sesión primero', failedCreatePage: 'Error al crear la página', loadFailed: 'Error al cargar', pageNotFound: 'Página no encontrada',
         parentPage: 'Página superior',
         cannotSaveNotReady: 'No se puede guardar. La página no está lista.', saving: 'Guardando...', pageSaved: 'Página guardada',
         saveFailed: 'Error al guardar', deletePageConfirm: '¿Eliminar esta página?',

@@ -108,7 +108,7 @@
         expandSidebar: '展开侧边栏', collapseSidebar: '收起侧边栏',
         openPageFirst: '请先打开一个页面', untitledProject: '无标题项目', noPagesFound: '没有页面',
         createFirstSubpage: '创建第一个子页面', subpageEmptyHelp: '把相关备忘整理在该页面下。',
-        openSubpage: '打开子页面', loginFirst: '请先登录', failedCreatePage: '页面创建失败', loadFailed: '加载失败',
+        openSubpage: '打开子页面', loginFirst: '请先登录', failedCreatePage: '页面创建失败', loadFailed: '加载失败', pageNotFound: '找不到该页面',
         parentPage: '上级页面',
         cannotSaveNotReady: '无法保存。页面未就绪。', saving: '正在保存...', pageSaved: '页面已保存',
         saveFailed: '保存失败', deletePageConfirm: '删除该页面?',

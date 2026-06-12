@@ -108,7 +108,7 @@
         expandSidebar: 'サイドバーを開く', collapseSidebar: 'サイドバーを閉じる',
         openPageFirst: '先にページを開いてください', untitledProject: '無題のプロジェクト', noPagesFound: 'ページがありません',
         createFirstSubpage: '最初のサブページを作成', subpageEmptyHelp: '関連するメモをこのページの下に整理しましょう。',
-        openSubpage: 'サブページを開く', loginFirst: '先にログインしてください', failedCreatePage: 'ページの作成に失敗', loadFailed: '読み込み失敗',
+        openSubpage: 'サブページを開く', loginFirst: '先にログインしてください', failedCreatePage: 'ページの作成に失敗', loadFailed: '読み込み失敗', pageNotFound: 'ページが見つかりません',
         parentPage: '親ページ',
         cannotSaveNotReady: '保存できません。ページが準備できていません。', saving: '保存中...', pageSaved: 'ページを保存しました',
         saveFailed: '保存に失敗', deletePageConfirm: 'このページを削除しますか?',
