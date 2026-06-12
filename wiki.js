@@ -1616,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const taskList = document.getElementById('wiki-widget-tasks-list');
         if (taskList) {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = typeof localDateKey === 'function' ? localDateKey() : new Date().toISOString().slice(0, 10);
             const tasks = allTodos
                 .filter(task => !task.completed && !task.archived && (task.dueDate === today || task.priority === 'high'))
                 .slice(0, 5);
