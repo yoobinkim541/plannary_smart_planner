@@ -8,8 +8,9 @@ async function sendPushToUser(uid, { title, body, url, tag, data = {} }) {
   const admin = getAdmin();
   const db = admin.firestore();
 
-  const userSnap = await db.collection('users').doc(uid).get();
-  const tokens = (userSnap.data() || {}).fcmTokens || [];
+  // Tokens are stored as individual documents in fcm_tokens/{token} keyed by uid.
+  const tokenSnap = await db.collection('fcm_tokens').where('uid', '==', uid).get();
+  const tokens = tokenSnap.docs.map(d => d.data().token).filter(Boolean);
   if (!tokens.length) return { sent: 0, skipped: 'no_tokens' };
 
   const messaging = admin.messaging();
@@ -24,25 +25,25 @@ async function sendPushToUser(uid, { title, body, url, tag, data = {} }) {
         tag: tag || 'planary',
         requireInteraction: false,
       },
-      fcmOptions: { link: url || '/redesign/' },
+      fcmOptions: { link: url || '/' },
     },
-    data: { url: url || '/redesign/', ...data },
+    data: { url: url || '/', ...data },
   });
 
   // Clean up invalid / unregistered tokens
-  const stale = [];
+  const staleTokenIds = [];
   result.responses.forEach((resp, i) => {
     if (!resp.success) {
       const code = resp.error?.code || '';
       if (/registration-token-not-registered|invalid-registration-token|unregistered/i.test(code)) {
-        stale.push(tokens[i]);
+        staleTokenIds.push(tokens[i]);
       }
     }
   });
-  if (stale.length) {
-    await db.collection('users').doc(uid).update({
-      fcmTokens: admin.firestore.FieldValue.arrayRemove(...stale),
-    });
+  if (staleTokenIds.length) {
+    const batch = db.batch();
+    staleTokenIds.forEach(token => batch.delete(db.collection('fcm_tokens').doc(token)));
+    await batch.commit();
   }
 
   return { sent: result.successCount, failed: result.failureCount };

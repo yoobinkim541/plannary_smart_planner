@@ -45,9 +45,12 @@ module.exports = async function handler(req, res) {
     if (!Array.isArray(reminderList) || !reminderList.length) continue;
 
     const [h, m] = (todo.dueTime || '23:59').split(':').map(Number);
+    // Due times are stored in the user's local time (KST, UTC+9).
+    // Parse as UTC then subtract the KST offset so comparisons are correct.
+    const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
     const dueMs = new Date(
-      `${todo.dueDate}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
-    ).getTime();
+      `${todo.dueDate}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`
+    ).getTime() - KST_OFFSET_MS;
     if (isNaN(dueMs)) continue;
 
     const sentFor = todo.notifSentFor || [];
@@ -68,7 +71,7 @@ module.exports = async function handler(req, res) {
           title: `⏰ ${todo.text}`,
           body: `${timeLabel} · ${dateStr}`,
           tag: `reminder-${doc.id}-${mins}`,
-          url: '/redesign/',
+          url: '/',
           data: { todoId: doc.id, type: 'reminder', reminderMinutes: key },
         });
         await doc.ref.update({

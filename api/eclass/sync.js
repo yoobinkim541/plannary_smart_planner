@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
           title: 'e-Class 동기화 완료',
           body: `새로운 항목 ${result.newTodoCount}개가 추가됐어요`,
           tag: 'eclass-sync',
-          url: '/redesign/',
+          url: '/',
           data: { type: 'eclass-sync', newCount: String(result.newTodoCount) },
         }).catch(err => console.warn('[eclass/sync] push failed:', err.message));
       }

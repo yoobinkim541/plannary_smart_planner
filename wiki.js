@@ -1101,6 +1101,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 uploadByFile(file) {
                     if (!currentUser || !storage) return Promise.reject(tr('loginFirstOrStorage'));
+                    if (!file.type.startsWith('image/')) { window.showToast(tr('imageTypeInvalid'), 'error'); return Promise.reject(new Error(tr('imageTypeInvalid'))); }
+                    if (file.size > 5 * 1024 * 1024) { window.showToast(tr('imageTooLarge'), 'error'); return Promise.reject(new Error(tr('imageTooLarge'))); }
                     
                     const progressContainer = document.getElementById('wiki-upload-progress');
                     const progressBar = document.getElementById('wiki-upload-bar');
@@ -1130,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             () => {
                                 uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
                                     if (progressBar) progressBar.style.width = '100%';
-                                    if (progressText) progressText.innerText = `${label} Upload Complete!`;
+                                    if (progressText) progressText.innerText = `${label} ${tr('uploadComplete')}`;
 
                                     setTimeout(() => {
                                         if (progressContainer) progressContainer.style.display = 'none';
@@ -1427,7 +1429,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.renderNoteSidebarTree = renderNoteSidebarTree;
 
     if (searchInput) {
-        searchInput.oninput = () => renderPageList();
+        let searchDebounceTimer;
+        searchInput.oninput = () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => renderPageList(), 200);
+        };
     }
 
     window.addEventListener('planary-language-change', () => {
@@ -1453,7 +1459,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('wiki-widget-calendar-title', tr('calendar'));
         setText('wiki-calendar-connect-btn', tr('googleCalendarConnect'));
         setText('wiki-calendar-create-btn', tr('createCalendarFromPage'));
-        setText('wiki-cover-btn', tr('changeCover'));
+        setText('wiki-cover-btn', tr('uploadCoverFile') || tr('changeCover'));
+        setText('wiki-cover-url-btn', tr('coverUrlInput') || 'URL 입력');
+        setText('wiki-cover-remove-btn', tr('removeCoverImage') || '커버 제거');
         setText('wiki-cover-adjust-btn', tr('adjustCover'));
         setText('wiki-cover-position-x-label', tr('coverPositionX'));
         setText('wiki-cover-position-y-label', tr('coverPositionY'));
@@ -1541,7 +1549,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
                 <span class="wiki-subpage-text">
                     <strong>${escapeHtml(page.title || tr('untitledDocument'))}</strong>
-                    <span>${page.updatedAt ? `${tr('updated')} ${new Date(page.updatedAt.toMillis()).toLocaleDateString()}` : tr('openSubpage')}</span>
+                    <span>${page.updatedAt ? `${tr('updated')} ${formatDate(page.updatedAt)}` : tr('openSubpage')}</span>
                 </span>
             `;
             item.onclick = () => navigateToPage(page.id);
@@ -1608,7 +1616,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const taskList = document.getElementById('wiki-widget-tasks-list');
         if (taskList) {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = typeof localDateKey === 'function' ? localDateKey() : new Date().toISOString().slice(0, 10);
             const tasks = allTodos
                 .filter(task => !task.completed && !task.archived && (task.dueDate === today || task.priority === 'high'))
                 .slice(0, 5);
@@ -1617,8 +1625,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'wiki-widget-item';
-                button.innerHTML = `<strong>${escapeHtml(task.text || tr('untitledTask'))}</strong><small>${task.dueDate || tr(task.priority || 'tasks')}</small>`;
-                button.onclick = () => { window.location.hash = 'page-tasks'; };
+                button.innerHTML = `<strong>${escapeHtml(task.text || tr('untitledTask'))}</strong><small>${task.dueDate ? escapeHtml(task.dueDate) : tr(task.priority || 'tasks')}</small>`;
+                button.onclick = () => {
+                    if (typeof navigateAppPage === 'function') navigateAppPage('page-tasks', 'all');
+                    else window.location.hash = 'page-tasks';
+                };
                 taskList.appendChild(button);
             });
         }
@@ -1654,7 +1665,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 pendingPageFetches.add(id);
                 db.collection('wiki_pages').doc(id).get()
                     .then(doc => {
-                        if (!doc.exists) return;
+                        if (!doc.exists) {
+                            window.showToast(tr('pageNotFound') || 'Page not found', 'error');
+                            window.location.hash = '#page-wiki';
+                            return;
+                        }
                         const loadedPage = { id: doc.id, ...doc.data() };
                         if (loadedPage.uid !== currentUser.uid) return;
                         upsertLoadedPage(loadedPage);
@@ -1749,6 +1764,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openPage = (page) => {
         if (currentPageId === page.id) return;
+        // Flush any pending auto-save for the current page before switching.
+        if (autosaveTimer && currentPageId) {
+            clearTimeout(autosaveTimer);
+            autosaveTimer = null;
+            if (!autosaveInFlight) savePage({ silent: true }).catch(() => {});
+        }
         cleanupPendingWikiUploads();
         currentPageId = page.id;
         pendingEditorRenderToken += 1;
@@ -1780,8 +1801,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPageList();
     };
 
+    let _createPageInFlight = false;
     const createNewPage = (parentId = null) => {
         if (!currentUser) return window.showToast(tr('loginFirst'), 'error');
+        if (_createPageInFlight) return;
+        _createPageInFlight = true;
         const parentPage = parentId ? getPageById(parentId) : null;
         const rootPage = parentId ? getRootPage(parentId) : null;
         const inheritedProjectId = parentPage
@@ -1812,7 +1836,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(err => {
             console.error("Creation error:", err);
             window.showToast(tr('failedCreatePage') + ': ' + err.message, "error");
-        });
+        }).finally(() => { _createPageInFlight = false; });
     };
 
     const getDescendantPageIds = (pageId) => {
@@ -1878,22 +1902,79 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderNoteSidebarTree();
                 }
             }
+            scheduleAutosave();
         });
     }
+
+    const showWikiPopover = (popoverId, anchorEl) => {
+        const popover = document.getElementById(popoverId);
+        if (!popover) return;
+        document.querySelectorAll('[id$="-popover"]').forEach(p => { if (p !== popover) p.hidden = true; });
+        const rect = anchorEl.getBoundingClientRect();
+        popover.hidden = false;
+        const pw = popover.offsetWidth || 200;
+        const ph = popover.offsetHeight || 60;
+        const left = Math.min(rect.left, window.innerWidth - pw - 8);
+        popover.style.left = Math.max(8, left) + 'px';
+        const spaceBelow = window.innerHeight - rect.bottom - 8;
+        popover.style.top = spaceBelow >= ph
+            ? (rect.bottom + 6) + 'px'
+            : Math.max(8, rect.top - ph - 6) + 'px';
+        const firstInput = popover.querySelector('input');
+        if (firstInput) { firstInput.focus(); firstInput.select(); }
+    };
+
+    const hideWikiPopover = (popoverId) => {
+        const popover = document.getElementById(popoverId);
+        if (popover) popover.hidden = true;
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('[id$="-popover"]:not([hidden])').forEach(p => { p.hidden = true; });
+        }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        document.querySelectorAll('[id$="-popover"]:not([hidden])').forEach(p => {
+            if (!p.contains(e.target)) p.hidden = true;
+        });
+    }, true);
+
+    const applyIconValue = (value) => {
+        if (value == null) return;
+        pushMetaUndoSnapshot();
+        applyPageMeta({ ...getMetaSnapshot(), icon: value.trim().slice(0, 4) || '📄' });
+        pushMetaUndoSnapshot();
+        hideWikiPopover('wiki-icon-popover');
+    };
 
     if (pageIconBtn) {
         pageIconBtn.onclick = () => {
             if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
-            const value = prompt(tr('pageIconPrompt'), currentPageMeta.icon || '📄');
-            if (value == null) return;
-            pushMetaUndoSnapshot();
-            applyPageMeta({ ...getMetaSnapshot(), icon: value.trim().slice(0, 4) || '📄' });
-            pushMetaUndoSnapshot();
+            const input = document.getElementById('wiki-icon-input');
+            if (input) input.value = currentPageMeta.icon || '📄';
+            showWikiPopover('wiki-icon-popover', pageIconBtn);
         };
     }
+    const iconApplyBtn = document.getElementById('wiki-icon-apply-btn');
+    if (iconApplyBtn) {
+        iconApplyBtn.onclick = () => {
+            const input = document.getElementById('wiki-icon-input');
+            applyIconValue(input?.value);
+        };
+    }
+    const iconInput = document.getElementById('wiki-icon-input');
+    if (iconInput) {
+        iconInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyIconValue(iconInput.value); });
+    }
+    const iconPopoverClose = document.getElementById('wiki-icon-popover-close');
+    if (iconPopoverClose) iconPopoverClose.onclick = () => hideWikiPopover('wiki-icon-popover');
 
     const uploadCoverFile = (file) => {
         if (!file || !currentUser || !storage) return Promise.reject(new Error(tr('loginFirstOrStorage')));
+        if (!file.type.startsWith('image/')) { window.showToast(tr('imageTypeInvalid'), 'error'); return Promise.reject(new Error(tr('imageTypeInvalid'))); }
+        if (file.size > 5 * 1024 * 1024) { window.showToast(tr('imageTooLarge'), 'error'); return Promise.reject(new Error(tr('imageTooLarge'))); }
         const filePath = `wiki/${currentUser.uid}/covers/${Date.now()}_${file.name}`;
         return storage.ref().child(filePath).put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(url => {
             uploadedWikiStorageUrls.add(url);
@@ -1901,17 +1982,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const chooseCoverImage = () => {
+    const openCoverFilePicker = () => {
         if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
-        const choice = prompt(tr('coverImagePrompt'), currentPageMeta.coverUrl || '');
-        if (choice == null) return;
-        const trimmed = choice.trim();
-        if (trimmed) {
-            pushMetaUndoSnapshot();
-            applyPageMeta({ ...getMetaSnapshot(), coverUrl: trimmed });
-            pushMetaUndoSnapshot();
-            return;
-        }
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -1929,7 +2001,50 @@ document.addEventListener('DOMContentLoaded', () => {
         input.click();
     };
 
-    if (coverBtn) coverBtn.onclick = chooseCoverImage;
+    const applyCoverUrl = (url) => {
+        const trimmed = (url || '').trim();
+        if (!trimmed) return;
+        if (!/^https?:\/\//i.test(trimmed)) { window.showToast(tr('invalidUrl') || 'URL은 https://로 시작해야 합니다.', 'error'); return; }
+        pushMetaUndoSnapshot();
+        applyPageMeta({ ...getMetaSnapshot(), coverUrl: trimmed });
+        pushMetaUndoSnapshot();
+        hideWikiPopover('wiki-cover-url-popover');
+    };
+
+    if (coverBtn) coverBtn.onclick = openCoverFilePicker;
+
+    const coverUrlBtn = document.getElementById('wiki-cover-url-btn');
+    if (coverUrlBtn) {
+        coverUrlBtn.onclick = () => {
+            if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
+            const input = document.getElementById('wiki-cover-url-input');
+            if (input) input.value = currentPageMeta.coverUrl || '';
+            showWikiPopover('wiki-cover-url-popover', coverUrlBtn);
+        };
+    }
+    const coverUrlApplyBtn = document.getElementById('wiki-cover-url-apply-btn');
+    if (coverUrlApplyBtn) {
+        coverUrlApplyBtn.onclick = () => {
+            const input = document.getElementById('wiki-cover-url-input');
+            applyCoverUrl(input?.value);
+        };
+    }
+    const coverUrlInput = document.getElementById('wiki-cover-url-input');
+    if (coverUrlInput) {
+        coverUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyCoverUrl(coverUrlInput.value); });
+    }
+    const coverUrlPopoverClose = document.getElementById('wiki-cover-url-popover-close');
+    if (coverUrlPopoverClose) coverUrlPopoverClose.onclick = () => hideWikiPopover('wiki-cover-url-popover');
+
+    const coverRemoveBtn = document.getElementById('wiki-cover-remove-btn');
+    if (coverRemoveBtn) {
+        coverRemoveBtn.onclick = () => {
+            if (!currentPageId) return window.showToast(tr('openPageFirst'), 'error');
+            pushMetaUndoSnapshot();
+            applyPageMeta({ ...getMetaSnapshot(), coverUrl: '' });
+            pushMetaUndoSnapshot();
+        };
+    }
 
     if (coverAdjustBtn && coverPanel) {
         coverAdjustBtn.onclick = () => {
@@ -1991,6 +2106,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (calendarConnectBtn) {
         calendarConnectBtn.onclick = async () => {
+            if (calendarConnectBtn.disabled) return;
+            calendarConnectBtn.disabled = true;
             try {
                 await requestCalendarToken();
                 await loadCalendarEvents();
@@ -1998,12 +2115,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('[Wiki] Calendar connect failed:', error);
                 window.showToast(tr('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarConnectBtn.disabled = false;
             }
         };
     }
 
     if (calendarCreateBtn) {
         calendarCreateBtn.onclick = async () => {
+            if (calendarCreateBtn.disabled) return;
+            calendarCreateBtn.disabled = true;
             try {
                 if (!calendarAccessToken) await requestCalendarToken();
                 const title = wikiTitleInput?.value?.trim() || tr('untitledDocument');
@@ -2030,6 +2151,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('[Wiki] Calendar event creation failed:', error);
                 window.showToast(tr('calendarEventCreateFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarCreateBtn.disabled = false;
             }
         };
     }
@@ -2056,31 +2179,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!silent) window.showToast(tr('cannotSaveNotReady'), 'error');
             return;
         }
+        // Capture all mutable state synchronously before any await so that
+        // rapid page switches don't corrupt which document gets saved.
+        const savedPageId = currentPageId;
         const title = wikiTitleInput ? wikiTitleInput.value.trim() || tr('untitledDocument') : tr('untitledDocument');
         const projectId = wikiProjectSelect && wikiProjectSelect.value ? wikiProjectSelect.value : null;
+        const savedMeta = { ...currentPageMeta };
 
         if (saveWikiBtn) { saveWikiBtn.textContent = tr('saving'); saveWikiBtn.disabled = true; }
 
         try {
-            const previousPage = getCurrentPage();
+            const previousPage = allPages.find(p => p.id === savedPageId);
             const previousUrls = getWikiPageStorageUrls(previousPage);
             const contentData = normalizeEditorData(await editor.save());
             const nextPage = {
                 ...(previousPage || {}),
-                id: currentPageId,
-                coverUrl: currentPageMeta.coverUrl || '',
+                id: savedPageId,
+                coverUrl: savedMeta.coverUrl || '',
                 content: contentData
             };
-            await db.collection('wiki_pages').doc(currentPageId).update({
+            await db.collection('wiki_pages').doc(savedPageId).update({
                 title: title,
                 projectId,
-                icon: currentPageMeta.icon || '📄',
-                coverUrl: currentPageMeta.coverUrl || '',
-                coverPosition: toBoundedNumber(currentPageMeta.coverPosition, 50, 0, 100),
-                coverPositionX: toBoundedNumber(currentPageMeta.coverPositionX, 50, 0, 100),
-                coverHeight: toBoundedNumber(currentPageMeta.coverHeight, 180, 120, 360),
-                coverZoom: toBoundedNumber(currentPageMeta.coverZoom, 100, 100, 220),
-                coverCropMode: currentPageMeta.coverCropMode || 'cover',
+                icon: savedMeta.icon || '📄',
+                coverUrl: savedMeta.coverUrl || '',
+                coverPosition: toBoundedNumber(savedMeta.coverPosition, 50, 0, 100),
+                coverPositionX: toBoundedNumber(savedMeta.coverPositionX, 50, 0, 100),
+                coverHeight: toBoundedNumber(savedMeta.coverHeight, 180, 120, 360),
+                coverZoom: toBoundedNumber(savedMeta.coverZoom, 100, 100, 220),
+                coverCropMode: savedMeta.coverCropMode || 'cover',
                 content: contentData,
                 ogTried: false,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2157,7 +2284,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmMessage = descendantIds.length
                 ? fmt('deletePageWithSubpagesConfirm', { count: descendantIds.length })
                 : tr('deletePageConfirm');
-            if (!confirm(confirmMessage)) return false;
+            const confirmed = typeof window.showConfirmModalAsync === 'function'
+                ? await window.showConfirmModalAsync(confirmMessage)
+                : window.confirm(confirmMessage);
+            if (!confirmed) return false;
         }
         const batch = db.batch();
         const deletingIds = [pageId, ...descendantIds];
@@ -2170,7 +2300,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await batch.commit();
             await deleteUnlinkedWikiStorageUrls(deletingUrls, getLinkedWikiStorageUrls(null, deletingIdSet));
-            if (currentPageId && deletingIdSet.has(currentPageId)) goBackToList();
+            if (currentPageId && deletingIdSet.has(currentPageId)) {
+                clearTimeout(autosaveTimer);
+                autosaveTimer = null;
+                closeEditor();
+                window.location.hash = 'page-wiki';
+            }
             window.showToast(tr('pageDeleted'));
             return true;
         } catch (err) {

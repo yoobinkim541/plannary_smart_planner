@@ -9,7 +9,7 @@
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
         try {
-            document.documentElement.setAttribute('data-theme', localStorage.getItem('app-theme') || 'light');
+            document.documentElement.setAttribute('data-theme', localStorage.getItem('app-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
         } catch (error) {
             document.documentElement.setAttribute('data-theme', 'light');
         }
@@ -70,7 +70,7 @@
     <!-- Highlight.js for Code block Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 
-    <link rel="stylesheet" href="style.css?v=v6">
+    <link rel="stylesheet" href="style.css?v=v17">
 </head>
 
 <body class="app-booting">
@@ -134,33 +134,33 @@
                 <svg class="sidebar-toggle-restore-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
             <!-- Mobile Top Icon: Rotate (↺) -->
-            <button class="rail-icon mobile-only" data-target="page-tasks" title="되돌리기">
+            <button class="rail-icon mobile-only" data-target="page-tasks" title="되돌리기" type="button" aria-label="되돌리기">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
 
             <div class="rail-icon-group">
-                <button class="rail-icon" data-target="page-home" title="홈">
+                <button class="rail-icon" data-target="page-home" title="홈" type="button" aria-label="홈">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 </button>
-                <button class="rail-icon active" data-target="page-tasks" title="작업">
+                <button class="rail-icon active" data-target="page-tasks" title="작업" type="button" aria-label="작업">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-projects" title="프로젝트">
+                <button class="rail-icon" data-target="page-projects" title="프로젝트" type="button" aria-label="프로젝트">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-notes" title="메모">
+                <button class="rail-icon" data-target="page-notes" title="메모" type="button" aria-label="메모">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-wiki" title="위키">
+                <button class="rail-icon" data-target="page-wiki" title="위키" type="button" aria-label="위키">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-bookmarks" title="북마크">
+                <button class="rail-icon" data-target="page-bookmarks" title="북마크" type="button" aria-label="북마크">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-archive" title="보관함">
+                <button class="rail-icon" data-target="page-archive" title="보관함" type="button" aria-label="보관함">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                 </button>
-                <button class="rail-icon" data-target="page-profile" title="마이페이지">
+                <button class="rail-icon" data-target="page-profile" title="마이페이지" type="button" aria-label="마이페이지">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </button>
             </div>
@@ -241,11 +241,11 @@
                         <span id="user-email-sidebar" class="profile-email">user@email.com</span>
                     </div>
                     <div class="profile-actions">
-                        <button id="theme-toggle-btn" class="profile-menu-btn" data-i18n-title="toggleTheme" title="테마 전환">
+                        <button id="theme-toggle-btn" class="profile-menu-btn" type="button" data-i18n-title="toggleTheme" title="테마 전환">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         </button>
-                        <button id="logout-btn" class="profile-menu-btn" data-i18n-title="logout" title="로그아웃">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                        <button id="logout-btn" class="profile-menu-btn" type="button" data-i18n-title="logout" title="로그아웃">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                         </button>
                     </div>
                 </div>
@@ -383,7 +383,7 @@
                 <!-- Composer -->
                 <div class="composer">
                     <div class="composer-top">
-                        <input type="text" id="todo-input" placeholder="무엇을 해야 하나요?">
+                        <input type="text" id="todo-input" placeholder="무엇을 해야 하나요?" aria-label="새 작업 입력" maxlength="300">
                         <label class="task-date-picker" for="due-date">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -394,10 +394,10 @@
                             <input type="date" id="due-date" aria-label="마감일">
                         </label>
                         <button id="task-details-toggle" class="text-link-btn task-details-toggle" type="button">세부 설정</button>
-                        <button id="add-btn">작업 추가</button>
+                        <button id="add-btn" type="button">작업 추가</button>
                     </div>
                     <div class="composer-details">
-                        <input type="text" id="memo-input" placeholder="메모 (선택)">
+                        <input type="text" id="memo-input" placeholder="메모 (선택)" maxlength="2000">
                         <input type="time" id="due-time" aria-label="리마인더 시간">
                         <select id="calendar-reminder-select" aria-label="캘린더 알림">
                             <option value="0">정시에 알림</option>
@@ -425,21 +425,21 @@
                             <option value="">프로젝트 없음</option>
                             <!-- Options injected by JS -->
                         </select>
-                        <button id="task-img-upload-btn" class="composer-icon-btn" title="이미지 첨부">
+                        <button id="task-img-upload-btn" class="composer-icon-btn" title="이미지 첨부" type="button" aria-label="이미지 첨부">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         </button>
                         <input type="file" id="task-img-input" accept="image/*" style="display: none;">
                     </div>
                     <div id="task-img-preview-container" class="task-img-preview-container" style="display: none;">
                         <img id="task-img-preview" src="" alt="preview">
-                        <button id="remove-task-img" class="remove-img-btn">×</button>
+                        <button id="remove-task-img" class="remove-img-btn" type="button">×</button>
                     </div>
                 </div>
 
                 <!-- Search -->
                 <div class="search-wrapper">
                     <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="search-input" placeholder="작업 검색...">
+                    <input type="text" id="search-input" placeholder="작업 검색..." aria-label="작업 검색">
                 </div>
 
                 <!-- Task List -->
@@ -457,8 +457,8 @@
 
                 <div class="composer">
                     <div class="composer-top">
-                        <input type="text" id="project-input" class="composer-input" placeholder="프로젝트 이름 (예: 업무, 공부)">
-                        <button id="add-project-btn" class="composer-submit-btn">프로젝트 만들기</button>
+                        <input type="text" id="project-input" class="composer-input" placeholder="프로젝트 이름 (예: 업무, 공부)" maxlength="100">
+                        <button id="add-project-btn" class="composer-submit-btn" type="button">프로젝트 만들기</button>
                     </div>
                 </div>
 
@@ -476,7 +476,7 @@
                             <h2 id="project-detail-title">프로젝트</h2>
                             <p id="project-detail-summary">작업, 리마인더, 위키 페이지를 한 곳에서 봅니다.</p>
                         </div>
-                        <button id="project-detail-close" class="wiki-icon-btn" title="프로젝트 보기 닫기" type="button">
+                        <button id="project-detail-close" class="wiki-icon-btn" title="프로젝트 보기 닫기" type="button" aria-label="프로젝트 보기 닫기">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
@@ -526,15 +526,15 @@
                         <textarea id="note-input" class="composer-input" placeholder="짧은 생각이나 아이디어를 적어보세요..." rows="3"></textarea>
                     </div>
                     <div class="composer-details composer-details--note">
-                        <div class="color-selector" id="note-color-picker">
-                            <div class="color-option opt-yellow selected" data-color="yellow" title="Yellow"></div>
-                            <div class="color-option opt-blue" data-color="blue" title="Blue"></div>
-                            <div class="color-option opt-green" data-color="green" title="Green"></div>
-                            <div class="color-option opt-pink" data-color="pink" title="Pink"></div>
-                            <div class="color-option opt-purple" data-color="purple" title="Purple"></div>
-                            <div class="color-option opt-orange" data-color="orange" title="Orange"></div>
+                        <div class="color-selector" id="note-color-picker" role="radiogroup" aria-label="메모 색상 선택">
+                            <button class="color-option opt-yellow selected" data-color="yellow" title="노랑" type="button" role="radio" aria-checked="true" aria-label="노랑"></button>
+                            <button class="color-option opt-blue" data-color="blue" title="파랑" type="button" role="radio" aria-checked="false" aria-label="파랑"></button>
+                            <button class="color-option opt-green" data-color="green" title="초록" type="button" role="radio" aria-checked="false" aria-label="초록"></button>
+                            <button class="color-option opt-pink" data-color="pink" title="분홍" type="button" role="radio" aria-checked="false" aria-label="분홍"></button>
+                            <button class="color-option opt-purple" data-color="purple" title="보라" type="button" role="radio" aria-checked="false" aria-label="보라"></button>
+                            <button class="color-option opt-orange" data-color="orange" title="주황" type="button" role="radio" aria-checked="false" aria-label="주황"></button>
                         </div>
-                        <button id="add-note-btn" class="composer-submit-btn composer-submit-btn--note">+ 메모 추가</button>
+                        <button id="add-note-btn" class="composer-submit-btn composer-submit-btn--note" type="button">+ 메모 추가</button>
                     </div>
                 </div>
 
@@ -554,12 +554,12 @@
                     <div class="composer-top">
                         <div class="bm-url-row">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                            <input type="text" id="bm-url-input" class="composer-input" placeholder="URL 붙여넣기 (https://...)">
+                            <input type="text" id="bm-url-input" class="composer-input" placeholder="URL 붙여넣기 (https://...)" aria-label="북마크 URL" maxlength="2000">
                         </div>
-                        <button id="add-bm-btn" class="composer-submit-btn">북마크 저장</button>
+                        <button id="add-bm-btn" class="composer-submit-btn" type="button">북마크 저장</button>
                     </div>
                     <div class="composer-details">
-                        <input type="text" id="bm-title-input" class="composer-input" placeholder="사용자 지정 제목 (선택)">
+                        <input type="text" id="bm-title-input" class="composer-input" placeholder="사용자 지정 제목 (선택)" maxlength="200">
                         <input type="text" id="bm-tags-input" class="composer-input" placeholder="태그 (예: 개발, 자료, 뉴스)">
                     </div>
                 </div>
@@ -576,7 +576,7 @@
                         <h1>노트</h1>
                         <p style="color: var(--text-2); font-size: 0.9rem;">노션 스타일 문서 편집기</p>
                     </div>
-                    <button class="confirm-btn block-btn size-auto" id="new-wiki-btn">+ 새 페이지</button>
+                    <button class="confirm-btn block-btn size-auto" id="new-wiki-btn" type="button">+ 새 페이지</button>
                 </header>
                 
                 <div class="wiki-layout">
@@ -589,7 +589,7 @@
                             <span id="wiki-tree-title">페이지</span>
                         </div>
                         <div class="search-box">
-                            <input type="text" id="wiki-search-input" placeholder="페이지 검색...">
+                            <input type="text" id="wiki-search-input" placeholder="페이지 검색..." aria-label="페이지 검색">
                         </div>
                         <div id="wiki-page-list" class="wiki-list">
                             <!-- Page items injected by JS -->
@@ -600,7 +600,9 @@
                     <div class="wiki-editor-container" id="wiki-editor-view" style="display: none;">
                         <div class="wiki-cover" id="wiki-cover">
                             <div class="wiki-cover-actions">
-                                <button id="wiki-cover-btn" class="wiki-cover-action" type="button">커버 변경</button>
+                                <button id="wiki-cover-btn" class="wiki-cover-action" type="button">파일 업로드</button>
+                                <button id="wiki-cover-url-btn" class="wiki-cover-action" type="button">URL 입력</button>
+                                <button id="wiki-cover-remove-btn" class="wiki-cover-action" type="button">커버 제거</button>
                                 <button id="wiki-cover-adjust-btn" class="wiki-cover-action" type="button">위치/면적</button>
                             </div>
                             <div class="wiki-cover-panel" id="wiki-cover-panel" hidden>
@@ -624,7 +626,7 @@
                             </div>
                         </div>
                         <div class="wiki-editor-header">
-                            <button id="wiki-back-btn" class="wiki-icon-btn mobile-only" title="목록으로 돌아가기">
+                            <button id="wiki-back-btn" class="wiki-icon-btn mobile-only" title="목록으로 돌아가기" type="button" aria-label="목록으로 돌아가기">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                             </button>
                             <button id="wiki-parent-btn" class="wiki-parent-btn" type="button" hidden>
@@ -640,7 +642,7 @@
                                 </select>
                                 </div>
                                 <div class="wiki-title-row">
-                                    <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="제목 없는 문서">
+                                    <input type="text" id="wiki-title-input" class="wiki-title-input" placeholder="제목 없는 문서" aria-label="페이지 제목">
                                 </div>
                                 <div class="wiki-meta-row">
                                     <span id="wiki-save-state">저장됨</span>
@@ -714,7 +716,7 @@
                     <aside class="wiki-widget-panel" id="wiki-widget-panel" aria-label="위키 위젯">
                         <div class="wiki-widget-panel-header">
                             <strong id="wiki-widget-title">문서 도구</strong>
-                            <button id="wiki-widget-close-btn" class="wiki-icon-btn" type="button" title="위젯 접기">
+                            <button id="wiki-widget-close-btn" class="wiki-icon-btn" type="button" title="위젯 접기" aria-label="위젯 접기">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
                             </button>
                         </div>
@@ -803,7 +805,7 @@
                             <p id="inspiration-text">"기록은 기억을 지배합니다."</p>
                             <span id="inspiration-date">2024. 01. 01</span>
                         </div>
-                        <button class="inspiration-refresh" onclick="refreshInspiration()">
+                        <button class="inspiration-refresh" type="button" aria-label="영감 새로고침" onclick="refreshInspiration()">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
                         </button>
                     </div>
@@ -1149,6 +1151,56 @@
                 </div>
             </div>
         </div>
+
+        <div id="confirm-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card task-delete-card" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+                <h2 id="confirm-modal-title"></h2>
+                <div class="task-modal-actions task-delete-actions">
+                    <button class="text-link-btn" id="confirm-modal-cancel-btn" type="button" data-i18n="cancel">취소</button>
+                    <button class="danger-btn" id="confirm-modal-ok-btn" type="button" data-i18n="confirmAction">확인</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="note-edit-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="note-edit-modal-title">
+                <div class="task-modal-header">
+                    <div>
+                        <span class="task-modal-kicker" data-i18n="edit">수정</span>
+                        <h2 id="note-edit-modal-title" data-i18n="editNote">메모 수정</h2>
+                    </div>
+                    <button class="task-modal-close" id="note-edit-modal-close" type="button" data-i18n-title="close" aria-label="닫기">×</button>
+                </div>
+                <textarea id="note-edit-text" class="composer-input" rows="6" style="width:100%;resize:vertical;margin-bottom:12px;"></textarea>
+                <div class="color-selector" id="note-edit-color-picker" role="radiogroup" aria-label="메모 색상 선택" style="margin-bottom:16px;">
+                    <button class="color-option opt-yellow" data-color="yellow" title="노랑" type="button" role="radio" aria-checked="false" aria-label="노랑"></button>
+                    <button class="color-option opt-blue" data-color="blue" title="파랑" type="button" role="radio" aria-checked="false" aria-label="파랑"></button>
+                    <button class="color-option opt-green" data-color="green" title="초록" type="button" role="radio" aria-checked="false" aria-label="초록"></button>
+                    <button class="color-option opt-pink" data-color="pink" title="분홍" type="button" role="radio" aria-checked="false" aria-label="분홍"></button>
+                    <button class="color-option opt-purple" data-color="purple" title="보라" type="button" role="radio" aria-checked="false" aria-label="보라"></button>
+                    <button class="color-option opt-orange" data-color="orange" title="주황" type="button" role="radio" aria-checked="false" aria-label="주황"></button>
+                </div>
+                <div class="task-modal-actions">
+                    <button class="text-link-btn" id="note-edit-cancel-btn" type="button" data-i18n="cancel">취소</button>
+                    <button class="confirm-btn" id="note-edit-save-btn" type="button" data-i18n="saveChanges">저장</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="input-modal" class="task-modal" aria-hidden="true">
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="input-modal-title">
+                <div class="task-modal-header">
+                    <h2 id="input-modal-title" style="font-size:1.05rem;"></h2>
+                    <button class="task-modal-close" id="input-modal-close" type="button" data-i18n-title="close" aria-label="닫기">×</button>
+                </div>
+                <p id="input-modal-message" style="margin-bottom:12px;color:var(--text-2);font-size:0.9rem;"></p>
+                <input id="input-modal-field" class="composer-input" style="width:100%;margin-bottom:16px;padding:10px 12px;" autocomplete="off">
+                <div class="task-modal-actions">
+                    <button class="text-link-btn" id="input-modal-cancel-btn" type="button" data-i18n="cancel">취소</button>
+                    <button class="confirm-btn" id="input-modal-ok-btn" type="button" data-i18n="confirmAction">확인</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->
@@ -1178,13 +1230,25 @@
     <!-- Highlight.js Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
-    <script src="i18n/ko.js?v=v1"></script>
-    <script src="i18n/en.js?v=v1"></script>
-    <script src="i18n/ja.js?v=v1"></script>
-    <script src="i18n/zh.js?v=v1"></script>
-    <script src="i18n/es.js?v=v1"></script>
-    <script src="app.js?v=v34"></script>
-    <script src="wiki.js?v=v20"></script>
+    <script src="i18n/ko.js?v=v13"></script>
+    <script src="i18n/en.js?v=v13"></script>
+    <script src="i18n/ja.js?v=v13"></script>
+    <script src="i18n/zh.js?v=v13"></script>
+    <script src="i18n/es.js?v=v13"></script>
+    <script src="app.js?v=v92"></script>
+    <script src="wiki.js?v=v32"></script>
+
+    <!-- Wiki inline popovers (icon + cover URL) -->
+    <div id="wiki-icon-popover" hidden style="position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;gap:8px;align-items:center;">
+        <input id="wiki-icon-input" type="text" maxlength="4" placeholder="📄" style="width:60px;font-size:1.5rem;text-align:center;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--surface);color:var(--text);">
+        <button id="wiki-icon-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;" data-i18n="confirmAction">적용</button>
+        <button id="wiki-icon-popover-close" type="button" class="text-link-btn" data-i18n-title="close" aria-label="닫기">✕</button>
+    </div>
+    <div id="wiki-cover-url-popover" hidden style="position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);display:flex;gap:8px;align-items:center;min-width:280px;">
+        <input id="wiki-cover-url-input" type="url" placeholder="https://..." style="flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--surface);color:var(--text);">
+        <button id="wiki-cover-url-apply-btn" type="button" class="confirm-btn" style="padding:6px 12px;" data-i18n="confirmAction">적용</button>
+        <button id="wiki-cover-url-popover-close" type="button" class="text-link-btn" data-i18n-title="close" aria-label="닫기">✕</button>
+    </div>
 </body>
 
 </html>

@@ -1,7 +1,7 @@
 /* ================================================
    STYLE.CSS — Todo App (Light Dashboard Theme)
    ================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+/* Plus Jakarta Sans loaded via <link> in index.html; @import removed to avoid duplicate fetch */
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Do+Hyeon&family=Gothic+A1:wght@400;500;600;700;800&family=Gowun+Dodum&family=Hahmlet:wght@400;500;600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Jua&family=Lora:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
@@ -315,7 +315,7 @@ input::placeholder, textarea::placeholder {
     height: 100vh;
     height: 100svh;
     overflow: hidden;
-    transition: grid-template-columns 0.22s ease;
+    /* grid-template-columns transition removed — animating grid layout triggers full layout reflow every frame; sidebar uses its own opacity/transform transition */
 }
 
 #app-shell.sidebar-collapsed {
@@ -889,8 +889,8 @@ textarea.composer-input {
     position: absolute;
     top: 2px;
     right: 2px;
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
     background: rgba(0,0,0,0.5);
     color: #fff;
     border: none;
@@ -1015,6 +1015,14 @@ textarea.composer-input {
     color: var(--text-3);
 }
 
+.task-card.overdue {
+    border-left: 3px solid rgba(220, 38, 38, 0.5);
+}
+
+[data-theme="dark"] .task-card.overdue {
+    border-left-color: rgba(239, 68, 68, 0.6);
+}
+
 @keyframes fadeSlideUp {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -1040,6 +1048,8 @@ textarea.composer-input {
     color: var(--text-1);
     min-width: 0;
     flex: 1;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .tc-top-actions {
@@ -1097,6 +1107,8 @@ textarea.composer-input {
     color: var(--text-2);
     line-height: 1.6;
     margin-bottom: 20px;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .tc-img {
@@ -2371,6 +2383,14 @@ body.onboarding-spotlight-active #main-area {
 .note-card.color-purple { background-color: #f3e5f5; border-color: #e1bee7; }
 .note-card.color-orange { background-color: #fff3e0; border-color: #ffe0b2; }
 
+[data-theme="dark"] .note-card                { background-color: #2a2510; border-color: #4a4320; }
+[data-theme="dark"] .note-card.color-yellow   { background-color: #2a2510; border-color: #4a4320; }
+[data-theme="dark"] .note-card.color-blue     { background-color: #0e1f30; border-color: #1e3f60; }
+[data-theme="dark"] .note-card.color-green    { background-color: #0e1f18; border-color: #1e3f28; }
+[data-theme="dark"] .note-card.color-pink     { background-color: #2a1020; border-color: #4a2040; }
+[data-theme="dark"] .note-card.color-purple   { background-color: #1e1030; border-color: #3e2060; }
+[data-theme="dark"] .note-card.color-orange   { background-color: #2a1a0e; border-color: #4a3020; }
+
 /* Color Picker UI */
 .color-selector {
     display: flex;
@@ -2386,7 +2406,16 @@ body.onboarding-spotlight-active #main-area {
     cursor: pointer;
     border: 2px solid var(--border);
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-block;
+    flex-shrink: 0;
 }
+@media (pointer: coarse) {
+    .color-option { min-width: 44px; min-height: 44px; }
+}
+.color-option:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 
 .color-option:hover { transform: scale(1.15); border-color: var(--text-2); }
 .color-option.selected { border-color: var(--blue); transform: scale(1.1); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--blue); }
@@ -2399,8 +2428,15 @@ body.onboarding-spotlight-active #main-area {
 .opt-purple { background-color: #f3e5f5; }
 .opt-orange { background-color: #fff3e0; }
 
+[data-theme="dark"] .opt-yellow { background-color: #2a2510; }
+[data-theme="dark"] .opt-blue   { background-color: #0e1f30; }
+[data-theme="dark"] .opt-green  { background-color: #0e1f18; }
+[data-theme="dark"] .opt-pink   { background-color: #2a1020; }
+[data-theme="dark"] .opt-purple { background-color: #1e1030; }
+[data-theme="dark"] .opt-orange { background-color: #2a1a0e; }
+
 .note-content {
-    color: #333;
+    color: var(--text-1);
     font-size: 1rem;
     line-height: 1.5;
     white-space: pre-wrap;
@@ -2413,8 +2449,8 @@ body.onboarding-spotlight-active #main-area {
     align-items: center;
     margin-top: var(--spacing-md);
     font-size: 0.75rem;
-    color: #777;
-    border-top: 1px solid rgba(0,0,0,0.05);
+    color: var(--text-2);
+    border-top: 1px solid var(--border);
     padding-top: var(--spacing-sm);
 }
 
@@ -2651,6 +2687,10 @@ body.onboarding-spotlight-active #main-area {
         white-space: normal;
     }
 
+    .filter-chip:nth-child(odd):last-child {
+        grid-column: span 2;
+    }
+
     .project-card {
         padding: 16px;
     }
@@ -2679,6 +2719,15 @@ body.onboarding-spotlight-active #main-area {
     .project-detail-item strong,
     .project-detail-item small {
         overflow-wrap: anywhere;
+    }
+}
+
+/* Prevent iOS auto-zoom: inputs must be ≥16px on mobile */
+@media (max-width: 768px) {
+    #todo-input, .composer-input, .auth-input, #search-input,
+    .task-edit-field input, .task-edit-field textarea, .task-edit-field select,
+    .task-modal input, .task-modal textarea, .task-modal select {
+        font-size: 16px;
     }
 }
 
@@ -2983,7 +3032,7 @@ body.onboarding-spotlight-active #main-area {
     padding: 12px;
     border-radius: 8px;
     font-size: 0.9rem;
-    color: #333; /* Ensure text is dark on light yellow background */
+    color: var(--text-1);
     box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
     border: 1px solid rgba(0,0,0,0.1);
     transition: transform 0.2s;
@@ -2998,6 +3047,13 @@ body.onboarding-spotlight-active #main-area {
 .dash-recent-note-card.pink   { background-color: #fce4ec; border-color: #f8bbd0; }
 .dash-recent-note-card.purple { background-color: #f3e5f5; border-color: #e1bee7; }
 .dash-recent-note-card.orange { background-color: #fff3e0; border-color: #ffe0b2; }
+
+[data-theme="dark"] .dash-recent-note-card               { background-color: #2a2510; border-color: #4a4320; }
+[data-theme="dark"] .dash-recent-note-card.blue          { background-color: #0e1f30; border-color: #1e3f60; }
+[data-theme="dark"] .dash-recent-note-card.green         { background-color: #0e1f18; border-color: #1e3f28; }
+[data-theme="dark"] .dash-recent-note-card.pink          { background-color: #2a1020; border-color: #4a2040; }
+[data-theme="dark"] .dash-recent-note-card.purple        { background-color: #1e1030; border-color: #3e2060; }
+[data-theme="dark"] .dash-recent-note-card.orange        { background-color: #2a1a0e; border-color: #4a3020; }
 
 
 /* === PROJECTS PAGE === */
@@ -3301,6 +3357,9 @@ body.onboarding-spotlight-active #main-area {
     color: var(--text-3);
     transition: background 0.15s ease, color 0.15s ease;
 }
+@media (pointer: coarse) {
+    .bm-delete-btn { min-width: 44px; min-height: 44px; }
+}
 
 .bm-delete-btn:hover {
     background: rgba(239, 68, 68, 0.08);
@@ -3326,7 +3385,9 @@ body.onboarding-spotlight-active #main-area {
 .task-modal-card {
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
     overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid var(--border);
     border-radius: 18px;
     background: var(--surface);
@@ -3632,8 +3693,8 @@ body.onboarding-spotlight-active #main-area {
 
     /* Main Area Adjustments */
     #main-area {
-        padding: 24px 20px;
-        height: calc(100vh - 60px); 
+        padding: 24px 20px 96px;
+        height: calc(100vh - 60px);
         height: calc(100svh - 60px);
     }
 
@@ -4548,6 +4609,12 @@ body.onboarding-spotlight-active #main-area {
     opacity: 1;
     background: rgba(239, 68, 68, 0.12);
     color: #ef4444;
+}
+
+@media (hover: none) {
+    .wiki-list-delete-btn {
+        opacity: 0.5;
+    }
 }
 
 .wiki-widget-toc-list {
@@ -5953,10 +6020,29 @@ body.onboarding-spotlight-active #main-area {
     animation: pulse-red 2.5s infinite;
 }
 
+.due-today-badge.overdue-badge {
+    background: rgba(220, 38, 38, 0.15);
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, 0.4);
+    animation: none;
+}
+
 @keyframes pulse-red {
     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
     70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
     100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+[data-theme="dark"] .due-today-badge {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+[data-theme="dark"] .due-today-badge.overdue-badge {
+    background: rgba(220, 38, 38, 0.25);
+    color: #f87171;
+    border-color: rgba(220, 38, 38, 0.5);
 }
 
 #dash-reminders-list {
@@ -6274,4 +6360,10 @@ body.onboarding-spotlight-active #main-area {
     align-items: center;
     flex: 1;
     gap: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .due-today-badge { animation: none; }
+    .task-card, .note-card, .wiki-page-card { animation: none; }
+    .toast { animation: none; }
 }

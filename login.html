@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -8,6 +8,7 @@
         if (window.location.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
             window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search + window.location.hash);
         }
+        (function() { var l = localStorage.getItem('planary-language'); if (l) document.documentElement.lang = l; })();
     </script>
     <title>Planary - Login</title>
     <meta name="description" content="Planary는 할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 관리하는 생산성 웹앱입니다.">
@@ -31,7 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
-    <link rel="stylesheet" href="auth.css?v=v1">
+    <link rel="stylesheet" href="auth.css?v=v2">
 </head>
 
 <body class="auth-layout">
@@ -43,20 +44,28 @@
         <h2>로그인</h2>
         <p class="auth-subtitle">할 일, 리마인더, 프로젝트, 위키를 한 작업 공간에서 이어가세요.</p>
 
+        <div id="auth-msg" class="auth-error" hidden></div>
+
         <div class="auth-form-group">
             <label for="user-email">이메일</label>
-            <input type="email" id="user-email" class="auth-input" placeholder="이메일을 입력하세요">
+            <input type="email" id="user-email" class="auth-input" autocomplete="email" placeholder="이메일을 입력하세요">
         </div>
         <div class="auth-form-group">
             <label for="user-pw">비밀번호</label>
-            <input type="password" id="user-pw" class="auth-input" placeholder="비밀번호를 입력하세요">
+            <div class="pw-wrapper">
+                <input type="password" id="user-pw" class="auth-input" autocomplete="current-password" placeholder="비밀번호를 입력하세요">
+                <button type="button" class="pw-toggle" aria-label="비밀번호 표시">
+                    <svg class="eye-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
         </div>
 
-        <button class="confirm-btn" id="login-btn">로그인</button>
+        <button class="confirm-btn" id="login-btn" type="button">로그인</button>
 
         <div class="divider">또는</div>
 
-        <button class="google-btn" id="google-login-btn">
+        <button class="google-btn" id="google-login-btn" type="button">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google 아이콘">
             Google로 로그인
         </button>
@@ -87,6 +96,14 @@
         const secureBrowserLink = document.getElementById('secure-browser-link');
         const secureBrowserCopyBtn = document.getElementById('secure-browser-copy-btn');
         const googleLoginDefaultText = googleLoginBtn.textContent.trim();
+        const authMsgEl = document.getElementById('auth-msg');
+        const showAuthMsg = (msg, type = 'error') => {
+            if (!authMsgEl) return;
+            authMsgEl.textContent = msg;
+            authMsgEl.className = type === 'info' ? 'auth-warning' : 'auth-error';
+            authMsgEl.hidden = false;
+        };
+        const clearAuthMsg = () => { if (authMsgEl) authMsgEl.hidden = true; };
         const secureLoginUrl = window.location.origin + '/login.html';
         const googleProvider = new firebase.auth.GoogleAuthProvider();
         googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -96,7 +113,7 @@
         const goToApp = () => {
             if (isNavigatingToApp) return;
             isNavigatingToApp = true;
-            window.location.replace('/redesign/');
+            window.location.replace('/');
         };
 
         const isEmbeddedBrowser = () => {
@@ -143,10 +160,10 @@
         const copySecureBrowserUrl = async () => {
             try {
                 await navigator.clipboard.writeText(secureLoginUrl);
-                alert('로그인 링크를 복사했어요. Chrome, Safari 또는 기본 브라우저에 붙여넣어 주세요:\n' + secureLoginUrl);
+                showAuthMsg('링크를 복사했어요. Chrome, Safari 또는 기본 브라우저에 붙여넣어 주세요.', 'info');
             } catch (error) {
                 if (secureBrowserLink) secureBrowserLink.focus();
-                alert('아래 로그인 링크를 Chrome, Safari 또는 기본 브라우저에 복사해 주세요:\n' + secureLoginUrl);
+                showAuthMsg('링크를 직접 복사해 주세요: ' + secureLoginUrl, 'info');
             }
         };
 
@@ -198,22 +215,26 @@
                     if (error.code === 'auth/operation-not-supported-in-this-environment' || error.code === 'auth/web-storage-unsupported' || /disallowed_useragent|embedded|webview/i.test(error.message || '')) {
                         openInSecureBrowser();
                     }
-                    alert('Google 로그인에 실패했습니다: ' + getAuthErrorMessage(error));
+                    showAuthMsg('Google 로그인에 실패했습니다: ' + getAuthErrorMessage(error));
                 });
         };
-        // Email Login
-        loginBtn.addEventListener('click', () => {
+        const doEmailLogin = () => {
             const email = emailInput.value.trim();
             const password = pwInput.value;
-            if (!email || !password) return alert('이메일과 비밀번호를 모두 입력해주세요.');
-
+            if (!email || !password) { showAuthMsg('이메일과 비밀번호를 모두 입력해주세요.'); return; }
+            clearAuthMsg();
             auth.signInWithEmailAndPassword(email, password)
                 .then(goToApp)
-                .catch((error) => alert('로그인에 실패했습니다: ' + getAuthErrorMessage(error)));
-        });
+                .catch((error) => showAuthMsg('로그인에 실패했습니다: ' + getAuthErrorMessage(error)));
+        };
+        // Email Login
+        loginBtn.addEventListener('click', doEmailLogin);
+        pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doEmailLogin(); });
+        emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') pwInput.focus(); });
 
         // Google Login
         googleLoginBtn.addEventListener('click', () => {
+            clearAuthMsg();
             signInWithGoogle();
         });
 
@@ -222,11 +243,22 @@
                 if (result && result.user) goToApp();
             })
             .catch((error) => {
-                alert('Google 로그인에 실패했습니다: ' + getAuthErrorMessage(error));
+                showAuthMsg('Google 로그인에 실패했습니다: ' + getAuthErrorMessage(error));
             });
 
         auth.onAuthStateChanged((user) => {
             if (user) goToApp();
+        });
+
+        document.querySelectorAll('.pw-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const input = btn.previousElementSibling;
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                btn.setAttribute('aria-label', show ? '비밀번호 숨기기' : '비밀번호 표시');
+                btn.querySelector('.eye-on').style.display = show ? 'none' : '';
+                btn.querySelector('.eye-off').style.display = show ? '' : 'none';
+            });
         });
     </script>
 </body>

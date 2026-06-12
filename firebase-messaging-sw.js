@@ -27,14 +27,17 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const url = (event.notification.data && event.notification.data.url) || '/';
+    const absoluteUrl = url.startsWith('http') ? url : self.location.origin + url;
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
             for (const client of windowClients) {
                 if (client.url.includes(self.location.origin) && 'focus' in client) {
-                    return client.focus();
+                    client.focus();
+                    if ('navigate' in client) return client.navigate(absoluteUrl);
+                    return;
                 }
             }
-            if (clients.openWindow) return clients.openWindow(url);
+            if (clients.openWindow) return clients.openWindow(absoluteUrl);
         })
     );
 });

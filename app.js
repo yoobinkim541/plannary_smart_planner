@@ -1,7 +1,7 @@
 // Global Error Handling
 window.addEventListener('error', (event) => {
     console.error("Global error caught:", event.error);
-    if (window.showToast) window.showToast("런타임 에러: " + event.message, "error");
+    if (window.showToast) window.showToast((window.t?.('runtimeError') || 'Runtime error: ') + event.message, "error");
 });
 
 // Register PWA Service Worker
@@ -16,6 +16,12 @@ if ('serviceWorker' in navigator) {
 // Firebase Global Instances
 let db = null;
 let auth = null;
+
+let _modalTriggerStack = [];
+let _confirmCallback = null;
+let _confirmCancelCallback = null;
+let editingNoteId = null;
+let _inputModalResolve = null;
 
 function bindResilientMobileNav() {
     const menuToggle = getEl('menu-toggle');
@@ -159,6 +165,9 @@ function writeUserCache(collection, items) {
     try {
         localStorage.setItem(key, JSON.stringify(items || []));
     } catch (error) {
+        if (error && (error.name === 'QuotaExceededError' || error.code === 22)) {
+            showToast(t('storageFull') || 'Offline cache full — some data may not be available offline', 'warning');
+        }
         console.warn(`[Cache] Failed to write ${collection}:`, error);
     }
 }
@@ -401,7 +410,13 @@ const GUIDE_STEPS = {
 const getEl = (id) => document.getElementById(id);
 
 function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container') || document.body.appendChild(Object.assign(document.createElement('div'), {id: 'toast-container'}));
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = Object.assign(document.createElement('div'), { id: 'toast-container' });
+        container.setAttribute('aria-live', 'polite');
+        container.setAttribute('role', 'status');
+        document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
@@ -823,6 +838,19 @@ function applyLanguage(lang = currentLanguage) {
         el.innerHTML = t(el.dataset.i18nHtml);
     });
 
+    document.querySelectorAll('#note-color-picker, #note-edit-color-picker').forEach(picker => {
+        picker.setAttribute('aria-label', t('colorNotePickerLabel'));
+        picker.querySelectorAll('[data-color]').forEach(btn => {
+            const key = 'color' + btn.dataset.color.charAt(0).toUpperCase() + btn.dataset.color.slice(1);
+            const label = t(key);
+            btn.setAttribute('aria-label', label);
+            btn.title = label;
+        });
+    });
+    setTitle('.inspiration-refresh', t('inspirationRefreshLabel'));
+    const heatmap = getEl('archive-activity-heatmap');
+    if (heatmap) heatmap.setAttribute('aria-label', t('lastTwelveWeeksCompleted'));
+
     window.dispatchEvent(new CustomEvent('planary-language-change'));
 }
 
@@ -835,7 +863,7 @@ function loadTodos() {
             const data = doc.data();
             let dueDate = data.dueDate || null;
             if (dueDate && typeof dueDate !== 'string' && typeof dueDate.toDate === 'function') {
-                dueDate = dueDate.toDate().toISOString().slice(0, 10);
+                dueDate = localDateKey(dueDate.toDate());
             }
             if (dueDate === '') dueDate = null;
             return {
@@ -852,6 +880,7 @@ function loadTodos() {
         applyFilters();
         updateDashboardUI();
         renderProjectManagementList();
+        if (getEl('page-archive')?.classList.contains('active')) renderArchive();
         checkDueNotifications(); // Check for reminders when data updates
         scheduleReminderNotifications();
         writeUserCache('todos', allTodos);
@@ -1054,6 +1083,9 @@ function loadProjects() {
         allProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderProjectsDropdown();
         renderProjectManagementList();
+    }, error => {
+        console.error('Project load failed:', error);
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
@@ -1062,6 +1094,9 @@ function loadBookmarks() {
     db.collection('bookmarks').where('uid', '==', currentUser.uid).onSnapshot(snapshot => {
         allBookmarks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderBookmarks();
+    }, error => {
+        console.error('Bookmark load failed:', error);
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
@@ -1071,6 +1106,9 @@ function loadWikiPagesForProjects() {
         allWikiPages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderProjectManagementList();
         renderProjectOverview();
+    }, error => {
+        console.error('Wiki pages load failed:', error);
+        showToast(error && error.message ? error.message : t('loadFailed'), 'error');
     });
 }
 
@@ -1092,6 +1130,30 @@ function applyFilters() {
     else filtered = filtered.filter(t => !t.archived);
     
     filtered.sort((a, b) => getTaskSortValue(b) - getTaskSortValue(a));
+
+    // Within each contiguous "island" of eclass tasks, sort by course key so
+    // same-course tasks are adjacent and renderTodos shows only one group header
+    // per course per island. This preserves the user's drag-and-drop ordering of
+    // eclass tasks relative to regular tasks.
+    if (filtered.some(isEclassTask)) {
+        const result = [];
+        let i = 0;
+        while (i < filtered.length) {
+            if (!isEclassTask(filtered[i])) { result.push(filtered[i++]); continue; }
+            let j = i;
+            while (j < filtered.length && isEclassTask(filtered[j])) j++;
+            const island = filtered.slice(i, j).sort((a, b) => {
+                const keyA = a.projectId || a.courseTitle || 'eclass';
+                const keyB = b.projectId || b.courseTitle || 'eclass';
+                if (keyA !== keyB) return keyA.localeCompare(keyB);
+                return getTaskSortValue(b) - getTaskSortValue(a);
+            });
+            result.push(...island);
+            i = j;
+        }
+        filtered = result;
+    }
+
     renderTodos(filtered);
 }
 
@@ -1204,9 +1266,16 @@ function updateProfileUI(user) {
     if (getEl('user-name-sidebar')) getEl('user-name-sidebar').textContent = name;
     if (getEl('user-email-sidebar')) getEl('user-email-sidebar').textContent = user.email;
     if (getEl('user-photo')) {
-        if (user.photoURL) getEl('user-photo').src = user.photoURL;
+        const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'U')}&background=0D8ABC&color=fff&size=40`;
+        getEl('user-photo').src = user.photoURL || fallbackAvatar;
         const mobileAvatar = getEl('mobile-user-avatar');
-        if (mobileAvatar) mobileAvatar.innerHTML = `<img src="${user.photoURL || getEl('user-photo').src}" alt="avatar">`;
+        if (mobileAvatar) {
+            const avatarImg = document.createElement('img');
+            avatarImg.src = user.photoURL || fallbackAvatar;
+            avatarImg.alt = 'avatar';
+            mobileAvatar.innerHTML = '';
+            mobileAvatar.appendChild(avatarImg);
+        }
     }
     if (getEl('profile-view-name')) getEl('profile-view-name').textContent = name;
     if (getEl('profile-view-email')) getEl('profile-view-email').textContent = user.email;
@@ -1226,6 +1295,9 @@ function updateProfileUI(user) {
 
 function getAuthActionErrorMessage(error) {
     if (!error) return t('authUnknownError');
+    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return null;
+    }
     if (error.code === 'auth/requires-recent-login') {
         return t('recentLoginRequired');
     }
@@ -1294,7 +1366,31 @@ async function connectEmailPasswordLogin() {
         setStatus(t('emailPasswordDone'), 'success');
         showToast(t('emailPasswordEnabled'));
     } catch (error) {
-        setStatus(getAuthActionErrorMessage(error), 'error');
+        if (error.code === 'auth/requires-recent-login') {
+            try {
+                await reauthenticateForPasswordUpdate(user);
+                const freshUser = auth.currentUser;
+                if (hasPasswordProvider) {
+                    await freshUser.updatePassword(password);
+                } else {
+                    const credential = firebase.auth.EmailAuthProvider.credential(freshUser.email, password);
+                    await freshUser.linkWithCredential(credential);
+                }
+                if (passwordInput) passwordInput.value = '';
+                if (confirmInput) confirmInput.value = '';
+                await freshUser.reload();
+                currentUser = auth.currentUser;
+                updateProfileUI(currentUser);
+                setStatus(t('emailPasswordDone'), 'success');
+                showToast(t('emailPasswordEnabled'));
+            } catch (reauthError) {
+                const msg = getAuthActionErrorMessage(reauthError);
+                if (msg) setStatus(msg, 'error');
+            }
+        } else {
+            const msg = getAuthActionErrorMessage(error);
+            if (msg) setStatus(msg, 'error');
+        }
     } finally {
         if (button) button.disabled = false;
     }
@@ -1385,9 +1481,27 @@ async function reauthenticateForAccountDeletion(user) {
         return;
     }
     if (providers.includes('password') && user.email) {
-        const password = prompt(t('deleteAccountPasswordPrompt'));
+        const password = await showInputModalAsync(t('deleteAccountPasswordTitle') || '비밀번호 확인', t('deleteAccountPasswordPrompt'), 'password');
         if (!password) throw new Error(t('recentLoginRequired'));
         const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+        await user.reauthenticateWithCredential(credential);
+        return;
+    }
+    throw new Error(t('recentLoginRequired'));
+}
+
+async function reauthenticateForPasswordUpdate(user) {
+    const providers = user.providerData.map(provider => provider.providerId);
+    if (providers.includes('google.com')) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await user.reauthenticateWithPopup(provider);
+        return;
+    }
+    if (providers.includes('password') && user.email) {
+        const currentPassword = await showInputModalAsync(t('reauthPasswordTitle'), t('reauthPasswordPrompt'), 'password');
+        if (!currentPassword) throw new Error(t('recentLoginRequired'));
+        const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
         await user.reauthenticateWithCredential(credential);
         return;
     }
@@ -1405,10 +1519,15 @@ async function deleteAccount() {
         status.className = `profile-status-text ${type}`.trim();
     };
 
-    if (!confirm(t('deleteAccountConfirm'))) return;
+    const confirmed = await showConfirmModalAsync(t('deleteAccountConfirm'));
+    if (!confirmed) return;
     if (user.email) {
-        const typedEmail = prompt(formatMessage('deleteAccountConfirmEmail', { email: user.email }));
-        if (typedEmail !== user.email) return;
+        const typedEmail = await showInputModalAsync(
+            t('deleteAccountEmailConfirmTitle') || t('deleteAccountConfirm'),
+            formatText('deleteAccountConfirmEmail', { email: user.email })
+        );
+        if (typedEmail === null) return;
+        if (typedEmail !== user.email) { showToast(t('emailMismatch') || '이메일이 일치하지 않습니다.', 'error'); return; }
     }
 
     try {
@@ -1428,11 +1547,13 @@ async function deleteAccount() {
                 window.location.href = 'signup.html';
                 return;
             } catch (reauthError) {
-                setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(reauthError)}`, 'error');
+                const msg = getAuthActionErrorMessage(reauthError);
+                if (msg) setStatus(`${t('accountDeleteFailed')}: ${msg}`, 'error');
                 return;
             }
         }
-        setStatus(`${t('accountDeleteFailed')}: ${getAuthActionErrorMessage(error)}`, 'error');
+        const outerMsg = getAuthActionErrorMessage(error);
+        if (outerMsg) setStatus(`${t('accountDeleteFailed')}: ${outerMsg}`, 'error');
     } finally {
         if (button) button.disabled = false;
     }
@@ -2183,19 +2304,25 @@ function renderEclassGroupHeader(todo) {
 function renderTodos(todos) {
     const todoList = getEl('todo-list');
     if (!todoList) return;
+    const searchTerm = getEl('search-input')?.value?.trim() || '';
+    const isSearching = searchTerm.length > 0;
+    const isProjectOnly = !!currentProjectId && !isSearching;
+    const isSearchActive = isSearching || !!currentProjectId;
     const emptyState = getTaskEmptyState();
+    const emptyTitle = isSearching ? t('searchNoResultsTitle') : isProjectOnly ? t('projectEmptyTitle') : t(emptyState.titleKey);
+    const emptyBody = isSearching ? t('searchNoResultsBody') : isProjectOnly ? t('projectEmptyBody') : t(emptyState.bodyKey);
     todoList.innerHTML = todos.length ? '' : `
         <div class="wiki-empty-container task-empty-container">
             <div class="wiki-empty-content task-empty-content">
                 <div class="wiki-empty-illustration task-empty-illustration">
-                    ${appIconSvg(emptyState.icon, 80)}
+                    ${appIconSvg(isSearchActive ? 'tasks' : emptyState.icon, 80)}
                 </div>
-                <h2>${t(emptyState.titleKey)}</h2>
-                <p>${t(emptyState.bodyKey)}</p>
-                <button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
+                <h2>${emptyTitle}</h2>
+                <p>${emptyBody}</p>
+                ${isSearchActive ? '' : `<button class="confirm-btn task-empty-create-btn" id="task-empty-create-btn" style="width: auto; padding: 12px 32px; margin-top: 24px; border-radius: 14px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     <span style="vertical-align: middle;">${t('firstTaskButton')}</span>
-                </button>
+                </button>`}
             </div>
         </div>`;
 
@@ -2210,7 +2337,7 @@ function renderTodos(todos) {
         return;
     }
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateKey();
 
     let lastEclassGroupKey = null;
     todos.forEach(todo => {
@@ -2224,11 +2351,12 @@ function renderTodos(todos) {
             lastEclassGroupKey = null;
         }
         const isDueToday = todo.dueDate === today && !todo.completed && !todo.archived;
+        const isOverdue = todo.dueDate && todo.dueDate < today && !todo.completed && !todo.archived;
         const card = document.createElement('div');
-        card.className = `task-card${todo.completed ? ' completed' : ''}`;
+        card.className = `task-card${todo.completed ? ' completed' : ''}${isOverdue ? ' overdue' : ''}`;
         card.draggable = true;
         card.dataset.id = todo.id;
-        
+
         card.ondragstart = () => { card.classList.add('dragging'); };
         card.ondragend = () => { card.classList.remove('dragging'); };
         card.ondragover = (e) => {
@@ -2244,23 +2372,76 @@ function renderTodos(todos) {
             cards.forEach((c, i) => {
                 const t = allTodos.find(x => x.id === c.dataset.id);
                 const nextOrder = cards.length - i;
-                if (t && t.orderIndex !== nextOrder) db.collection('todos').doc(t.id).update({ orderIndex: nextOrder });
+                if (t && t.orderIndex !== nextOrder) {
+                    t.orderIndex = nextOrder;
+                    db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(err => console.warn('[DnD] orderIndex save failed:', err));
+                }
             });
         };
+
+        // Touch drag-and-drop: activate after 200ms long-press (avoids scroll conflict)
+        card.addEventListener('touchstart', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            const startY = e.touches[0].clientY;
+            let active = false;
+            let moved = false;
+            const timer = setTimeout(() => {
+                if (moved) return;
+                active = true;
+                card.classList.add('dragging');
+                if (navigator.vibrate) navigator.vibrate(40);
+            }, 200);
+            const onMove = (ev) => {
+                if (!active) {
+                    if (Math.abs(ev.touches[0].clientY - startY) > 8) { moved = true; clearTimeout(timer); }
+                    return;
+                }
+                ev.preventDefault();
+                const after = getDragAfterElement(todoList, ev.touches[0].clientY);
+                if (!after) todoList.appendChild(card);
+                else todoList.insertBefore(card, after);
+            };
+            const onEnd = () => {
+                clearTimeout(timer);
+                document.removeEventListener('touchmove', onMove, { passive: false });
+                document.removeEventListener('touchend', onEnd);
+                document.removeEventListener('touchcancel', onEnd);
+                if (!active) return;
+                active = false;
+                card.classList.remove('dragging');
+                const cards = [...todoList.querySelectorAll('.task-card')];
+                cards.forEach((c, idx) => {
+                    const t = allTodos.find(x => x.id === c.dataset.id);
+                    const nextOrder = cards.length - idx;
+                    if (t && t.orderIndex !== nextOrder) {
+                        t.orderIndex = nextOrder;
+                        db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(err => console.warn('[DnD] orderIndex save failed:', err));
+                    }
+                });
+            };
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onEnd);
+            document.addEventListener('touchcancel', onEnd);
+        }, { passive: true });
 
         const p = todo.priority || 'medium';
         const proj = allProjects.find(px => px.id === todo.projectId);
         const sourceTag = isEclassTask(todo) ? `<span class="project-tag eclass-source-tag">e-Class</span>` : '';
-        const typeTag = todo.source === 'eclass-exam' ? `<span class="project-tag eclass-type-tag">시험·발표</span>` : '';
-        const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${proj.color}33; color:${proj.color}; border: 1px solid ${proj.color}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
-        const img = todo.imageUrl ? `<img src="${todo.imageUrl}" class="tc-img" alt="task image" onclick="window.open('${todo.imageUrl}', '_blank')">` : '';
-        
-        const dueBadge = isDueToday ? `<span class="due-today-badge">${t('dueToday')}</span>` : '';
+        const typeTag = todo.source === 'eclass-exam' ? `<span class="project-tag eclass-type-tag">${t('eclassExamType')}</span>` : '';
+        const projColor = proj?.color || '#6366f1';
+        const tag = `${sourceTag}${proj ? `<span class="project-tag" style="background:${projColor}33; color:${projColor}; border: 1px solid ${projColor}66;">${escapeHtml(proj.name)}</span>` : ''}${typeTag}`;
+        const img = todo.imageUrl ? `<img src="${escapeHtml(todo.imageUrl)}" class="tc-img tc-img-btn" alt="task image" data-url="${escapeHtml(todo.imageUrl)}" loading="lazy" decoding="async">` : '';
+
+        const dueBadge = isDueToday
+            ? `<span class="due-today-badge">${t('dueToday')}</span>`
+            : isOverdue
+                ? `<span class="due-today-badge overdue-badge">${t('overdue')}</span>`
+                : '';
         const priorityText = `${t(p)} ${t('priorityLabel')}`;
 
         card.innerHTML = `
             <div class="tc-top">
-                <h3 class="tc-title">${todo.text}${dueBadge}</h3>
+                <h3 class="tc-title">${escapeHtml(todo.text)}${dueBadge}</h3>
                 <div class="tc-top-actions">
                     <span class="tc-priority-chip ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}">
                         <span class="tc-status ${p === 'high' ? 'red' : p === 'medium' ? 'blue' : 'green'}"></span>
@@ -2269,8 +2450,8 @@ function renderTodos(todos) {
                     <button class="tc-delete" data-id="${todo.id}" aria-label="${t('delete')}">&times;</button>
                 </div>
             </div>
-            <div class="tc-subtitle">${todo.dueDate ? '📅 ' + todo.dueDate + (todo.dueTime ? ' ' + todo.dueTime : '') : t('noDate')}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
-            ${img}<p class="tc-desc">${todo.memo || t('noNotes')}</p><div style="margin-top: 8px;">${tag}</div>
+            <div class="tc-subtitle">${todo.dueDate ? '📅 ' + escapeHtml(todo.dueDate) + (todo.dueTime ? ' ' + escapeHtml(todo.dueTime) : '') : t('noDate')}${todo.calendarEventId ? ' • ' + t('calendarSyncOn') : ''}</div>
+            ${img}<p class="tc-desc">${escapeHtml(todo.memo || t('noNotes'))}</p><div style="margin-top: 8px;">${tag}</div>
             <div class="tc-actions">
                 <button class="tc-action-btn btn-toggle" data-id="${todo.id}">${todo.completed ? t('undo') : t('complete')}</button>
                 <button class="tc-action-btn btn-edit-task" data-id="${todo.id}">${t('edit')}</button>
@@ -2280,20 +2461,43 @@ function renderTodos(todos) {
         todoList.appendChild(card);
     });
 
+    const saveCurrentDndOrder = () => {
+        const cards = [...todoList.querySelectorAll('.task-card')];
+        cards.forEach((c, i) => {
+            const t = allTodos.find(x => x.id === c.dataset.id);
+            const nextOrder = cards.length - i;
+            if (t && t.orderIndex !== nextOrder) {
+                t.orderIndex = nextOrder;
+                db.collection('todos').doc(t.id).update({ orderIndex: nextOrder }).catch(err => console.warn('[DnD] orderIndex save failed:', err));
+            }
+        });
+    };
+    todoList.ondragover = (e) => { e.preventDefault(); };
+    todoList.ondrop = (e) => { e.preventDefault(); saveCurrentDndOrder(); };
+
     todoList.querySelectorAll('.btn-toggle').forEach(b => b.onclick = () => {
         const task = allTodos.find(x => x.id === b.dataset.id);
         if (!task) return;
         const completed = !task.completed;
+        task.completed = completed;
+        applyFilters();
+        updateDashboardUI();
         db.collection('todos').doc(b.dataset.id).update({
             completed,
             completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
             completedDate: completed ? localDateKey() : null
-        });
+        }).catch(err => { task.completed = !completed; applyFilters(); updateDashboardUI(); showToast(err.message || t('taskCreationFailed'), 'error'); });
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.btn-archive').forEach(b => b.onclick = () => {
-        const t = allTodos.find(x => x.id === b.dataset.id);
-        db.collection('todos').doc(b.dataset.id).update({ archived: !t.archived });
+        const task = allTodos.find(x => x.id === b.dataset.id);
+        if (!task) return;
+        const archived = !task.archived;
+        task.archived = archived;
+        applyFilters();
+        updateDashboardUI();
+        db.collection('todos').doc(b.dataset.id).update({ archived })
+            .catch(err => { task.archived = !archived; applyFilters(); updateDashboardUI(); showToast(err.message || t('taskCreationFailed'), 'error'); });
         markGuideStepComplete('taskManage');
     });
     todoList.querySelectorAll('.tc-delete').forEach(b => b.onclick = () => openTaskDeleteDialog(b.dataset.id));
@@ -2305,6 +2509,15 @@ function renderTodos(todos) {
         const task = allTodos.find(x => x.id === b.dataset.id);
         if (task) downloadAppleCalendarEvent(task);
     });
+    if (!todoList.dataset.imgHandlerBound) {
+        todoList.dataset.imgHandlerBound = 'true';
+        todoList.addEventListener('click', e => {
+            const img = e.target.closest('.tc-img-btn');
+            if (!img) return;
+            const url = img.dataset.url || '';
+            if (/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
 }
 
 function getDragAfterElement(container, y) {
@@ -2356,13 +2569,24 @@ function renderNotes(notes) {
         card.dataset.id = note.id;
         if (String(note.id || '').startsWith('local-')) card.dataset.localOnly = 'true';
         card.style.left = (note.x || 20) + 'px'; card.style.top = (note.y || 20) + 'px';
-        card.innerHTML = `<div class="note-content">${note.text}</div><div class="note-footer"><button class="note-edit-btn" data-id="${note.id}">${t('edit')}</button><button class="note-delete-btn" data-id="${note.id}">${t('delete')}</button></div>`;
+        card.innerHTML = `<div class="note-content">${escapeHtml(note.text)}</div><div class="note-footer"><button class="note-edit-btn" data-id="${note.id}">${t('edit')}</button><button class="note-delete-btn" data-id="${note.id}">${t('delete')}</button></div>`;
         list.appendChild(card);
         setupDragging(card);
     });
     list.querySelectorAll('.note-delete-btn').forEach(b => b.onclick = () => {
         markGuideStepComplete('notesManage');
-        db.collection('notes').doc(b.dataset.id).delete();
+        const noteId = b.dataset.id;
+        showConfirmModal(t('deleteNoteConfirm'), () => {
+            const deletedNote = allNotes.find(n => n.id === noteId);
+            allNotes = allNotes.filter(n => n.id !== noteId);
+            renderNotes(allNotes);
+            updateDashboardUI();
+            db.collection('notes').doc(noteId).delete()
+                .catch(err => {
+                    if (deletedNote) { allNotes = [deletedNote, ...allNotes]; renderNotes(allNotes); updateDashboardUI(); }
+                    showToast(err.message || t('taskCreationFailed'), 'error');
+                });
+        });
     });
     list.querySelectorAll('.note-edit-btn').forEach(b => b.onclick = () => {
         markGuideStepComplete('notesManage');
@@ -2374,16 +2598,29 @@ function setupDragging(el) {
     let isDragging = false, startX, startY, initL, initT;
     const down = (e) => {
         if (e.target.tagName === 'BUTTON') return;
+        const container = el.parentElement;
+        if (container && getComputedStyle(container).display === 'flex') return;
+        if (e.type === 'touchstart') e.preventDefault();
         isDragging = true; el.style.zIndex = 1000;
-        const t = e.type === 'touchstart' ? e.touches[0] : e;
-        startX = t.clientX; startY = t.clientY; initL = el.offsetLeft; initT = el.offsetTop;
-        document.addEventListener(e.type === 'touchstart' ? 'touchmove' : 'mousemove', move);
-        document.addEventListener(e.type === 'touchstart' ? 'touchend' : 'mouseup', up);
+        const touch = e.type === 'touchstart' ? e.touches[0] : e;
+        startX = touch.clientX; startY = touch.clientY; initL = el.offsetLeft; initT = el.offsetTop;
+        if (e.type === 'touchstart') {
+            document.addEventListener('touchmove', move, { passive: false });
+            document.addEventListener('touchend', up);
+        } else {
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+        }
     };
     const move = (e) => {
         if (!isDragging) return;
-        const t = e.type === 'touchmove' ? e.touches[0] : e;
-        el.style.left = (initL + t.clientX - startX) + 'px'; el.style.top = (initT + t.clientY - startY) + 'px';
+        if (e.cancelable) e.preventDefault();
+        const touch = e.type === 'touchmove' ? e.touches[0] : e;
+        const container = el.parentElement;
+        const maxLeft = container ? Math.max(0, container.offsetWidth - el.offsetWidth) : 99999;
+        const maxTop = container ? Math.max(0, container.offsetHeight - el.offsetHeight) : 99999;
+        el.style.left = Math.max(0, Math.min(initL + touch.clientX - startX, maxLeft)) + 'px';
+        el.style.top = Math.max(0, Math.min(initT + touch.clientY - startY, maxTop)) + 'px';
     };
     const up = () => {
         isDragging = false; el.style.zIndex = 1;
@@ -2403,13 +2640,13 @@ function setupDragging(el) {
             showToast(error && error.message ? error.message : t('taskCreationFailed'), 'error');
         });
     };
-    el.addEventListener('mousedown', down); el.addEventListener('touchstart', down, { passive: true });
+    el.addEventListener('mousedown', down); el.addEventListener('touchstart', down, { passive: false });
 }
 
 function updateDashboardUI() {
     if (!getEl('page-home')) return;
     const total = allTodos.filter(t => !t.archived).length, completed = allTodos.filter(t => t.completed && !t.archived).length, percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateKey();
     const activeTodos = allTodos.filter(todo => !todo.completed && !todo.archived);
     const todayDueTodos = activeTodos.filter(todo => todo.dueDate === today);
     const importantTodos = activeTodos.filter(todo => todo.priority === 'high');
@@ -2450,12 +2687,11 @@ function updateDashboardUI() {
             div.type = 'button';
             div.innerHTML = `
                 <span class="today-focus-dot ${todo.priority === 'high' ? 'high' : 'normal'}"></span>
-                <span class="today-focus-text">${todo.text}</span>
-                <span class="today-focus-meta">${isToday ? t('todayDue') : (project ? project.name : t('noProject'))}</span>
+                <span class="today-focus-text">${escapeHtml(todo.text)}</span>
+                <span class="today-focus-meta">${isToday ? t('todayDue') : (project ? escapeHtml(project.name) : t('noProject'))}</span>
             `;
             div.onclick = () => {
-                currentFilter = isToday ? 'reminders' : 'important';
-                switchPage('page-tasks');
+                navigateAppPage('page-tasks', isToday ? 'reminders' : 'important');
             };
             focusList.appendChild(div);
         });
@@ -2471,7 +2707,7 @@ function updateDashboardUI() {
             div.type = 'button';
             div.innerHTML = `
                 <span class="today-project-color" style="background:${project.color || 'var(--blue)'}"></span>
-                <span class="today-project-name">${project.name}</span>
+                <span class="today-project-name">${escapeHtml(project.name)}</span>
                 <span class="today-project-count">${projectTasks.length}</span>
             `;
             div.onclick = () => {
@@ -2504,13 +2740,12 @@ function updateDashboardUI() {
             const div = document.createElement('div');
             div.className = 'dash-reminder-item';
             div.innerHTML = `
-                <span class="reminder-text">${todo.text}</span>
-                <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : todo.dueDate}</span>
+                <span class="reminder-text">${escapeHtml(todo.text)}</span>
+                <span class="reminder-date" style="${isToday ? 'color:var(--red);' : 'color:var(--text-2);'}">${isToday ? t('today') : escapeHtml(todo.dueDate)}</span>
             `;
             div.onclick = () => {
                 markGuideStepComplete('taskViews');
-                currentFilter = 'reminders';
-                switchPage('page-tasks');
+                navigateAppPage('page-tasks', 'reminders');
             };
             reminderList.appendChild(div);
         });
@@ -2520,7 +2755,7 @@ function updateDashboardUI() {
 function checkDueNotifications() {
     if (!('Notification' in window)) return;
     if (!notificationSettings.dailyTasks) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateKey();
     const due = allTodos.filter(t => !t.completed && !t.archived && t.dueDate === today);
     
     if (due.length > 0) {
@@ -2538,21 +2773,8 @@ function checkDueNotifications() {
 }
 
 function showDueNotification(count) {
-    const today = new Date().toISOString().split('T')[0];
-    const options = {
-        body: `오늘 마감인 할 일이 ${count}개 있습니다!`,
-        icon: '/icon.svg',
-        vibrate: [200, 100, 200],
-        badge: '/icon.svg'
-    };
-    
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification("Planary Reminder", options);
-        });
-    } else {
-        new Notification("Planary Reminder", options);
-    }
+    const today = localDateKey();
+    notifyUser('Planary', formatText('todayTaskNotificationBody', { count }), 'daily-tasks');
     localStorage.setItem('last-notified-date', today);
 }
 
@@ -2594,7 +2816,7 @@ function scheduleReminderNotifications() {
         const [hour, minute] = (notificationSettings.dailyTime || '09:00').split(':').map(Number);
         const scheduled = new Date(today);
         scheduled.setHours(hour || 9, minute || 0, 0, 0);
-        const todayKey = today.toISOString().slice(0, 10);
+        const todayKey = localDateKey();
         const activeToday = allTodos.filter(task => !task.completed && !task.archived && task.dueDate === todayKey);
         const dailyKey = `daily-tasks|${todayKey}|${notificationSettings.dailyTime || '09:00'}`;
         if (activeToday.length && scheduled.getTime() > now && !firedReminderKeys.has(dailyKey)) {
@@ -2603,7 +2825,8 @@ function scheduleReminderNotifications() {
                 const timer = setTimeout(() => {
                     firedReminderKeys.add(dailyKey);
                     reminderNotificationTimers.delete(dailyKey);
-                    notifyUser('Planary', formatText('todayTaskNotificationBody', { count: activeToday.length }), 'daily-tasks');
+                    const liveCount = allTodos.filter(task => !task.completed && !task.archived && task.dueDate === todayKey).length;
+                    notifyUser('Planary', formatText('todayTaskNotificationBody', { count: liveCount }), 'daily-tasks');
                 }, scheduled.getTime() - now);
                 reminderNotificationTimers.set(dailyKey, timer);
             }
@@ -2667,12 +2890,12 @@ function renderArchive() {
         item.className = 'archive-task-item';
         item.innerHTML = `
             <div class="archive-item-left">
-                <div class="archive-item-title">${task.text}</div>
+                <div class="archive-item-title">${escapeHtml(task.text)}</div>
                 <div class="archive-item-meta">
                     <span class="archive-status-badge ${task.completed ? 'status-completed' : 'status-pending'}">
                         ${task.completed ? t('completed') : t('active')}
                     </span>
-                    <span>📅 ${task.dueDate || t('noDate')}</span>
+                    <span>📅 ${task.dueDate ? escapeHtml(task.dueDate) : t('noDate')}</span>
                 </div>
             </div>
             <div class="archive-item-actions">
@@ -2686,12 +2909,32 @@ function renderArchive() {
         `;
         archiveListEl.appendChild(item);
     });
-    archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => db.collection('todos').doc(b.dataset.id).update({ archived: false }));
-    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = async () => {
-        if (!confirm(t('permanentDeleteConfirm'))) return;
-        const task = allTodos.find(item => item.id === b.dataset.id);
-        await db.collection('todos').doc(b.dataset.id).delete();
-        if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+    archiveListEl.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => {
+        const id = b.dataset.id;
+        const task = allTodos.find(x => x.id === id);
+        if (!task) return;
+        task.archived = false;
+        renderArchive();
+        applyFilters();
+        updateDashboardUI();
+        db.collection('todos').doc(id).update({ archived: false })
+            .catch(err => { task.archived = true; renderArchive(); applyFilters(); updateDashboardUI(); showToast(err.message || t('taskCreationFailed'), 'error'); });
+    });
+    archiveListEl.querySelectorAll('.del-perm-btn').forEach(b => b.onclick = () => {
+        const id = b.dataset.id;
+        showConfirmModal(t('permanentDeleteConfirm'), () => {
+            const task = allTodos.find(item => item.id === id);
+            allTodos = allTodos.filter(item => item.id !== id);
+            renderArchive();
+            applyFilters();
+            updateDashboardUI();
+            db.collection('todos').doc(id).delete()
+                .then(() => { if (task?.imageUrl) deleteStorageUrls(new Set([task.imageUrl])); })
+                .catch(err => {
+                    if (task) { allTodos = [task, ...allTodos]; renderArchive(); applyFilters(); updateDashboardUI(); }
+                    showToast(err.message || t('taskCreationFailed'), 'error');
+                });
+        });
     });
     window.refreshInspiration();
 }
@@ -2724,9 +2967,14 @@ window.refreshInspiration = () => {
 function renderProjectsDropdown() {
     const select = getEl('todo-project-select'); // Fixed ID
     if (!select) return;
-    const current = select.value;
+    const current = select.value || currentProjectId || '';
     select.innerHTML = `<option value="">${t('noProject')}</option>`;
-    allProjects.forEach(p => select.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+    allProjects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+    });
     select.value = current;
 }
 
@@ -2776,7 +3024,7 @@ function renderProjectManagementList() {
         const projectReminders = projectTasks.filter(t => t.dueDate && !t.completed);
         const projectWikiPages = allWikiPages.filter(page => page.projectId === p.id);
         div.innerHTML = `
-            <div class="stat-icon" style="background:${p.color}33; color:${p.color}; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+            <div class="stat-icon" style="background:${(p.color || '#6366f1')}33; color:${p.color || '#6366f1'}; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
                 ${appIconSvg('projects')}
             </div>
             <h3 style="margin-bottom:4px;">${escapeHtml(p.name)}</h3>
@@ -2799,7 +3047,50 @@ function renderProjectManagementList() {
     });
     renderProjectOverview();
 }
-window.deleteProject = (id) => confirm(t('deleteProjectConfirm')) && db.collection('projects').doc(id).delete();
+window.deleteProject = (id) => {
+    const affectedTasks = allTodos.filter(task => task.projectId === id && !task.archived);
+    const taskCount = affectedTasks.length;
+    const message = taskCount > 0
+        ? `${t('deleteProjectConfirm')} ${formatText('deleteProjectTasksWillUnassign', { count: taskCount })}`
+        : t('deleteProjectConfirm');
+    showConfirmModal(message, () => {
+        const backupProjects = [...allProjects];
+        const backupTodos = allTodos.map(item => ({ ...item }));
+        const backupWikiPages = allWikiPages.map(item => ({ ...item }));
+        const prevProjectId = currentProjectId;
+        const prevOverviewId = selectedProjectOverviewId;
+
+        if (currentProjectId === id) currentProjectId = null;
+        if (selectedProjectOverviewId === id) selectedProjectOverviewId = null;
+        allProjects = allProjects.filter(p => p.id !== id);
+        allTodos = allTodos.map(t => t.projectId === id ? { ...t, projectId: null } : t);
+        const affectedWikiPages = allWikiPages.filter(page => page.projectId === id);
+        allWikiPages = allWikiPages.map(page => page.projectId === id ? { ...page, projectId: null } : page);
+        renderProjectManagementList();
+        applyFilters();
+        updateDashboardUI();
+
+        const batch = db.batch();
+        batch.delete(db.collection('projects').doc(id));
+        affectedTasks.forEach(task => {
+            batch.update(db.collection('todos').doc(task.id), { projectId: null });
+        });
+        affectedWikiPages.forEach(page => {
+            batch.update(db.collection('wiki_pages').doc(page.id), { projectId: null });
+        });
+        batch.commit()
+            .catch(err => {
+                allProjects = backupProjects;
+                allTodos = backupTodos;
+                allWikiPages = backupWikiPages;
+                currentProjectId = prevProjectId;
+                selectedProjectOverviewId = prevOverviewId;
+                applyFilters();
+                renderProjectManagementList();
+                showToast(err.message || t('taskCreationFailed'), 'error');
+            });
+    });
+};
 
 function openProjectOverview(projectId) {
     selectedProjectOverviewId = projectId;
@@ -2838,7 +3129,7 @@ function renderProjectOverview() {
                 <strong>${escapeHtml(task.text)}</strong>
                 <small>${task.memo ? escapeHtml(task.memo) : t('noNotes')}</small>
             </span>
-            <em>${task.completed ? t('completed') : (task.dueDate || t(task.priority || 'tasks'))}</em>
+            <em>${task.completed ? t('completed') : (task.dueDate ? escapeHtml(task.dueDate) : t(task.priority || 'tasks'))}</em>
         </button>
     `;
 
@@ -2883,6 +3174,15 @@ function renderProjectOverview() {
 
 function renderBookmarks() {
     const list = getEl('bookmarks-list'); if (!list) return;
+    if (!list.dataset.visitHandlerBound) {
+        list.dataset.visitHandlerBound = 'true';
+        list.addEventListener('click', e => {
+            const btn = e.target.closest('.bm-visit-btn');
+            if (!btn) return;
+            const url = btn.dataset.url || '';
+            if (/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
     list.innerHTML = allBookmarks.length ? '' : `
         <div class="wiki-empty-container collection-empty-container bookmark-empty-container">
             <div class="wiki-empty-content collection-empty-content">
@@ -2915,40 +3215,55 @@ function renderBookmarks() {
         const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
         
         const div = document.createElement('div'); div.className = 'bookmark-card';
-        const tags = bm.tags ? bm.tags.map(t => `<span class="bm-tag">#${t}</span>`).join(' ') : '';
+        const tags = bm.tags ? bm.tags.map(tag => `<span class="bm-tag">#${escapeHtml(tag)}</span>`).join(' ') : '';
         div.innerHTML = `
-            <button class="bm-delete-btn" onclick="deleteBookmark('${bm.id}')" aria-label="${t('deleteBookmark')}">×</button>
+            <button class="bm-delete-btn" data-id="${escapeHtml(bm.id)}" aria-label="${t('deleteBookmark')}">×</button>
             <div class="bm-main">
-                <img src="${favicon}" class="bm-favicon" onerror="this.src='icon.svg'">
+                <img src="${favicon}" class="bm-favicon" onerror="this.onerror=null;this.src='icon.svg'">
                 <div class="bm-info">
-                    <div class="bm-title">${bm.title || domain}</div>
-                    <div class="bm-url">${bm.url}</div>
+                    <div class="bm-title">${escapeHtml(bm.title || domain)}</div>
+                    <div class="bm-url">${escapeHtml(bm.url)}</div>
                 </div>
             </div>
             <div style="margin-top:12px;">${tags}</div>
             <div class="tc-actions" style="margin-top:auto; padding-top:16px;">
-                <button class="tc-action-btn" onclick="window.open('${bm.url}', '_blank')">${t('visitWebsite')}</button>
+                <button class="tc-action-btn bm-visit-btn" data-url="${escapeHtml(bm.url)}">${t('visitWebsite')}</button>
             </div>`;
+        div.querySelector('.bm-delete-btn').onclick = () => window.deleteBookmark(bm.id);
         list.appendChild(div);
     });
 }
-window.deleteBookmark = (id) => confirm(t('deleteBookmarkConfirm')) && db.collection('bookmarks').doc(id).delete();
+window.deleteBookmark = (id) => showConfirmModal(t('deleteBookmarkConfirm'), () => {
+    const deleted = allBookmarks.find(b => b.id === id);
+    allBookmarks = allBookmarks.filter(b => b.id !== id);
+    renderBookmarks();
+    db.collection('bookmarks').doc(id).delete()
+        .catch(err => {
+            if (deleted) { allBookmarks = [deleted, ...allBookmarks]; renderBookmarks(); }
+            showToast(err.message || t('taskCreationFailed'), 'error');
+        });
+});
 
 function setTaskModalOpen(modalId, open) {
     const modal = getEl(modalId);
     if (!modal) return;
     modal.classList.toggle('active', open);
     modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+    const anyOpen = document.querySelectorAll('.task-modal.active').length > 0;
+    document.body.style.overflow = anyOpen ? 'hidden' : '';
 }
 
 function openTaskDeleteDialog(id) {
+    _modalTriggerStack.push(document.activeElement);
     pendingDeleteTaskId = id;
     setTaskModalOpen('task-delete-modal', true);
+    setTimeout(() => getEl('task-delete-cancel-btn')?.focus(), 50);
 }
 
 function closeTaskDeleteDialog() {
     pendingDeleteTaskId = null;
     setTaskModalOpen('task-delete-modal', false);
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
 }
 
 async function confirmTaskDelete() {
@@ -2956,14 +3271,23 @@ async function confirmTaskDelete() {
     const id = pendingDeleteTaskId;
     const task = allTodos.find(item => item.id === id);
     closeTaskDeleteDialog();
-    await deleteTaskGoogleCalendarEvent(task);
-    await db.collection('todos').doc(id).delete();
-    if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+    allTodos = allTodos.filter(item => item.id !== id);
+    applyFilters();
+    updateDashboardUI();
+    try {
+        await deleteTaskGoogleCalendarEvent(task);
+        await db.collection('todos').doc(id).delete();
+        if (task?.imageUrl) await deleteStorageUrls(new Set([task.imageUrl]));
+    } catch (err) {
+        if (task) { allTodos = [task, ...allTodos]; applyFilters(); updateDashboardUI(); }
+        showToast(err.message || t('taskCreationFailed'), 'error');
+    }
 }
 
 function openTaskEditDialog(id) {
     const item = allTodos.find(x => x.id === id);
     if (!item) return;
+    _modalTriggerStack.push(document.activeElement);
     editingTaskId = id;
     if (getEl('task-edit-text')) getEl('task-edit-text').value = item.text || '';
     if (getEl('task-edit-memo')) getEl('task-edit-memo').value = item.memo || '';
@@ -2982,6 +3306,55 @@ function openTaskEditDialog(id) {
 function closeTaskEditDialog() {
     editingTaskId = null;
     setTaskModalOpen('task-edit-modal', false);
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
+}
+
+function showConfirmModal(message, onConfirm, onCancel) {
+    _modalTriggerStack.push(document.activeElement);
+    _confirmCallback = onConfirm;
+    _confirmCancelCallback = onCancel || null;
+    const title = getEl('confirm-modal-title');
+    if (title) title.textContent = message;
+    setTaskModalOpen('confirm-modal', true);
+    setTimeout(() => getEl('confirm-modal-cancel-btn')?.focus(), 50);
+}
+
+function closeConfirmModal(confirmed = false) {
+    const cb = _confirmCallback;
+    const cancelCb = _confirmCancelCallback;
+    _confirmCallback = null;
+    _confirmCancelCallback = null;
+    setTaskModalOpen('confirm-modal', false);
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
+    if (confirmed && cb) cb();
+    else if (!confirmed && cancelCb) cancelCb();
+}
+
+window.showConfirmModalAsync = (message) => new Promise(resolve => {
+    showConfirmModal(message, () => resolve(true), () => resolve(false));
+});
+
+function showInputModalAsync(title, message, inputType = 'text') {
+    return new Promise(resolve => {
+        _inputModalResolve = resolve;
+        _modalTriggerStack.push(document.activeElement);
+        const titleEl = getEl('input-modal-title');
+        const msgEl = getEl('input-modal-message');
+        const field = getEl('input-modal-field');
+        if (titleEl) titleEl.textContent = title;
+        if (msgEl) msgEl.textContent = message;
+        if (field) { field.type = inputType; field.value = ''; field.autocomplete = inputType === 'password' ? 'current-password' : 'off'; }
+        setTaskModalOpen('input-modal', true);
+        if (field) field.focus();
+    });
+}
+
+function closeInputModal(value = null) {
+    const resolve = _inputModalResolve;
+    _inputModalResolve = null;
+    setTaskModalOpen('input-modal', false);
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
+    if (resolve) resolve(value);
 }
 
 function syncNotificationSettingsUI() {
@@ -3130,7 +3503,7 @@ function parseGoogleCalendarDate(value) {
     const parsed = new Date(value.dateTime);
     if (Number.isNaN(parsed.getTime())) return { dueDate: null, dueTime: null };
     return {
-        dueDate: parsed.toISOString().slice(0, 10),
+        dueDate: localDateKey(parsed),
         dueTime: parsed.toTimeString().slice(0, 5)
     };
 }
@@ -3170,6 +3543,18 @@ function buildTaskCalendarEvent(task) {
     };
 }
 
+function handleCalendarApiError(status) {
+    if (status === 401 || status === 403) {
+        taskCalendarAccessToken = null;
+        const connectBtn = getEl('task-calendar-connect-btn');
+        if (connectBtn) connectBtn.classList.remove('active');
+        const importBtn = getEl('task-calendar-import-btn');
+        if (importBtn) importBtn.classList.remove('active');
+        throw new Error(t('calendarTokenExpired') || 'Calendar access expired — please reconnect');
+    }
+    throw new Error(`Google Calendar ${status}`);
+}
+
 async function syncTaskToGoogleCalendar(task) {
     if (!task || !task.dueDate || !task.syncCalendar) return null;
     const token = await ensureTaskCalendarAccess();
@@ -3187,7 +3572,7 @@ async function syncTaskToGoogleCalendar(task) {
         },
         body: JSON.stringify(body)
     });
-    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    if (!response.ok) handleCalendarApiError(response.status);
     return response.json();
 }
 
@@ -3200,7 +3585,7 @@ async function deleteTaskGoogleCalendarEvent(task) {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` }
         });
-        if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`Google Calendar ${response.status}`);
+        if (!response.ok && response.status !== 404 && response.status !== 410) handleCalendarApiError(response.status);
     } catch (error) {
         console.warn('Calendar event delete failed:', error);
     }
@@ -3214,20 +3599,27 @@ async function importGoogleCalendarTasks() {
     until.setDate(until.getDate() + 30);
     const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(now.toISOString())}&timeMax=${encodeURIComponent(until.toISOString())}`;
     const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) throw new Error(`Google Calendar ${response.status}`);
+    if (!response.ok) handleCalendarApiError(response.status);
     const data = await response.json();
     const events = (data.items || []).filter(event => event.status !== 'cancelled' && event.id && event.summary);
-    let imported = 0;
-    for (const event of events) {
-        const existing = await db.collection('todos')
-            .where('uid', '==', currentUser.uid)
-            .where('source', '==', 'google-calendar')
-            .where('sourceItemId', '==', event.id)
-            .limit(1)
-            .get();
-        if (!existing.empty) continue;
+    if (!events.length) { lastCalendarImportAt = new Date(); return 0; }
+
+    // Fetch all existing google-calendar sourceItemIds in one query to avoid N+1.
+    const existingSnap = await db.collection('todos')
+        .where('uid', '==', currentUser.uid)
+        .where('source', '==', 'google-calendar')
+        .get();
+    const existingIds = new Set(existingSnap.docs.map(d => d.data().sourceItemId).filter(Boolean));
+
+    const newEvents = events.filter(e => !existingIds.has(e.id));
+    if (!newEvents.length) { lastCalendarImportAt = new Date(); return 0; }
+
+    const batch = db.batch();
+    const baseTs = Date.now();
+    newEvents.forEach((event, i) => {
         const start = parseGoogleCalendarDate(event.start || {});
-        await db.collection('todos').add({
+        const ref = db.collection('todos').doc();
+        batch.set(ref, {
             uid: currentUser.uid,
             text: event.summary || t('untitledEvent'),
             memo: event.description || null,
@@ -3248,12 +3640,12 @@ async function importGoogleCalendarTasks() {
             sourceItemId: event.id,
             sourceUrl: event.htmlLink || null,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            orderIndex: Date.now() - imported
+            orderIndex: baseTs - i
         });
-        imported += 1;
-    }
+    });
+    await batch.commit();
     lastCalendarImportAt = new Date();
-    return imported;
+    return newEvents.length;
 }
 
 function toIcsDate(date) {
@@ -3313,8 +3705,11 @@ async function saveTaskEditDialog() {
         if (input) input.focus();
         return;
     }
+    const saveBtn = getEl('task-edit-save-btn');
+    if (saveBtn) saveBtn.disabled = true;
     const priority = getEl('task-edit-priority')?.value || 'medium';
-    const existing = allTodos.find(item => item.id === editingTaskId);
+    const savedId = editingTaskId;
+    const existing = allTodos.find(item => item.id === savedId);
     const editMinutes = Number(getEl('task-edit-calendar-reminder')?.value || 30);
     const editList = normalizeReminderMinutes(editMinutes);
     const payload = {
@@ -3328,7 +3723,7 @@ async function saveTaskEditDialog() {
         projectId: getEl('task-edit-project')?.value || null,
         syncCalendar: !!(existing?.calendarEventId || taskCalendarAccessToken)
     };
-    if (payload.syncCalendar && payload.dueDate) {
+    if (payload.syncCalendar && payload.dueDate && taskCalendarAccessToken) {
         try {
             const event = await syncTaskToGoogleCalendar({ ...existing, ...payload });
             if (event?.id) payload.calendarEventId = event.id;
@@ -3336,10 +3731,24 @@ async function saveTaskEditDialog() {
             console.error('Calendar update failed:', error);
             showToast(t('calendarSyncFailed') + ': ' + (error.message || error), 'error');
         }
+    } else if (!payload.dueDate && existing?.calendarEventId) {
+        try {
+            await deleteTaskGoogleCalendarEvent(existing);
+        } catch (error) {
+            console.warn('Calendar event removal failed:', error);
+        }
+        payload.calendarEventId = null;
     }
-    await db.collection('todos').doc(editingTaskId).update(payload);
+    const originalTask = existing ? { ...existing } : null;
+    if (existing) { Object.assign(existing, payload); applyFilters(); updateDashboardUI(); }
     closeTaskEditDialog();
     showToast(t('taskUpdated'));
+    db.collection('todos').doc(savedId).update(payload)
+        .catch(err => {
+            if (originalTask && existing) { Object.assign(existing, originalTask); applyFilters(); updateDashboardUI(); }
+            showToast(err.message || t('taskCreationFailed'), 'error');
+        })
+        .finally(() => { if (saveBtn) saveBtn.disabled = false; });
 }
 
 function openEditModal(type, id) {
@@ -3347,10 +3756,58 @@ function openEditModal(type, id) {
         openTaskEditDialog(id);
         return;
     }
-    const item = type === 'todo' ? allTodos.find(x => x.id === id) : allNotes.find(x => x.id === id);
-    if (!item) return;
-    const next = prompt(t('editContent'), item.text);
-    if (next && next.trim()) db.collection(type === 'todo' ? 'todos' : 'notes').doc(id).update({ text: next.trim() }).then(() => showToast(t('updated')));
+    if (type === 'note') {
+        const note = allNotes.find(x => x.id === id);
+        if (note) openNoteEditModal(note);
+    }
+}
+
+function openNoteEditModal(note) {
+    _modalTriggerStack.push(document.activeElement);
+    editingNoteId = note.id;
+    const textarea = getEl('note-edit-text');
+    if (textarea) textarea.value = note.text || '';
+    const picker = getEl('note-edit-color-picker');
+    if (picker) {
+        picker.querySelectorAll('.color-option').forEach(btn => {
+            const selected = btn.dataset.color === (note.color || 'yellow');
+            btn.setAttribute('aria-checked', String(selected));
+            btn.classList.toggle('selected', selected);
+        });
+    }
+    setTaskModalOpen('note-edit-modal', true);
+    if (textarea) textarea.focus();
+}
+
+function closeNoteEditModal() {
+    editingNoteId = null;
+    setTaskModalOpen('note-edit-modal', false);
+    const _t = _modalTriggerStack.pop(); if (_t?.isConnected) _t.focus();
+}
+
+function saveNoteEdit() {
+    if (!editingNoteId) return;
+    const textarea = getEl('note-edit-text');
+    const text = textarea?.value?.trim();
+    if (!text) return;
+    const picker = getEl('note-edit-color-picker');
+    const selectedColor = picker?.querySelector('.color-option[aria-checked="true"]')?.dataset?.color || 'yellow';
+    const saveBtn = getEl('note-edit-save-btn');
+    if (saveBtn) saveBtn.disabled = true;
+    const savedId = editingNoteId;
+    const note = allNotes.find(n => n.id === savedId);
+    const originalText = note?.text;
+    const originalColor = note?.color;
+    if (note) { note.text = text; note.color = selectedColor; renderNotes(allNotes); updateDashboardUI(); }
+    closeNoteEditModal();
+    showToast(t('updated'));
+    db.collection('notes').doc(savedId)
+        .update({ text, color: selectedColor })
+        .catch(err => {
+            if (note) { note.text = originalText; note.color = originalColor; renderNotes(allNotes); updateDashboardUI(); }
+            showToast(err.message || t('taskCreationFailed'), 'error');
+        })
+        .finally(() => { if (saveBtn) saveBtn.disabled = false; });
 }
 
 function finishAppBoot() {
@@ -3393,7 +3850,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Theme & Navigation Init
-    const savedTheme = localStorage.getItem('app-theme') || 'light';
+    const savedTheme = localStorage.getItem('app-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', savedTheme);
     applyAppFont(currentAppFont);
     applyLanguage(currentLanguage);
@@ -3401,6 +3858,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hash router
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('resize', () => repositionActiveOnboardingGuide());
+
+    // Online/offline indicator
+    window.addEventListener('offline', () => showToast(t('offlineMode') || 'Offline', 'warning'));
+    window.addEventListener('online', () => showToast(t('backOnline') || 'Back online', 'success'));
     document.addEventListener('click', blockOnboardingBackgroundEvent, true);
     document.addEventListener('mousedown', blockOnboardingBackgroundEvent, true);
     document.addEventListener('pointerdown', blockOnboardingBackgroundEvent, true);
@@ -3416,7 +3877,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         repositionActiveOnboardingGuide();
-    }, true);
+    }, { capture: true, passive: true });
 
     // suppress auto-scroll when user is interacting via touch to avoid fighting user scroll on mobile/tablet
     document.addEventListener('touchstart', () => {
@@ -3435,24 +3896,25 @@ document.addEventListener('DOMContentLoaded', () => {
     handleHash();
 
     // Event Listeners
-    if (getEl('empty-archive-btn')) getEl('empty-archive-btn').onclick = async () => {
+    if (getEl('empty-archive-btn')) getEl('empty-archive-btn').onclick = () => {
         const archived = allTodos.filter(item => item.archived);
         if (!archived.length) { showToast(t('archiveAlreadyEmpty')); return; }
-        if (!confirm(t('emptyArchiveConfirm'))) return;
-        try {
-            const urls = new Set();
-            const batch = db.batch();
-            archived.forEach(task => {
-                batch.delete(db.collection('todos').doc(task.id));
-                if (task.imageUrl) urls.add(task.imageUrl);
-            });
-            await batch.commit();
-            if (urls.size) await deleteStorageUrls(urls);
-            showToast(t('archiveEmptied'));
-        } catch (err) {
-            console.error('[Archive] empty failed:', err);
-            showToast((t('archiveEmptyFailed') || 'Failed') + ': ' + (err.message || err), 'error');
-        }
+        showConfirmModal(t('emptyArchiveConfirm'), async () => {
+            try {
+                const urls = new Set();
+                const batch = db.batch();
+                archived.forEach(task => {
+                    batch.delete(db.collection('todos').doc(task.id));
+                    if (task.imageUrl) urls.add(task.imageUrl);
+                });
+                await batch.commit();
+                if (urls.size) await deleteStorageUrls(urls);
+                showToast(t('archiveEmptied'));
+            } catch (err) {
+                console.error('[Archive] empty failed:', err);
+                showToast((t('archiveEmptyFailed') || 'Failed') + ': ' + (err.message || err), 'error');
+            }
+        });
     };
     if (getEl('theme-toggle-btn')) getEl('theme-toggle-btn').onclick = () => {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -3471,7 +3933,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     bindNotificationSettings();
 
-    if (getEl('search-input')) getEl('search-input').oninput = () => applyFilters();
+    if (getEl('search-input')) {
+        let searchDebounceTimer = null;
+        getEl('search-input').oninput = () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(applyFilters, 150);
+        };
+    }
 
     if (getEl('task-details-toggle')) {
         getEl('task-details-toggle').onclick = () => {
@@ -3501,10 +3969,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuToggle = getEl('menu-toggle'), overlay = getEl('sidebar-overlay'), fabTrigger = getEl('fab-trigger'), fabContainer = getEl('mobile-nav-container');
     const appShell = getEl('app-shell'), sidebarToggleBtn = getEl('sidebar-toggle-btn');
     if (sidebarToggleBtn && appShell) {
+        const savedCollapsed = localStorage.getItem('planary-sidebar-collapsed') === 'true';
+        if (savedCollapsed) {
+            appShell.classList.add('sidebar-collapsed');
+            sidebarToggleBtn.setAttribute('aria-expanded', 'false');
+            sidebarToggleBtn.setAttribute('aria-label', t('expandSidebar'));
+            sidebarToggleBtn.setAttribute('title', t('expandSidebar'));
+        }
         sidebarToggleBtn.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
             const collapsed = appShell.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('planary-sidebar-collapsed', String(collapsed));
             sidebarToggleBtn.setAttribute('aria-expanded', String(!collapsed));
             sidebarToggleBtn.setAttribute('aria-label', collapsed ? t('expandSidebar') : t('collapseSidebar'));
             sidebarToggleBtn.setAttribute('title', collapsed ? t('expandSidebar') : t('collapseSidebar'));
@@ -3528,6 +4004,16 @@ document.addEventListener('DOMContentLoaded', () => {
         getEl('task-img-input').onchange = (e) => {
             const file = e.target.files[0];
             if (file) {
+                if (!file.type.startsWith('image/')) {
+                    showToast(t('imageTypeInvalid'), 'error');
+                    e.target.value = '';
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast(t('imageTooLarge'), 'error');
+                    e.target.value = '';
+                    return;
+                }
                 selectedTaskImgFile = file;
                 const reader = new FileReader();
                 reader.onload = (ev) => {
@@ -3547,26 +4033,38 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    if (getEl('task-calendar-connect-btn')) {
-        getEl('task-calendar-connect-btn').onclick = async () => {
+    const calendarConnectBtn = getEl('task-calendar-connect-btn');
+    if (calendarConnectBtn) {
+        calendarConnectBtn.onclick = async () => {
+            if (calendarConnectBtn.disabled) return;
+            calendarConnectBtn.disabled = true;
             try {
                 await ensureTaskCalendarAccess();
                 showToast(t('calendarConnected'), 'success');
             } catch (error) {
+                if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
                 console.error('Calendar connect failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarConnectBtn.disabled = false;
             }
         };
     }
 
-    if (getEl('task-calendar-import-btn')) {
-        getEl('task-calendar-import-btn').onclick = async () => {
+    const calendarImportBtn = getEl('task-calendar-import-btn');
+    if (calendarImportBtn) {
+        calendarImportBtn.onclick = async () => {
+            if (calendarImportBtn.disabled) return;
+            calendarImportBtn.disabled = true;
             try {
                 const count = await importGoogleCalendarTasks();
                 showToast(count ? `${t('calendarImportDone')} (${count})` : t('calendarImportEmpty'), count ? 'success' : 'info');
             } catch (error) {
+                if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
                 console.error('Calendar import failed:', error);
                 showToast(t('calendarConnectFailed') + ': ' + (error.message || error), 'error');
+            } finally {
+                calendarImportBtn.disabled = false;
             }
         };
     }
@@ -3586,9 +4084,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (getEl('add-btn')) getEl('add-btn').onclick = async () => {
+        const addBtn = getEl('add-btn');
+        if (addBtn && addBtn.disabled) return;
         const input = getEl('todo-input'), memoInput = getEl('memo-input'), dateInput = getEl('due-date'), timeInput = getEl('due-time'), reminderInput = getEl('calendar-reminder-select'), priorityInput = getEl('priority-select'), projectInput = getEl('todo-project-select');
         const text = input.value.trim();
         if (!text || !currentUser) return;
+        if (addBtn) addBtn.disabled = true;
 
         let imageUrl = null;
         if (selectedTaskImgFile) {
@@ -3626,6 +4127,8 @@ document.addEventListener('DOMContentLoaded', () => {
             orderIndex: Date.now()
         };
 
+        let localTask = null;
+        let savedText = '', savedMemo = '', savedDate = '', savedTime = '', savedPriority = 'medium', savedProject = '';
         try {
             let calendarEvent = null;
             if (payload.syncCalendar) {
@@ -3637,15 +4140,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast(t('calendarSyncFailed') + ': ' + (calendarError.message || calendarError), 'error');
                 }
             }
-            const localTask = {
+            localTask = {
                 ...payload,
-                id: `local-${Date.now()}`,
+                id: crypto.randomUUID ? crypto.randomUUID() : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 createdAt: Date.now()
             };
             allTodos = [localTask, ...allTodos];
             upsertUserCacheItem('todos', localTask);
             applyFilters();
             updateDashboardUI();
+            savedText = input.value;
+            savedMemo = memoInput.value;
+            savedDate = dateInput.value;
+            savedTime = timeInput ? timeInput.value : '';
+            savedPriority = priorityInput ? priorityInput.value : 'medium';
+            savedProject = projectInput ? projectInput.value : '';
+            input.value = '';
+            memoInput.value = '';
+            dateInput.value = '';
+            if (timeInput) timeInput.value = '';
+            if (priorityInput) priorityInput.value = 'medium';
+            if (projectInput) projectInput.value = currentProjectId || '';
+            if (getEl('remove-task-img')) getEl('remove-task-img').click();
+            input.focus();
             const docRef = await db.collection('todos').add(payload);
             const savedTask = { ...localTask, id: docRef.id };
             allTodos = allTodos.map(item => item.id === localTask.id ? savedTask : item);
@@ -3653,29 +4170,60 @@ document.addEventListener('DOMContentLoaded', () => {
             writeUserCache('todos', allTodos);
             markGuideStepComplete('taskCreate');
             if (payload.memo || payload.dueDate || payload.priority !== 'medium') markGuideStepComplete('taskDetails');
-            input.value = '';
-            memoInput.value = '';
-            dateInput.value = '';
-            if (timeInput) timeInput.value = '';
-            if (priorityInput) priorityInput.value = 'medium';
-            if (projectInput) projectInput.value = '';
-            if (getEl('remove-task-img')) getEl('remove-task-img').click();
             showToast(calendarEvent?.id ? t('calendarTaskSynced') : t('added'));
         } catch (error) {
             console.error("Task creation failed:", error, payload);
+            if (localTask) {
+                allTodos = allTodos.filter(item => item.id !== localTask.id);
+                applyFilters();
+                updateDashboardUI();
+                input.value = savedText || '';
+                memoInput.value = savedMemo || '';
+                dateInput.value = savedDate || '';
+                if (timeInput) timeInput.value = savedTime || '';
+                if (priorityInput) priorityInput.value = savedPriority || 'medium';
+                if (projectInput) projectInput.value = savedProject || '';
+            }
             if (imageUrl) await deleteStorageUrls(new Set([imageUrl]));
             showToast(error && error.message ? error.message : t('taskCreationFailed'), "error");
+        } finally {
+            if (addBtn) addBtn.disabled = false;
         }
     };
+
+    // Submit on Enter for main text inputs
+    const todoInput = getEl('todo-input');
+    if (todoInput) todoInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); getEl('add-btn')?.click(); }
+    });
+    const bmUrlInput = getEl('bm-url-input');
+    if (bmUrlInput) bmUrlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); getEl('add-bm-btn')?.click(); }
+    });
+    const projectInput = getEl('project-input');
+    if (projectInput) projectInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); getEl('add-project-btn')?.click(); }
+    });
 
     // Bookmark Add
     if (getEl('add-bm-btn')) getEl('add-bm-btn').onclick = async () => {
         const urlInput = getEl('bm-url-input'), titleInput = getEl('bm-title-input'), tagsInput = getEl('bm-tags-input');
         const url = urlInput.value.trim(); if (!url || !currentUser) return;
-        const tags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+        if (!/^https?:\/\//i.test(url)) { showToast(t('invalidUrl'), 'error'); return; }
+        const tags = tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+        const title = titleInput.value.trim();
+        urlInput.value = ''; titleInput.value = ''; tagsInput.value = '';
+        const localId = `local-${Date.now()}`;
+        allBookmarks = [{ id: localId, url, title, tags, uid: currentUser.uid }, ...allBookmarks];
+        renderBookmarks();
         db.collection('bookmarks').add({
-            uid: currentUser.uid, url, title: titleInput.value.trim(), tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => { urlInput.value = ''; titleInput.value = ''; tagsInput.value = ''; showToast(t('bookmarkSaved')); });
+            uid: currentUser.uid, url, title, tags, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => { showToast(t('bookmarkSaved')); })
+          .catch(err => {
+              allBookmarks = allBookmarks.filter(b => b.id !== localId);
+              renderBookmarks();
+              showToast(err.message || t('taskCreationFailed'), 'error');
+          });
     };
 
     if (getEl('add-project-btn')) getEl('add-project-btn').onclick = async () => {
@@ -3685,6 +4233,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const palette = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
         const color = palette[allProjects.length % palette.length];
+        if (projectInput) projectInput.value = '';
+
+        const localId = `local-${Date.now()}`;
+        allProjects = [...allProjects, { id: localId, name, color, uid: currentUser.uid }];
+        renderProjectsDropdown();
+        renderProjectManagementList();
 
         db.collection('projects').add({
             uid: currentUser.uid,
@@ -3692,9 +4246,13 @@ document.addEventListener('DOMContentLoaded', () => {
             color,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
-            if (projectInput) projectInput.value = '';
             markGuideStepComplete('projects');
             showToast(t('projectCreated'));
+        }).catch(err => {
+            allProjects = allProjects.filter(p => p.id !== localId);
+            renderProjectsDropdown();
+            renderProjectManagementList();
+            showToast(err.message || t('taskCreationFailed'), 'error');
         });
     };
 
@@ -3769,6 +4327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         allNotes = [localNote, ...allNotes];
         upsertUserCacheItem('notes', localNote);
+        if (noteInput) noteInput.value = '';
         renderNotes(allNotes);
         updateDashboardUI();
 
@@ -3777,11 +4336,14 @@ document.addEventListener('DOMContentLoaded', () => {
             allNotes = allNotes.map(item => item.id === localNote.id ? savedNote : item);
             upsertUserCacheItem('notes', savedNote);
             writeUserCache('notes', allNotes);
-            if (noteInput) noteInput.value = '';
             markGuideStepComplete('notesCreate');
             showToast(t('noteAdded'));
         }).catch(error => {
             console.error('Note creation failed:', error);
+            allNotes = allNotes.filter(item => item.id !== localNote.id);
+            writeUserCache('notes', allNotes);
+            renderNotes(allNotes);
+            updateDashboardUI();
             showToast(error && error.message ? error.message : t('taskCreationFailed'), 'error');
         });
     };
@@ -3790,8 +4352,12 @@ document.addEventListener('DOMContentLoaded', () => {
         getEl('note-color-picker').querySelectorAll('.color-option').forEach(option => {
             option.onclick = () => {
                 selectedNoteColor = option.dataset.color || 'yellow';
-                getEl('note-color-picker').querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                getEl('note-color-picker').querySelectorAll('.color-option').forEach(el => {
+                    el.classList.remove('selected');
+                    el.setAttribute('aria-checked', 'false');
+                });
                 option.classList.add('selected');
+                option.setAttribute('aria-checked', 'true');
             };
         });
     }
@@ -3823,10 +4389,71 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.target !== modal) return;
             if (modal.id === 'task-edit-modal') closeTaskEditDialog();
             if (modal.id === 'task-delete-modal') closeTaskDeleteDialog();
+            if (modal.id === 'confirm-modal') closeConfirmModal(false);
+            if (modal.id === 'note-edit-modal') closeNoteEditModal();
+            if (modal.id === 'input-modal') closeInputModal(null);
         });
     });
+    document.addEventListener('keydown', (e) => {
+        const activeModal = ['task-edit-modal', 'task-delete-modal', 'confirm-modal', 'note-edit-modal', 'input-modal']
+            .map(id => getEl(id))
+            .find(m => m?.classList.contains('active'));
 
-    const logout = () => confirm(t('logoutConfirm')) && unregisterFcmToken().finally(() => auth.signOut().then(() => window.location.href = 'login.html'));
+        if (e.key === 'Escape') {
+            if (getEl('task-edit-modal')?.classList.contains('active')) { closeTaskEditDialog(); return; }
+            if (getEl('task-delete-modal')?.classList.contains('active')) { closeTaskDeleteDialog(); return; }
+            if (getEl('confirm-modal')?.classList.contains('active')) { closeConfirmModal(false); return; }
+            if (getEl('note-edit-modal')?.classList.contains('active')) { closeNoteEditModal(); return; }
+            if (getEl('input-modal')?.classList.contains('active')) { closeInputModal(null); return; }
+            return;
+        }
+
+        if (e.key === 'Tab' && activeModal) {
+            const focusables = [...activeModal.querySelectorAll(
+                'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )].filter(el => el.offsetParent !== null);
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey) {
+                if (document.activeElement === first || !activeModal.contains(document.activeElement)) {
+                    e.preventDefault();
+                    last.focus();
+                }
+            } else {
+                if (document.activeElement === last || !activeModal.contains(document.activeElement)) {
+                    e.preventDefault();
+                    first.focus();
+                }
+            }
+        }
+    });
+    if (getEl('confirm-modal-cancel-btn')) getEl('confirm-modal-cancel-btn').onclick = () => closeConfirmModal(false);
+    if (getEl('confirm-modal-ok-btn')) getEl('confirm-modal-ok-btn').onclick = () => closeConfirmModal(true);
+    if (getEl('note-edit-modal-close')) getEl('note-edit-modal-close').onclick = closeNoteEditModal;
+    if (getEl('note-edit-cancel-btn')) getEl('note-edit-cancel-btn').onclick = closeNoteEditModal;
+    if (getEl('note-edit-save-btn')) getEl('note-edit-save-btn').onclick = saveNoteEdit;
+    const noteColorPicker = getEl('note-edit-color-picker');
+    if (noteColorPicker) {
+        noteColorPicker.querySelectorAll('.color-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                noteColorPicker.querySelectorAll('.color-option').forEach(b => {
+                    b.setAttribute('aria-checked', 'false');
+                    b.classList.remove('selected');
+                });
+                btn.setAttribute('aria-checked', 'true');
+                btn.classList.add('selected');
+            });
+        });
+    }
+    if (getEl('input-modal-close')) getEl('input-modal-close').onclick = () => closeInputModal(null);
+    if (getEl('input-modal-cancel-btn')) getEl('input-modal-cancel-btn').onclick = () => closeInputModal(null);
+    if (getEl('input-modal-ok-btn')) getEl('input-modal-ok-btn').onclick = () => closeInputModal(getEl('input-modal-field')?.value ?? null);
+    const inputModalField = getEl('input-modal-field');
+    if (inputModalField) inputModalField.addEventListener('keydown', (e) => { if (e.key === 'Enter') closeInputModal(inputModalField.value); });
+
+    const logout = () => showConfirmModal(t('logoutConfirm'), () =>
+        unregisterFcmToken().finally(() => auth.signOut().catch(() => {}).finally(() => { window.location.href = 'login.html'; })));
     if (getEl('logout-btn')) getEl('logout-btn').onclick = logout;
     if (getEl('profile-logout-btn')) getEl('profile-logout-btn').onclick = logout;
     if (getEl('profile-delete-account-btn')) getEl('profile-delete-account-btn').onclick = deleteAccount;
