@@ -3038,6 +3038,7 @@ window.deleteProject = (id) => {
     showConfirmModal(message, () => {
         const backupProjects = [...allProjects];
         const backupTodos = allTodos.map(item => ({ ...item }));
+        const backupWikiPages = allWikiPages.map(item => ({ ...item }));
         const prevProjectId = currentProjectId;
         const prevOverviewId = selectedProjectOverviewId;
 
@@ -3050,6 +3051,8 @@ window.deleteProject = (id) => {
         }
         allProjects = allProjects.filter(p => p.id !== id);
         allTodos = allTodos.map(t => t.projectId === id ? { ...t, projectId: null } : t);
+        const affectedWikiPages = allWikiPages.filter(page => page.projectId === id);
+        allWikiPages = allWikiPages.map(page => page.projectId === id ? { ...page, projectId: null } : page);
         renderProjectManagementList();
 
         const batch = db.batch();
@@ -3057,10 +3060,14 @@ window.deleteProject = (id) => {
         affectedTasks.forEach(task => {
             batch.update(db.collection('todos').doc(task.id), { projectId: null });
         });
+        affectedWikiPages.forEach(page => {
+            batch.update(db.collection('wiki_pages').doc(page.id), { projectId: null });
+        });
         batch.commit()
             .catch(err => {
                 allProjects = backupProjects;
                 allTodos = backupTodos;
+                allWikiPages = backupWikiPages;
                 currentProjectId = prevProjectId;
                 selectedProjectOverviewId = prevOverviewId;
                 applyFilters();
@@ -3234,6 +3241,7 @@ function openTaskDeleteDialog(id) {
     _modalTriggerStack.push(document.activeElement);
     pendingDeleteTaskId = id;
     setTaskModalOpen('task-delete-modal', true);
+    setTimeout(() => getEl('task-delete-cancel-btn')?.focus(), 50);
 }
 
 function closeTaskDeleteDialog() {
