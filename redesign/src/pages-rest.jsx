@@ -2403,6 +2403,13 @@ function BookmarksPage() {
         </div>
       </div>
 
+      {filtered.length === 0 && (
+        <div className="empty card">
+          <div className="empty-icon"><Icon name="bookmark" size={24} /></div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{bookmarks.length === 0 ? "아직 북마크가 없어요" : "검색 결과가 없어요"}</div>
+          <div style={{ fontSize: 12, color: "var(--text-lo)" }}>{bookmarks.length === 0 ? "URL 입력창에 주소를 붙여넣어 보세요" : "다른 태그나 검색어를 시도해보세요"}</div>
+        </div>
+      )}
       <div className="bookmarks-grid">
         {filtered.map((b) =>
         <div key={b.id} className="bookmark">

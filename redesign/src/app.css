@@ -3888,6 +3888,10 @@ select.form-input { cursor: pointer; }
   background: color-mix(in oklab, var(--ok) 8%, var(--surface));
   border: 1px solid color-mix(in oklab, var(--ok) 25%, var(--border));
 }
+.callout-err {
+  background: color-mix(in oklab, var(--err) 8%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--err) 25%, var(--border));
+}
 
 /* ---------- BOOKMARK PREVIEW ---------- */
 .bookmark-preview {
