@@ -295,6 +295,18 @@ function App() {
         />
       )}
 
+      {focusModeTask && window.Planary.FocusMode && (
+        <window.Planary.FocusMode
+          task={focusModeTask}
+          onClose={() => setFocusModeTask(null)}
+          onDone={(t) => {
+            setTasks(prev => prev.map(x => x.id === t.id ? { ...x, done: true } : x));
+            window.dispatchEvent(new CustomEvent("planary:toggle-task", { detail: t.id }));
+            window.Planary?.toast?.({ type: "ok", title: "완료! 수고하셨어요 🎉", ttl: 2500 });
+          }}
+        />
+      )}
+
       <window.Planary.ToastHost />
 
       {onboardingOpen && window.Planary.OnboardingFlow && (
