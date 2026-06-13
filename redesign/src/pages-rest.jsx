@@ -4690,7 +4690,13 @@ function ChecklistBlock({ block, onUpdate }) {
       sel.addRange(range);
     }, 0);
   };
-  const update = (i, patch) => onUpdate({ items: items.map((x, idx) => idx === i ? { ...x, ...patch } : x) });
+  const update = (i, patch) => {
+    const next = items.map((x, idx) => idx === i ? { ...x, ...patch } : x);
+    onUpdate({ items: next });
+    if (next.length > 0 && next.every(it => it.checked) && !(items[i].checked)) {
+      window.Planary?.toast?.({ type: "ok", title: "모두 완료! 🎉", ttl: 2000 });
+    }
+  };
   const addItem = (afterIdx) => {
     onUpdate({ items: [...items.slice(0, afterIdx + 1), { text: "", checked: false }, ...items.slice(afterIdx + 1)] });
     focusItem(afterIdx + 1);
@@ -4756,7 +4762,7 @@ function CodeEditorBlock({ block, onUpdate }) {
           <Icon name={copied ? "check" : "copy"} size={12} />{copied ? "복사됨" : "복사"}
         </button>
       </div>
-      <pre style={{ margin: 0, border: 0 }}>
+      <pre style={{ margin: 0, border: 0, maxHeight: "60vh", overflowY: "auto" }}>
         <code
           contentEditable
           suppressContentEditableWarning
