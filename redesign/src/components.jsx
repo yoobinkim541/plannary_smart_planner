@@ -1348,19 +1348,26 @@ function ToastHost() {
     const onToast = (e) => {
       const t = e.detail || {};
       const id = "t" + Date.now() + Math.random().toString(36).slice(2, 6);
-      setToasts(prev => [...prev, { id, title: t.title || "", sub: t.sub || "", type: t.type || "info" }]);
+      setToasts(prev => [...prev, { id, title: t.title || "", sub: t.sub || "", type: t.type || "info", action: t.action || null, actionLabel: t.actionLabel || null, timer: null }]);
       const ttl = t.ttl || 3200;
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        if (t.onExpire) t.onExpire();
         setToasts(prev => prev.map(x => x.id === id ? { ...x, leaving: true } : x));
         setTimeout(() => setToasts(prev => prev.filter(x => x.id !== id)), 220);
       }, ttl);
+      setToasts(prev => prev.map(x => x.id === id ? { ...x, timer } : x));
     };
     window.addEventListener("planary:toast", onToast);
     return () => window.removeEventListener("planary:toast", onToast);
   }, []);
 
-  const dismiss = (id) => {
-    setToasts(prev => prev.map(x => x.id === id ? { ...x, leaving: true } : x));
+  const dismiss = (id, runAction) => {
+    setToasts(prev => {
+      const t = prev.find(x => x.id === id);
+      if (t && t.timer) clearTimeout(t.timer);
+      if (runAction && t && t.action) { t.action(); }
+      return prev.map(x => x.id === id ? { ...x, leaving: true } : x);
+    });
     setTimeout(() => setToasts(prev => prev.filter(x => x.id !== id)), 220);
   };
 
@@ -1375,6 +1382,9 @@ function ToastHost() {
               <div className="toast-title">{t.title}</div>
               {t.sub && <div className="toast-sub">{t.sub}</div>}
             </div>
+            {t.action && t.actionLabel && (
+              <button className="toast-action" onClick={() => dismiss(t.id, true)}>{t.actionLabel}</button>
+            )}
             <button className="toast-close" onClick={() => dismiss(t.id)} aria-label="닫기">
               <Icon name="x" size={12} />
             </button>
