@@ -1,3 +1,6 @@
+import { escapeHtml } from './src/dom.js';
+import { getFirebaseStoragePathFromUrl, collectStorageUrlsFromValue } from './src/storage.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     let currentUser = null;
     let editor = null;
@@ -625,13 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
-    const escapeHtml = (value) => String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-
     const decodeBasicHtml = (value) => String(value || '')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/div>\s*<div>/gi, '\n')
@@ -642,35 +638,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'");
-
-    const getFirebaseStoragePathFromUrl = (url) => {
-        if (!url || typeof url !== 'string') return null;
-        try {
-            const parsed = new URL(url);
-            const marker = '/o/';
-            const index = parsed.pathname.indexOf(marker);
-            if (index === -1) return null;
-            return decodeURIComponent(parsed.pathname.slice(index + marker.length));
-        } catch (error) {
-            return null;
-        }
-    };
-
-    const collectStorageUrlsFromValue = (value, target = new Set()) => {
-        if (!value) return target;
-        if (typeof value === 'string') {
-            if (getFirebaseStoragePathFromUrl(value)) target.add(value);
-            return target;
-        }
-        if (Array.isArray(value)) {
-            value.forEach(item => collectStorageUrlsFromValue(item, target));
-            return target;
-        }
-        if (typeof value === 'object') {
-            Object.values(value).forEach(item => collectStorageUrlsFromValue(item, target));
-        }
-        return target;
-    };
 
     const getWikiPageStorageUrls = (page) => {
         const urls = new Set();
