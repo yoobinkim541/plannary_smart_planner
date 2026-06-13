@@ -5911,6 +5911,59 @@ function FormField({ label, hint, children }) {
 const INITIAL_BLOCKS_BY_PAGE = {
 };
 
+function WikiFormatToolbar({ containerRef }) {
+  const [pos, setPos] = React.useState(null);
+  const [active, setActive] = React.useState({});
+  React.useEffect(() => {
+    const update = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) { setPos(null); return; }
+      if (!containerRef.current) return;
+      const range = sel.getRangeAt(0);
+      if (!containerRef.current.contains(range.commonAncestorContainer)) { setPos(null); return; }
+      const rect = range.getBoundingClientRect();
+      if (!rect.width) { setPos(null); return; }
+      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+      setActive({
+        bold: document.queryCommandState("bold"),
+        italic: document.queryCommandState("italic"),
+        underline: document.queryCommandState("underline"),
+        strikethrough: document.queryCommandState("strikeThrough"),
+      });
+    };
+    document.addEventListener("selectionchange", update);
+    return () => document.removeEventListener("selectionchange", update);
+  }, [containerRef]);
+  if (!pos) return null;
+  const fmt = (cmd) => {
+    if (cmd === "code") {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) document.execCommand("insertHTML", false, "<code>" + sel.toString() + "</code>");
+    } else {
+      document.execCommand(cmd, false, null);
+    }
+    setActive({
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+      strikethrough: document.queryCommandState("strikeThrough"),
+    });
+  };
+  return (
+    <div
+      className="wiki-format-toolbar"
+      style={{ left: pos.x, top: pos.y }}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      <button className={"wiki-fmt-btn " + (active.bold ? "is-active" : "")} onClick={() => fmt("bold")} title="굵게 (Ctrl+B)"><b>B</b></button>
+      <button className={"wiki-fmt-btn " + (active.italic ? "is-active" : "")} onClick={() => fmt("italic")} title="기울임 (Ctrl+I)"><i>I</i></button>
+      <button className={"wiki-fmt-btn " + (active.underline ? "is-active" : "")} onClick={() => fmt("underline")} title="밑줄 (Ctrl+U)"><u>U</u></button>
+      <button className={"wiki-fmt-btn " + (active.strikethrough ? "is-active" : "")} onClick={() => fmt("strikeThrough")} title="취소선"><s>S</s></button>
+      <div className="wiki-fmt-sep" />
+      <button className="wiki-fmt-btn" onClick={() => fmt("code")} title="코드">{"`"}</button>
+    </div>
+  );
+}
 function WikiBlocks({ activeId, onBlocksChange }) {
   const [blocks, setBlocks] = useStateO(() => INITIAL_BLOCKS_BY_PAGE[activeId] || [
     { id: "b1", type: "p", content: "" }
@@ -5922,6 +5975,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   const [dropPos, setDropPos] = useStateO("after"); // before | after
   const [menuOpenId, setMenuOpenId] = useStateO(null);
   const [slashMenu, setSlashMenu] = useStateO(null); // { blockId, x, y } | null
+  const containerRef = React.useRef(null);
   const lastSavedRef = useRefO("");
   const liveBlocksRef = useRefO(blocks);
   const liveSaveTimerRef = useRefO(null);
@@ -6191,7 +6245,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   };
 
   return (
-    <div className="wiki-block" onClick={() => setMenuOpenId(null)}>
+    <div className="wiki-block" onClick={() => setMenuOpenId(null)} ref={containerRef}>
       {blocks.map((b, i) => (
         <WikiBlockItem
           key={b.id}
@@ -6234,6 +6288,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
         </span>
       </div>
 
+      <WikiFormatToolbar containerRef={containerRef} />
       {slashMenu && (
         <SlashCommandMenu
           slashMenu={slashMenu}
@@ -6440,7 +6495,18 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
       onDrop={onDrop}
       onDragEnd={onDragEnd}
     >
+      {(block.type === "h1" || block.type === "h2" || block.type === "h3") && (
+        <span className="wiki-block-type-badge">{block.type.toUpperCase()}</span>
+      )}
       <div className="wiki-block-handles">
+        <button
+          className="wiki-block-add-btn"
+          onClick={(e) => { e.stopPropagation(); onAddAfter("p"); }}
+          title="아래에 블록 추가"
+          aria-label="블록 추가"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
         <button
           className="wiki-block-handle"
           draggable
