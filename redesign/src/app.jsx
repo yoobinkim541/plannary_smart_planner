@@ -465,6 +465,7 @@ function AppSkeleton() {
 /* ---------- Command Palette (⌘K) ---------- */
 function CommandPalette({ onClose, setPage }) {
   const [q, setQ] = useState("");
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const items = [
     { label: "홈으로", icon: "home", action: () => setPage("home") },
     { label: "작업 보기", icon: "check", action: () => setPage("tasks") },
@@ -506,7 +507,12 @@ function CommandPalette({ onClose, setPage }) {
             autoFocus
             placeholder="명령어, 페이지, 작업 검색…"
             value={q}
-            onChange={e => setQ(e.target.value)}
+            onChange={e => { setQ(e.target.value); setSelectedIdx(0); }}
+            onKeyDown={e => {
+              if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIdx(i => Math.min(filtered.length - 1, i + 1)); }
+              if (e.key === "ArrowUp")   { e.preventDefault(); setSelectedIdx(i => Math.max(0, i - 1)); }
+              if (e.key === "Enter" && filtered[selectedIdx]) { filtered[selectedIdx].action(); onClose(); }
+            }}
             style={{ flex: 1, border: 0, background: "transparent", outline: "none", fontSize: 16, color: "var(--text-hi)", fontFamily: "var(--font-display)" }}
           />
           <span className="kbd">Esc</span>
@@ -517,6 +523,7 @@ function CommandPalette({ onClose, setPage }) {
             <button
               key={i}
               onClick={() => { it.action(); onClose(); }}
+              onMouseEnter={() => setSelectedIdx(i)}
               style={{
                 width: "100%",
                 display: "flex", alignItems: "center", gap: 12,
@@ -525,9 +532,8 @@ function CommandPalette({ onClose, setPage }) {
                 color: "var(--text-md)",
                 fontSize: 14,
                 textAlign: "left",
+                background: i === selectedIdx ? "var(--hover)" : "transparent",
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "var(--hover)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
             >
               <Icon name={it.icon} size={16} style={{ color: "var(--text-lo)" }} />
               <span style={{ flex: 1 }}>{it.label}</span>
