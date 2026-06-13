@@ -967,7 +967,17 @@ function NotesPage() {
                 onCancel={cancelEdit}
                 onCycleColor={() => cycleColor(n.id)}
                 onDuplicate={() => duplicateNote(n)}
-                onDelete={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); window.dispatchEvent(new CustomEvent("planary:delete-note", { detail: n.id })); }}
+                onDelete={() => {
+                  const deleted = n;
+                  setNotes((prev) => prev.filter((x) => x.id !== n.id));
+                  let undone = false;
+                  window.Planary?.toast?.({
+                    type: "ok", title: "포스트잇이 삭제됐어요",
+                    actionLabel: "실행취소", action: () => { undone = true; setNotes((prev) => [...prev, deleted]); },
+                    onExpire: () => { if (!undone) window.dispatchEvent(new CustomEvent("planary:delete-note", { detail: deleted.id })); },
+                    ttl: 4000,
+                  });
+                }}
               />
 
               {!isEditing && (
@@ -1024,7 +1034,17 @@ function NotesPage() {
                 onCancel={cancelEdit}
                 onCycleColor={() => cycleColor(n.id)}
                 onDuplicate={() => duplicateNote(n)}
-                onDelete={() => { setNotes((prev) => prev.filter((x) => x.id !== n.id)); window.dispatchEvent(new CustomEvent("planary:delete-note", { detail: n.id })); }}
+                onDelete={() => {
+                  const deleted = n;
+                  setNotes((prev) => prev.filter((x) => x.id !== n.id));
+                  let undone = false;
+                  window.Planary?.toast?.({
+                    type: "ok", title: "포스트잇이 삭제됐어요",
+                    actionLabel: "실행취소", action: () => { undone = true; setNotes((prev) => [...prev, deleted]); },
+                    onExpire: () => { if (!undone) window.dispatchEvent(new CustomEvent("planary:delete-note", { detail: deleted.id })); },
+                    ttl: 4000,
+                  });
+                }}
               />
 
               {!isEditing && (

@@ -3547,8 +3547,15 @@
 .toast-body { flex: 1; min-width: 0; }
 .toast-title { font-size: 13px; font-weight: 600; color: var(--text-hi); line-height: 1.35; }
 .toast-sub { font-size: 11px; color: var(--text-lo); margin-top: 2px; }
-.toast-close { color: var(--text-faint); padding: 2px; }
+.toast-close { color: var(--text-faint); padding: 2px; border: 0; background: transparent; cursor: pointer; }
 .toast-close:hover { color: var(--text-md); }
+.toast-action {
+  border: 0; background: transparent; cursor: pointer;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--accent); padding: 2px 6px; border-radius: 4px;
+  flex-shrink: 0; white-space: nowrap;
+}
+.toast-action:hover { background: var(--accent-softer); }
 
 @keyframes toastIn {
   from { opacity: 0; transform: translateX(20px) translateY(4px); }
