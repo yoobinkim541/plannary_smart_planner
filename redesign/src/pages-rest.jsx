@@ -4847,18 +4847,26 @@ function TableBlock({ block, onUpdate }) {
     onUpdate({ rows: rows.map(r => [...r, ""]) });
     focusCell(0, rows[0].length);
   };
+  const deleteRow = (r) => {
+    if (rows.length <= 2) return; // keep header + at least one data row
+    onUpdate({ rows: rows.filter((_, i) => i !== r) });
+  };
+  const deleteCol = (c) => {
+    if (rows[0].length <= 1) return;
+    onUpdate({ rows: rows.map(row => row.filter((_, i) => i !== c)) });
+  };
   return (
     <div style={{ margin: "10px 0", overflow: "auto", border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <tbody>
           {rows.map((row, r) => (
-            <tr key={r}>
+            <tr key={`${r}-${row.length}`}>
               {row.map((cell, c) => {
                 const isHeader = r === 0;
                 const Tag = isHeader ? "th" : "td";
                 return (
                   <Tag
-                    key={c}
+                    key={`${r}-${c}`}
                     data-table-block-id={block.id}
                     data-row={r}
                     data-col={c}
@@ -4890,6 +4898,13 @@ function TableBlock({ block, onUpdate }) {
                   >{cell}</Tag>
                 );
               })}
+              {r > 0 && rows.length > 2 && (
+                <td style={{ padding: "4px 4px", border: "1px solid var(--border-soft)", background: "var(--surface-2)", width: 28 }}>
+                  <button type="button" className="btn btn-xs wiki-table-del-row" title="행 삭제" onClick={() => deleteRow(r)}>
+                    <Icon name="x" size={10} />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -4897,6 +4912,11 @@ function TableBlock({ block, onUpdate }) {
       <div style={{ display: "flex", gap: 6, padding: 6, borderTop: "1px solid var(--border-soft)", background: "var(--surface-2)" }}>
         <button type="button" className="btn btn-sm" onClick={() => addRow()}><Icon name="plus" size={11} />행 추가</button>
         <button type="button" className="btn btn-sm" onClick={addCol}><Icon name="plus" size={11} />열 추가</button>
+        {rows[0].length > 1 && (
+          <button type="button" className="btn btn-sm" style={{ color: "var(--err)", marginLeft: "auto" }} onClick={() => deleteCol(rows[0].length - 1)}>
+            <Icon name="x" size={11} />마지막 열 삭제
+          </button>
+        )}
       </div>
     </div>
   );
