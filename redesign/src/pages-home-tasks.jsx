@@ -20,12 +20,16 @@ function computeVisibleWidgets(interests, widgetVisibility) {
   return Object.fromEntries(WIDGET_DEFS.map(w => [w.id, set.has(w.interest)]));
 }
 
+function _toLocalISO(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
 function taskActivityDateKey(task) {
+  if (task.completedDate) return task.completedDate.slice(0, 10);
   const value = task.completedAt || task.dueDate || task.due;
   if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate().toISOString().slice(0, 10);
-  if (typeof value.seconds === "number") return new Date(value.seconds * 1000).toISOString().slice(0, 10);
-  if (typeof value._seconds === "number") return new Date(value._seconds * 1000).toISOString().slice(0, 10);
+  if (typeof value.toDate === "function") return _toLocalISO(value.toDate());
+  if (typeof value.seconds === "number") return _toLocalISO(new Date(value.seconds * 1000));
+  if (typeof value._seconds === "number") return _toLocalISO(new Date(value._seconds * 1000));
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
   return null;
 }
@@ -43,7 +47,7 @@ function buildTaskActivity(tasks, days = 140) {
   for (let i = days - 1; i >= 0; i -= 1) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    counts.push(countsByDate.get(d.toISOString().slice(0, 10)) || 0);
+    counts.push(countsByDate.get(_toLocalISO(d)) || 0);
   }
   const levels = counts.map(count => Math.min(4, count));
   let currentStreak = 0;
@@ -112,7 +116,7 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
   for (let i = -3; i <= 3; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = _toLocalISO(d);
     let count;
     if (i === 0) count = today.filter(t => !t.done).length;
     else if (i === 1) count = tasks.filter(t => !t.done && t.time === "내일").length;
