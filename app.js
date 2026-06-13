@@ -2093,21 +2093,6 @@ async function skipCurrentOnboardingStep() {
     renderOnboarding();
 }
 
-async function completeCurrentOnboardingStep() {
-    const stepId = onboardingState?.currentStep || getNextGuideStepId();
-    if (!stepId) return completeOnboarding();
-    const progress = normalizeOnboardingProgress(onboardingState.progress);
-    progress[stepId] = 'completed';
-    const nextStep = getNextGuideStepId(progress);
-    await saveOnboardingState({ progress, currentStep: nextStep, completed: !nextStep });
-    if (!nextStep) {
-        closeOnboarding();
-        return;
-    }
-    clearOnboardingHighlight();
-    renderOnboarding();
-}
-
 async function userHasNoWork(uid) {
     if (!uid || !db) return false;
     const collections = ['todos', 'notes', 'projects', 'bookmarks', 'wiki_pages'];
