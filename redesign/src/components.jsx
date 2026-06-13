@@ -1365,7 +1365,7 @@ function ToastHost() {
     setToasts(prev => {
       const t = prev.find(x => x.id === id);
       if (t && t.timer) clearTimeout(t.timer);
-      if (runAction && t && t.action) { t.action(); }
+      if (runAction && t && t.action) { try { t.action(); } catch (err) { console.error("[ToastHost] action threw:", err); } }
       return prev.map(x => x.id === id ? { ...x, leaving: true } : x);
     });
     setTimeout(() => setToasts(prev => prev.filter(x => x.id !== id)), 220);

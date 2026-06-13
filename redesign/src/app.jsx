@@ -523,7 +523,7 @@ function CommandPalette({ onClose, setPage }) {
             onKeyDown={e => {
               if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIdx(i => Math.min(filtered.length - 1, i + 1)); }
               if (e.key === "ArrowUp")   { e.preventDefault(); setSelectedIdx(i => Math.max(0, i - 1)); }
-              if (e.key === "Enter" && filtered[selectedIdx]) { filtered[selectedIdx].action(); onClose(); }
+              if (e.key === "Enter") { if (filtered[selectedIdx]) { filtered[selectedIdx].action(); onClose(); } else if (!filtered.length) { onClose(); } }
             }}
             style={{ flex: 1, border: 0, background: "transparent", outline: "none", fontSize: 16, color: "var(--text-hi)", fontFamily: "var(--font-display)" }}
           />

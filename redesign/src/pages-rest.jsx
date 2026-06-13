@@ -6369,7 +6369,7 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           slashMenu={slashMenu}
           onClose={() => setSlashMenu(null)}
           onPick={(type) => {
-            const cur = liveBlocksRef.current.find(b => b.id === slashMenu.blockId);
+            const cur = liveBlocksRef.current?.find(b => b.id === slashMenu.blockId);
             const content = cur ? (cur.content || "").replace(/\/\s*$/, "").trimEnd() : "";
             updateBlock(slashMenu.blockId, defaultsForType(type, content));
             setFocusBlockId(slashMenu.blockId);
