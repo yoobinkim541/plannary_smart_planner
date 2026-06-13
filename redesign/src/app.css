@@ -2695,9 +2695,85 @@
 }
 .wiki-block-handle:hover { background: var(--hover); color: var(--text-md); }
 .wiki-block-handle:active { cursor: grabbing; }
+
+/* "+" add-block quick button (shown above drag handle on hover) */
+.wiki-block-add-btn {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: 5px;
+  color: var(--text-faint);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.wiki-block-add-btn:hover {
+  background: var(--accent-softer);
+  color: var(--accent);
+}
+
+/* Block type badge (H1 / H2 / H3) shown when block is hovered/active */
+.wiki-block-type-badge {
+  position: absolute;
+  left: -36px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+  pointer-events: none;
+  user-select: none;
+}
+.wiki-block-row:hover .wiki-block-type-badge,
+.wiki-block-row.is-active .wiki-block-type-badge {
+  opacity: 1;
+}
+
 @media (max-width: 640px) {
   .wiki-block-handles { left: -2px; opacity: 1; }
   .wiki-block-handle { width: 26px; height: 26px; }
+  .wiki-block-add-btn { width: 26px; height: 26px; }
+  .wiki-block-type-badge { display: none; }
+}
+
+/* ---- Inline text format toolbar ---- */
+.wiki-format-toolbar {
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-50%) translateY(-100%);
+  animation: fadeIn 100ms var(--ease-out);
+  pointer-events: auto;
+}
+.wiki-fmt-btn {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-md);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  font-family: var(--font-sans);
+}
+.wiki-fmt-btn:hover { background: var(--hover); color: var(--text-hi); }
+.wiki-fmt-btn.is-active { background: var(--accent-softer); color: var(--accent); }
+.wiki-fmt-sep {
+  width: 1px; height: 16px;
+  background: var(--border);
+  margin: 0 3px;
+  flex-shrink: 0;
 }
 .wiki-block-menu {
   position: absolute;
@@ -2744,11 +2820,28 @@
   box-shadow: none !important;
   background: transparent;
 }
-.wiki-block-body p[contenteditable]:empty::before,
-.wiki-block-body h2[contenteditable]:empty::before,
-.wiki-block-body h3[contenteditable]:empty::before,
+.wiki-block-body p[contenteditable]:empty::before {
+  content: "내용을 입력하거나 '/'로 블록 선택";
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.wiki-block-body h1[contenteditable]:empty::before {
+  content: "헤딩 1";
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.wiki-block-body h2[contenteditable]:empty::before {
+  content: "헤딩 2";
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.wiki-block-body h3[contenteditable]:empty::before {
+  content: "헤딩 3";
+  color: var(--text-faint);
+  pointer-events: none;
+}
 .wiki-block-body blockquote[contenteditable]:empty::before {
-  content: "내용을 입력하세요…";
+  content: "인용구를 입력하세요…";
   color: var(--text-faint);
   pointer-events: none;
 }
