@@ -1535,7 +1535,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
                 <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} appleCalendarEnabled={appleCalendarEnabled} />
               ))}
               {col.items.length === 0 && (
-                <div className="empty" style={{ padding: "24px 8px", fontSize: 12 }}>비어있음</div>
+                <div className="empty" style={{ padding: "24px 8px", fontSize: 12, color: "var(--text-faint)" }}>작업 없음</div>
               )}
             </div>
           ))}
@@ -1544,8 +1544,9 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
         <div className="task-list">
           {filtered.length === 0 ? (
             <div className="empty card">
-              <div className="empty-icon"><Icon name="check" size={24} /></div>
-              표시할 작업이 없어요.
+              <div className="empty-icon"><Icon name={tasks.length === 0 ? "plus" : "check"} size={24} /></div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{tasks.length === 0 ? "아직 작업이 없어요" : "표시할 작업이 없어요"}</div>
+              <div style={{ fontSize: 12, color: "var(--text-lo)" }}>{tasks.length === 0 ? "위 입력창으로 첫 작업을 추가해보세요" : search ? "검색어를 바꿔보세요" : "다른 필터를 선택해보세요"}</div>
             </div>
           ) : filtered.map(t => (
             <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} appleCalendarEnabled={appleCalendarEnabled} />
@@ -1603,8 +1604,9 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
           ))}
           {filtered.length === 0 && (
             <div className="empty card">
-              <div className="empty-icon"><Icon name="check" size={24} /></div>
-              표시할 작업이 없어요.
+              <div className="empty-icon"><Icon name={tasks.length === 0 ? "plus" : "check"} size={24} /></div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{tasks.length === 0 ? "아직 작업이 없어요" : "표시할 작업이 없어요"}</div>
+              <div style={{ fontSize: 12, color: "var(--text-lo)" }}>{tasks.length === 0 ? "위 입력창으로 첫 작업을 추가해보세요" : search ? "검색어를 바꿔보세요" : "다른 필터를 선택해보세요"}</div>
             </div>
           )}
         </div>
