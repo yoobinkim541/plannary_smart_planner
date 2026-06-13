@@ -31,7 +31,7 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
   const toggleTask = (id) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
 
   const handleCreate = (draft) => {
-    const id = `p${Date.now()}`;
+    const id = `p${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
     const newProj = {
       id,
       name: draft.name,
@@ -1413,7 +1413,7 @@ function WikiPage() {
 
   // Add a new page (called from + button menu)
   const addPage = (parent, type) => {
-    const id = `w${Date.now()}`;
+    const id = `w${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
     const presets = {
       blank:    { icon: "📄", title: "새 페이지" },
       meeting:  { icon: "🗓️", title: "회의록", body: "헤더에 일시·참석자, 본문에 안건·결정·액션 아이템" },
@@ -2212,7 +2212,7 @@ function WikiPage() {
           onConfirm={(opts) => {
             // Create deep copy: new id for the source, and for each descendant if includeChildren
             const idMap = {};
-            const newRoot = { ...duplicating.node, id: `w${Date.now()}`, title: opts.title };
+            const newRoot = { ...duplicating.node, id: `w${Date.now()}${Math.random().toString(36).slice(2, 6)}`, title: opts.title };
             idMap[duplicating.node.id] = newRoot.id;
             const additions = [newRoot];
             if (opts.includeChildren) {

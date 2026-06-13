@@ -540,7 +540,7 @@ function QuickCapture() {
     if (!text.trim()) return;
     const selectedReminders = dueDate ? reminders : [];
     const newTask = {
-      id: "t" + Date.now(),
+      id: "t" + Date.now() + Math.random().toString(36).slice(2, 6),
       title: text.trim(),
       memo: null,
       project: project?.id || null,
