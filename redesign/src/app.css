@@ -2701,6 +2701,7 @@
   width: 22px; height: 22px;
   display: grid; place-items: center;
   border-radius: 5px;
+  border: 0;
   color: var(--text-faint);
   background: transparent;
   cursor: pointer;
