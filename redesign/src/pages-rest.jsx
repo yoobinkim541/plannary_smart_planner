@@ -4884,11 +4884,23 @@ function TableBlock({ block, onUpdate }) {
 function ImageBlock({ block, onUpdate }) {
   const fileRef = useRefO(null);
   const [caption, setCaption] = useStateO(block.caption || "");
+  const [loading, setLoading] = useStateO(false);
+  const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!ALLOWED_MIME.has(file.type)) {
+      window.Planary?.toast?.({ type: "err", title: "지원하지 않는 형식이에요", sub: "PNG, JPG, WebP, GIF만 올릴 수 있어요" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      window.Planary?.toast?.({ type: "err", title: "파일이 너무 커요", sub: "5MB 이하 이미지를 선택해 주세요" });
+      return;
+    }
+    setLoading(true);
     const reader = new FileReader();
-    reader.onload = () => onUpdate({ url: reader.result, name: file.name });
+    reader.onload = () => { onUpdate({ url: reader.result, name: file.name }); setLoading(false); };
+    reader.onerror = () => { window.Planary?.toast?.({ type: "err", title: "이미지를 불러올 수 없어요" }); setLoading(false); };
     reader.readAsDataURL(file);
   };
   const handleUrl = () => {
@@ -4901,10 +4913,13 @@ function ImageBlock({ block, onUpdate }) {
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
         <Icon name="image" size={28} style={{ color: "var(--text-faint)", marginBottom: 8 }} />
         <div style={{ fontSize: 13, color: "var(--text-md)", fontWeight: 600 }}>이미지를 추가하세요</div>
-        <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 4 }}>PNG · JPG · WebP · GIF</div>
+        <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 4 }}>PNG · JPG · WebP · GIF · 최대 5MB</div>
         <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 12 }}>
-          <button type="button" className="btn btn-sm" onClick={() => fileRef.current?.click()}><Icon name="image" size={11} />업로드</button>
-          <button type="button" className="btn btn-sm" onClick={handleUrl}><Icon name="link" size={11} />URL</button>
+          <button type="button" className="btn btn-sm" disabled={loading} onClick={() => fileRef.current?.click()}>
+            {loading ? <span style={{ display: "inline-block", width: 11, height: 11, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> : <Icon name="image" size={11} />}
+            {loading ? "변환 중…" : "업로드"}
+          </button>
+          <button type="button" className="btn btn-sm" disabled={loading} onClick={handleUrl}><Icon name="link" size={11} />URL</button>
         </div>
       </div>
     );
