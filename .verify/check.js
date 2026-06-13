@@ -83,12 +83,13 @@ function checkSyntax(files) {
 async function checkModuleGraph(entries) {
   const failures = [];
   const cache = new Map();
+  const sharedContext = vm.createContext({}); // all linked modules must share one context
   function loadModule(file) {
     if (cache.has(file)) return cache.get(file);
     const source = fs.readFileSync(file, 'utf8');
     const mod = new vm.SourceTextModule(source, {
       identifier: file,
-      context: vm.createContext({}),
+      context: sharedContext,
     });
     cache.set(file, mod);
     return mod;
