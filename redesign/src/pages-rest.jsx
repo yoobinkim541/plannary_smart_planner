@@ -5442,9 +5442,15 @@ function PropRow({ icon, label, value, valueColor, onClick, children, chip }) {
 
 function PropPopover({ children, onClose }) {
   useEffectO(() => {
-    const onClick = () => onClose();
-    setTimeout(() => window.addEventListener("click", onClick), 0);
-    return () => window.removeEventListener("click", onClick);
+    let listener = null;
+    const timer = setTimeout(() => {
+      listener = () => onClose();
+      window.addEventListener("click", listener);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      if (listener) window.removeEventListener("click", listener);
+    };
   }, []);
   return (
     <div
