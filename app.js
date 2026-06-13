@@ -3,6 +3,7 @@ import {
     setText, setHtml, setAllText, setAllTitle, setPlaceholder, setTitle, setOptionText,
     setButtonTextPreserveIcon, setAllButtonTextPreserveIcon,
 } from './src/dom.js';
+import { getFirebaseStoragePathFromUrl, collectStorageUrlsFromValue } from './src/storage.js';
 
 // Global Error Handling
 window.addEventListener('error', (event) => {
@@ -1344,35 +1345,6 @@ async function deleteCurrentUserData(uid) {
     }
     await deleteStorageUrls(storageUrls);
     await db.collection('users').doc(uid).delete().catch(() => {});
-}
-
-function getFirebaseStoragePathFromUrl(url) {
-    if (!url || typeof url !== 'string') return null;
-    try {
-        const parsed = new URL(url);
-        const marker = '/o/';
-        const index = parsed.pathname.indexOf(marker);
-        if (index === -1) return null;
-        return decodeURIComponent(parsed.pathname.slice(index + marker.length));
-    } catch (error) {
-        return null;
-    }
-}
-
-function collectStorageUrlsFromValue(value, target = new Set()) {
-    if (!value) return target;
-    if (typeof value === 'string') {
-        if (getFirebaseStoragePathFromUrl(value)) target.add(value);
-        return target;
-    }
-    if (Array.isArray(value)) {
-        value.forEach(item => collectStorageUrlsFromValue(item, target));
-        return target;
-    }
-    if (typeof value === 'object') {
-        Object.values(value).forEach(item => collectStorageUrlsFromValue(item, target));
-    }
-    return target;
 }
 
 async function deleteStorageUrls(urls) {
