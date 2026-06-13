@@ -660,7 +660,10 @@
 .btn-primary:active { background: var(--accent-dark); }
 
 .btn-sm { height: 28px; padding: 0 10px; font-size: var(--text-xs); }
+.btn-xs { height: 20px; padding: 0 5px; font-size: 10px; border-radius: 3px; }
 .btn-lg { height: 40px; padding: 0 18px; font-size: var(--text-base); }
+.wiki-table-del-row { opacity: 0; transition: opacity var(--dur-fast); color: var(--text-faint); }
+tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
 
 .page {
   flex: 1;
