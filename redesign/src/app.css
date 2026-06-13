@@ -2076,6 +2076,17 @@
 .archive-stat-big { font-size: 56px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; color: var(--text-hi); }
 .archive-stat-label { font-size: var(--text-xs); color: var(--text-lo); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 6px; white-space: nowrap; }
 
+.archive-task-wrap { position: relative; }
+.archive-restore-btn {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 5px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-md);
+  cursor: pointer; opacity: 0; transition: opacity var(--dur-fast);
+  white-space: nowrap; line-height: 1.4;
+}
+.archive-task-wrap:hover .archive-restore-btn { opacity: 1; }
+
 /* Heatmap (GitHub-style streak) */
 /* Yearly heatmap (GitHub-style — weeks × 7 days, column-major) */
 .heat-year-wrap {

@@ -2731,9 +2731,18 @@ function ArchivePage({ tasks }) {
             {archiveSearch ? "검색 결과가 없어요." : "아직 완료된 작업이 없어요."}
           </div>
         }
-        {filtered.map((t) =>
-        <window.Planary.TaskCard key={t.id} task={t} onToggle={(id) => window.dispatchEvent(new CustomEvent('planary:toggle-task', { detail: id }))} projects={window.Planary.PROJECTS} />
-        )}
+        {filtered.map((t) => (
+          <div key={t.id} className="archive-task-wrap">
+            <window.Planary.TaskCard task={t} onToggle={(id) => window.dispatchEvent(new CustomEvent('planary:toggle-task', { detail: id }))} projects={window.Planary.PROJECTS} />
+            <button
+              className="archive-restore-btn"
+              title="미완료로 복원"
+              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('planary:toggle-task', { detail: t.id })); }}
+            >
+              <Icon name="refresh" size={11} />복원
+            </button>
+          </div>
+        ))}
       </div>
     </div>);
 
