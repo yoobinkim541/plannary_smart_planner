@@ -1,0 +1,419 @@
+/* Editor.js Dark Mode Overrides */
+[data-theme="dark"] .codex-editor {
+    --color-background-document: var(--bg) !important;
+    --color-background-item-hover: rgba(255, 255, 255, 0.05) !important;
+    --color-background-item-focus: rgba(255, 255, 255, 0.1) !important;
+    --color-text-primary: var(--text-1) !important;
+    --color-text-secondary: var(--text-2) !important;
+    --color-border-default: var(--border) !important;
+    --color-background-item-default: var(--surface) !important;
+}
+
+[data-theme="dark"] .ce-block__content, 
+[data-theme="dark"] .ce-toolbar__content {
+    color: var(--text-1) !important;
+}
+[data-theme="dark"] .ce-popover,
+[data-theme="dark"] .ce-inline-toolbar,
+[data-theme="dark"] .ce-conversion-toolbar {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-1) !important;
+}
+[data-theme="dark"] .ce-popover-item:hover,
+[data-theme="dark"] .ce-inline-tool:hover,
+[data-theme="dark"] .ce-toolbar__settings-btn:hover,
+[data-theme="dark"] .ce-toolbar__plus:hover,
+[data-theme="dark"] .ce-conversion-tool:hover {
+    background-color: var(--bg) !important;
+    color: var(--text-1) !important;
+}
+[data-theme="dark"] .ce-popover-item__icon,
+[data-theme="dark"] .ce-popover-item__title,
+[data-theme="dark"] .ce-inline-tool,
+[data-theme="dark"] .ce-conversion-tool__icon {
+    color: var(--text-1) !important;
+    background-color: transparent !important;
+}
+[data-theme="dark"] .cdx-input,
+[data-theme="dark"] .ce-inline-toolbar__dropdown {
+    background-color: var(--bg) !important;
+    border-color: var(--border) !important;
+    color: var(--text-1) !important;
+}
+[data-theme="dark"] .ce-popover-item--active {
+    background-color: var(--blue) !important;
+    color: #fff !important;
+}
+[data-theme="dark"] .ce-popover-item--active .ce-popover-item__icon,
+[data-theme="dark"] .ce-popover-item--active .ce-popover-item__title {
+    color: #fff !important;
+}
+
+/* Fix for Popover (Slash Command Menu) in Dark Mode - Broad Fix */
+[data-theme="dark"] .ce-popover,
+[data-theme="dark"] .ce-popover * {
+    background-color: var(--surface) !important;
+    color: var(--text-1) !important;
+}
+
+[data-theme="dark"] .ce-popover {
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+}
+
+[data-theme="dark"] .ce-popover-item:hover,
+[data-theme="dark"] .ce-popover-item--active,
+[data-theme="dark"] .ce-popover-item:hover * {
+    background-color: var(--blue) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .ce-popover__search-field,
+[data-theme="dark"] .ce-popover__search-field * {
+    background-color: var(--bg) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+[data-theme="dark"] .ce-popover-item__icon {
+    background-color: transparent !important;
+}
+
+/* Code & Toggle Block Styles */
+[data-theme="dark"] .ce-code__textarea {
+    background-color: #1e1e1e !important;
+    color: #d4d4d4 !important;
+    border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .ce-toggle__title {
+    color: var(--text-1) !important;
+}
+
+[data-theme="dark"] .ce-toggle__content {
+    color: var(--text-2) !important;
+}
+
+[data-theme="dark"] .ce-toggle__button {
+    color: var(--text-1) !important;
+}
+
+/* EditorJS Table Support */
+.tc-table {
+    width: 100%;
+    overflow-x: auto;
+    display: block;
+}
+
+.tc-table td {
+    color: var(--text-1);
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .tc-table td {
+    color: var(--text-1) !important;
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+/* Fix table tool icons and selectors in dark mode */
+[data-theme="dark"] .tc-toolbox,
+[data-theme="dark"] .tc-toolbox__toggler,
+[data-theme="dark"] .tc-toolbox__toggler--active {
+    color: var(--text-1) !important;
+    background: var(--surface) !important;
+}
+
+[data-theme="dark"] .tc-toolbox__settings {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+@media (max-width: 768px) {
+    .wiki-layout {
+        flex-direction: column;
+        height: auto;
+    }
+    .wiki-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding-right: 0;
+        padding-bottom: 20px;
+        max-height: 250px;
+    }
+    .wiki-editor-container {
+        padding: 20px 15px;
+        min-height: 60vh;
+    }
+}
+
+#wiki-search-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+}
+
+.wiki-layout {
+    display: flex;
+    height: calc(100vh - 180px);
+    gap: 20px;
+    transition: all 0.3s ease;
+}
+
+.wiki-sidebar {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    padding-right: 20px;
+    transition: all 0.3s ease;
+}
+
+.wiki-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wiki-page-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    padding-left: calc(12px + (var(--wiki-depth, 0) * 18px));
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-2);
+}
+
+.wiki-page-item:hover {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+.wiki-page-item.active {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--blue);
+    font-weight: 600;
+}
+
+.wiki-page-item-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wiki-list-delete-btn {
+    flex: 0 0 auto;
+    margin-left: 6px;
+    padding: 4px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    opacity: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.wiki-page-item:hover .wiki-list-delete-btn,
+.wiki-list-delete-btn:focus-visible {
+    opacity: 0.7;
+}
+
+.wiki-list-delete-btn:hover {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+@media (hover: none) {
+    .wiki-list-delete-btn {
+        opacity: 0.5;
+    }
+}
+
+.wiki-widget-toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.wiki-widget-toc-item {
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    color: var(--text-2);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wiki-widget-toc-item:hover {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+.wiki-widget-toc-level-1 { padding-left: 8px;  font-weight: 600; }
+.wiki-widget-toc-level-2 { padding-left: 20px; }
+.wiki-widget-toc-level-3 { padding-left: 32px; font-size: 12px; }
+.wiki-widget-toc-level-4 { padding-left: 44px; font-size: 12px; opacity: 0.9; }
+.wiki-widget-toc-level-5 { padding-left: 56px; font-size: 12px; opacity: 0.8; }
+.wiki-widget-toc-level-6 { padding-left: 68px; font-size: 12px; opacity: 0.7; }
+
+.wiki-editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 40px;
+    overflow-y: auto;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    min-height: 0; /* Important for flex children scrolling */
+}
+
+/* Wiki Empty State Modern Styles */
+.wiki-empty-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    text-align: center;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.wiki-empty-content {
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.wiki-empty-illustration {
+    width: 140px;
+    height: 140px;
+    background: var(--surface);
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--blue);
+    margin-bottom: 12px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.04);
+    border: 1px solid var(--border);
+    transition: transform 0.3s ease;
+}
+
+.wiki-empty-container:hover .wiki-empty-illustration {
+    transform: translateY(-8px) rotate(3deg);
+}
+
+.wiki-empty-content h2 {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-1);
+    letter-spacing: -0.5px;
+}
+
+.wiki-empty-content p {
+    font-size: 15px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.task-empty-container {
+    min-height: 420px;
+    margin-top: 8px;
+}
+
+.collection-empty-container {
+    min-height: 360px;
+    margin-top: 8px;
+}
+
+.projects-grid > .collection-empty-container,
+.bookmarks-grid > .collection-empty-container {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.task-empty-content {
+    max-width: 540px;
+}
+
+.collection-empty-content {
+    max-width: 540px;
+}
+
+.task-empty-illustration {
+    color: var(--green);
+}
+
+.task-empty-illustration svg {
+    width: 80px;
+    height: 80px;
+    stroke-width: 1.35;
+}
+
+.collection-empty-illustration {
+    width: 136px;
+    height: 136px;
+}
+
+.project-empty-illustration {
+    color: var(--blue);
+}
+
+.bookmark-empty-illustration {
+    color: #d97706;
+}
+
+.archive-empty-illustration {
+    color: var(--purple);
+}
+
+.task-empty-container:hover .task-empty-illustration {
+    transform: translateY(-8px) rotate(-3deg);
+}
+
+.collection-empty-container:hover .collection-empty-illustration {
+    transform: translateY(-8px) rotate(3deg);
+}
+
+.archive-empty-container:hover .archive-empty-illustration {
+    transform: translateY(-8px) rotate(-3deg);
+}
+
+[data-theme="dark"] .wiki-empty-illustration {
+    background: var(--surface);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+}
+

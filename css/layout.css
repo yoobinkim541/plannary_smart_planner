@@ -1,0 +1,361 @@
+/* === APP SHELL (3-column grid) === */
+#app-shell {
+    display: grid;
+    grid-template-columns: 64px 260px 1fr;
+    height: 100vh;
+    height: 100svh;
+    overflow: hidden;
+    /* grid-template-columns transition removed — animating grid layout triggers full layout reflow every frame; sidebar uses its own opacity/transform transition */
+}
+
+#app-shell.sidebar-collapsed {
+    grid-template-columns: 64px 0 1fr;
+}
+
+/* === ICON RAIL === */
+#icon-rail {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    gap: 8px;
+}
+
+.rail-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text-3);
+    cursor: pointer;
+    transition: all .15s ease;
+}
+
+.rail-icon:hover {
+    color: var(--text-1);
+    background: var(--bg);
+}
+
+.rail-icon.active {
+    color: var(--blue);
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.2);
+}
+
+.rail-icon-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    flex: 1;
+}
+
+.rail-icon-fab {
+    margin-top: auto;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border-color: var(--btn-bg);
+}
+
+.rail-icon-fab:hover {
+    background: var(--btn-hover);
+    color: var(--btn-text);
+}
+
+/* === SIDEBAR === */
+#sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-width: 0;
+    transition: opacity 0.18s ease, transform 0.22s ease, border-color 0.18s ease;
+}
+
+#app-shell.sidebar-collapsed #sidebar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-12px);
+    border-right-color: transparent;
+}
+
+.sidebar-toggle-restore-icon {
+    display: none;
+}
+
+#app-shell.sidebar-collapsed .sidebar-toggle-menu-icon {
+    display: none;
+}
+
+#app-shell.sidebar-collapsed .sidebar-toggle-restore-icon {
+    display: block;
+}
+
+.sidebar-top { flex: 1; }
+
+.sidebar-header-icon-box {
+    width: 38px;
+    height: 38px;
+    background: var(--bg);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--blue);
+    flex-shrink: 0;
+}
+
+.sidebar-project {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 28px 24px 20px;
+}
+
+.project-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+.project-id {
+    font-size: 12px;
+    color: var(--text-3);
+    font-weight: 500;
+}
+
+/* Sidebar Nav */
+.sidebar-nav {
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-note-tree {
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sidebar-note-tree[hidden] { display: none; }
+
+.sidebar-note-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    border-radius: var(--radius-sm);
+}
+
+.sidebar-note-back:hover {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+.sidebar-note-tree-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow-y: auto;
+}
+
+.sidebar-note-tree-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    padding-left: calc(10px + var(--note-depth, 0) * 14px);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+}
+
+.sidebar-note-tree-item svg {
+    flex-shrink: 0;
+    opacity: 0.65;
+}
+
+.sidebar-note-tree-item:hover {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+.sidebar-note-tree-item.active {
+    background: var(--bg);
+    color: var(--text-1);
+    font-weight: 600;
+}
+
+.sidebar-note-tree-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-note-tree-empty {
+    padding: 12px 10px;
+    color: var(--text-3);
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-note-tree-empty button {
+    padding: 6px 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.sidebar-note-tree-empty button:hover {
+    color: var(--text-1);
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+    transition: all .15s ease;
+}
+
+.nav-link svg {
+    flex-shrink: 0;
+    color: var(--text-3);
+}
+
+.nav-link:hover {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+.nav-link.active {
+    background: var(--bg);
+    color: var(--text-1);
+    font-weight: 600;
+}
+
+.nav-link.active svg {
+    color: var(--text-1);
+}
+
+.task-subnav {
+    display: none;
+    flex-direction: column;
+    gap: 3px;
+    margin: -2px 0 4px 34px;
+    padding: 4px 0 4px 12px;
+    border-left: 1px solid var(--border);
+}
+
+.sidebar-nav.task-subnav-open .task-subnav {
+    display: flex;
+}
+
+.task-subnav-link {
+    display: flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: var(--text-2);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.task-subnav-link:hover,
+.task-subnav-link.active {
+    background: var(--bg);
+    color: var(--text-1);
+}
+
+/* Sidebar Bottom (Profile) */
+.sidebar-bottom {
+    border-top: 1px solid var(--border);
+    padding: 16px 16px;
+}
+
+.profile-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-row img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.profile-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-email {
+    font-size: 11px;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-menu-btn {
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.profile-menu-btn:hover { color: var(--red); }
+

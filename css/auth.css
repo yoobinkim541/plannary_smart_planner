@@ -1,0 +1,196 @@
+/* ================================================
+   AUTH PAGES
+   ================================================ */
+.auth-layout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+    padding: 24px;
+}
+
+.auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 20px 25px -5px rgba(0,0,0,0.04);
+}
+
+.auth-card h2 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 6px;
+}
+
+.auth-subtitle {
+    font-size: 14px;
+    color: var(--text-3);
+    margin-bottom: 32px;
+}
+
+.auth-form-group {
+    margin-bottom: 18px;
+}
+
+.auth-form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-2);
+    margin-bottom: 6px;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    color: var(--text-1);
+    background: var(--bg);
+    outline: none;
+    transition: border-color .2s;
+}
+
+.auth-input:focus { border-color: var(--black); }
+.auth-input::placeholder { color: var(--text-3); }
+
+.confirm-btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+}
+
+.confirm-btn:hover { background: var(--btn-hover); }
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0;
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.google-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-1);
+    cursor: pointer;
+    transition: all .15s;
+}
+
+.composer-details input[type="date"],
+.composer-details select,
+.composer-details input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-2);
+    outline: none;
+    cursor: pointer;
+    transition: border-color .15s ease;
+}
+
+.composer-details input:focus,
+.composer-details select:focus {
+    border-color: var(--blue);
+}
+
+.google-btn:hover {
+    background: var(--bg);
+    border-color: var(--text-3);
+}
+
+.google-btn img {
+    width: 18px;
+    height: 18px;
+}
+
+.auth-links {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--text-3);
+}
+
+.auth-warning {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--text-2);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.auth-warning a {
+    color: var(--blue);
+    font-weight: 700;
+}
+
+.auth-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    padding: 4px 8px;
+    border: 1px solid rgba(37, 99, 235, 0.35);
+    border-radius: 6px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--blue);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.auth-copy-btn:hover {
+    background: rgba(37, 99, 235, 0.14);
+}
+
+.auth-links a {
+    color: var(--black);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-links a:hover { text-decoration: underline; }
+
