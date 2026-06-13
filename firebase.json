@@ -20,7 +20,8 @@
     "cleanUrls": true,
     "trailingSlash": false,
     "redirects": [
-      { "source": "/", "destination": "/redesign/", "type": 302 }
+      { "source": "/", "destination": "/redesign/", "type": 302 },
+      { "source": "/index.html", "destination": "/redesign/", "type": 302 }
     ]
   },
   "firestore": {
