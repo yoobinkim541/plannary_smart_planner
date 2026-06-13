@@ -2310,8 +2310,13 @@ function BookmarksPage() {
   const parseTags = (value) => [...new Set(String(value || "").split(",").map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean))];
 
   const submitBookmark = () => {
-    const url = urlDraft.trim();
+    let url = urlDraft.trim();
     if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+    try { new URL(url); } catch (_) {
+      window.Planary?.toast?.({ type: "err", title: "유효한 URL이 아니에요", sub: "예: https://example.com" });
+      return;
+    }
     const tags = parseTags(tagDraft);
     window.dispatchEvent(new CustomEvent("planary:create-bookmark", {
       detail: { url, title: "", tags },
@@ -5257,7 +5262,7 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
   useEffectO(() => {
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) onSave(draft);
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && draft.title?.trim()) onSave(draft);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -5450,7 +5455,7 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
           </button>
           <div style={{ flex: 1 }} />
           <button className="btn btn-sm" onClick={onClose}>취소</button>
-          <button className="btn btn-primary btn-sm" onClick={() => onSave(draft)}>
+          <button className="btn btn-primary btn-sm" disabled={!draft.title?.trim()} onClick={() => onSave(draft)}>
             저장 <span className="kbd" style={{ marginLeft: 4 }}>⌘↵</span>
           </button>
         </div>
