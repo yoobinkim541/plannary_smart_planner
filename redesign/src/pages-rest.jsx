@@ -2428,7 +2428,17 @@ function BookmarksPage() {
               className="icon-btn"
               style={{ alignSelf: "start", color: "var(--err)" }}
               title="삭제"
-              onClick={() => window.dispatchEvent(new CustomEvent("planary:delete-bookmark", { detail: b.id }))}
+              onClick={() => {
+                const deleted = b;
+                setBookmarks((prev) => prev.filter((x) => x.id !== deleted.id));
+                let undone = false;
+                window.Planary?.toast?.({
+                  type: "ok", title: "북마크가 삭제됐어요",
+                  actionLabel: "실행취소", action: () => { undone = true; setBookmarks((prev) => [...prev, deleted]); },
+                  onExpire: () => { if (!undone) window.dispatchEvent(new CustomEvent("planary:delete-bookmark", { detail: deleted.id })); },
+                  ttl: 4000,
+                });
+              }}
             >
               <Icon name="trash" size={13} />
             </button>
