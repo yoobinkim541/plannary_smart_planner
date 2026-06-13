@@ -5923,7 +5923,12 @@ function WikiFormatToolbar({ containerRef }) {
       if (!containerRef.current.contains(range.commonAncestorContainer)) { setPos(null); return; }
       const rect = range.getBoundingClientRect();
       if (!rect.width) { setPos(null); return; }
-      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top;
+      setPos({
+        x: Math.max(110, Math.min(window.innerWidth - 110, cx)),
+        y: cy,
+      });
       setActive({
         bold: document.queryCommandState("bold"),
         italic: document.queryCommandState("italic"),
@@ -5938,7 +5943,17 @@ function WikiFormatToolbar({ containerRef }) {
   const fmt = (cmd) => {
     if (cmd === "code") {
       const sel = window.getSelection();
-      if (sel && !sel.isCollapsed) document.execCommand("insertHTML", false, "<code>" + sel.toString() + "</code>");
+      if (sel && !sel.isCollapsed && sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        const fragment = range.extractContents();
+        const code = document.createElement("code");
+        code.appendChild(fragment);
+        range.insertNode(code);
+        sel.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.selectNodeContents(code);
+        sel.addRange(newRange);
+      }
     } else {
       document.execCommand(cmd, false, null);
     }
