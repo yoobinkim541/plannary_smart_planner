@@ -940,13 +940,13 @@
   window.addEventListener("planary:delete-task", (e) => {
     const id = e.detail;
     if (!id) return;
-    api.deleteTask(id).catch(err => console.error("[Planary] delete-task failed:", err));
+    api.deleteTask(id).catch(err => { console.error("[Planary] delete-task failed:", err); window.Planary?.toast?.({ type: "err", title: "작업 삭제에 실패했어요", sub: "네트워크 연결을 확인해 주세요" }); });
   });
 
   window.addEventListener("planary:postpone-task", (e) => {
     const { id, time } = e.detail || {};
     if (!id || !time) return;
-    api.postponeTask(id, time).catch(err => console.error("[Planary] postpone failed:", err));
+    api.postponeTask(id, time).catch(err => { console.error("[Planary] postpone failed:", err); window.Planary?.toast?.({ type: "err", title: "날짜 변경에 실패했어요" }); });
   });
 
   window.addEventListener("planary:archive-task", (e) => {
@@ -978,7 +978,7 @@
   window.addEventListener("planary:update-note", (e) => {
     const { id, patch } = e.detail || {};
     if (!id || !patch) return;
-    api.updateNote(id, patch).catch(err => console.error("[Planary] update-note failed:", err));
+    api.updateNote(id, patch).catch(err => { console.error("[Planary] update-note failed:", err); window.Planary?.toast?.({ type: "err", title: "포스트잇 저장에 실패했어요" }); });
   });
   window.addEventListener("planary:delete-note", (e) => {
     const id = e.detail;
@@ -1043,7 +1043,7 @@
   window.addEventListener("planary:update-wiki-page-meta", (e) => {
     const { id, patch } = e.detail || {};
     if (!id) return;
-    api.updateWikiPageMeta(id, patch || {}).catch(err => console.error("[Planary] update-wiki-page-meta failed:", err));
+    api.updateWikiPageMeta(id, patch || {}).catch(err => { console.error("[Planary] update-wiki-page-meta failed:", err); window.Planary?.toast?.({ type: "err", title: "위키 페이지 저장에 실패했어요" }); });
   });
   window.addEventListener("planary:delete-wiki-page", (e) => {
     const id = e.detail;
