@@ -469,6 +469,7 @@ function HomeBalanced({ greet, user, today, important, projects, tasks, toggleTa
 /* Quick capture — pinned inline */
 function QuickCapture() {
   const [text, setText] = useStateHT("");
+  const inputRef = React.useRef(null);
   const [type, setType] = useStateHT("task"); // task | note
   const [openPop, setOpenPop] = useStateHT(null); // "date" | "reminder" | "priority" | "project" | null
   const [dueDate, setDueDate] = useStateHT(null); // { id, label, iso }
@@ -569,6 +570,7 @@ function QuickCapture() {
       });
     }
     setText(""); setDueDate(null); setReminders([]); setProject(null);
+    window.setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   const projects = window.Planary.PROJECTS;
@@ -578,6 +580,7 @@ function QuickCapture() {
       <div className="composer-row">
         <Icon name={type === "task" ? "plus" : "edit"} size={16} style={{ color: "var(--accent)" }} />
         <input
+          ref={inputRef}
           className="composer-input"
           value={text}
           onChange={(e) => setText(e.target.value)}

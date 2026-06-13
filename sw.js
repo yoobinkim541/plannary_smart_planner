@@ -1,7 +1,9 @@
-const CACHE_NAME = 'todo-pwa-cache-v160';
+const CACHE_NAME = 'todo-pwa-cache-v161';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/redesign/',
+  '/redesign/index.html',
   '/style.css',
   '/app.js',
   '/wiki.js',
@@ -29,6 +31,8 @@ const urlsToCache = [
 const APP_SHELL_ASSETS = new Set([
   '/',
   '/index.html',
+  '/redesign/',
+  '/redesign/index.html',
   '/landing.html',
   '/login.html',
   '/signup.html',
@@ -89,7 +93,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(networkFirst(event.request, '/'));
+    event.respondWith(networkFirst(event.request, '/redesign/'));
     return;
   }
 
