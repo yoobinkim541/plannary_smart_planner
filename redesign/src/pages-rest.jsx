@@ -6629,7 +6629,58 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   );
 }
 
+function FocusMode({ task, onClose, onDone }) {
+  const [elapsed, setElapsed] = React.useState(0);
+  React.useEffect(() => {
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const fmt = (s) => {
+    const h = Math.floor(s / 3600);
+    const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+    const sec = String(s % 60).padStart(2, "0");
+    return h ? `${h}:${m}:${sec}` : `${m}:${sec}`;
+  };
+  const priority = task.priority || "med";
+  const priorityColor = priority === "high" ? "var(--err)" : priority === "low" ? "var(--info)" : "var(--warn)";
+  return (
+    <div
+      className="focus-mode-overlay"
+      onClick={onClose}
+    >
+      <div className="focus-mode-card" onClick={(e) => e.stopPropagation()}>
+        <div className="focus-mode-label">
+          <Icon name="zap" size={13} style={{ color: "var(--accent)" }} />
+          <span>집중 모드</span>
+        </div>
+        <div className="focus-mode-timer">{fmt(elapsed)}</div>
+        <div className="focus-mode-title">{task.title || "(제목 없음)"}</div>
+        {task.time && <div className="focus-mode-due"><Icon name="clock" size={12} />{task.time}</div>}
+        {task.priority && task.priority !== "med" && (
+          <div className="focus-mode-priority" style={{ color: priorityColor }}>
+            <Icon name="flag" size={12} />
+            {priority === "high" ? "높은 우선순위" : "낮은 우선순위"}
+          </div>
+        )}
+        <div className="focus-mode-actions">
+          <button
+            className="btn btn-primary"
+            onClick={() => { onDone(task); onClose(); }}
+          >
+            <Icon name="check" size={15} />완료로 표시
+          </button>
+          <button className="btn btn-ghost" onClick={onClose}>나가기 (Esc)</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 window.Planary = Object.assign(window.Planary || {}, {
   ProjectsPage, NotesPage, WikiPage, BookmarksPage, ArchivePage, ProfilePage,
-  TaskEditDialog, ShareDialog
+  TaskEditDialog, ShareDialog, FocusMode
 });
