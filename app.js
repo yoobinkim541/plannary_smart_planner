@@ -1225,6 +1225,13 @@ function navigateAppPage(targetId, filter = null) {
     }
 }
 
+// Exposed on window so wiki.js (a separate ES module) can reach these by name.
+// wiki.js reads both behind `typeof X === 'function'` guards; now that app.js is
+// an ES module its top-level declarations are no longer implicit globals, so this
+// bridge preserves the existing cross-module behavior.
+window.navigateAppPage = navigateAppPage;
+window.localDateKey = localDateKey;
+
 function updateSidebarHeader(pageId) {
     const iconBox = getEl('sidebar-header-icon'), titleEl = getEl('sidebar-header-title'), subtitleEl = getEl('sidebar-header-subtitle');
     if (!iconBox || !titleEl) return;
