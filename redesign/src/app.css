@@ -1800,6 +1800,8 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
 .wiki-block ul { padding-left: 22px; margin: 6px 0; }
 .wiki-block li { margin: 2px 0; }
 .wiki-block code { font-family: var(--font-mono); font-size: 13px; padding: 1px 5px; background: var(--surface-2); border-radius: 4px; color: var(--accent); }
+.inline-math { cursor: text; padding: 0 1px; }
+.inline-math .katex { font-size: 1.04em; }
 .wiki-block blockquote {
   position: relative;
   border-left: 3px solid var(--accent);
