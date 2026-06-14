@@ -2682,9 +2682,11 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
 .wiki-block-row.drop-before::before { top: 0; }
 .wiki-block-row.drop-after::after { bottom: 0; }
 @media (max-width: 640px) {
-  .wiki-block-row { margin: 0 -14px; padding: 2px 14px; }
+  /* Handles are always visible on mobile (no hover); widen the left gutter so the
+     drag/add controls sit beside the text instead of overlapping it. */
+  .wiki-block-row { margin: 0 -14px; padding: 2px 14px 2px 32px; }
   .wiki-block-row.drop-before::before,
-  .wiki-block-row.drop-after::after { left: 14px; right: 14px; }
+  .wiki-block-row.drop-after::after { left: 32px; right: 14px; }
 }
 .wiki-block-handles {
   position: absolute;
