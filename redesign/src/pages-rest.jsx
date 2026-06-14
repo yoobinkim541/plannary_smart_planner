@@ -170,7 +170,7 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 0 }}>
+          <div className="project-detail-grid" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 0 }}>
             <section style={{ padding: 22, borderRight: "1px solid var(--border-soft)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>작업 ({projTasks.length})</h3>

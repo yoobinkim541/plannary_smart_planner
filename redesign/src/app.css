@@ -2221,6 +2221,7 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
   .kanban { grid-template-columns: repeat(2, 1fr); }
   /* Project detail grid stacks */
   .project-detail-grid { grid-template-columns: 1fr !important; }
+  .project-detail-grid > section:first-child { border-right: none !important; border-bottom: 1px solid var(--border-soft); }
   /* Bookmark grid: 2 columns */
   .bookmarks-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -2317,6 +2318,7 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
 
   /* Project detail single column on mobile */
   .project-detail-grid { grid-template-columns: 1fr !important; }
+  .project-detail-grid > section:first-child { border-right: none !important; border-bottom: 1px solid var(--border-soft); }
 }
 
 /* ---------- SMALL TABLET / LARGE PHONE (641-760px gap) ---------- */
