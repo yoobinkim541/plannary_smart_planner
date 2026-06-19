@@ -1163,24 +1163,27 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
     setOpenPop(null);
   };
 
+  const todayISO = _toLocalISO(new Date());
   const filtered = useMemoHT(() => {
     return tasks.filter(t => {
       if (taskFilter === "all") return !t.done;
       if (taskFilter === "today") return t.time && t.time.startsWith("오늘");
+      if (taskFilter === "overdue") return !t.done && t.dueDate && t.dueDate < todayISO;
       if (taskFilter === "important") return t.priority === "high" && !t.done;
       if (taskFilter === "reminders") return t.reminder;
       if (taskFilter === "completed") return t.done;
       return true;
     }).filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()));
-  }, [tasks, taskFilter, search]);
+  }, [tasks, taskFilter, search, todayISO]);
 
   const counts = useMemoHT(() => ({
     all: tasks.filter(t => !t.done).length,
     today: tasks.filter(t => t.time && t.time.startsWith("오늘")).length,
+    overdue: tasks.filter(t => !t.done && t.dueDate && t.dueDate < todayISO).length,
     important: tasks.filter(t => t.priority === "high" && !t.done).length,
     reminders: tasks.filter(t => t.reminder).length,
     completed: tasks.filter(t => t.done).length,
-  }), [tasks]);
+  }), [tasks, todayISO]);
 
   const toggleTask = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? new Date().toISOString() : null } : t));
   const addTask = () => {
@@ -1217,6 +1220,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
   const filters = [
     { id: "all", label: "전체", icon: "list", count: counts.all },
     { id: "today", label: "오늘", icon: "zap", count: counts.today },
+    { id: "overdue", label: "연체", icon: "clock", count: counts.overdue },
     { id: "important", label: "중요", icon: "flag", count: counts.important },
     { id: "reminders", label: "리마인더", icon: "bell", count: counts.reminders },
     { id: "completed", label: "완료됨", icon: "check", count: counts.completed },
