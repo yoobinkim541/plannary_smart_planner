@@ -1072,7 +1072,13 @@
     }
   });
   window.addEventListener("planary:sign-out", () => {
-    api.signOut().catch(err => console.error("[Planary] sign-out failed:", err));
+    api.signOut()
+      .then(() => {
+        try {
+          ["planary.onboarding.done", "planary.note-positions", "planary.sidebar.favorites"].forEach(k => localStorage.removeItem(k));
+        } catch (_) {}
+      })
+      .catch(err => console.error("[Planary] sign-out failed:", err));
   });
   window.addEventListener("planary:delete-account", async (e) => {
     const { onResult } = e.detail || {};
