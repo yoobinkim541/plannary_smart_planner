@@ -1170,7 +1170,12 @@ function WikiPage() {
   const [moreMenuOpen, setMoreMenuOpen] = useStateO(false);
   const [historyOpen, setHistoryOpen] = useStateO(false);
   const [infoOpen, setInfoOpen] = useStateO(false);
-  const [favorites, setFavorites] = useStateO(() => new Set());
+  const [favorites, setFavorites] = useStateO(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("planary.sidebar.favorites") || "[]");
+      return new Set(stored.filter(f => f.wikiId).map(f => f.wikiId));
+    } catch (_) { return new Set(); }
+  });
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
   const [pageSwitching, setPageSwitching] = useStateO(false);
   const activeIdRef = useRefO(activeId);
@@ -1385,7 +1390,12 @@ function WikiPage() {
       }
     };
     window.addEventListener("planary:wiki-loaded", onLoaded);
-    return () => window.removeEventListener("planary:wiki-loaded", onLoaded);
+    const onOpenPage = (e) => { if (e.detail) selectWikiPage(e.detail); };
+    window.addEventListener("planary:open-wiki-page", onOpenPage);
+    return () => {
+      window.removeEventListener("planary:wiki-loaded", onLoaded);
+      window.removeEventListener("planary:open-wiki-page", onOpenPage);
+    };
   }, []);
 
   // Scroll doc area to top on page change
@@ -2076,6 +2086,13 @@ function WikiPage() {
                         const isFav = favorites.has(activeId);
                         if (isFav) next.delete(activeId); else next.add(activeId);
                         setFavorites(next);
+                        try {
+                          const stored = JSON.parse(localStorage.getItem("planary.sidebar.favorites") || "[]");
+                          const filtered = stored.filter(f => f.wikiId !== activeId);
+                          if (!isFav) filtered.push({ id: `wiki_${activeId}`, name: active.title, target: "wiki", wikiId: activeId });
+                          localStorage.setItem("planary.sidebar.favorites", JSON.stringify(filtered));
+                          window.dispatchEvent(new Event("planary:favorites-changed"));
+                        } catch (_) {}
                         window.Planary.toast?.({
                           type: "ok",
                           title: isFav ? "즐겨찾기에서 제거됨" : "즐겨찾기에 추가됨",

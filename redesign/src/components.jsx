@@ -83,6 +83,16 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
     window.addEventListener("planary:auth-changed", syncUser);
     return () => window.removeEventListener("planary:auth-changed", syncUser);
   }, []);
+  useEffect(() => {
+    const onFavChanged = () => {
+      try {
+        const next = JSON.parse(localStorage.getItem("planary.sidebar.favorites") || "null");
+        if (next !== null) setFavorites(next);
+      } catch (_) {}
+    };
+    window.addEventListener("planary:favorites-changed", onFavChanged);
+    return () => window.removeEventListener("planary:favorites-changed", onFavChanged);
+  }, []);
 
   const counts = useMemo(() => ({
     all: tasks.filter(t => !t.done).length,
@@ -250,14 +260,19 @@ function Sidebar({ page, setPage, taskFilter, setTaskFilter, tasks }) {
           <div
             key={fav.id}
             className="proj-row"
-            onClick={() => setPage(fav.target || "wiki")}
+            onClick={() => {
+              setPage(fav.target || "wiki");
+              if (fav.wikiId) window.dispatchEvent(new CustomEvent("planary:open-wiki-page", { detail: fav.wikiId }));
+            }}
             title={fav.name}
           >
             <button
               className="fav-star"
               onClick={(e) => {
                 e.stopPropagation();
-                setFavorites(prev => prev.filter(x => x.id !== fav.id));
+                const next = favorites.filter(x => x.id !== fav.id);
+                setFavorites(next);
+                try { localStorage.setItem("planary.sidebar.favorites", JSON.stringify(next)); } catch (_) {}
                 window.Planary.toast?.({ type: "ok", title: "즐겨찾기에서 제거됨", sub: fav.name });
               }}
               title="즐겨찾기에서 제거"
