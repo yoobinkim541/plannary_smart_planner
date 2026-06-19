@@ -2577,7 +2577,16 @@ function ArchivePage({ tasks }) {
   const filtered = completed.filter((t) => archiveSearch === "" || t.title.toLowerCase().includes(archiveSearch.toLowerCase()));
 
   const handleExport = () => {
-    window.Planary.toast({ type: "ok", title: "보관함 내보내기 시작", sub: `${filtered.length}개 항목 · CSV로 다운로드 중…` });
+    if (!filtered.length) { window.Planary.toast({ type: "warn", title: "내보낼 항목이 없어요" }); return; }
+    const escape = (v) => `"${String(v || "").replace(/"/g, '""')}"`;
+    const header = ["제목", "완료일", "우선순위", "프로젝트", "메모"].map(escape).join(",");
+    const rows = filtered.map(t => [t.title, t.completedAt ? t.completedAt.slice(0, 10) : "", t.priority || "", t.project || "", t.memo || ""].map(escape).join(","));
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "planary-archive.csv"; a.click();
+    URL.revokeObjectURL(url);
+    window.Planary.toast({ type: "ok", title: "CSV 다운로드 완료", sub: `${filtered.length}개 항목` });
   };
 
   return (
@@ -4165,19 +4174,42 @@ function ExportDialog({ onClose, page }) {
   ];
 
   const handleExport = () => {
-    const f = formats.find(x => x.id === selected);
-    window.Planary.toast?.({
-      type: "ok",
-      title: `${f.label}(으)로 내보내는 중…`,
-      sub: `${page.title} · ${f.size}`,
-    });
-    setTimeout(() => {
-      window.Planary.toast?.({
-        type: "ok",
-        title: "다운로드 완료",
-        sub: `${page.title}.${selected === "docx" ? "docx" : selected}`,
+    if (selected === "md") {
+      const stripHtml = (h) => (h || "").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      const blocks = window.Planary.WIKI_PAGES?.[page.id]?.blocks || [];
+      const lines = [`# ${page.title}`, ""];
+      blocks.forEach(b => {
+        if (b.type === "h1") lines.push(`# ${stripHtml(b.content)}`, "");
+        else if (b.type === "h2") lines.push(`## ${stripHtml(b.content)}`, "");
+        else if (b.type === "h3") lines.push(`### ${stripHtml(b.content)}`, "");
+        else if (b.type === "p") lines.push(stripHtml(b.content), "");
+        else if (b.type === "quote") lines.push(`> ${stripHtml(b.content)}`, "");
+        else if (b.type === "code") lines.push("```" + (b.lang || ""), stripHtml(b.content), "```", "");
+        else if (b.type === "math") lines.push("$$", b.tex || "", "$$", "");
+        else if (b.type === "divider") lines.push("---", "");
+        else if (b.type === "ul") (b.items || []).forEach(it => lines.push(`- ${it}`)), lines.push("");
+        else if (b.type === "ol") (b.items || []).forEach((it, i) => lines.push(`${i + 1}. ${it}`)), lines.push("");
+        else if (b.type === "todo") (b.items || []).forEach(it => lines.push(`- [${it.checked ? "x" : " "}] ${it.text}`)), lines.push("");
+        else if (b.type === "image") lines.push(`![${b.name || ""}](${b.url || ""})`, "");
+        else if (b.type === "link") lines.push(`[${b.title || b.url || ""}](${b.url || ""})`, "");
+        else if (b.type === "callout") lines.push(`> **${b.title || ""}**`, `> ${stripHtml(b.body || "")}`, "");
+        else if (b.type === "table" && b.rows?.length) {
+          lines.push(`| ${b.rows[0].join(" | ")} |`);
+          lines.push(`|${b.rows[0].map(() => " --- ").join("|")}|`);
+          b.rows.slice(1).forEach(row => lines.push(`| ${row.join(" | ")} |`));
+          lines.push("");
+        }
       });
-    }, 1000);
+      const md = lines.join("\n");
+      const blob = new Blob([md], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${page.title}.md`; a.click();
+      URL.revokeObjectURL(url);
+      window.Planary.toast?.({ type: "ok", title: "Markdown 파일을 다운로드했어요", sub: `${page.title}.md` });
+    } else {
+      window.Planary.toast?.({ type: "warn", title: "곧 이용 가능해요", sub: "해당 형식은 현재 준비 중이에요" });
+    }
     onClose();
   };
 
@@ -5003,6 +5035,7 @@ function ImageBlock({ block, onUpdate }) {
   const fileRef = useRefO(null);
   const [caption, setCaption] = useStateO(block.caption || "");
   const [loading, setLoading] = useStateO(false);
+  const [imgError, setImgError] = useStateO(false);
   const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -5044,7 +5077,15 @@ function ImageBlock({ block, onUpdate }) {
   }
   return (
     <figure style={{ margin: "10px 0", padding: 0 }}>
-      <img src={block.url} alt={block.name || ""} style={{ maxWidth: "100%", borderRadius: "var(--r-md)", border: "1px solid var(--border-soft)", display: "block" }} />
+      {imgError ? (
+        <div style={{ padding: "20px 16px", border: "1px dashed var(--border)", borderRadius: "var(--r-md)", background: "color-mix(in oklab, var(--err) 6%, var(--surface))", textAlign: "center", color: "var(--err)", fontSize: 12 }}>
+          <Icon name="image" size={20} style={{ marginBottom: 6, opacity: 0.5 }} />
+          <div>이미지를 불러올 수 없어요</div>
+          <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 4 }}>{block.url?.slice(0, 60)}</div>
+        </div>
+      ) : (
+        <img src={block.url} alt={block.name || ""} onError={() => setImgError(true)} style={{ maxWidth: "100%", borderRadius: "var(--r-md)", border: "1px solid var(--border-soft)", display: "block" }} />
+      )}
       <figcaption
         contentEditable
         suppressContentEditableWarning
