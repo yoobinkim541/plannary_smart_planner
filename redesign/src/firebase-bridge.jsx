@@ -1077,6 +1077,11 @@
         try {
           ["planary.onboarding.done", "planary.note-positions", "planary.sidebar.favorites"].forEach(k => localStorage.removeItem(k));
         } catch (_) {}
+        try {
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+          }
+        } catch (_) {}
       })
       .catch(err => console.error("[Planary] sign-out failed:", err));
   });
