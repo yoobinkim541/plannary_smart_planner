@@ -963,6 +963,10 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
   word-break: keep-all;
   overflow-wrap: anywhere;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .task-memo {
   margin-top: 3px;
