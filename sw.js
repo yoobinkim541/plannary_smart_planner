@@ -1,4 +1,4 @@
-const CACHE_NAME = 'todo-pwa-cache-v161';
+const CACHE_NAME = 'todo-pwa-cache-v162';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -128,6 +128,14 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    event.waitUntil(
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+    );
+  }
+});
+
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   event.waitUntil(
