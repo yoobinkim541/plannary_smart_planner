@@ -1800,6 +1800,8 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
 .wiki-block ul { padding-left: 22px; margin: 6px 0; }
 .wiki-block li { margin: 2px 0; }
 .wiki-block code { font-family: var(--font-mono); font-size: 13px; padding: 1px 5px; background: var(--surface-2); border-radius: 4px; color: var(--accent); }
+.inline-math { cursor: text; padding: 0 1px; }
+.inline-math .katex { font-size: 1.04em; }
 .wiki-block blockquote {
   position: relative;
   border-left: 3px solid var(--accent);
@@ -2221,6 +2223,7 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
   .kanban { grid-template-columns: repeat(2, 1fr); }
   /* Project detail grid stacks */
   .project-detail-grid { grid-template-columns: 1fr !important; }
+  .project-detail-grid > section:first-child { border-right: none !important; border-bottom: 1px solid var(--border-soft); }
   /* Bookmark grid: 2 columns */
   .bookmarks-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -2317,6 +2320,7 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
 
   /* Project detail single column on mobile */
   .project-detail-grid { grid-template-columns: 1fr !important; }
+  .project-detail-grid > section:first-child { border-right: none !important; border-bottom: 1px solid var(--border-soft); }
 }
 
 /* ---------- SMALL TABLET / LARGE PHONE (641-760px gap) ---------- */
@@ -2680,9 +2684,11 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
 .wiki-block-row.drop-before::before { top: 0; }
 .wiki-block-row.drop-after::after { bottom: 0; }
 @media (max-width: 640px) {
-  .wiki-block-row { margin: 0 -14px; padding: 2px 14px; }
+  /* Handles are always visible on mobile (no hover); widen the left gutter so the
+     drag/add controls sit beside the text instead of overlapping it. */
+  .wiki-block-row { margin: 0 -14px; padding: 2px 14px 2px 32px; }
   .wiki-block-row.drop-before::before,
-  .wiki-block-row.drop-after::after { left: 14px; right: 14px; }
+  .wiki-block-row.drop-after::after { left: 32px; right: 14px; }
 }
 .wiki-block-handles {
   position: absolute;

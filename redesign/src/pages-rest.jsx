@@ -170,7 +170,7 @@ function ProjectsPage({ tasks, setTasks, setPage, setTaskFilter }) {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 0 }}>
+          <div className="project-detail-grid" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 0 }}>
             <section style={{ padding: 22, borderRight: "1px solid var(--border-soft)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>작업 ({projTasks.length})</h3>
@@ -4823,6 +4823,50 @@ function MathBlock({ block, onUpdate }) {
   );
 }
 
+// ---- Inline math ($…$) for contenteditable text blocks ----
+// The stored block content always keeps the literal $…$ source. These helpers only
+// decorate the live DOM: $…$ segments render via KaTeX while the block is not focused,
+// and are restored to source on focus so they stay editable.
+const _INLINE_MATH_RE = /(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/; // single $…$, never $$
+
+function _renderInlineMathInto(el) {
+  if (!el || typeof window.katex === "undefined") return;
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  const targets = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    if (n.parentElement && n.parentElement.closest(".inline-math, code, pre")) continue;
+    if (_INLINE_MATH_RE.test(n.nodeValue)) targets.push(n);
+  }
+  const re = new RegExp(_INLINE_MATH_RE.source, "g");
+  for (const node of targets) {
+    const text = node.nodeValue;
+    const frag = document.createDocumentFragment();
+    let last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(text))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const span = document.createElement("span");
+      span.className = "inline-math";
+      span.setAttribute("contenteditable", "false");
+      span.dataset.tex = m[1];
+      try { window.katex.render(m[1], span, { throwOnError: false, displayMode: false, strict: false }); }
+      catch (_) { span.textContent = "$" + m[1] + "$"; }
+      frag.appendChild(span);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  }
+}
+
+function _stripInlineMathFrom(el) {
+  if (!el) return;
+  el.querySelectorAll(".inline-math").forEach((span) => {
+    span.replaceWith(document.createTextNode("$" + (span.dataset.tex || "") + "$"));
+  });
+}
+
 function TableBlock({ block, onUpdate }) {
   const rows = Array.isArray(block.rows) && block.rows.length
     ? block.rows.map((row) => Array.isArray(row) && row.length ? row : [""])
@@ -6454,6 +6498,23 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   };
   const handleInput = (e) => onLiveEdit && onLiveEdit("content", e.currentTarget.innerHTML);
 
+  // Inline math: show editable $…$ source while focused; render via KaTeX on blur.
+  const handleTextFocus = () => _stripInlineMathFrom(ref.current);
+  const handleTextBlur = (e) => {
+    const el = e.currentTarget;
+    commitContent("content", el.innerHTML);
+    // Render immediately; if the commit re-render rewrites innerHTML back to the raw
+    // source, the [block.content] effect below re-applies the decoration after it.
+    _renderInlineMathInto(el);
+  };
+  // Decorate $…$ on mount / content change while the block is not being edited.
+  useEffectO(() => {
+    const el = ref.current;
+    if (!el || document.activeElement === el) return;
+    _stripInlineMathFrom(el);
+    _renderInlineMathInto(el);
+  }, [block.content, block.type]);
+
   useEffectO(() => {
     if (!autoFocus || !bodyRef.current) return;
     const editable = bodyRef.current.querySelector("[contenteditable]");
@@ -6537,11 +6598,11 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   const renderContent = () => {
     const t = block.type;
     const safeContent = _sanitizeRichHtml(block.content || '');
-    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: safeContent }} />;
-    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
-    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
-    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
-    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onBlur={(e) => commitContent("content", e.currentTarget.innerHTML)} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "h1") return <h1 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onFocus={handleTextFocus} onBlur={handleTextBlur} style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", margin: "16px 0 6px" }} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "h2") return <h2 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onFocus={handleTextFocus} onBlur={handleTextBlur} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "h3") return <h3 ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onFocus={handleTextFocus} onBlur={handleTextBlur} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "p") return <p ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onFocus={handleTextFocus} onBlur={handleTextBlur} dangerouslySetInnerHTML={{ __html: safeContent }} />;
+    if (t === "quote") return <blockquote ref={ref} data-block-id={block.id} contentEditable suppressContentEditableWarning onKeyDown={handleKeyDown} onInput={handleInput} onFocus={handleTextFocus} onBlur={handleTextBlur} dangerouslySetInnerHTML={{ __html: safeContent }} />;
     if (t === "ul" || t === "ol") {
       return <ListBlock block={block} onUpdate={onUpdate} />;
     }
