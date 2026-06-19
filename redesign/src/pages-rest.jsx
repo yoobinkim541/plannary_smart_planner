@@ -944,6 +944,7 @@ function NotesPage() {
                   ref={editAreaRef}
                   className="note-edit-area"
                   value={editing.text}
+                  maxLength={1500}
                   onChange={(e) => setEditing({ ...editing, text: e.target.value })}
                   onKeyDown={(e) => {
                     if (e.key === "Escape") cancelEdit();
@@ -1012,6 +1013,7 @@ function NotesPage() {
                   ref={editAreaRef}
                   className="note-edit-area"
                   value={editing.text}
+                  maxLength={1500}
                   onChange={(e) => setEditing({ ...editing, text: e.target.value })}
                   onKeyDown={(e) => {
                     if (e.key === "Escape") cancelEdit();
