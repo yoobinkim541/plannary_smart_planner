@@ -402,14 +402,19 @@
     },
 
     async deleteAccount() {
+      // Fetch auth headers while user is still authenticated, before any deletion
+      const headers = await this.authHeaders();
+      // Delete auth account first so that if this fails (requires re-auth),
+      // the user's Firestore data is still intact and they can retry
+      const user = auth.currentUser;
+      if (user) await user.delete();
+      // Auth account gone — now delete server-side data using the pre-fetched token
       const response = await fetch("/api/account/delete-data", {
         method: "POST",
-        headers: await this.authHeaders(),
+        headers,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      const user = auth.currentUser;
-      if (user) await user.delete();
     },
 
     async createTask(task) {
