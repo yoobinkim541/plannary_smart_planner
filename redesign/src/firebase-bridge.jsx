@@ -540,6 +540,12 @@
     },
     async deleteProject(id) {
       if (!this.uid) return;
+      const snap = await db.collection("todos").where("uid", "==", this.uid).where("projectId", "==", id).get();
+      if (!snap.empty) {
+        const batch = db.batch();
+        snap.docs.forEach(doc => batch.update(doc.ref, { projectId: null }));
+        await batch.commit();
+      }
       await db.collection("projects").doc(id).delete();
     },
 
@@ -1002,7 +1008,7 @@
   window.addEventListener("planary:delete-project", (e) => {
     const id = e.detail;
     if (!id) return;
-    api.deleteProject(id).catch(err => console.error("[Planary] delete-project failed:", err));
+    api.deleteProject(id).catch(err => { console.error("[Planary] delete-project failed:", err); window.Planary?.toast?.({ type: "err", title: "프로젝트 삭제에 실패했어요", sub: "네트워크 연결을 확인해 주세요" }); });
   });
 
   // ── Bookmarks ───────────────────────────────────────────────────────
