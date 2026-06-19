@@ -6360,6 +6360,16 @@ function WikiBlocks({ activeId, onBlocksChange }) {
   const removeBlock = (id) =>
     setBlocks(prev => prev.filter(b => b.id !== id));
 
+  const moveBlock = (id, dir) =>
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === id);
+      const to = idx + dir;
+      if (idx < 0 || to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[to]] = [next[to], next[idx]];
+      return next;
+    });
+
   const duplicateBlock = (id) =>
     setBlocks(prev => {
       const idx = prev.findIndex(b => b.id === id);
@@ -6425,6 +6435,10 @@ function WikiBlocks({ activeId, onBlocksChange }) {
           onUpdate={(patch) => updateBlock(b.id, patch)}
           onAddAfter={(type) => addBlockAfter(b.id, type)}
           onDuplicate={() => duplicateBlock(b.id)}
+          onMoveUp={() => moveBlock(b.id, -1)}
+          onMoveDown={() => moveBlock(b.id, 1)}
+          isFirst={i === 0}
+          isLast={i === blocks.length - 1}
           onRemove={() => {
             removeBlock(b.id);
             // focus previous block on remove
@@ -6492,7 +6506,7 @@ function _sanitizeRichHtml(html) {
   return tmp.innerHTML;
 }
 
-function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onRemove, onMenuToggle, onMenuClose, onLiveEdit, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
+function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, dropIndicator, isMenuOpen, onActivate, onUpdate, onAddAfter, onDuplicate, onMoveUp, onMoveDown, isFirst, isLast, onRemove, onMenuToggle, onMenuClose, onLiveEdit, onSlashCommand, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const ref = useRefO(null);
   const bodyRef = useRefO(null);
 
@@ -6744,6 +6758,13 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
             </button>
             <button className="popover-item" onClick={() => { onDuplicate(); onMenuClose(); }}>
               <Icon name="copy" size={13} />복제
+            </button>
+            <div className="popover-sep" />
+            <button className="popover-item" onClick={() => { onMoveUp(); onMenuClose(); }} disabled={isFirst} style={isFirst ? { opacity: 0.4 } : undefined}>
+              <Icon name="arrowUp" size={13} />위로 이동
+            </button>
+            <button className="popover-item" onClick={() => { onMoveDown(); onMenuClose(); }} disabled={isLast} style={isLast ? { opacity: 0.4 } : undefined}>
+              <Icon name="arrowDown" size={13} />아래로 이동
             </button>
             <div className="popover-sep" />
             <button className="popover-item is-danger" onClick={() => { onRemove(); onMenuClose(); }}>
