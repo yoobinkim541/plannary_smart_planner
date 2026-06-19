@@ -4812,6 +4812,14 @@ function MathBlock({ block, onUpdate }) {
             padding: 10, resize: "vertical", outline: "none",
           }}
         />
+      ) : typeof window.katex === "undefined" ? (
+        <div
+          style={{ minHeight: 30, cursor: "pointer", padding: "6px 10px", background: "color-mix(in oklab, var(--warn) 8%, var(--surface))", border: "1px dashed color-mix(in oklab, var(--warn) 30%, var(--border))", borderRadius: 6, color: "var(--warn)", fontSize: 12, textAlign: "left" }}
+          onClick={() => setEdit(true)}
+        >
+          <Icon name="sparkles" size={12} style={{ marginRight: 6, verticalAlign: "middle" }} />
+          KaTeX가 아직 로드되지 않았어요. 클릭해서 수식 소스를 편집하세요.
+        </div>
       ) : (
         <div ref={renderedRef} style={{ minHeight: 30, cursor: "pointer", color: "var(--text-hi)", fontSize: 18 }} onClick={() => setEdit(true)} />
       )}

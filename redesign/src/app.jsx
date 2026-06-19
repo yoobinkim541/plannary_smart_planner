@@ -487,6 +487,11 @@ function CommandPalette({ onClose, setPage }) {
     { label: "북마크 모음", icon: "bookmark", action: () => setPage("bookmarks") },
     { label: "보관함 (완료된 작업)", icon: "archive", action: () => setPage("archive") },
     { label: "마이페이지 / 설정", icon: "user", action: () => setPage("profile") },
+    { label: "포커스 모드 시작", icon: "zap", action: () => {
+      const task = (window.Planary.TASKS || []).find(t => !t.done && !t.archived);
+      if (task) window.dispatchEvent(new CustomEvent("planary:enter-focus-mode", { detail: task }));
+      else window.Planary?.toast?.({ type: "warn", title: "진행 중인 작업이 없어요", sub: "작업을 먼저 추가해보세요" });
+    }},
   ];
   const filtered = items.filter(i => i.label.toLowerCase().includes(q.toLowerCase()));
 
