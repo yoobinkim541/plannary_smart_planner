@@ -1177,6 +1177,7 @@ function WikiPage() {
     } catch (_) { return new Set(); }
   });
   const [exportMenuOpen, setExportMenuOpen] = useStateO(false);
+  const [importOpen, setImportOpen] = useStateO(false);
   const [pageSwitching, setPageSwitching] = useStateO(false);
   const activeIdRef = useRefO(activeId);
   const pageSwitchTimerRef = useRefO(null);
@@ -2131,6 +2132,15 @@ function WikiPage() {
                       <Icon name="download" size={14} />내보내기
                       <Icon name="chevronRight" size={11} style={{ marginLeft: "auto", color: "var(--text-faint)" }} />
                     </div>
+                    <div
+                      className="popover-item"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        setImportOpen(true);
+                      }}
+                    >
+                      <Icon name="inbox" size={14} />가져오기
+                    </div>
                     <div className="popover-sep" />
                     <div
                       className="popover-item is-danger"
@@ -2222,6 +2232,7 @@ function WikiPage() {
       }} />}
       {infoOpen && <PageInfoDialog onClose={() => setInfoOpen(false)} page={active} favorites={favorites} />}
       {exportMenuOpen && <ExportDialog onClose={() => setExportMenuOpen(false)} page={active} />}
+      {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
       {duplicating && (
         <DuplicatePageDialog
           node={duplicating.node}
@@ -4790,6 +4801,246 @@ function ExportDialog({ onClose, page }) {
 
 window.Planary.PageInfoDialog = PageInfoDialog;
 window.Planary.ExportDialog = ExportDialog;
+
+/* ===========================================================
+   WIKI IMPORT — vault(.zip) / pages.json / .md → new pages
+   =========================================================== */
+
+const wikiBlockId = () => "b" + Math.random().toString(36).slice(2, 10);
+
+// Minimal Markdown → block parser (decoded redesign shape). Best-effort:
+// covers the constructs the exporter emits.
+function wikiMarkdownToBlocks(md) {
+  const lines = (md || "").replace(/\r/g, "").split("\n");
+  const blocks = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^```/.test(line)) {
+      const lang = line.slice(3).trim();
+      const buf = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
+      i++;
+      blocks.push({ id: wikiBlockId(), type: "code", content: buf.join("\n"), language: lang || "plain" });
+      continue;
+    }
+    if (/^\$\$\s*$/.test(line)) {
+      const buf = []; i++;
+      while (i < lines.length && !/^\$\$\s*$/.test(lines[i])) buf.push(lines[i++]);
+      i++;
+      blocks.push({ id: wikiBlockId(), type: "math", content: buf.join("\n").trim() });
+      continue;
+    }
+    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    if (h) { blocks.push({ id: wikiBlockId(), type: "h" + h[1].length, content: h[2] }); i++; continue; }
+    const callout = line.match(/^>\s?\[!(\w+)\]\s*(.*)$/);
+    if (callout) {
+      const body = []; i++;
+      while (i < lines.length && /^>\s?/.test(lines[i])) { body.push(lines[i].replace(/^>\s?/, "")); i++; }
+      const variant = { tip: "ok", info: "info", warning: "warn", danger: "danger", note: "info" }[callout[1]] || "ok";
+      blocks.push({ id: wikiBlockId(), type: "callout", variant, title: callout[2] || "", body: body.join("\n") });
+      continue;
+    }
+    if (/^>\s?/.test(line)) {
+      const buf = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) { buf.push(lines[i].replace(/^>\s?/, "")); i++; }
+      blocks.push({ id: wikiBlockId(), type: "quote", content: buf.join("\n") });
+      continue;
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { blocks.push({ id: wikiBlockId(), type: "divider" }); i++; continue; }
+    if (/^[-*]\s+\[[ xX]\]/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*]\s+\[[ xX]\]/.test(lines[i])) {
+        const m = lines[i].match(/^[-*]\s+\[([ xX])\]\s*(.*)$/);
+        items.push({ text: m[2], checked: /x/i.test(m[1]) }); i++;
+      }
+      blocks.push({ id: wikiBlockId(), type: "todo", items });
+      continue;
+    }
+    if (/^[-*]\s+/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i]) && !/^[-*]\s+\[[ xX]\]/.test(lines[i])) { items.push(lines[i].replace(/^[-*]\s+/, "")); i++; }
+      blocks.push({ id: wikiBlockId(), type: "ul", items });
+      continue;
+    }
+    if (/^\d+\.\s+/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) { items.push(lines[i].replace(/^\d+\.\s+/, "")); i++; }
+      blocks.push({ id: wikiBlockId(), type: "ol", items });
+      continue;
+    }
+    const img = line.match(/^!\[([^\]]*)\]\(([^)]+)\)\s*$/);
+    if (img && /^https?:/i.test(img[2])) { blocks.push({ id: wikiBlockId(), type: "image", url: img[2], caption: img[1] }); i++; continue; }
+    if (/^\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+      const parseRow = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      const rows = [parseRow(line)]; i += 2;
+      while (i < lines.length && /^\|.*\|\s*$/.test(lines[i])) { rows.push(parseRow(lines[i])); i++; }
+      blocks.push({ id: wikiBlockId(), type: "table", rows });
+      continue;
+    }
+    if (line.trim() === "") { i++; continue; }
+    const buf = [];
+    while (i < lines.length && lines[i].trim() !== "" && !/^(#{1,3}\s|>|```|\$\$|[-*]\s|\d+\.\s|(?:-{3,}|\*{3,})\s*$|\|)/.test(lines[i])) buf.push(lines[i++]);
+    blocks.push({ id: wikiBlockId(), type: "p", content: buf.join("\n") });
+  }
+  return blocks;
+}
+
+function wikiParseFrontmatter(md) {
+  const fm = {};
+  let body = md || "";
+  if (/^---\s*\n/.test(body)) {
+    const end = body.indexOf("\n---", 3);
+    if (end !== -1) {
+      const block = body.slice(body.indexOf("\n") + 1, end);
+      body = body.slice(end + 4).replace(/^\s*\n/, "");
+      block.split("\n").forEach((l) => {
+        const m = l.match(/^(\w+):\s*(.*)$/);
+        if (!m) return;
+        const key = m[1]; let v = m[2].trim();
+        if (key === "tags") { try { fm.tags = JSON.parse(v); } catch (_) { fm.tags = []; } return; }
+        if (v === "null" || v === "") { fm[key] = null; return; }
+        if (v[0] === '"') { try { v = JSON.parse(v); } catch (_) {} }
+        fm[key] = v;
+      });
+    }
+  }
+  return { fm, body };
+}
+
+// One .md file → a page object.
+function wikiPageFromMarkdown(md, fallbackTitle) {
+  const { fm, body } = wikiParseFrontmatter(md);
+  let blocks = wikiMarkdownToBlocks(body);
+  let title = fm.title || fallbackTitle || "";
+  if (!fm.title && blocks[0] && blocks[0].type === "h1") { title = blocks[0].content; blocks = blocks.slice(1); }
+  else if (fm.title && blocks[0] && blocks[0].type === "h1" && blocks[0].content === fm.title) blocks = blocks.slice(1);
+  return { id: fm.id || null, title: title || "가져온 문서", parent: fm.parent || null, icon: fm.icon || "📄", tags: Array.isArray(fm.tags) ? fm.tags : [], blocks };
+}
+
+const wikiNormalizePage = (p) => ({ id: p.id || null, title: p.title || "가져온 문서", parent: p.parent || null, icon: p.icon || "📄", tags: Array.isArray(p.tags) ? p.tags : [], blocks: Array.isArray(p.blocks) ? p.blocks : [] });
+
+// Read a chosen File → array of page objects.
+async function readWikiImportFile(file) {
+  const name = (file.name || "").toLowerCase();
+  if (name.endsWith(".json")) {
+    const data = JSON.parse(await file.text());
+    return (Array.isArray(data) ? data : (data.pages || [])).map(wikiNormalizePage);
+  }
+  if (name.endsWith(".md") || name.endsWith(".markdown")) {
+    return [wikiPageFromMarkdown(await file.text(), file.name.replace(/\.(md|markdown)$/i, ""))];
+  }
+  if (name.endsWith(".zip")) {
+    if (typeof JSZip === "undefined") throw new Error("ZIP 라이브러리를 불러오지 못했어요");
+    const zip = await JSZip.loadAsync(file);
+    let jsonEntry = null;
+    zip.forEach((path, entry) => { if (!entry.dir && /(^|\/)data\/pages\.json$/.test(path)) jsonEntry = entry; });
+    if (jsonEntry) {
+      const data = JSON.parse(await jsonEntry.async("string"));
+      return (Array.isArray(data) ? data : (data.pages || [])).map(wikiNormalizePage);
+    }
+    const mdEntries = [];
+    zip.forEach((path, entry) => { if (!entry.dir && /\.md$/i.test(path) && !/(^|\/)(index|README|bundle)\.md$/i.test(path)) mdEntries.push(entry); });
+    const pages = [];
+    for (const e of mdEntries) pages.push(wikiPageFromMarkdown(await e.async("string"), (e.name.split("/").pop() || "").replace(/\.md$/i, "")));
+    return pages;
+  }
+  throw new Error("지원하지 않는 파일이에요");
+}
+
+// Create imported pages as NEW wiki pages (parents first), preserving hierarchy.
+async function importWikiPages(pages, onProgress) {
+  const api = window.Planary.api;
+  if (!api || !api.createWikiPage) throw new Error("로그인이 필요해요");
+  const genId = window.Planary.generateId || (() => "w" + Math.random().toString(36).slice(2, 12));
+  const byId = new Map(pages.filter((p) => p.id).map((p) => [p.id, p]));
+  const childrenOf = new Map();
+  pages.forEach((p) => { const k = (p.parent && byId.has(p.parent)) ? p.parent : null; if (!childrenOf.has(k)) childrenOf.set(k, []); childrenOf.get(k).push(p); });
+  const ordered = [];
+  (function walk(k) { (childrenOf.get(k) || []).forEach((p) => { ordered.push(p); if (p.id) walk(p.id); }); })(null);
+  pages.forEach((p) => { if (!ordered.includes(p)) ordered.push(p); }); // any stragglers
+
+  const idMap = {};
+  let done = 0;
+  for (const p of ordered) {
+    const newId = genId();
+    if (p.id) idMap[p.id] = newId;
+    const parentId = (p.parent && idMap[p.parent]) ? idMap[p.parent] : null;
+    await api.createWikiPage(p.title || "가져온 문서", parentId, newId);
+    await api.updateWikiPageMeta(newId, { icon: p.icon || "📄", tags: Array.isArray(p.tags) ? p.tags : [], parentId });
+    if (p.blocks && p.blocks.length) await api.saveWikiBlocks(newId, p.blocks);
+    done++;
+    onProgress && onProgress(done, ordered.length);
+  }
+  return done;
+}
+
+window.Planary.importWikiPages = importWikiPages;
+window.Planary.readWikiImportFile = readWikiImportFile;
+
+function ImportDialog({ onClose }) {
+  const [busy, setBusy] = useStateO(false);
+  const [progress, setProgress] = useStateO("");
+  const [file, setFile] = useStateO(null);
+  const inputRef = useRefO(null);
+
+  useEffectO(() => {
+    const onKey = (e) => { if (e.key === "Escape" && !busy) onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy]);
+
+  const doImport = async () => {
+    if (!file) { inputRef.current && inputRef.current.click(); return; }
+    setBusy(true);
+    try {
+      const pages = await readWikiImportFile(file);
+      if (!pages.length) { window.Planary.toast?.({ type: "warn", title: "가져올 수 있는 문서가 없어요" }); setBusy(false); return; }
+      setProgress(`0/${pages.length}`);
+      const n = await importWikiPages(pages, (d, t) => setProgress(`${d}/${t}`));
+      window.Planary.toast?.({ type: "ok", title: `${n}개 문서를 가져왔어요`, sub: file.name });
+      onClose();
+    } catch (e) {
+      window.Planary.toast?.({ type: "err", title: "가져오기에 실패했어요", sub: String((e && e.message) || e) });
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="dialog-scrim" onClick={() => !busy && onClose()}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ width: "min(420px, 92vw)" }}>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>위키로 가져오기</h3>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}>볼트(.zip)나 pages.json, .md 파일을 선택하세요</p>
+          </div>
+          <button className="icon-btn" onClick={() => !busy && onClose()}><Icon name="x" size={16} /></button>
+        </div>
+        <div style={{ padding: 14 }}>
+          <input ref={inputRef} type="file" accept=".zip,.json,.md,.markdown" style={{ display: "none" }}
+            onChange={(e) => setFile(e.target.files && e.target.files[0])} />
+          <button type="button" disabled={busy} onClick={() => inputRef.current && inputRef.current.click()}
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", padding: "22px 12px", background: "var(--surface-2)", border: "1.5px dashed var(--border)", borderRadius: "var(--r-md)", cursor: busy ? "default" : "pointer" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent)", display: "grid", placeItems: "center" }}>
+              <Icon name="inbox" size={18} />
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file ? file.name : "파일 선택"}</div>
+          </button>
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, textAlign: "center" }}>새 페이지로 추가돼요 · 기존 문서는 그대로예요</div>
+        </div>
+        <div className="dialog-foot">
+          <div style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>{busy ? (progress || "가져오는 중…") : ""}</div>
+          <button className="btn btn-sm" disabled={busy} onClick={onClose}>취소</button>
+          <button className="btn btn-sm btn-primary" disabled={busy || !file} onClick={doImport}>
+            <Icon name="inbox" size={12} />가져오기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.Planary.ImportDialog = ImportDialog;
 
 /* ===========================================================
    DUPLICATE PAGE DIALOG
