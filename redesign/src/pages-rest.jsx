@@ -4155,16 +4155,235 @@ function InfoRow({ icon, label, value, sub, last }) {
 }
 
 /* ===========================================================
-   EXPORT DIALOG — choose format
+   WIKI EXPORT — shared block→Markdown + structured vault builder
+   Produces an Obsidian / AI-agent friendly vault: folder tree that
+   mirrors the wiki hierarchy, YAML frontmatter per note, an index.md
+   map-of-content, and a machine-readable manifest.json.
+   =========================================================== */
+
+// Convert a block's inline HTML into Markdown-ish plain text, keeping
+// common inline formatting and decoding entities so agents get clean text.
+function wikiHtmlToText(h) {
+  return (h || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div)>/gi, "\n")
+    .replace(/<(strong|b)>/gi, "**").replace(/<\/(strong|b)>/gi, "**")
+    .replace(/<(em|i)>/gi, "*").replace(/<\/(em|i)>/gi, "*")
+    .replace(/<code>/gi, "`").replace(/<\/code>/gi, "`")
+    .replace(/<mark>/gi, "==").replace(/<\/mark>/gi, "==")
+    .replace(/<a [^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'")
+    .trim();
+}
+
+// Block array (redesign decoded shape) → Markdown string.
+function wikiBlocksToMarkdown(blocks) {
+  const T = wikiHtmlToText;
+  const out = [];
+  (blocks || []).forEach((b) => {
+    switch (b.type) {
+      case "h1": out.push(`# ${T(b.content)}`, ""); break;
+      case "h2": out.push(`## ${T(b.content)}`, ""); break;
+      case "h3": out.push(`### ${T(b.content)}`, ""); break;
+      case "p": { const t = T(b.content); if (t) out.push(t, ""); break; }
+      case "quote": T(b.content).split("\n").forEach((ln) => out.push(`> ${ln}`)); out.push(""); break;
+      case "code": out.push("```" + (b.language && b.language !== "plain" ? b.language : ""), b.content || "", "```", ""); break;
+      case "math": out.push("$$", (b.content || "").trim(), "$$", ""); break;
+      case "divider": out.push("---", ""); break;
+      case "ul": (b.items || []).forEach((it) => out.push(`- ${T(it)}`)); out.push(""); break;
+      case "ol": (b.items || []).forEach((it, i) => out.push(`${i + 1}. ${T(it)}`)); out.push(""); break;
+      case "todo": (b.items || []).forEach((it) => out.push(`- [${it.checked ? "x" : " "}] ${T(it.text)}`)); out.push(""); break;
+      case "image": out.push(`![${T(b.caption)}](${b.url || ""})`, ""); break;
+      case "attach": out.push(`[${T(b.name) || b.url || "첨부"}](${b.url || ""})`, ""); break;
+      case "link": { const title = T(b.title) || b.url || ""; out.push(`[${title}](${b.url || ""})`); if (b.description) out.push("", T(b.description)); out.push(""); break; }
+      case "callout": {
+        const v = { ok: "tip", info: "info", warn: "warning", warning: "warning", danger: "danger", error: "danger" }[b.variant] || "note";
+        out.push(`> [!${v}] ${T(b.title)}`.trimEnd());
+        T(b.body).split("\n").forEach((ln) => out.push(`> ${ln}`));
+        out.push("");
+        break;
+      }
+      case "table": if (b.rows && b.rows.length) {
+        const r = b.rows;
+        out.push(`| ${r[0].map((c) => T(c)).join(" | ")} |`);
+        out.push(`|${r[0].map(() => " --- ").join("|")}|`);
+        r.slice(1).forEach((row) => out.push(`| ${row.map((c) => T(c)).join(" | ")} |`));
+        out.push("");
+      } break;
+      default: { const t = T(b.content); if (t) out.push(t, ""); }
+    }
+  });
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}
+
+// Turn a title into a filesystem-safe name (keeps Unicode/Korean).
+function wikiSlugify(title) {
+  let s = (title || "").trim()
+    .replace(/[\\/:*?"<>|\[\]#^]/g, " ")
+    .replace(/[\u0000-\u001f]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/^\.+|\.+$/g, "")
+    .trim();
+  if (s.length > 80) s = s.slice(0, 80).trim();
+  return s;
+}
+
+const wikiIsoDate = (ms) => { try { return new Date(ms).toISOString().slice(0, 10); } catch (e) { return ""; } };
+
+// Build a structured vault for the whole tree (rootId=null) or a subtree.
+function buildWikiVault(rootId) {
+  const tree = window.Planary.WIKI_TREE || [];
+  const pages = window.Planary.WIKI_PAGES || {};
+  const childrenByParent = new Map();
+  tree.forEach((n) => {
+    const p = n.parent || null;
+    if (!childrenByParent.has(p)) childrenByParent.set(p, []);
+    childrenByParent.get(p).push(n);
+  });
+
+  let scopeRoots;
+  if (rootId) {
+    const root = tree.find((n) => n.id === rootId);
+    scopeRoots = root ? [root] : [];
+  } else {
+    scopeRoots = childrenByParent.get(null) || [];
+  }
+
+  const files = [];
+  const manifestPages = [];
+  const indexLines = [];
+  const linkNameById = {}; // id → actual (deduped, slug-safe) note basename for [[wikilinks]]
+  let count = 0;
+
+  function emit(nodeList, dirParts, depth) {
+    const used = new Set();
+    nodeList.forEach((node) => {
+      const base = wikiSlugify(node.title) || ("untitled-" + node.id);
+      let name = base, n = 2;
+      while (used.has(name.toLowerCase())) name = `${base} (${n++})`;
+      used.add(name.toLowerCase());
+      linkNameById[node.id] = name;
+
+      const kids = childrenByParent.get(node.id) || [];
+      const entry = pages[node.id] || {};
+
+      const fileDir = kids.length ? [...dirParts, name] : dirParts;
+      const relPath = (kids.length ? [...fileDir, name + ".md"] : [...dirParts, name + ".md"]).join("/");
+      const fullPath = "notes/" + relPath;
+
+      const tags = (entry.tags && entry.tags.length ? entry.tags : node.tags) || [];
+      const fm = ["---"];
+      fm.push(`id: ${node.id}`);
+      fm.push(`title: ${JSON.stringify(node.title || "")}`);
+      fm.push(`parent: ${node.parent ? node.parent : "null"}`);
+      // Parent is always emitted before its children, so its link name is ready.
+      if (node.parent && linkNameById[node.parent]) fm.push(`up: "[[${linkNameById[node.parent]}]]"`);
+      if (tags.length) fm.push(`tags: [${tags.map((t) => JSON.stringify(t)).join(", ")}]`);
+      if (node.icon) fm.push(`icon: ${JSON.stringify(node.icon)}`);
+      if (entry.createdAt) fm.push(`created: ${wikiIsoDate(entry.createdAt)}`);
+      if (entry.updatedAt) fm.push(`updated: ${wikiIsoDate(entry.updatedAt)}`);
+      fm.push("source: plannary", "---", "");
+
+      const body = `# ${node.title || "무제"}\n\n` + wikiBlocksToMarkdown(entry.blocks);
+      files.push({ path: fullPath, content: fm.join("\n") + body });
+
+      manifestPages.push({ id: node.id, title: node.title || "", parent: node.parent || null, path: fullPath, tags, children: kids.map((k) => k.id) });
+      indexLines.push(`${"  ".repeat(depth)}- [[${name}]]`);
+      count++;
+
+      if (kids.length) emit(kids, fileDir, depth + 1);
+    });
+  }
+  emit(scopeRoots, [], 0);
+
+  const exportedAt = new Date().toISOString();
+  const dateStr = exportedAt.slice(0, 10);
+  const manifest = { source: "plannary", exportedAt, scope: rootId ? "subtree" : "all", count, pages: manifestPages };
+  const indexMd = `# Plannary Vault\n> ${dateStr} 내보냄 · ${count}개 문서\n\n${indexLines.join("\n")}\n`;
+  const readmeMd = [
+    "# Plannary Vault",
+    "",
+    "Plannary 위키에서 내보낸 마크다운 볼트입니다. 옵시디언에서 폴더로 열거나, AI 에이전트에 그대로 입력할 수 있어요.",
+    "",
+    "- `notes/` — 위키 문서(트리 구조 유지, 각 파일에 YAML frontmatter 포함)",
+    "- `index.md` — 전체 문서 목차(Map of Content)",
+    "- `manifest.json` — 기계 순회용 메타데이터(트리·경로·태그)",
+    "",
+    `내보낸 시각: ${exportedAt}`,
+    "",
+  ].join("\n");
+
+  return { files, manifest, indexMd, readmeMd, count };
+}
+
+// Count how many pages a given scope would export (for the dialog summary).
+function countWikiScope(rootId) {
+  const tree = window.Planary.WIKI_TREE || [];
+  if (!rootId) return tree.length;
+  const childrenByParent = new Map();
+  tree.forEach((n) => {
+    const p = n.parent || null;
+    if (!childrenByParent.has(p)) childrenByParent.set(p, []);
+    childrenByParent.get(p).push(n);
+  });
+  let c = 0;
+  const stack = [rootId];
+  while (stack.length) {
+    const id = stack.pop();
+    c++;
+    (childrenByParent.get(id) || []).forEach((k) => stack.push(k.id));
+  }
+  return c;
+}
+
+function wikiDownloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadWikiVaultZip(vault, fileBase) {
+  if (typeof JSZip === "undefined") {
+    window.Planary.toast?.({ type: "err", title: "ZIP 라이브러리를 불러오지 못했어요", sub: "네트워크를 확인하고 다시 시도해 주세요" });
+    return false;
+  }
+  const zip = new JSZip();
+  const root = zip.folder(fileBase);
+  vault.files.forEach((f) => root.file(f.path, f.content));
+  root.file("index.md", vault.indexMd);
+  root.file("manifest.json", JSON.stringify(vault.manifest, null, 2));
+  root.file("README.md", vault.readmeMd);
+  const blob = await zip.generateAsync({ type: "blob" });
+  wikiDownloadBlob(blob, fileBase + ".zip");
+  return true;
+}
+
+window.Planary.wikiBlocksToMarkdown = wikiBlocksToMarkdown;
+window.Planary.buildWikiVault = buildWikiVault;
+
+/* ===========================================================
+   EXPORT DIALOG — choose scope + format
    =========================================================== */
 function ExportDialog({ onClose, page }) {
-  const [selected, setSelected] = useStateO("pdf");
+  const [scope, setScope] = useStateO("page"); // page | subtree | all
+  const [selected, setSelected] = useStateO("md");
 
   useEffectO(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const scopes = [
+    { id: "page", label: "이 페이지" },
+    { id: "subtree", label: "하위 포함" },
+    { id: "all", label: "전체 볼트" },
+  ];
+  const scopeCount = scope === "page" ? 1 : countWikiScope(scope === "subtree" ? page.id : null);
 
   const formats = [
     { id: "pdf", label: "PDF", icon: "document", desc: "인쇄에 적합한 단일 파일", size: "~ 240 KB" },
@@ -4173,45 +4392,38 @@ function ExportDialog({ onClose, page }) {
     { id: "docx", label: "Word (.docx)", icon: "edit", desc: "Microsoft Word 호환", size: "~ 56 KB" },
   ];
 
-  const handleExport = () => {
-    if (selected === "md") {
-      const stripHtml = (h) => (h || "").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
-      const blocks = window.Planary.WIKI_PAGES?.[page.id]?.blocks || [];
-      const lines = [`# ${page.title}`, ""];
-      blocks.forEach(b => {
-        if (b.type === "h1") lines.push(`# ${stripHtml(b.content)}`, "");
-        else if (b.type === "h2") lines.push(`## ${stripHtml(b.content)}`, "");
-        else if (b.type === "h3") lines.push(`### ${stripHtml(b.content)}`, "");
-        else if (b.type === "p") lines.push(stripHtml(b.content), "");
-        else if (b.type === "quote") lines.push(`> ${stripHtml(b.content)}`, "");
-        else if (b.type === "code") lines.push("```" + (b.lang || ""), stripHtml(b.content), "```", "");
-        else if (b.type === "math") lines.push("$$", b.tex || "", "$$", "");
-        else if (b.type === "divider") lines.push("---", "");
-        else if (b.type === "ul") (b.items || []).forEach(it => lines.push(`- ${it}`)), lines.push("");
-        else if (b.type === "ol") (b.items || []).forEach((it, i) => lines.push(`${i + 1}. ${it}`)), lines.push("");
-        else if (b.type === "todo") (b.items || []).forEach(it => lines.push(`- [${it.checked ? "x" : " "}] ${it.text}`)), lines.push("");
-        else if (b.type === "image") lines.push(`![${b.name || ""}](${b.url || ""})`, "");
-        else if (b.type === "link") lines.push(`[${b.title || b.url || ""}](${b.url || ""})`, "");
-        else if (b.type === "callout") lines.push(`> **${b.title || ""}**`, `> ${stripHtml(b.body || "")}`, "");
-        else if (b.type === "table" && b.rows?.length) {
-          lines.push(`| ${b.rows[0].join(" | ")} |`);
-          lines.push(`|${b.rows[0].map(() => " --- ").join("|")}|`);
-          b.rows.slice(1).forEach(row => lines.push(`| ${row.join(" | ")} |`));
-          lines.push("");
-        }
-      });
-      const md = lines.join("\n");
-      const blob = new Blob([md], { type: "text/markdown" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `${page.title}.md`; a.click();
-      URL.revokeObjectURL(url);
-      window.Planary.toast?.({ type: "ok", title: "Markdown 파일을 다운로드했어요", sub: `${page.title}.md` });
+  const handleExport = async () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    if (scope === "page") {
+      if (selected === "md") {
+        const entry = window.Planary.WIKI_PAGES?.[page.id] || {};
+        const md = `# ${page.title}\n\n` + wikiBlocksToMarkdown(entry.blocks);
+        wikiDownloadBlob(new Blob([md], { type: "text/markdown" }), `${wikiSlugify(page.title) || "untitled"}.md`);
+        window.Planary.toast?.({ type: "ok", title: "Markdown 파일을 다운로드했어요", sub: `${page.title}.md` });
+      } else {
+        window.Planary.toast?.({ type: "warn", title: "곧 이용 가능해요", sub: "해당 형식은 현재 준비 중이에요" });
+        return; // keep dialog open so the user can pick Markdown
+      }
     } else {
-      window.Planary.toast?.({ type: "warn", title: "곧 이용 가능해요", sub: "해당 형식은 현재 준비 중이에요" });
+      const rootId = scope === "subtree" ? page.id : null;
+      const vault = buildWikiVault(rootId);
+      if (!vault.count) {
+        window.Planary.toast?.({ type: "warn", title: "내보낼 문서가 없어요" });
+        onClose();
+        return;
+      }
+      const base = scope === "subtree"
+        ? `plannary-${wikiSlugify(page.title) || "wiki"}-${dateStr}`
+        : `plannary-vault-${dateStr}`;
+      window.Planary.toast?.({ type: "ok", title: "볼트를 만드는 중…", sub: `${vault.count}개 문서` });
+      const ok = await downloadWikiVaultZip(vault, base);
+      if (!ok) return;
+      window.Planary.toast?.({ type: "ok", title: "Markdown 볼트를 다운로드했어요", sub: `${base}.zip · ${vault.count}개 문서` });
     }
     onClose();
   };
+
+  const isVault = scope !== "page";
 
   return (
     <div className="dialog-scrim" onClick={onClose}>
@@ -4219,51 +4431,91 @@ function ExportDialog({ onClose, page }) {
         <div className="dialog-head">
           <div>
             <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.015em" }}>내보내기</h3>
-            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}><strong style={{ color: "var(--text-md)" }}>{page.title}</strong>을(를) 어떤 형식으로 저장할까요?</p>
+            <p style={{ fontSize: 12, color: "var(--text-lo)", marginTop: 2 }}><strong style={{ color: "var(--text-md)" }}>{page.title}</strong>을(를) 어떻게 저장할까요?</p>
           </div>
           <button className="icon-btn" onClick={onClose}><Icon name="x" size={16} /></button>
         </div>
         <div style={{ padding: 14 }}>
-          {formats.map(f => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setSelected(f.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: 12,
-                width: "100%", padding: "12px",
-                background: selected === f.id ? "var(--accent-softer)" : "transparent",
-                border: selected === f.id ? "1px solid var(--accent-ring)" : "1px solid transparent",
-                borderRadius: "var(--r-md)",
-                cursor: "pointer", textAlign: "left",
-                transition: "all var(--dur-fast)",
-                marginBottom: 4,
-              }}
-              onMouseEnter={(e) => { if (selected !== f.id) e.currentTarget.style.background = "var(--hover)"; }}
-              onMouseLeave={(e) => { if (selected !== f.id) e.currentTarget.style.background = "transparent"; }}
-            >
-              <div style={{
-                width: 36, height: 36, borderRadius: 8,
-                background: selected === f.id ? "var(--accent-soft)" : "var(--surface-2)",
-                color: selected === f.id ? "var(--accent)" : "var(--text-lo)",
-                display: "grid", placeItems: "center", flexShrink: 0,
-              }}>
-                <Icon name={f.icon} size={16} />
+          {/* Scope selector */}
+          <div style={{ display: "flex", gap: 4, padding: 3, background: "var(--surface-2)", borderRadius: "var(--r-md)", marginBottom: 12 }}>
+            {scopes.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setScope(s.id)}
+                style={{
+                  flex: 1, padding: "7px 0", fontSize: 12, fontWeight: 600,
+                  borderRadius: "var(--r-sm)", cursor: "pointer", border: "none",
+                  background: scope === s.id ? "var(--surface-1)" : "transparent",
+                  color: scope === s.id ? "var(--text-hi)" : "var(--text-lo)",
+                  boxShadow: scope === s.id ? "var(--shadow-sm)" : "none",
+                  transition: "all var(--dur-fast)",
+                }}
+              >{s.label}</button>
+            ))}
+          </div>
+
+          {isVault ? (
+            <div style={{ padding: "4px 2px 2px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "var(--accent-softer)", border: "1px solid var(--accent-ring)", borderRadius: "var(--r-md)", marginBottom: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                  <Icon name="hash" size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)" }}>Markdown 볼트 (ZIP)</div>
+                  <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 1 }}>{scopeCount}개 문서 · 옵시디언·AI 에이전트용 구조</div>
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)" }}>{f.label}</div>
-                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 1 }}>{f.desc}</div>
-              </div>
-              <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{f.size}</span>
-              {selected === f.id && <Icon name="check" size={14} stroke={3} style={{ color: "var(--accent)" }} />}
-            </button>
-          ))}
+              <ul style={{ margin: 0, padding: "0 0 0 2px", listStyle: "none", display: "grid", gap: 4 }}>
+                {["폴더 트리로 계층 구조 유지", "각 문서에 frontmatter(id·태그·상위 링크)", "index.md 목차 + manifest.json 메타"].map((line) => (
+                  <li key={line} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, color: "var(--text-md)" }}>
+                    <Icon name="check" size={12} stroke={3} style={{ color: "var(--accent)", flexShrink: 0 }} />{line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            formats.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setSelected(f.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  width: "100%", padding: "12px",
+                  background: selected === f.id ? "var(--accent-softer)" : "transparent",
+                  border: selected === f.id ? "1px solid var(--accent-ring)" : "1px solid transparent",
+                  borderRadius: "var(--r-md)",
+                  cursor: "pointer", textAlign: "left",
+                  transition: "all var(--dur-fast)",
+                  marginBottom: 4,
+                }}
+                onMouseEnter={(e) => { if (selected !== f.id) e.currentTarget.style.background = "var(--hover)"; }}
+                onMouseLeave={(e) => { if (selected !== f.id) e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  background: selected === f.id ? "var(--accent-soft)" : "var(--surface-2)",
+                  color: selected === f.id ? "var(--accent)" : "var(--text-lo)",
+                  display: "grid", placeItems: "center", flexShrink: 0,
+                }}>
+                  <Icon name={f.icon} size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-hi)" }}>{f.label}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 1 }}>{f.desc}</div>
+                </div>
+                <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{f.size}</span>
+                {selected === f.id && <Icon name="check" size={14} stroke={3} style={{ color: "var(--accent)" }} />}
+              </button>
+            ))
+          )}
         </div>
         <div className="dialog-foot">
           <div style={{ flex: 1, fontSize: 11, color: "var(--text-faint)" }}>로컬에 다운로드됩니다</div>
           <button className="btn btn-sm" onClick={onClose}>취소</button>
           <button className="btn btn-sm btn-primary" onClick={handleExport}>
-            <Icon name="download" size={12} />내보내기
+            <Icon name="download" size={12} />{isVault ? "볼트 내보내기" : "내보내기"}
           </button>
         </div>
       </div>
