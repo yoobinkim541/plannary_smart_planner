@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plannary · 위키 ↔ 로컬 Markdown</title>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+  <style>
+    :root{
+      --bg:#0e0f13; --surface:#171922; --surface2:#1f222d; --border:#2a2e3b;
+      --text:#e7e9ee; --muted:#9aa0ad; --faint:#6b7280; --accent:#7f5bf2; --accent2:#22c55e;
+      --r:14px; --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Pretendard,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:920px;margin:0 auto;padding:36px 20px 80px}
+    .hero{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(127,91,242,.14);color:#b9a6ff;width:fit-content}
+    .badge.green{background:rgba(34,197,94,.14);color:#7ee2a4}
+    h1{font-size:30px;letter-spacing:-.02em;margin:4px 0 2px}
+    .sub{color:var(--muted);font-size:14px}
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .pill{font-size:11.5px;font-family:var(--mono);color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:3px 8px;border-radius:8px}
+    nav{display:flex;gap:4px;flex-wrap:wrap;position:sticky;top:0;background:rgba(14,15,19,.85);backdrop-filter:blur(8px);padding:10px 0;margin:8px 0 18px;z-index:5;border-bottom:1px solid var(--border)}
+    nav button{font:inherit;font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:1px solid transparent;padding:7px 13px;border-radius:10px;cursor:pointer;transition:.15s}
+    nav button:hover{color:var(--text);background:var(--surface)}
+    nav button.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px}
+    .card h3{margin:0 0 10px;font-size:16px;letter-spacing:-.01em}
+    .card p{margin:0 0 10px;color:#cfd3dc}
+    table{width:100%;border-collapse:collapse;font-size:13.5px}
+    th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+    th{color:var(--faint);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+    td code,p code,li code{font-family:var(--mono);font-size:12.5px;background:var(--surface2);padding:1px 6px;border-radius:6px;color:#cdb8ff}
+    .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px;background:rgba(34,197,94,.16);color:#7ee2a4;font-family:var(--mono)}
+    ul.clean{margin:0;padding-left:18px}ul.clean li{margin:4px 0;color:#cfd3dc}
+    pre{margin:0;background:#0a0b0e;border:1px solid var(--border);border-radius:10px;padding:14px 16px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:#c8ccd6}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:640px){.grid2{grid-template-columns:1fr}h1{font-size:24px}}
+    .note{font-size:12.5px;color:var(--faint)}
+    .ok{color:var(--accent2);font-weight:700}
+    a{color:#b9a6ff}
+    footer{margin-top:26px;color:var(--faint);font-size:12px;text-align:center}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    const FEATURES = [
+      ["기반", "구조화 볼트 내보내기", "트리→폴더 미러링 · frontmatter · index.md(MOC) · manifest.json · README"],
+      ["1", "JSON 사이드카", "data/pages.json 원본 블록(무손실) — 정확 백업·재가져오기 기반"],
+      ["2", "단일 번들", "bundle.md로 전체 이어붙임 — 일부 AI 단일 입력에 편리"],
+      ["4", "이미지 로컬화(M2)", "assets/로 받아 노트 깊이별 상대경로 치환, 실패 시 URL 유지"],
+      ["5", "선택 내보내기", "체크박스 페이지 트리 · 상위는 경로 유지 위해 자동 포함"],
+      ["7", "폴더 직접 쓰기", "File System Access 옵트인 + IndexedDB 핸들 보존(지난 폴더에 저장)"],
+      ["3", "i18n", "신규 문구 en/ja/zh/es + 기존 phrase 파일 파싱 버그 수정"],
+      ["6", "가져오기(역방향)", ".zip/pages.json/.md → 새 페이지, 부모-우선·id 재매핑으로 계층 보존"],
+    ];
+
+    const DECISIONS = [
+      ["A. 구조화 ZIP 내보내기", "모든 위키를 구조화해 .zip 다운로드", "채택(중심)", "전 브라우저 동작, 손실·충돌 위험 없음"],
+      ["B. 로컬 폴더 동기화", "File System Access로 폴더에 쓰기", "옵트인만", "데스크톱 Chrome 한정, 권한 재허용"],
+      ["C. 오프라인 캐시", "IndexedDB 보관", "제외", "'로컬 파일'이 아님"],
+    ];
+
+    const CHECKS = [
+      "pages-rest.jsx Babel 트랜스폼 통과(7,667줄), 유일 호출부 opts API 사용",
+      "폴더 트리·frontmatter·up:·슬러그/디듀프, 서브트리·선택 스코프",
+      "JSON/번들/README 조건부 동봉, 이미지 로컬화(중복 제거 + ../../assets/...)",
+      "export → import 라운드트립: 9개 블록 타입·frontmatter·중복 H1 제거 정상",
+      "importer: 자식-먼저 → 부모-먼저 재정렬, id 재매핑, 미지 부모 → 루트 폴백",
+      "i18n 파일 파싱 OK(700 phrase), Vercel 프리뷰 Ready",
+    ];
+
+    const VAULT = `plannary-vault-YYYYMMDD/
+  index.md            # 전체 트리 목차(MOC)
+  manifest.json       # 기계 순회용 트리·경로·태그
+  README.md           # 볼트 설명 + 생성 시각
+  bundle.md           # (옵션) 전체를 한 파일로
+  data/pages.json     # (옵션) 무손실 원본 블록
+  notes/
+    핸드북/
+      핸드북.md         # 자식 있는 노드 = 폴더 + 동명 .md
+      디자인 시스템/
+        디자인 시스템.md
+        컬러 토큰.md
+  assets/img-<hash>.png  # (옵션) 이미지 로컬 사본`;
+
+    const FRONTMATTER = `---
+id: w7
+title: "회의록"
+parent: w1
+up: "[[프로젝트]]"
+tags: ["기획", "2026"]
+icon: "📘"
+created: 2026-05-01
+updated: 2026-06-20
+source: plannary
+---
+# 회의록
+…정제된 마크다운 본문…`;
+
+    function Tabs({tabs, cur, set}){
+      return (
+        <nav>
+          {tabs.map(t => (
+            <button key={t} className={cur===t?"on":""} onClick={()=>set(t)}>{t}</button>
+          ))}
+        </nav>
+      );
+    }
+
+    function App(){
+      const tabs = ["개요","결정 로그","기능","볼트 구조","검증","후속"];
+      const [tab, setTab] = useState("개요");
+      return (
+        <div className="wrap">
+          <div className="hero">
+            <span className="badge green">✓ PR #122 · merged → main (a8c536a)</span>
+            <h1>위키 ↔ 로컬 Markdown</h1>
+            <div className="sub">위키 문서를 로컬 Markdown으로 저장하되 옵시디언·AI 에이전트가 그대로 먹기 좋게 구조화</div>
+            <div className="meta">
+              <span className="pill">branch: claude/wiki-local-storage-yu9tk2</span>
+              <span className="pill">redesign/src/pages-rest.jsx</span>
+              <span className="pill">JSZip · React + Babel</span>
+            </div>
+          </div>
+
+          <Tabs tabs={tabs} cur={tab} set={setTab} />
+
+          {tab==="개요" && (
+            <div>
+              <div className="card">
+                <h3>한눈에</h3>
+                <p>처음 아이디어는 "위키를 로컬 MD로 저장". 논의를 거쳐 <b>구조화 ZIP 내보내기(A안)</b>를 중심으로 잡고, 폴더 직접 쓰기는 옵트인으로 얹었다. 이후 JSON 사이드카·번들·이미지 로컬화·선택 내보내기·i18n·가져오기까지 모두 반영.</p>
+                <p className="note">모든 처리는 클라이언트 사이드·읽기 전용 (가져오기만 신규 문서 생성).</p>
+              </div>
+              <div className="grid2">
+                <div className="card"><h3>핵심 통찰</h3><ul className="clean">
+                  <li>목적이 "에이전트에 먹이기"면 본질은 저장 방식이 아니라 <b>출력 포맷의 구조</b></li>
+                  <li>볼트 생성기 하나를 잘 만들고, ZIP/폴더는 그 위의 배달구</li>
+                  <li>정확한 백업이면 MD보다 JSON(무손실) → 둘 다 제공</li>
+                </ul></div>
+                <div className="card"><h3>UI 진입점</h3><ul className="clean">
+                  <li>위키 페이지 헤더 <code>···</code> 메뉴</li>
+                  <li><b>내보내기</b> → 스코프 + 포함 옵션 → ZIP/폴더</li>
+                  <li><b>가져오기</b> → zip·json·md → 새 페이지</li>
+                </ul></div>
+              </div>
+            </div>
+          )}
+
+          {tab==="결정 로그" && (
+            <div className="card">
+              <h3>방향 선택</h3>
+              <table><thead><tr><th>선택지</th><th>방식</th><th>결론</th><th>이유</th></tr></thead>
+                <tbody>{DECISIONS.map((d,i)=>(
+                  <tr key={i}><td><b>{d[0]}</b></td><td>{d[1]}</td><td><span className="tag">{d[2]}</span></td><td>{d[3]}</td></tr>
+                ))}</tbody>
+              </table>
+              <p className="note" style={{marginTop:12}}>B(상시 동기화) 트레이드오프: 데스크톱 Chrome 전용 · 매 세션 권한 재허용 · 단방향이면 옵시디언 쪽 수정이 덮어써져 소실 → 중심에서 제외, 옵트인.</p>
+            </div>
+          )}
+
+          {tab==="기능" && (
+            <div className="card">
+              <h3>구현 범위 (요청 항목 전부)</h3>
+              <table><thead><tr><th>#</th><th>기능</th><th>요지</th></tr></thead>
+                <tbody>{FEATURES.map((f,i)=>(
+                  <tr key={i}><td><span className="tag">{f[0]}</span></td><td><b>{f[1]}</b></td><td>{f[2]}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+
+          {tab==="볼트 구조" && (
+            <div>
+              <div className="card"><h3>출력 구조</h3><pre>{VAULT}</pre></div>
+              <div className="card"><h3>노트 파일 = frontmatter + 본문</h3><pre>{FRONTMATTER}</pre></div>
+            </div>
+          )}
+
+          {tab==="검증" && (
+            <div className="card">
+              <h3>검증 <span className="ok">통과</span></h3>
+              <ul className="clean">{CHECKS.map((c,i)=><li key={i}>{c}</li>)}</ul>
+            </div>
+          )}
+
+          {tab==="후속" && (
+            <div>
+              <div className="card"><h3>후속 (별도 작업)</h3><ul className="clean">
+                <li><b>양방향 동기화</b> — 파일 변경 감지·충돌 해결. 현재 가져오기는 "새 페이지로 추가"까지</li>
+                <li>커버 이미지 로컬화, MD 인라인 서식 왕복 정확도 심화</li>
+                <li>(채택 안 함) PWA 영구권한 기반 상시 폴더 미러링 — 트레이드오프 큼</li>
+              </ul></div>
+              <div className="card"><h3>부록 · "학생 편의 자동화" 메모</h3>
+                <p>강의 자동재생 출석·안전교육 자동 이수는 거짓 출결/거짓 인증(장소 무관, ToS·안전·법적 리스크)이라 자동 완료 형태로는 진행 안 함.</p>
+                <p>대신 합법 버전: <b>① 연례 의무 트래커</b>(매년 반복 의무 자동 재생성·알림) <b>② 시청 마감 알림</b>(영상은 본인 시청) <b>③ e-Class 연동 의무 항목 surface</b>. 자동 완료가 아니라 <b>자동 추적·알림</b>이 핵심.</p>
+              </div>
+            </div>
+          )}
+
+          <footer>Plannary · 위키 ↔ 로컬 Markdown 작업 아티팩트 · React(CDN) 단일 페이지</footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
