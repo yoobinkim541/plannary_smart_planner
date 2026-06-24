@@ -1,6 +1,10 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/", "destination": "/redesign/", "permanent": false },
+    { "source": "/index.html", "destination": "/redesign/", "permanent": false }
+  ],
   "headers": [
     {
       "source": "/manifest.json",
