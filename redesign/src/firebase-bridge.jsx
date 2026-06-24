@@ -799,9 +799,11 @@
       });
     };
 
-    // Tasks
+    // Tasks — exclude archived from the live listener (archived are never rendered;
+    // every view filters !archived). Bounds an otherwise unbounded onSnapshot that
+    // loaded ALL todos in realtime. Needs the composite index (uid, archived).
     unsubs.push(
-      db.collection("todos").where("uid", "==", user.uid).onSnapshot(
+      db.collection("todos").where("uid", "==", user.uid).where("archived", "==", false).onSnapshot(
         (snap) => {
           const tasks = snap.docs.map(todoDocToTask);
           latestTasks = tasks;
