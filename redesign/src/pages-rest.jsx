@@ -4457,6 +4457,7 @@ function wikiVaultFiles(vault) {
 }
 
 async function downloadWikiVaultZip(vault, fileBase) {
+  await window.__ensureJSZip?.();
   if (typeof JSZip === "undefined") {
     window.Planary.toast?.({ type: "err", title: "ZIP 라이브러리를 불러오지 못했어요", sub: "네트워크를 확인하고 다시 시도해 주세요" });
     return false;
@@ -4931,6 +4932,7 @@ async function readWikiImportFile(file) {
     return [wikiPageFromMarkdown(await file.text(), file.name.replace(/\.(md|markdown)$/i, ""))];
   }
   if (name.endsWith(".zip")) {
+    await window.__ensureJSZip?.();
     if (typeof JSZip === "undefined") throw new Error("ZIP 라이브러리를 불러오지 못했어요");
     const zip = await JSZip.loadAsync(file);
     let jsonEntry = null;
@@ -5601,18 +5603,20 @@ function CodeEditorBlock({ block, onUpdate }) {
 function MathBlock({ block, onUpdate }) {
   const [tex, setTex] = useStateO(block.tex || "");
   const [edit, setEdit] = useStateO(!block.tex);
-  // Render via KaTeX (loaded externally) or as plain text if not loaded
+  // KaTeX is lazy-loaded on the first math block (see __ensureKatex in index.html).
+  const [katexReady, setKatexReady] = useStateO(typeof window.katex !== "undefined");
   const renderedRef = useRefO(null);
   useEffectO(() => {
-    if (edit || !renderedRef.current) return;
-    if (typeof window.katex !== "undefined") {
-      try {
-        window.katex.render(tex, renderedRef.current, { throwOnError: false, displayMode: true, strict: false });
-      } catch (_) { renderedRef.current.textContent = tex; }
-    } else {
-      renderedRef.current.textContent = tex || "수식을 입력하세요";
+    if (edit) return;
+    if (typeof window.katex === "undefined") {
+      window.__ensureKatex?.().then(() => setKatexReady(true)).catch(() => {});
+      return;
     }
-  }, [tex, edit]);
+    if (!renderedRef.current) return;
+    try {
+      window.katex.render(tex, renderedRef.current, { throwOnError: false, displayMode: true, strict: false });
+    } catch (_) { renderedRef.current.textContent = tex; }
+  }, [tex, edit, katexReady]);
   return (
     <div style={{ margin: "10px 0", padding: 16, background: "var(--bg-elev)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-md)", textAlign: "center" }}>
       {edit ? (
@@ -5637,7 +5641,7 @@ function MathBlock({ block, onUpdate }) {
           onClick={() => setEdit(true)}
         >
           <Icon name="sparkles" size={12} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          KaTeX가 아직 로드되지 않았어요. 클릭해서 수식 소스를 편집하세요.
+          수식 라이브러리 불러오는 중… (클릭하면 소스 편집)
         </div>
       ) : (
         <div ref={renderedRef} style={{ minHeight: 30, cursor: "pointer", color: "var(--text-hi)", fontSize: 18 }} onClick={() => setEdit(true)} />
