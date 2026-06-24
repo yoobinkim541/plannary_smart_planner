@@ -5,7 +5,8 @@
   "main": "index.html",
   "scripts": {
     "start": "serve .",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "build:redesign": "node redesign/build.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -16,5 +17,10 @@
     "pdf-parse": "^1.1.1",
     "puppeteer": "^24.40.0",
     "serve": "^14.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-react": "^7.27.1",
+    "@babel/plugin-transform-block-scoping": "^7.28.4"
   }
 }
