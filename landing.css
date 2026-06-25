@@ -182,13 +182,16 @@ body.landing-page {
   padding: clamp(48px, 8vw, 100px) 0 clamp(72px, 10vw, 120px);
 }
 .landing-hero h1 {
-  font-size: clamp(48px, 7vw, 88px);
+  font-size: clamp(40px, 6vw, 76px);
   font-weight: 800;
   letter-spacing: -0.04em;
-  line-height: 0.95;
+  line-height: 1.04;
   margin: 0 0 22px;
   color: var(--text-hi);
-  background: linear-gradient(180deg, var(--text-hi) 0%, color-mix(in oklab, var(--text-hi) 70%, var(--accent-light)) 100%);
+}
+.landing-hero h1 .grad {
+  background: linear-gradient(110deg, var(--accent-light) 0%,
+              color-mix(in oklab, var(--accent-light) 55%, #e0b9ff) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -696,7 +699,112 @@ body.landing-page {
   .landing-device-label .tablet-label { display: none; }
   .landing-device-label .mobile-label { display: inline; }
   .landing-real-task p { display: none; }
-  .landing-hero h1 { font-size: 48px; }
+  .landing-hero h1 { font-size: 40px; }
   .landing-nav { gap: 8px; }
   .landing-actions .landing-btn:first-of-type { display: none; }
+}
+
+/* =========================================================================
+   POLISH PASS — sticky nav, eyebrows, numbered steps, CTA panel, reveal
+   ========================================================================= */
+
+/* Sticky translucent nav (full-bleed blurred bar) */
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  margin: 0 calc(-1 * var(--landing-gutter));
+  padding-left: var(--landing-gutter);
+  padding-right: var(--landing-gutter);
+  background: color-mix(in oklab, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  backdrop-filter: saturate(140%) blur(14px);
+}
+
+/* Keyboard focus rings (accessibility) */
+.landing-page a:focus-visible,
+.landing-page button:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Eyebrow label above section headings */
+.landing-eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-light);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+}
+.landing-hero-text .landing-eyebrow { margin-bottom: 20px; }
+
+/* Larger hero / CTA buttons */
+.landing-btn.lg {
+  height: 48px;
+  padding: 0 22px;
+  font-size: 15px;
+  border-radius: var(--r-lg);
+}
+
+/* Left-aligned section title (security) — replaces inline style */
+.landing-section-title--left { text-align: left; margin: 0; }
+
+/* Numbered steps via CSS counter — no extra markup */
+.landing-steps { counter-reset: step; }
+.landing-step { counter-increment: step; position: relative; overflow: hidden; }
+.landing-step::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: color-mix(in oklab, var(--accent-light) 20%, transparent);
+  pointer-events: none;
+}
+
+/* Final CTA as a contained gradient panel */
+.landing-final {
+  padding-left: var(--landing-gutter);
+  padding-right: var(--landing-gutter);
+}
+.landing-final-card {
+  position: relative;
+  max-width: var(--landing-content);
+  margin: 0 auto;
+  padding: clamp(48px, 7vw, 84px) clamp(24px, 5vw, 64px);
+  border-radius: var(--r-2xl);
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(620px 300px at 50% -25%,
+      color-mix(in oklab, var(--accent) 26%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--surface) 0%, var(--bg-elev) 100%);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.landing-hero-actions.center { justify-content: center; margin: 0; }
+
+/* Scroll reveal — only active when JS opts in (reveal-ready) and motion is allowed */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-ready .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.6s cubic-bezier(0.2, 0.7, 0.2, 1),
+                transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .reveal-ready .reveal.is-visible { opacity: 1; transform: none; }
+  .reveal-ready .landing-steps .reveal:nth-child(2),
+  .reveal-ready .landing-features .reveal:nth-child(2) { transition-delay: 0.08s; }
+  .reveal-ready .landing-steps .reveal:nth-child(3),
+  .reveal-ready .landing-features .reveal:nth-child(3) { transition-delay: 0.16s; }
+  .reveal-ready .landing-features .reveal:nth-child(4) { transition-delay: 0.24s; }
 }

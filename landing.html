@@ -42,7 +42,7 @@
     <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon.png">
     <meta name="theme-color" content="#7f0df2">
-    <link rel="stylesheet" href="landing.css?v=v3">
+    <link rel="stylesheet" href="landing.css?v=v4">
 </head>
 
 <body class="landing-page">
@@ -61,27 +61,28 @@
                 <a href="privacy.html">개인정보</a>
             </div>
             <div class="landing-actions">
-                <a class="landing-btn" href="login.html">Login</a>
-                <a class="landing-btn primary" href="signup.html">Sign up</a>
+                <a class="landing-btn" href="login.html">로그인</a>
+                <a class="landing-btn primary" href="signup.html">무료로 시작</a>
             </div>
         </nav>
 
         <main>
             <section class="landing-hero">
-                <div>
-                    <h1>Planary</h1>
+                <div class="landing-hero-text">
+                    <span class="landing-eyebrow">Tasks · Wiki · Projects · Reminders</span>
+                    <h1>흩어진 할 일과 문서를<br><span class="grad">하나의 흐름</span>으로</h1>
                     <p class="landing-hero-copy">할 일, 리마인더, 프로젝트, 위키를 한 곳에서 정리하는 작업 공간.</p>
                     <p class="landing-hero-subcopy">
                         하루의 작업은 task로 잡고, 관련 문서는 wiki로 남기고, 프로젝트별로 묶어서 흐름을 잃지 않게 관리하세요.
                     </p>
                     <div class="landing-hero-actions">
-                        <a class="landing-btn primary" href="signup.html">Sign up</a>
-                        <a class="landing-btn" href="login.html">Login</a>
+                        <a class="landing-btn primary lg" href="signup.html">무료로 시작하기</a>
+                        <a class="landing-btn lg" href="login.html">로그인</a>
                     </div>
                     <div class="landing-trust-row">
-                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> Firebase Auth</div>
-                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> Project wiki</div>
-                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> Mobile ready</div>
+                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> 안전한 로그인</div>
+                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> 프로젝트 위키</div>
+                        <div class="landing-trust-item"><span class="landing-trust-icon">✓</span> 모바일 지원</div>
                     </div>
                 </div>
 
@@ -197,6 +198,7 @@
             <section class="landing-section soft" id="how">
                 <div class="landing-section-inner">
                     <div class="landing-section-title">
+                        <span class="landing-eyebrow">How it works</span>
                         <h2>Planary 사용방법</h2>
                         <p>처음부터 복잡하게 설정할 필요 없이, 오늘 할 일과 관련 문서를 만들면서 자연스럽게 작업 공간을 키울 수 있습니다.</p>
                     </div>
@@ -229,6 +231,7 @@
             <section class="landing-section" id="features">
                 <div class="landing-section-inner">
                     <div class="landing-section-title">
+                        <span class="landing-eyebrow">Features</span>
                         <h2>한 화면에서 이어지는 생산성 흐름</h2>
                         <p>할 일 앱, 메모장, 위키, 북마크를 따로 오가지 않고 하나의 작업 문맥에서 관리합니다.</p>
                     </div>
@@ -267,7 +270,8 @@
 
             <section class="landing-section soft" id="security">
                 <div class="landing-section-inner landing-security">
-                    <div class="landing-section-title" style="text-align:left; margin:0;">
+                    <div class="landing-section-title landing-section-title--left">
+                        <span class="landing-eyebrow">Security</span>
                         <h2>로그인하고 내 작업 공간을 안전하게 보관하세요</h2>
                         <p>Firebase 인증과 사용자별 데이터 규칙을 기반으로, 로그인한 사용자만 자신의 작업과 문서를 관리할 수 있게 구성되어 있습니다.</p>
                     </div>
@@ -285,11 +289,14 @@
             </section>
 
             <section class="landing-final">
-                <h2>오늘의 작업 공간을 Planary로 시작하세요</h2>
-                <p>task를 만들고, 프로젝트로 묶고, 위키로 지식을 남기세요. 같은 흐름 안에서 모든 것이 연결됩니다.</p>
-                <div class="landing-hero-actions" style="justify-content:center; margin-top:0;">
-                    <a class="landing-btn primary" href="signup.html">Sign up</a>
-                    <a class="landing-btn" href="login.html">Login</a>
+                <div class="landing-final-card">
+                    <span class="landing-eyebrow">Get started</span>
+                    <h2>오늘의 작업 공간을 Planary로 시작하세요</h2>
+                    <p>task를 만들고, 프로젝트로 묶고, 위키로 지식을 남기세요. 같은 흐름 안에서 모든 것이 연결됩니다.</p>
+                    <div class="landing-hero-actions center">
+                        <a class="landing-btn primary lg" href="signup.html">무료로 시작하기</a>
+                        <a class="landing-btn lg" href="login.html">로그인</a>
+                    </div>
                 </div>
             </section>
         </main>
@@ -303,6 +310,25 @@
         </footer>
     </div>
 
+    <script>
+        // Scroll-reveal — motion-safe and degrades to fully visible without JS.
+        (function () {
+            if (!('IntersectionObserver' in window)) return;
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var els = [].slice.call(document.querySelectorAll(
+                '.landing-section-title, .landing-step, .landing-feature, .landing-auth-card, .landing-final-card'
+            ));
+            if (!els.length) return;
+            document.documentElement.classList.add('reveal-ready');
+            els.forEach(function (el) { el.classList.add('reveal'); });
+            var io = new IntersectionObserver(function (entries) {
+                entries.forEach(function (e) {
+                    if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
+                });
+            }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+            els.forEach(function (el) { io.observe(el); });
+        })();
+    </script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="firebase-init.js?v=v1"></script>
