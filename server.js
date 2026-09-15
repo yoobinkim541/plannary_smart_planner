@@ -69,6 +69,21 @@ app.get('/redesign/*', (req, res) =>
   res.sendFile(path.join(__dirname, 'redesign', 'index.html'))
 );
 
+// site/pages/* used to live at the repo root -- keep the old short URLs working
+// (parity with the rewrites in firebase.json / vercel.json)
+const SITE_PAGES = {
+  '/login': 'login.html', '/login.html': 'login.html',
+  '/signup': 'signup.html', '/signup.html': 'signup.html',
+  '/landing': 'landing.html', '/landing.html': 'landing.html',
+  '/terms': 'terms.html', '/terms.html': 'terms.html',
+  '/privacy': 'privacy.html', '/privacy.html': 'privacy.html',
+};
+for (const [route, file] of Object.entries(SITE_PAGES)) {
+  app.get(route, (req, res) => res.sendFile(path.join(__dirname, 'site', 'pages', file)));
+}
+// (site/pages/*.css and the new-style /site/pages/login.html URLs are already covered
+// by the generic root static middleware below, since they're real files under __dirname)
+
 // Root static files — extensions:['html'] gives cleanUrls (/login → login.html)
 app.use(express.static(path.join(__dirname), {
   index: false,

@@ -1,3 +1,6 @@
+// redesign/src/app.jsx -- 앱 진입점 (엔트리), 전역 이벤트 리스너 등록, 커맨드 팔레트
+// 로드 순서: data -> icons -> i18n -> components -> pages -> app.jsx(이 파일) -> firebase-bridge
+// (redesign/index.dev.html, redesign/build.mjs 의 script 태그 순서가 실제 로드 순서)
 /* Planary — App root + Tweaks panel wiring */
 
 const { useState, useEffect, useMemo } = React;
@@ -89,7 +92,9 @@ function App() {
       setAuthChecked(true);
       if (!e.detail) {
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-          window.location.replace("/landing.html");
+          // site/pages/landing.html 로 리다이렉트 (구 경로 /landing.html 은 firebase.json/vercel.json/server.js 의
+          // rewrite 규칙으로도 여전히 동작하지만, 앱 내부 이동은 새 경로를 직접 가리킴)
+          window.location.replace("/site/pages/landing.html");
         }
       }
     };

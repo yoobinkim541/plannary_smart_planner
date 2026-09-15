@@ -1,3 +1,4 @@
+// api/notifications/check-reminders.js -- URL: /api/notifications/check-reminders
 const { getAdmin } = require('../eclass/_admin');
 const { sendPushToUser } = require('./_send-fcm');
 
