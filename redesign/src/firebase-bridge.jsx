@@ -1132,7 +1132,24 @@
     try {
       const data = await api.connectEclass({ url, id, password });
       onResult && onResult({ ok: true, data });
-      window.Planary?.toast?.({ type: "ok", title: "e-Class에 연결됐어요" });
+      window.Planary?.toast?.({ type: "ok", title: "e-Class에 연결됐어요", sub: "첫 동기화를 시작합니다." });
+      try {
+        const syncData = await api.triggerEclassSync();
+        window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: syncData }));
+        if (syncData.status === "pending") {
+          window.Planary?.toast?.({ type: "ok", title: "동기화 요청됨", sub: "잠시 후 e-Class 프로젝트가 업데이트됩니다." });
+          return;
+        }
+        window.Planary?.toast?.({
+          type: "ok",
+          title: "동기화 완료",
+          sub: `${(syncData.todoCount || 0) + (syncData.examCount || 0)}건`,
+        });
+      } catch (syncErr) {
+        console.error("[Planary] eclass initial sync failed:", syncErr);
+        window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: { error: syncErr.message } }));
+        window.Planary?.toast?.({ type: "err", title: "첫 동기화 실패", sub: syncErr.message });
+      }
     } catch (err) {
       console.error("[Planary] eclass-connect failed:", err);
       onResult && onResult({ ok: false, error: err.message });
@@ -1155,10 +1172,20 @@
     try {
       const data = await api.triggerEclassSync();
       onResult && onResult({ ok: true, data });
-      window.Planary?.toast?.({ type: "ok", title: "동기화 완료", sub: data && data.itemCount ? `${data.itemCount}건` : undefined });
+      window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: data }));
+      if (data.status === "pending") {
+        window.Planary?.toast?.({ type: "ok", title: "동기화 요청됨", sub: "잠시 후 e-Class 프로젝트가 업데이트됩니다." });
+        return;
+      }
+      window.Planary?.toast?.({
+        type: "ok",
+        title: "동기화 완료",
+        sub: data ? `${(data.todoCount || 0) + (data.examCount || 0)}건` : undefined,
+      });
     } catch (err) {
       console.error("[Planary] eclass-sync failed:", err);
       onResult && onResult({ ok: false, error: err.message });
+      window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: { error: err.message } }));
       window.Planary?.toast?.({ type: "err", title: "동기화 실패", sub: err.message });
     }
   });

@@ -66,6 +66,9 @@ module.exports = async function handler(req, res) {
       encryptedUsername: encrypt(username),
       encryptedPassword: encrypt(password),
       encryptedSessionCookie: admin.firestore.FieldValue.delete(),
+      syncStatus: 'pending',
+      syncRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastError: null,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
