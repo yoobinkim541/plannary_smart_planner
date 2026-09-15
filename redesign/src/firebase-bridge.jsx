@@ -21,6 +21,8 @@
 
   const auth = firebase.auth();
   const db = firebase.firestore();
+  let resolveAuthReady;
+  const authReady = new Promise((resolve) => { resolveAuthReady = resolve; });
 
   // ────────────────────────────────────────────────────────────────────
   // Field mappings
@@ -354,13 +356,17 @@
   // Public API exposed on window.Planary.api
   // ────────────────────────────────────────────────────────────────────
 
+  let pendingProfile = null;
+
   const api = {
     uid: null,
     user: null,
 
     async authHeaders() {
-      const user = auth.currentUser;
+      let user = auth.currentUser;
+      if (!user || !this.uid) user = await authReady;
       if (!user) throw new Error("로그인이 필요합니다.");
+      if (!this.uid) throw new Error("인증 정보를 준비하는 중입니다.");
       return {
         Authorization: `Bearer ${await user.getIdToken()}`,
         "Content-Type": "application/json",
@@ -369,9 +375,15 @@
 
     async updateProfile(profile) {
       const user = auth.currentUser;
-      if (!user || !this.uid) return;
+      if (!user || !this.uid) {
+        pendingProfile = { ...(pendingProfile || {}), ...(profile || {}) };
+        return;
+      }
       const name = (profile.name || "").trim() || user.displayName || "사용자";
-      const avatar = profile.avatar || null;
+      const hasAvatar = Object.prototype.hasOwnProperty.call(profile || {}, "avatar");
+      const avatar = hasAvatar
+        ? profile.avatar
+        : (this.user?.avatar || (user.photoURL ? `url("${user.photoURL}")` : null));
       const photoURL = avatar && /^url\(".*"\)$/.test(avatar) ? avatar.slice(5, -2) : avatar;
       await user.updateProfile({ displayName: name, photoURL: photoURL || null });
       await db.collection("users").doc(this.uid).set({
@@ -758,6 +770,7 @@
     if (!user) {
       api.uid = null;
       api.user = null;
+      resolveAuthReady(null);
       window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: null }));
       return;
     }
@@ -773,6 +786,15 @@
       studentId: "",
       bio: "",
     };
+    resolveAuthReady(user);
+    if (pendingProfile) {
+      const profile = pendingProfile;
+      pendingProfile = null;
+      api.updateProfile(profile).catch((err) => {
+        console.error("[Planary] queued profile update failed:", err);
+        window.Planary?.toast?.({ type: "err", title: "프로필 저장 실패", sub: err.message });
+      });
+    }
     // Update USER mock so existing components pick it up on next render
     window.Planary.USER = api.user;
     window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: api.user }));
