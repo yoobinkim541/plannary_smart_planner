@@ -15,10 +15,9 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
   // Live-sync projects from firebase-bridge
   useEffectO(() => {
     const onLoaded = (e) => {
-      if (Array.isArray(e.detail) && e.detail.length) {
-        setProjects(e.detail);
-        setSelected((cur) => e.detail.some((p) => p.id === cur) ? cur : e.detail[0].id);
-      }
+      if (!Array.isArray(e.detail)) return;
+      setProjects(e.detail);
+      setSelected((cur) => e.detail.some((p) => p.id === cur) ? cur : (e.detail[0]?.id || null));
     };
     window.addEventListener("planary:projects-loaded", onLoaded);
     return () => window.removeEventListener("planary:projects-loaded", onLoaded);
@@ -154,7 +153,7 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
         })}
       </div>
 
-      {proj && (proj.isEclass ?
+      {proj ? (proj.isEclass ?
       <EclassDetail proj={proj} projTasks={projTasks} open={open} done={done} syncing={syncing} triggerSync={triggerSync} setPage={setPage} /> :
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -219,7 +218,7 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
               </div>
             </section>
           </div>
-        </div>)
+        </div>) : <div className="empty" style={{ padding: 48 }}>아직 프로젝트가 없습니다.</div>
       }
       {createOpen && <CreateProjectDialog onClose={() => setCreateOpen(false)} onCreate={handleCreate} />}
     </div>);
