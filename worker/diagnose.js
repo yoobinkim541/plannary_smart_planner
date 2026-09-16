@@ -11,8 +11,11 @@ const fs = require('fs');
 const path = require('path');
 
 (() => {
-  const envPath = path.join(__dirname, '.env');
-  if (!fs.existsSync(envPath)) return;
+  const envPath = [
+    path.join(__dirname, '.env'),
+    path.join(__dirname, '..', '.env'),
+  ].find(candidate => fs.existsSync(candidate));
+  if (!envPath) return;
   for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i);
     if (!m || line.trim().startsWith('#')) continue;

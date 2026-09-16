@@ -1,8 +1,7 @@
-.vercel
-.design-tmp/
-node_modules/
 .env
 .env.*
 !.env.example
+.design-tmp/
 logs/
 **/serviceAccount.json
+node_modules/

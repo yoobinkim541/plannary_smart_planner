@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=planary
-WorkingDirectory=/opt/planary/worker
-EnvironmentFile=/opt/planary/worker/.env
+WorkingDirectory=/opt/planary/app/worker
+EnvironmentFile=/opt/planary/app/.env
 ExecStart=/usr/bin/node index.js
 Restart=always
 RestartSec=10

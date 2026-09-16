@@ -15,7 +15,7 @@ function buildTimeLabel(mins) {
 module.exports = async function handler(req, res) {
   // Vercel cron injects Authorization: Bearer {CRON_SECRET}
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers['authorization'] !== `Bearer ${secret}`) {
+  if (!secret || req.headers['authorization'] !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

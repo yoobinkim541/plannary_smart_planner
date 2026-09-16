@@ -27,12 +27,12 @@ sudo -u planary npm install
 cd /opt/planary/app
 sudo -u planary npm install --omit=dev
 
-# 4) Drop the two secret files into /opt/planary/app/worker/
+# 4) Drop the service account into /opt/planary/app/worker/ and the shared .env into /opt/planary/app/
 #    serviceAccount.json — Firebase Admin SDK key (Firebase Console → Project Settings → Service accounts)
-#    .env               — see template below
+#    .env               — see template below; it must match the Vercel encryption key
 sudo -u planary nano /opt/planary/app/worker/serviceAccount.json
-sudo -u planary nano /opt/planary/app/worker/.env
-sudo chmod 600 /opt/planary/app/worker/serviceAccount.json /opt/planary/app/worker/.env
+sudo -u planary nano /opt/planary/app/.env
+sudo chmod 600 /opt/planary/app/worker/serviceAccount.json /opt/planary/app/.env
 
 # 5) Install the systemd unit
 sudo cp /opt/planary/app/worker/planary-eclass-worker.service /etc/systemd/system/
