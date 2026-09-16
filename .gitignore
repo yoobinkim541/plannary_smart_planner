@@ -1,4 +1,5 @@
 .vercel
+.firebase/
 .design-tmp/
 node_modules/
 .env
@@ -6,3 +7,4 @@ node_modules/
 !.env.example
 logs/
 **/serviceAccount.json
+**/hosting..cache
