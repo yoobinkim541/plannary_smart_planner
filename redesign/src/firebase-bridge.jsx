@@ -21,6 +21,9 @@
 
   const auth = firebase.auth();
   const db = firebase.firestore();
+  let resolveAuthReady;
+  const authReady = new Promise((resolve) => { resolveAuthReady = resolve; });
+  const authUserWaiters = [];
 
   // ────────────────────────────────────────────────────────────────────
   // Field mappings
@@ -354,13 +357,23 @@
   // Public API exposed on window.Planary.api
   // ────────────────────────────────────────────────────────────────────
 
+  let pendingProfile = null;
+
   const api = {
     uid: null,
     user: null,
 
+    async waitForAuth({ allowFutureSignIn = true } = {}) {
+      let user = auth.currentUser;
+      if (!user || !this.uid) user = await authReady;
+      if (user && this.uid) return user;
+      if (!allowFutureSignIn && !auth.currentUser) throw new Error("로그인이 필요합니다.");
+      if (auth.currentUser && this.uid) return auth.currentUser;
+      return new Promise((resolve) => authUserWaiters.push(resolve));
+    },
+
     async authHeaders() {
-      const user = auth.currentUser;
-      if (!user) throw new Error("로그인이 필요합니다.");
+      const user = await this.waitForAuth({ allowFutureSignIn: false });
       return {
         Authorization: `Bearer ${await user.getIdToken()}`,
         "Content-Type": "application/json",
@@ -369,9 +382,15 @@
 
     async updateProfile(profile) {
       const user = auth.currentUser;
-      if (!user || !this.uid) return;
+      if (!user || !this.uid) {
+        pendingProfile = { ...(pendingProfile || {}), ...(profile || {}) };
+        return;
+      }
       const name = (profile.name || "").trim() || user.displayName || "사용자";
-      const avatar = profile.avatar || null;
+      const hasAvatar = Object.prototype.hasOwnProperty.call(profile || {}, "avatar");
+      const avatar = hasAvatar
+        ? profile.avatar
+        : (this.user?.avatar || (user.photoURL ? `url("${user.photoURL}")` : null));
       const photoURL = avatar && /^url\(".*"\)$/.test(avatar) ? avatar.slice(5, -2) : avatar;
       await user.updateProfile({ displayName: name, photoURL: photoURL || null });
       await db.collection("users").doc(this.uid).set({
@@ -418,8 +437,8 @@
     },
 
     async createTask(task) {
-      if (!this.uid) return null;
-      const payload = taskToTodoDoc(this.uid, task);
+      const user = await this.waitForAuth();
+      const payload = taskToTodoDoc(user.uid, task);
       const ref = await db.collection("todos").add(payload);
       return ref.id;
     },
@@ -462,9 +481,9 @@
     },
 
     async createNote(note) {
-      if (!this.uid) return null;
+      const user = await this.waitForAuth();
       const docData = {
-        uid: this.uid,
+        uid: user.uid,
         text: (note.text || "").trim() || "(빈 메모)",
         color: note.color || "yellow",
         x: typeof note.x === "number" ? note.x : 80,
@@ -555,8 +574,8 @@
     },
 
     async savePreferences(patch) {
-      if (!this.uid) return;
-      const ref = db.collection("users").doc(this.uid);
+      const user = await this.waitForAuth();
+      const ref = db.collection("users").doc(user.uid);
       const updates = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
       for (const [key, val] of Object.entries(patch || {})) {
         updates[`preferences.${key}`] = val;
@@ -565,35 +584,35 @@
         await ref.update(updates);
       } catch (err) {
         if (err.code === "not-found") {
-          await ref.set({ uid: this.uid, preferences: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          await ref.set({ uid: user.uid, preferences: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         } else throw err;
       }
     },
     async saveNotifPrefs(patch) {
-      if (!this.uid) return;
+      const user = await this.waitForAuth();
       const dotPatch = {};
       Object.entries(patch || {}).forEach(([k, v]) => { dotPatch[`notifPrefs.${k}`] = v; });
       dotPatch.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-      const ref = db.collection("users").doc(this.uid);
+      const ref = db.collection("users").doc(user.uid);
       try {
         await ref.update(dotPatch);
       } catch (err) {
         if (err.code === "not-found") {
-          await ref.set({ uid: this.uid, notifPrefs: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          await ref.set({ uid: user.uid, notifPrefs: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
         } else throw err;
       }
     },
     async saveOnboarding({ progress, currentStep, completed }) {
-      if (!this.uid) return;
+      const user = await this.waitForAuth();
       const payload = {
-        uid: this.uid,
+        uid: user.uid,
         onboardingProgress: progress,
         onboardingCurrentStep: currentStep || null,
         onboardingCompleted: !!completed,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
       if (completed) payload.onboardingCompletedAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection("users").doc(this.uid).set(payload, { merge: true });
+      await db.collection("users").doc(user.uid).set(payload, { merge: true });
     },
 
     async getEclassConnection() {
@@ -758,6 +777,7 @@
     if (!user) {
       api.uid = null;
       api.user = null;
+      resolveAuthReady(null);
       window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: null }));
       return;
     }
@@ -773,6 +793,16 @@
       studentId: "",
       bio: "",
     };
+    while (authUserWaiters.length) authUserWaiters.shift()(user);
+    resolveAuthReady(user);
+    if (pendingProfile) {
+      const profile = pendingProfile;
+      pendingProfile = null;
+      api.updateProfile(profile).catch((err) => {
+        console.error("[Planary] queued profile update failed:", err);
+        window.Planary?.toast?.({ type: "err", title: "프로필 저장 실패", sub: err.message });
+      });
+    }
     // Update USER mock so existing components pick it up on next render
     window.Planary.USER = api.user;
     window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: api.user }));
@@ -1132,7 +1162,24 @@
     try {
       const data = await api.connectEclass({ url, id, password });
       onResult && onResult({ ok: true, data });
-      window.Planary?.toast?.({ type: "ok", title: "e-Class에 연결됐어요" });
+      window.Planary?.toast?.({ type: "ok", title: "e-Class에 연결됐어요", sub: "첫 동기화를 시작합니다." });
+      try {
+        const syncData = await api.triggerEclassSync();
+        window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: syncData }));
+        if (syncData.status === "pending") {
+          window.Planary?.toast?.({ type: "ok", title: "동기화 요청됨", sub: "잠시 후 e-Class 프로젝트가 업데이트됩니다." });
+          return;
+        }
+        window.Planary?.toast?.({
+          type: "ok",
+          title: "동기화 완료",
+          sub: `${(syncData.todoCount || 0) + (syncData.examCount || 0)}건`,
+        });
+      } catch (syncErr) {
+        console.error("[Planary] eclass initial sync failed:", syncErr);
+        window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: { error: syncErr.message } }));
+        window.Planary?.toast?.({ type: "err", title: "첫 동기화 실패", sub: syncErr.message });
+      }
     } catch (err) {
       console.error("[Planary] eclass-connect failed:", err);
       onResult && onResult({ ok: false, error: err.message });
@@ -1155,10 +1202,20 @@
     try {
       const data = await api.triggerEclassSync();
       onResult && onResult({ ok: true, data });
-      window.Planary?.toast?.({ type: "ok", title: "동기화 완료", sub: data && data.itemCount ? `${data.itemCount}건` : undefined });
+      window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: data }));
+      if (data.status === "pending") {
+        window.Planary?.toast?.({ type: "ok", title: "동기화 요청됨", sub: "잠시 후 e-Class 프로젝트가 업데이트됩니다." });
+        return;
+      }
+      window.Planary?.toast?.({
+        type: "ok",
+        title: "동기화 완료",
+        sub: data ? `${(data.todoCount || 0) + (data.examCount || 0)}건` : undefined,
+      });
     } catch (err) {
       console.error("[Planary] eclass-sync failed:", err);
       onResult && onResult({ ok: false, error: err.message });
+      window.dispatchEvent(new CustomEvent("planary:eclass-sync-done", { detail: { error: err.message } }));
       window.Planary?.toast?.({ type: "err", title: "동기화 실패", sub: err.message });
     }
   });

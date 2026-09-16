@@ -63,6 +63,16 @@ app.get('/', (req, res) => res.redirect(302, '/redesign/'));
 app.get('/index.html', (req, res) => res.redirect(302, '/redesign/'));
 app.get('/redesign', (req, res) => res.redirect(302, '/redesign/'));
 
+// Never expose deployment secrets or server logs through any static mount.
+app.use((req, res, next) => {
+  let pathname = req.path;
+  try { pathname = decodeURIComponent(pathname); } catch (_) {}
+  if (/(?:^|\/)(?:\.env(?:\.[^/]*)?|serviceAccount\.json|logs(?:\/|$))/i.test(pathname)) {
+    return res.status(404).end();
+  }
+  next();
+});
+
 // Serve redesign SPA
 app.use('/redesign', express.static(path.join(__dirname, 'redesign'), { index: 'index.html' }));
 app.get('/redesign/*', (req, res) =>

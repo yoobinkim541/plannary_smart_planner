@@ -1,0 +1,7 @@
+.env
+.env.*
+!.env.example
+.design-tmp/
+logs/
+**/serviceAccount.json
+node_modules/

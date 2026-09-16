@@ -74,7 +74,7 @@ if [ ! -f "${APP_DIR}/.env" ]; then
 FIREBASE_SERVICE_ACCOUNT_KEY=
 
 # Option B: path to service account JSON file
-# FIREBASE_SERVICE_ACCOUNT_PATH=/opt/planary/app/serviceAccount.json
+# FIREBASE_SERVICE_ACCOUNT_PATH=/opt/planary/app/worker/serviceAccount.json
 
 # E-class encryption key (must match Vercel)
 ECLASS_ENCRYPTION_KEY=
