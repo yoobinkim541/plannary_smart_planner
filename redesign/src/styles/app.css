@@ -3494,30 +3494,6 @@ tr:hover .wiki-table-del-row { opacity: 1; color: var(--err); }
   background: var(--surface-2);
   border-bottom: 1px solid var(--border-soft);
 }
-.codeblock-langs {
-  display: inline-flex; gap: 1px;
-  padding: 2px;
-  background: var(--bg-elev);
-  border-radius: var(--r-sm);
-  border: 1px solid var(--border-soft);
-}
-.codeblock-lang {
-  display: inline-flex; align-items: center;
-  height: 22px; padding: 0 9px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-lo);
-  font-family: var(--font-mono);
-  letter-spacing: 0.02em;
-  transition: all var(--dur-fast);
-}
-.codeblock-lang:hover { color: var(--text-md); }
-.codeblock-lang.is-active {
-  background: var(--surface);
-  color: var(--text-hi);
-  box-shadow: var(--shadow-sm);
-}
 .codeblock-copy {
   display: inline-flex; align-items: center; gap: 5px;
   height: 24px;
@@ -3871,13 +3847,6 @@ select.form-input { cursor: pointer; }
   margin: 14px 0;
   color: var(--text-md);
 }
-.wiki-block pre .tk-key { color: #c4b5fd; }
-.wiki-block pre .tk-str { color: #6ee7b7; }
-.wiki-block pre .tk-num { color: #fbbf24; }
-.wiki-block pre .tk-com { color: var(--text-mute); }
-[data-theme="light"] .wiki-block pre .tk-key { color: #7c3aed; }
-[data-theme="light"] .wiki-block pre .tk-str { color: #047857; }
-[data-theme="light"] .wiki-block pre .tk-num { color: #b45309; }
 .wiki-img {
   width: 100%;
   height: 220px;

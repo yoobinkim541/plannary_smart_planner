@@ -495,18 +495,6 @@ const PATTERNS = [
     src: { ko: /^(\d+)월 (\d+)일 (.+)요일$/ } },
 ];
 
-const PATTERNS_OLD = [
-  { ko: /^(.+)님의 작업 공간$/,  en: "$1's workspace",     ja: "$1のワークスペース", zh: "$1 的工作区",   es: "Espacio de $1" },
-  { ko: /^(.+)님,?$/,             en: "$1,",                ja: "$1さん、",          zh: "$1,",            es: "$1," },
-  { ko: /^(\d+)분 전$/,           en: "$1 min ago",         ja: "$1分前",            zh: "$1 分钟前",      es: "hace $1 min" },
-  { ko: /^(\d+)분 전 동기화$/,    en: "Synced $1 min ago",  ja: "$1分前に同期",      zh: "$1 分钟前已同步", es: "Sincronizado hace $1 min" },
-  { ko: /^(\d+)시간 전$/,         en: "$1 h ago",           ja: "$1時間前",          zh: "$1 小时前",      es: "hace $1 h" },
-  { ko: /^(\d+)개$/,              en: "$1",                 ja: "$1件",              zh: "$1 个",          es: "$1" },
-  { ko: /^(\d+)개 진행$/,         en: "$1 in progress",     ja: "$1件進行中",        zh: "$1 个进行中",    es: "$1 en curso" },
-  { ko: /^오늘 마감 (\d+)개$/,    en: "$1 due today",       ja: "今日締切 $1件",     zh: "今日截止 $1 个", es: "$1 vencen hoy" },
-  { ko: /^(\d+) 진행 중$/,        en: "$1 in progress",     ja: "$1 進行中",         zh: "$1 进行中",      es: "$1 en curso" },
-];
-
 // Build inverse lookup: any-lang-text -> phrase entry.
 // `window.__PLANARY_EXTRA_PHRASES` is set by i18n-phrases-extra.js (loaded
 // before this file) and carries the bulk auto-generated translations.
