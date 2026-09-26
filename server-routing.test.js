@@ -22,6 +22,7 @@ const app = require("./server");
     const pageModules = [
       "/redesign/dist/pages-home-tasks.js",
       "/redesign/dist/pages-rest.js",
+      "/redesign/dist/pages-library.js",
       "/redesign/dist/pages-projects.js",
       "/redesign/dist/pages-notes.js",
       "/redesign/dist/pages-profile-dialogs.js",
