@@ -1,8 +1,12 @@
 const crypto = require('crypto');
 
 function getKey() {
-  const secret = process.env.ECLASS_ENCRYPTION_KEY || process.env.CRON_SECRET || 'planary-local-dev-eclass-key';
-  return crypto.createHash('sha256').update(secret).digest();
+  const secret = process.env.ECLASS_ENCRYPTION_KEY || process.env.CRON_SECRET;
+  if (!secret && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
+    throw new Error('Missing ECLASS_ENCRYPTION_KEY in production');
+  }
+  const resolvedSecret = secret || 'planary-local-dev-eclass-key';
+  return crypto.createHash('sha256').update(resolvedSecret).digest();
 }
 
 function encrypt(value) {

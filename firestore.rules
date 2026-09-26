@@ -133,7 +133,7 @@ service cloud.firestore {
       request.resource.data.text is string &&
       request.resource.data.text.size() > 0 &&
       request.resource.data.color is string &&
-      request.resource.data.color in ['yellow', 'blue', 'green', 'pink', 'purple', 'orange'] &&
+      request.resource.data.color in ['yellow', 'blue', 'green', 'pink', 'purple', 'orange', 'mint'] &&
       isNumberOrNull(request.resource.data.x) &&
       isNumberOrNull(request.resource.data.y) &&
       isBoolOrNull(request.resource.data.archived) &&
