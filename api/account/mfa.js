@@ -1,3 +1,6 @@
+// api/account/ -- Vercel 서버리스 함수. 파일 경로 = URL 라우트 (이 파일은 /api/account/mfa)
+// 그래서 api/ 폴더는 통째로 옮길 수 없음 (server.js 의 require('./api/...') 경로도 여기에 맞춰져 있음)
+// _ 로 시작하는 파일(_admin.js, _crypto.js 등)은 라우트가 아니라 공용 헬퍼
 const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('../eclass/_admin');
 const { encrypt, decrypt } = require('../eclass/_crypto');
 const { generateSecret, verifyTotp, otpauthUrl } = require('./_totp');

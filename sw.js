@@ -1,31 +1,33 @@
-const CACHE_NAME = 'todo-pwa-cache-v164';
+// v164 -> v165 : site/legacy/, site/pages/ 로 파일 이동하면서 캐시 목록 경로 갱신
+// (버전 숫자를 올려야 접속 중인 사용자 브라우저가 예전 경로가 박힌 캐시를 버리고 새로 받음)
+const CACHE_NAME = 'todo-pwa-cache-v165';
 const urlsToCache = [
   '/',
   '/index.html',
   '/redesign/',
   '/redesign/index.html',
-  '/style.css',
-  '/app.js',
-  '/wiki.js',
+  '/site/legacy/style.css',
+  '/site/legacy/app.js',
+  '/site/legacy/wiki.js',
   '/manifest.json',
-  '/landing.html',
-  '/landing.css',
-  '/login.html',
-  '/signup.html',
-  '/auth.css',
-  '/privacy.html',
-  '/terms.html',
+  '/site/pages/landing.html',
+  '/site/pages/landing.css',
+  '/site/pages/login.html',
+  '/site/pages/signup.html',
+  '/site/pages/auth.css',
+  '/site/pages/privacy.html',
+  '/site/pages/terms.html',
   '/firebase-init.js',
   '/favicon.ico',
   '/icon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
-  '/i18n/en.js',
-  '/i18n/ko.js',
-  '/i18n/ja.js',
-  '/i18n/zh.js',
-  '/i18n/es.js'
+  '/site/legacy/i18n/en.js',
+  '/site/legacy/i18n/ko.js',
+  '/site/legacy/i18n/ja.js',
+  '/site/legacy/i18n/zh.js',
+  '/site/legacy/i18n/es.js'
 ];
 
 const APP_SHELL_ASSETS = new Set([
@@ -33,12 +35,12 @@ const APP_SHELL_ASSETS = new Set([
   '/index.html',
   '/redesign/',
   '/redesign/index.html',
-  '/landing.html',
-  '/login.html',
-  '/signup.html',
-  '/privacy.html',
-  '/terms.html',
-  '/auth.css',
+  '/site/pages/landing.html',
+  '/site/pages/login.html',
+  '/site/pages/signup.html',
+  '/site/pages/privacy.html',
+  '/site/pages/terms.html',
+  '/site/pages/auth.css',
   '/firebase-init.js',
   '/manifest.json'
 ]);

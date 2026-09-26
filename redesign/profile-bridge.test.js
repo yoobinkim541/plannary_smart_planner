@@ -93,7 +93,7 @@ function createBridgeHarness() {
     setTimeout,
     clearTimeout,
   };
-  vm.runInNewContext(fs.readFileSync("redesign/src/firebase-bridge.jsx", "utf8"), context);
+  vm.runInNewContext(fs.readFileSync("redesign/src/lib/firebase-bridge.jsx", "utf8"), context);
   return {
     window,
     auth,

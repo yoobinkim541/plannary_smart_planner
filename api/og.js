@@ -1,3 +1,5 @@
+// api/og.js -- URL: /api/og (Vercel edge function). og-node.js 는 같은 기능의 Node.js 버전
+// (Oracle VM의 server.js 는 edge 런타임을 못 써서 og-node.js 쪽을 대신 붙여씀)
 import { ImageResponse } from '@vercel/og';
 import React from 'react';
 

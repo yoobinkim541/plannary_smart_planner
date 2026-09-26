@@ -68,7 +68,7 @@ Planary는 Notion에서 영감을 받아 직접 설계·개발한 **올인원 �
 | **스타일링** | CSS Custom Properties (디자인 토큰), `color-mix()`, 반응형 Grid/Flex |
 | **백엔드** | Firebase Firestore v10, Firebase Auth, Firebase Storage |
 | **인프라** | Firebase Hosting, Vercel, GitHub Actions |
-| **PWA** | Service Worker (Cache API v162), Web App Manifest |
+| **PWA** | Service Worker (Cache API v165), Web App Manifest |
 | **수식** | KaTeX 0.16 (블록/인라인) |
 | **i18n** | 자체 구현 다국어 시스템 (한/영/일/중/스페인어, 5개 언어) |
 | **보안** | Firestore Security Rules, SRI (Subresource Integrity) |
@@ -79,19 +79,31 @@ Planary는 Notion에서 영감을 받아 직접 설계·개발한 **올인원 �
 
 ```
 planary/
-├── redesign/                   # React 기반 메인 앱 (현재 서비스)
+├── redesign/                   # React 기반 메인 앱 (현재 서비스, /redesign/ 에서 서빙)
 │   └── src/
-│       ├── app.jsx             # 최상위 레이아웃, 커맨드 팔레트, 전역 이벤트 버스
-│       ├── components.jsx      # 사이드바, 탑바, 토스트, 공통 UI
-│       ├── pages-home-tasks.jsx # 홈 대시보드, 작업 목록, 퀵 캡처
-│       ├── pages-rest.jsx      # 위키, 프로젝트, 노트, 북마크, 보관함, 프로필
-│       ├── firebase-bridge.jsx # Firestore·Auth 이벤트 브릿지 (커스텀 이벤트 버스)
-│       ├── i18n.jsx            # 다국어 런타임
-│       ├── icons.jsx           # 인라인 SVG 아이콘 시스템
-│       └── tokens.css          # 디자인 토큰 (색상, 타이포, 간격)
-├── sw.js                       # Service Worker (Cache v162, 오프라인 지원)
-├── firestore.rules             # Firestore 보안 규칙
-└── index.html / app.js         # 레거시 바닐라 JS 버전 (보존)
+│       ├── app.jsx             # 엔트리 -- 최상위 레이아웃, 커맨드 팔레트, 전역 이벤트 리스너
+│       ├── pages/               # 라우팅되는 화면 단위
+│       │   ├── pages-home-tasks.jsx  # 홈 대시보드, 작업 목록, 퀵 캡처
+│       │   └── pages-rest.jsx        # 위키, 프로젝트, 노트, 북마크, 보관함, 프로필
+│       ├── components/          # 여러 페이지가 공유하는 UI 조각
+│       │   ├── components.jsx        # 사이드바, 탑바, 토스트 등 공통 UI
+│       │   ├── icons.jsx             # 인라인 SVG 아이콘 시스템
+│       │   ├── onboarding.jsx        # 최초 접속 온보딩 플로우
+│       │   ├── tweaks-panel.jsx      # 설정/테마 패널
+│       │   └── user-guide.jsx        # 인터랙티브 사용법 가이드
+│       ├── lib/                 # React 바깥의 로직
+│       │   ├── firebase-bridge.jsx   # Firestore·Auth 이벤트 브릿지 (커스텀 이벤트 버스)
+│       │   ├── i18n.jsx              # 다국어 런타임
+│       │   └── data.jsx              # 샘플/기본 데이터
+│       └── styles/              # tokens.css(디자인 토큰), app.css, onboarding.css
+├── site/                       # 정적 페이지 모음 (Firebase가 루트를 통째로 서빙해서 한 곳에 모음)
+│   ├── pages/                   # 실사용 중: landing, login, signup, terms, privacy
+│   └── legacy/                  # 레거시 바닐라 JS 버전 (보존용, 실서비스 미도달)
+├── api/                         # Vercel 서버리스 함수 (파일 경로 = URL 라우트)
+├── worker/                      # Oracle VM에서 5분마다 도는 e-Class 동기화 백그라운드 워커
+├── sw.js                        # Service Worker (Cache v165, 오프라인 지원)
+├── firebase-init.js             # Firebase 프로젝트 설정 (redesign + site 양쪽이 공용으로 참조, 루트 고정)
+└── firestore.rules              # Firestore 보안 규칙
 ```
 
 **이벤트 버스 패턴**: React 컴포넌트와 Firebase 브릿지 사이를 `window.dispatchEvent` 커스텀 이벤트로 연결합니다. 상태는 React 내부에서 관리하고 Firestore 작업은 브릿지가 단독으로 담당해 관심사를 분리했습니다.

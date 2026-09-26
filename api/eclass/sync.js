@@ -1,3 +1,4 @@
+// api/eclass/sync.js -- 이 파일 경로가 곧 URL (/api/eclass/sync). worker/index.js 가 5분마다 이 로직을 재사용함
 const crypto = require('crypto');
 const { getAdmin, getUserFromRequest, sendJson, allowMethods } = require('./_admin');
 const { syncAll, syncConnection } = require('./sync-core');

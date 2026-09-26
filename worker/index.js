@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// worker/ -- api/, redesign/ 와 별개로 Oracle VM에서 systemd 서비스로 상시 실행되는 백그라운드 워커
+// (worker/planary-eclass-worker.service 가 이 폴더 경로를 그대로 하드코딩하고 있어서 폴더를 옮길 수 없음)
+// 5분마다 api/eclass/sync-core.js 의 동기화 로직을 재사용해서 e-Class 강의 정보를 갱신함
 
 (function loadEnv() {
   try {

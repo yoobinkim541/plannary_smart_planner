@@ -5,6 +5,18 @@
     { "source": "/", "destination": "/redesign/", "permanent": false },
     { "source": "/index.html", "destination": "/redesign/", "permanent": false }
   ],
+  "rewrites": [
+    { "source": "/login", "destination": "/site/pages/login.html" },
+    { "source": "/login.html", "destination": "/site/pages/login.html" },
+    { "source": "/signup", "destination": "/site/pages/signup.html" },
+    { "source": "/signup.html", "destination": "/site/pages/signup.html" },
+    { "source": "/landing", "destination": "/site/pages/landing.html" },
+    { "source": "/landing.html", "destination": "/site/pages/landing.html" },
+    { "source": "/terms", "destination": "/site/pages/terms.html" },
+    { "source": "/terms.html", "destination": "/site/pages/terms.html" },
+    { "source": "/privacy", "destination": "/site/pages/privacy.html" },
+    { "source": "/privacy.html", "destination": "/site/pages/privacy.html" }
+  ],
   "headers": [
     {
       "source": "/manifest.json",

@@ -49,9 +49,9 @@
   <!-- KaTeX CSS is lazy-loaded with the library on first math block (see __ensureKatex below) -->
 
   <!-- Tokens + Styles -->
-  <link rel="stylesheet" href="/redesign/src/tokens.css" />
-  <link rel="stylesheet" href="/redesign/src/app.css" />
-  <link rel="stylesheet" href="/redesign/src/onboarding.css" />
+  <link rel="stylesheet" href="/redesign/src/styles/tokens.css" />
+  <link rel="stylesheet" href="/redesign/src/styles/app.css" />
+  <link rel="stylesheet" href="/redesign/src/styles/onboarding.css" />
 
   <!-- React + Babel (pinned) -->
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
@@ -94,22 +94,22 @@
   <div id="root"></div>
 
   <!-- Tweaks panel (provides TweaksPanel, useTweaks, TweakRadio, etc as globals) -->
-  <script type="text/babel" src="/redesign/src/tweaks-panel.jsx"></script>
+  <script type="text/babel" src="/redesign/src/components/tweaks-panel.jsx"></script>
 
   <!-- Planary modules — order matters: data → icons → i18n → components → pages → app → firebase-bridge.
        Absolute paths so the bundle works whether the URL is /redesign/ or /redesign (Vercel's
        trailingSlash:false rewrites the trailing slash away). -->
-  <script type="text/babel" src="/redesign/src/icons.jsx"></script>
-  <script type="text/babel" src="/redesign/src/data.jsx"></script>
-  <script src="/redesign/src/i18n-phrases-extra.js"></script>
-  <script type="text/babel" src="/redesign/src/i18n.jsx"></script>
-  <script type="text/babel" src="/redesign/src/components.jsx"></script>
-  <script type="text/babel" src="/redesign/src/pages-home-tasks.jsx"></script>
-  <script type="text/babel" src="/redesign/src/pages-rest.jsx"></script>
-  <script type="text/babel" src="/redesign/src/onboarding.jsx"></script>
-  <script type="text/babel" src="/redesign/src/user-guide.jsx"></script>
+  <script type="text/babel" src="/redesign/src/components/icons.jsx"></script>
+  <script type="text/babel" src="/redesign/src/lib/data.jsx"></script>
+  <script src="/redesign/src/lib/i18n-phrases-extra.js"></script>
+  <script type="text/babel" src="/redesign/src/lib/i18n.jsx"></script>
+  <script type="text/babel" src="/redesign/src/components/components.jsx"></script>
+  <script type="text/babel" src="/redesign/src/pages/pages-home-tasks.jsx"></script>
+  <script type="text/babel" src="/redesign/src/pages/pages-rest.jsx"></script>
+  <script type="text/babel" src="/redesign/src/components/onboarding.jsx"></script>
+  <script type="text/babel" src="/redesign/src/components/user-guide.jsx"></script>
   <script type="text/babel" src="/redesign/src/app.jsx"></script>
-  <script type="text/babel" src="/redesign/src/firebase-bridge.jsx"></script>
+  <script type="text/babel" src="/redesign/src/lib/firebase-bridge.jsx"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
