@@ -9,18 +9,18 @@
     "build:redesign": "node redesign/build.mjs"
   },
   "dependencies": {
-    "express": "^4.21.2",
     "@vercel/og": "^0.6.4",
     "cheerio": "^1.2.0",
-    "react": "^18.3.1",
+    "express": "^4.21.2",
     "firebase-admin": "^13.9.0",
     "pdf-parse": "^1.1.1",
-    "puppeteer": "^24.40.0",
+    "react": "^18.3.1",
     "serve": "^14.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",
+    "@babel/plugin-transform-block-scoping": "^7.28.4",
     "@babel/preset-react": "^7.27.1",
-    "@babel/plugin-transform-block-scoping": "^7.28.4"
+    "puppeteer": "^24.40.0"
   }
 }
