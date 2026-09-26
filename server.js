@@ -61,7 +61,7 @@ app.all('/api/og',                            require('./api/og-node'));
 // Promote redesign to root (parity with firebase.json / vercel.json redirects)
 app.get('/', (req, res) => res.redirect(302, '/redesign/'));
 app.get('/index.html', (req, res) => res.redirect(302, '/redesign/'));
-app.get('/redesign', (req, res) => res.redirect(302, '/redesign/'));
+app.get(/^\/redesign$/, (req, res) => res.redirect(302, '/redesign/'));
 
 // Never expose deployment secrets or server logs through any static mount.
 app.use((req, res, next) => {
@@ -137,6 +137,10 @@ function pingHermes(entry) {
   }).catch(() => {});
 }
 
-app.listen(PORT, HOST, () => {
-  console.log(`[api] listening on ${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, HOST, () => {
+    console.log(`[api] listening on ${HOST}:${PORT}`);
+  });
+}
+
+module.exports = app;

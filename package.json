@@ -6,7 +6,8 @@
   "scripts": {
     "start": "serve .",
     "serve": "node server.js",
-    "build:redesign": "node redesign/build.mjs"
+    "build:redesign": "node redesign/build.mjs",
+    "test:server-routing": "node server-routing.test.js"
   },
   "dependencies": {
     "@vercel/og": "^0.6.4",
