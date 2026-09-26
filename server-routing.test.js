@@ -11,6 +11,10 @@ const app = require("./server");
 
     const { port } = server.address();
     const base = `http://127.0.0.1:${port}`;
+    const rootRoute = await fetch(`${base}/`, { redirect: "manual" });
+    assert.equal(rootRoute.status, 302);
+    assert.equal(rootRoute.headers.get("location"), "/redesign/");
+
     const shortRoute = await fetch(`${base}/redesign`, { redirect: "manual" });
     assert.equal(shortRoute.status, 302);
     assert.equal(shortRoute.headers.get("location"), "/redesign/");
@@ -39,6 +43,17 @@ const app = require("./server");
     for (const module of pageModules) {
       const response = await fetch(`${base}${module}`);
       assert.equal(response.status, 200, module);
+    }
+
+    const legacyApp = await fetch(`${base}/site/legacy/index.html`);
+    assert.equal(legacyApp.status, 404);
+    const serviceWorker = await fetch(`${base}/sw.js`);
+    assert.equal(serviceWorker.status, 200);
+    assert.doesNotMatch(await serviceWorker.text(), /site\/legacy/);
+
+    for (const authPage of ["/site/pages/login.html", "/site/pages/signup.html"]) {
+      const response = await fetch(`${base}${authPage}`);
+      assert.equal(response.status, 200, authPage);
     }
     console.log("server routing test passed");
   } finally {

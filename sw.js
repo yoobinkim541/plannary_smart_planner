@@ -1,14 +1,10 @@
-// v164 -> v165 : site/legacy/, site/pages/ 로 파일 이동하면서 캐시 목록 경로 갱신
-// (버전 숫자를 올려야 접속 중인 사용자 브라우저가 예전 경로가 박힌 캐시를 버리고 새로 받음)
-const CACHE_NAME = 'todo-pwa-cache-v165';
+// v165 -> v166 removes the retired legacy app from the precache.
+const CACHE_NAME = 'todo-pwa-cache-v166';
 const urlsToCache = [
   '/',
   '/index.html',
   '/redesign/',
   '/redesign/index.html',
-  '/site/legacy/style.css',
-  '/site/legacy/app.js',
-  '/site/legacy/wiki.js',
   '/manifest.json',
   '/site/pages/landing.html',
   '/site/pages/landing.css',
@@ -23,11 +19,6 @@ const urlsToCache = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
-  '/site/legacy/i18n/en.js',
-  '/site/legacy/i18n/ko.js',
-  '/site/legacy/i18n/ja.js',
-  '/site/legacy/i18n/zh.js',
-  '/site/legacy/i18n/es.js'
 ];
 
 const APP_SHELL_ASSETS = new Set([
