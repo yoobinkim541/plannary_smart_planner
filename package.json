@@ -21,7 +21,6 @@
   "devDependencies": {
     "@babel/core": "^7.28.4",
     "@babel/plugin-transform-block-scoping": "^7.28.4",
-    "@babel/preset-react": "^7.27.1",
-    "puppeteer": "^24.40.0"
+    "@babel/preset-react": "^7.27.1"
   }
 }

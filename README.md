@@ -82,9 +82,15 @@ planary/
 ├── redesign/                   # React 기반 메인 앱 (현재 서비스, /redesign/ 에서 서빙)
 │   └── src/
 │       ├── app.jsx             # 엔트리 -- 최상위 레이아웃, 커맨드 팔레트, 전역 이벤트 리스너
-│       ├── pages/               # 라우팅되는 화면 단위
+│       ├── pages/               # 라우팅되는 화면 단위와 도메인 UI
 │       │   ├── pages-home-tasks.jsx  # 홈 대시보드, 작업 목록, 퀵 캡처
-│       │   └── pages-rest.jsx        # 위키, 프로젝트, 노트, 북마크, 보관함, 프로필
+│       │   ├── pages-wiki.jsx        # 위키 페이지 본체
+│       │   ├── wiki-tools.jsx        # 위키 가져오기·내보내기와 보조 UI
+│       │   ├── wiki-blocks.jsx       # 위키 블록 편집기
+│       │   ├── pages-library.jsx    # 북마크와 보관함
+│       │   ├── pages-projects.jsx   # 프로젝트
+│       │   ├── pages-notes.jsx      # 포스트잇
+│       │   └── pages-profile*.jsx   # 프로필과 계정 다이얼로그
 │       ├── components/          # 여러 페이지가 공유하는 UI 조각
 │       │   ├── components.jsx        # 사이드바, 탑바, 토스트 등 공통 UI
 │       │   ├── icons.jsx             # 인라인 SVG 아이콘 시스템
@@ -98,10 +104,9 @@ planary/
 │       └── styles/              # tokens.css(디자인 토큰), app.css, onboarding.css
 ├── site/                       # 정적 페이지 모음 (Firebase가 루트를 통째로 서빙해서 한 곳에 모음)
 │   ├── pages/                   # 실사용 중: landing, login, signup, terms, privacy
-│   └── legacy/                  # 레거시 바닐라 JS 버전 (보존용, 실서비스 미도달)
 ├── api/                         # Vercel 서버리스 함수 (파일 경로 = URL 라우트)
 ├── worker/                      # Oracle VM에서 5분마다 도는 e-Class 동기화 백그라운드 워커
-├── sw.js                        # Service Worker (Cache v165, 오프라인 지원)
+├── sw.js                        # Service Worker (Cache v166, 오프라인 지원)
 ├── firebase-init.js             # Firebase 프로젝트 설정 (redesign + site 양쪽이 공용으로 참조, 루트 고정)
 └── firestore.rules              # Firestore 보안 규칙
 ```
