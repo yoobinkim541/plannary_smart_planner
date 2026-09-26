@@ -28,6 +28,7 @@ const app = require("./server");
       "/redesign/dist/pages-notes.js",
       "/redesign/dist/pages-profile-dialogs.js",
       "/redesign/dist/pages-profile.js",
+      "/redesign/dist/pages-wiki.js",
       "/redesign/dist/wiki-blocks.js",
       "/redesign/dist/app.js",
     ];
