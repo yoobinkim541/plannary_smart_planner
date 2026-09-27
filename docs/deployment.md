@@ -68,8 +68,11 @@ Run the focused tests and build locally:
 
 ```bash
 node api/eclass/parser.test.js
+node api/eclass/crypto.test.js
+node api/notifications/check-reminders.test.js
 node redesign/profile-bridge.test.js
 node redesign/firestore-contract.test.js
+npm run test:server-routing
 npm run build:redesign
 ```
 
@@ -82,3 +85,17 @@ Then check these boundaries in the deployed environment:
 5. `serviceAccount.json`, `.env`, and `/logs/` are not publicly retrievable.
 
 If a sync is pending, inspect the connection document's `syncStatus`, `lastError`, `lastSyncStartedAt`, and `lastSyncedAt` before changing code. This separates credential/login failures from a stopped worker.
+
+## GitHub Actions CI/CD
+
+`.github/workflows/ci-cd.yml` runs the tests and redesign build for pull requests and pushes to `main`. It also checks that generated files under `redesign/dist/` and `redesign/index.html` are committed in sync with the source.
+
+Production deployment runs after a successful `main` build when the repository variable `VERCEL_ACTIONS_DEPLOY` is set to the string `true`. Configure these secrets in the GitHub `production` environment:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+The workflow uses Vercel CLI to pull production settings, create a production build, and deploy its prebuilt output. Do not put Firebase Admin credentials, `ECLASS_ENCRYPTION_KEY`, or other application secrets in GitHub; keep them in Vercel's production environment. The CLI pulls the Vercel environment during deployment.
+
+Vercel's Git integration currently creates deployments from repository events as well. Before setting `VERCEL_ACTIONS_DEPLOY=true`, disable its automatic production deployment for this project to avoid two production deployments for the same commit. Preview deployments can remain on the Git integration.
