@@ -67,7 +67,7 @@ html = html.replace(
   'react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"',
   'react-dom.production.min.js"');
 // drop @babel/standalone
-html = html.replace(/[ \t]*<script src="https:\/\/unpkg\.com\/@babel\/standalone[^>]*><\/script>\n?/, '');
+html = html.replace(/[ \t]*<script src="https:\/\/unpkg\.com\/@babel\/standalone[^>]*><\/script>\r?\n?/, '');
 // text/babel src .jsx -> precompiled .js (flat dist/ filename, even if src/ has it in a subfolder)
 html = html.replace(
   /<script type="text\/babel" src="\/redesign\/src\/([^"]+)\.jsx"><\/script>/g,
