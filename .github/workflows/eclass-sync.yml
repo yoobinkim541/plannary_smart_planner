@@ -12,7 +12,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger E-class sync
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ECLASS_SYNC_URL: ${{ vars.ECLASS_SYNC_URL }}
         run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo '::error::Configure the CRON_SECRET repository secret to match the deployed sync service.'
+            exit 1
+          fi
+          if [ -z "$ECLASS_SYNC_URL" ]; then
+            echo '::error::Configure the ECLASS_SYNC_URL repository variable with the deployed /api/eclass/sync endpoint.'
+            exit 1
+          fi
           curl --fail --show-error --silent \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ vars.ECLASS_SYNC_URL || 'https://memo-omega-lyart.vercel.app/api/eclass/sync' }}"
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$ECLASS_SYNC_URL"
