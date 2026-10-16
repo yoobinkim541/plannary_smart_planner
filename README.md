@@ -79,7 +79,7 @@ Planary는 Notion에서 영감을 받아 직접 설계·개발한 **올인원 �
 
 ```
 planary/
-├── redesign/                   # React 기반 메인 앱 (현재 서비스, /redesign/ 에서 서빙)
+├── redesign/                   # React 기반 메인 앱 (루트 / 에서 직접 서빙)
 │   └── src/
 │       ├── app.jsx             # 엔트리 -- 최상위 레이아웃, 커맨드 팔레트, 전역 이벤트 리스너
 │       ├── pages/               # 라우팅되는 화면 단위와 도메인 UI
@@ -106,7 +106,7 @@ planary/
 │   ├── pages/                   # 실사용 중: landing, login, signup, terms, privacy
 ├── api/                         # Vercel 서버리스 함수 (파일 경로 = URL 라우트)
 ├── worker/                      # Oracle VM에서 5분마다 도는 e-Class 동기화 백그라운드 워커
-├── sw.js                        # Service Worker (Cache v166, 오프라인 지원)
+├── sw.js                        # Service Worker (Cache v168, 오프라인 지원)
 ├── firebase-init.js             # Firebase 프로젝트 설정 (redesign + site 양쪽이 공용으로 참조, 루트 고정)
 └── firestore.rules              # Firestore 보안 규칙
 ```
@@ -181,8 +181,8 @@ Service Worker가 앱 셸 에셋을 캐시하여 네트워크 없이도 앱을 �
 ```bash
 git clone https://github.com/yoobinkim541/plannary_smart_planner.git
 cd plannary_smart_planner
-npx serve .
-# → http://localhost:3000/redesign/
+npm run serve
+# → http://127.0.0.1:3000/
 ```
 
 Firebase 연동이 필요합니다. `firebase-init.js`에 본인의 Firebase 프로젝트 설정을 입력하세요.
