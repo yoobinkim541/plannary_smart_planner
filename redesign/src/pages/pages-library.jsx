@@ -273,7 +273,20 @@ function ArchivePage({ tasks }) {
     }
   }
 
-  const filtered = completed.filter((t) => archiveSearch === "" || t.title.toLowerCase().includes(archiveSearch.toLowerCase()));
+  const filtered = completed.filter((t) => {
+    if (archiveSearch && !t.title.toLowerCase().includes(archiveSearch.toLowerCase())) return false;
+    if (range === "all") return true;
+    const dateKey = archiveTaskActivityDateKey(t);
+    if (!dateKey) return true;
+    const taskDate = new Date(dateKey);
+    const now = new Date();
+    const diffDays = (now - taskDate) / 86400000;
+    if (range === "week") return diffDays <= 7;
+    if (range === "month") return diffDays <= 30;
+    if (range === "quarter") return diffDays <= 90;
+    if (range === "year") return diffDays <= 365;
+    return true;
+  });
 
   const handleExport = () => {
     if (!filtered.length) { window.Planary.toast({ type: "warn", title: "내보낼 항목이 없어요" }); return; }

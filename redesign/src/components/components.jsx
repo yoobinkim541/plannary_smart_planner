@@ -1151,6 +1151,7 @@ function downloadTaskAppleCalendar(task) {
 
 /* ---------- Reusable: Task Card ---------- */
 function TaskCard({ task, onToggle, projects, appleCalendarEnabled = false }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const proj = projects.find(p => p.id === task.project);
   const prClass = task.priority === "high" ? "is-high" : task.priority === "med" ? "is-med" : "is-low";
   const canExportAppleCalendar = appleCalendarEnabled && !!planaryTaskDateISO(task);
@@ -1256,7 +1257,85 @@ function TaskCard({ task, onToggle, projects, appleCalendarEnabled = false }) {
         >
           <Icon name="edit" size={13} />
         </button>
-        <button className="icon-btn" title="더보기" onClick={(e) => e.stopPropagation()}><Icon name="more" size={14} /></button>
+        <div style={{ position: "relative" }}>
+          <button
+            className="icon-btn"
+            title="더보기"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(!menuOpen);
+            }}
+          >
+            <Icon name="more" size={14} />
+          </button>
+          {menuOpen && (
+            <>
+              <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
+              <div className="tool-popover" style={{ minWidth: 140, right: 0, left: "auto", top: "calc(100% + 4px)", zIndex: 50 }} onClick={(e) => e.stopPropagation()}>
+                <button
+                  className="tool-popover-item"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("planary:enter-focus-mode", { detail: task }));
+                  }}
+                >
+                  <Icon name="zap" size={13} style={{ color: "var(--accent)" }} />
+                  <span>포커스 모드</span>
+                </button>
+                <button
+                  className="tool-popover-item"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    const clone = {
+                      ...task,
+                      id: "t" + Date.now(),
+                      title: `${task.title} (복제)`,
+                      done: false
+                    };
+                    delete clone.completedAt;
+                    delete clone.completedDate;
+                    window.dispatchEvent(new CustomEvent("planary:create-task", { detail: clone }));
+                    window.Planary?.toast?.({ type: "ok", title: "작업을 복제했어요", sub: clone.title });
+                  }}
+                >
+                  <Icon name="copy" size={13} />
+                  <span>작업 복제</span>
+                </button>
+                <button
+                  className="tool-popover-item"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("planary:archive-task", { detail: task.id }));
+                    window.Planary?.toast?.({ type: "ok", title: "보관함으로 이동했어요" });
+                  }}
+                >
+                  <Icon name="archive" size={13} />
+                  <span>보관</span>
+                </button>
+                <button
+                  className="tool-popover-item"
+                  type="button"
+                  style={{ color: "var(--err)" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    window.dispatchEvent(new CustomEvent("planary:delete-task", { detail: task.id }));
+                    window.Planary?.toast?.({ type: "ok", title: "작업을 삭제했어요" });
+                  }}
+                >
+                  <Icon name="trash" size={13} />
+                  <span>삭제</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

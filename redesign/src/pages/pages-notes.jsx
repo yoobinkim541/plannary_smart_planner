@@ -278,15 +278,23 @@ function NotesPage() {
       <div className="composer" style={{ marginBottom: 14 }}>
         <div className="composer-row">
           <Icon name="edit" size={16} style={{ color: "var(--accent)" }} />
-          <input
+          <textarea
             className="composer-input"
-            placeholder="떠오른 생각을 그대로 적어두세요… ⌘+Enter로 저장"
+            rows={2}
+            placeholder="떠오른 생각을 그대로 적어두세요… Enter로 추가, Shift+Enter로 줄바꿈"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            style={{ resize: "none", height: 44, lineHeight: 1.4, paddingTop: 4 }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNote();else
-              if (e.key === "Enter" && !e.shiftKey) addNote();
-            }} />
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                addNote();
+              } else if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                addNote();
+              }
+            }}
+          />
 
         </div>
         <div className="composer-tools">
@@ -543,6 +551,24 @@ function NoteToolbar({ note, isEditing, editing, setEditing, onEdit, onCommit, o
       </button>
       <button type="button" className="note-icon-btn" onClick={onCycleColor} title="색상 바꾸기">
         <Icon name="sparkles" size={11} />
+      </button>
+      <button
+        type="button"
+        className="note-icon-btn"
+        title="할 일로 변환"
+        onClick={() => {
+          window.dispatchEvent(new CustomEvent("planary:create-task", {
+            detail: {
+              id: "t" + Date.now(),
+              title: note.text.trim(),
+              priority: "med",
+              done: false
+            }
+          }));
+          window.Planary?.toast?.({ type: "ok", title: "할 일로 변환했어요", sub: note.text.slice(0, 30) });
+        }}
+      >
+        <Icon name="check" size={11} />
       </button>
       <button type="button" className="note-icon-btn" onClick={onDuplicate} title="복제">
         <Icon name="copy" size={11} />

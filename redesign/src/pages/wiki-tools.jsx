@@ -777,6 +777,16 @@ function ExportDialog({ onClose, page }) {
         wikiDownloadBlob(new Blob([md], { type: "text/markdown" }), `${wikiSlugify(page.title) || "untitled"}.md`);
         window.Planary.toast?.({ type: "ok", title: "Markdown 파일을 다운로드했어요", sub: `${page.title}.md` });
         onClose();
+      } else if (selected === "html") {
+        const entry = window.Planary.WIKI_PAGES?.[page.id] || {};
+        const md = `# ${page.title}\n\n` + wikiBlocksToMarkdown(entry.blocks);
+        const htmlDoc = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${page.title}</title><style>body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7;color:#1e293b;}h1,h2,h3{margin-top:1.4em;margin-bottom:0.6em;}code,pre{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-family:monospace;}pre{padding:14px;overflow-x:auto;}blockquote{border-left:4px solid #7f0df2;margin:0;padding-left:14px;color:#64748b;}</style></head><body><h1>${page.title}</h1><div><pre style="white-space:pre-wrap;">${md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></div></body></html>`;
+        wikiDownloadBlob(new Blob([htmlDoc], { type: "text/html" }), `${wikiSlugify(page.title) || "untitled"}.html`);
+        window.Planary.toast?.({ type: "ok", title: "HTML 파일을 다운로드했어요", sub: `${page.title}.html` });
+        onClose();
+      } else if (selected === "pdf") {
+        onClose();
+        setTimeout(() => window.print(), 300);
       } else {
         window.Planary.toast?.({ type: "warn", title: "곧 이용 가능해요", sub: "해당 형식은 현재 준비 중이에요" });
       }

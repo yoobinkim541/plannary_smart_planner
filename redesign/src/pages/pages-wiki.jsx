@@ -933,6 +933,15 @@ function WikiPage() {
             </div>
             <div style={{ position: "relative" }}>
               <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => setExportMenuOpen(true)}
+                title="문서 내보내기"
+              >
+                <Icon name="download" size={12} />내보내기
+              </button>
+            </div>
+            <div style={{ position: "relative" }}>
+              <button
                 className="btn btn-sm"
                 style={{ width: 28, padding: 0, justifyContent: "center" }}
                 onClick={() => setMoreMenuOpen(o => !o)}

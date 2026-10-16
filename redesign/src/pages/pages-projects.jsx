@@ -171,12 +171,34 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
             <section style={{ padding: 22, borderRight: "1px solid var(--border-soft)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>작업 ({projTasks.length})</h3>
-                <button className="btn btn-sm" onClick={() => {setPage("tasks");setTaskFilter("all");}}>모두 보기 <Icon name="arrowRight" size={12} /></button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => {
+                      const title = prompt("새 작업 제목을 입력하세요:");
+                      if (title && title.trim()) {
+                        window.dispatchEvent(new CustomEvent("planary:create-task", {
+                          detail: {
+                            id: "t" + Date.now(),
+                            title: title.trim(),
+                            project: proj.id,
+                            priority: "med",
+                            done: false
+                          }
+                        }));
+                        window.Planary?.toast?.({ type: "ok", title: "프로젝트에 작업이 추가됐어요", sub: title.trim() });
+                      }
+                    }}
+                  >
+                    <Icon name="plus" size={11} />작업 추가
+                  </button>
+                  <button className="btn btn-sm" onClick={() => {setPage("tasks");setTaskFilter("all");}}>모두 보기 <Icon name="arrowRight" size={12} /></button>
+                </div>
               </div>
               <div className="task-list">
                 {projTasks.slice(0, 5).map((t) =>
-              <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={PROJECTS} />
-              )}
+                  <window.Planary.TaskCard key={t.id} task={t} onToggle={toggleTask} projects={projects} />
+                )}
                 {projTasks.length === 0 && <div className="empty" style={{ padding: 24, fontSize: 12 }}>작업이 없습니다.</div>}
               </div>
             </section>

@@ -1187,7 +1187,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
   }), [tasks, todayISO]);
 
   const toggleTask = (id) => window.dispatchEvent(new CustomEvent("planary:toggle-task", { detail: id }));
-  const addTask = () => {
+  const addTask = (keepOpen = false) => {
     if (!composerText.trim()) return;
     const id = "t" + Date.now();
     const time = dueDate && dueDate.id !== "none" ? dueDate.label : null;
@@ -1213,8 +1213,11 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
       title: "작업이 추가됐어요",
       sub: `${time ? time + " · " : ""}${composerText.trim().slice(0, 30)}`,
     });
-    resetComposer();
-    setComposerOpen(false);
+    setComposerText("");
+    if (!keepOpen) {
+      resetComposer();
+      setComposerOpen(false);
+    }
   };
 
   const filters = [
@@ -1336,7 +1339,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
               placeholder="무엇을 해야 하나요? — '내일 3시 디자인 리뷰' 처럼 입력해보세요"
               value={composerText}
               onChange={e => setComposerText(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") addTask(); if (e.key === "Escape") setComposerOpen(false); }}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTask(true); } if (e.key === "Escape") setComposerOpen(false); }}
             />
             <span className="kbd">Esc</span>
           </div>
