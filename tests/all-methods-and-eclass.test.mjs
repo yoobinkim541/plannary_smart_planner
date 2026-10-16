@@ -22,7 +22,7 @@ export async function runComprehensiveMethodTests(browser) {
 
   const tab = await browser.open({
     name: "method_runner",
-    url: "http://127.0.0.1:3000/redesign/",
+    url: "http://127.0.0.1:3000/",
     viewport: { width: 1280, height: 800 }
   });
 

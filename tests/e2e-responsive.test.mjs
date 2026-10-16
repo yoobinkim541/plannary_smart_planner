@@ -24,7 +24,7 @@ export async function runAllTests(browser) {
   // ==========================================
   const tabDesk = await browser.open({
     name: "test_desktop",
-    url: "http://127.0.0.1:3000/redesign/",
+    url: "http://127.0.0.1:3000/",
     viewport: { width: 1280, height: 800 }
   });
 
@@ -185,7 +185,7 @@ export async function runAllTests(browser) {
   // ==========================================
   const tabTablet = await browser.open({
     name: "test_tablet",
-    url: "http://127.0.0.1:3000/redesign/",
+    url: "http://127.0.0.1:3000/",
     viewport: { width: 768, height: 1024 }
   });
 
@@ -241,7 +241,7 @@ export async function runAllTests(browser) {
   // ==========================================
   const tabMobile = await browser.open({
     name: "test_mobile",
-    url: "http://127.0.0.1:3000/redesign/",
+    url: "http://127.0.0.1:3000/",
     viewport: { width: 375, height: 812 }
   });
 

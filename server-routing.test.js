@@ -12,14 +12,11 @@ const app = require("./server");
     const { port } = server.address();
     const base = `http://127.0.0.1:${port}`;
     const rootRoute = await fetch(`${base}/`, { redirect: "manual" });
-    assert.equal(rootRoute.status, 302);
-    assert.equal(rootRoute.headers.get("location"), "/redesign/");
+    assert.equal(rootRoute.status, 200);
 
     const shortRoute = await fetch(`${base}/redesign`, { redirect: "manual" });
-    assert.equal(shortRoute.status, 302);
-    assert.equal(shortRoute.headers.get("location"), "/redesign/");
-
-    const page = await fetch(`${base}/redesign/`);
+    assert.equal(shortRoute.status, 200);
+    const page = await fetch(`${base}/`);
     assert.equal(page.status, 200);
     assert.match(page.headers.get("content-type") || "", /text\/html/);
     const html = await page.text();

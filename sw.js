@@ -1,5 +1,5 @@
 // v165 -> v166 removes the retired legacy app from the precache.
-const CACHE_NAME = 'todo-pwa-cache-v166';
+const CACHE_NAME = 'todo-pwa-cache-v167';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -86,7 +86,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(networkFirst(event.request, '/redesign/'));
+    event.respondWith(networkFirst(event.request, '/'));
     return;
   }
 
