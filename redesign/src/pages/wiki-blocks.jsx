@@ -1078,11 +1078,16 @@ function WikiBlockItem({ block, isActive, autoFocus, onAutoFocused, isDragging, 
   const handleKeyDown = (e) => {
     if (tryMarkdownShortcut(e)) return;
     if (e.key === "/") {
-      e.preventDefault();
-      const rect = e.target.getBoundingClientRect();
-      // Position menu just below the current block
-      onSlashCommand && onSlashCommand(rect);
-      return;
+      const text = e.target.textContent || "";
+      const sel = window.getSelection();
+      const offset = (sel && sel.anchorOffset) || 0;
+      const textBefore = text.slice(0, offset);
+      if (!textBefore || /\s$/.test(textBefore)) {
+        e.preventDefault();
+        const rect = e.target.getBoundingClientRect();
+        onSlashCommand && onSlashCommand(rect);
+        return;
+      }
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

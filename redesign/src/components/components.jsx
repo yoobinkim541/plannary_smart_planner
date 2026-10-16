@@ -900,7 +900,9 @@ function ShortcutsDialog({ onClose }) {
         { keys: ["⌘", "K"], desc: "명령어 / 검색 열기" },
         { keys: ["G", "→", "H"], desc: "홈으로 이동" },
         { keys: ["G", "→", "T"], desc: "작업으로 이동" },
+        { keys: ["G", "→", "P"], desc: "프로젝트로 이동" },
         { keys: ["G", "→", "W"], desc: "노트로 이동" },
+        { keys: ["G", "→", "N"], desc: "포스트잇으로 이동" },
       ],
     },
     {

@@ -142,26 +142,70 @@ function App() {
     document.documentElement.style.setProperty("--r-base", `${t.radius}px`);
   }, [t.theme, t.accent, t.font, t.radius]);
 
-  // Keyboard: ⌘K — command palette; G+letter — go to page
+  // Keyboard: ⌘K — command palette; ⌘/ — shortcuts; ⌘. — theme; G+key chords
   useEffect(() => {
+    let chordG = false;
+    let chordTimer = null;
+
     const onKey = (e) => {
+      const target = e.target;
+      const isInput = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen(true);
+        return;
       }
       if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
-        window.dispatchEvent(new CustomEvent("planary:open-shortcuts"));
+        setShortcutsOpen(true);
+        return;
       }
       if ((e.metaKey || e.ctrlKey) && e.key === ".") {
         e.preventDefault();
         saveTweak("theme", t.theme === "dark" ? "light" : "dark");
+        return;
       }
-      if (e.key === "Escape") setPaletteOpen(false);
+      if (e.key === "Escape") {
+        setPaletteOpen(false);
+        setShortcutsOpen(false);
+        chordG = false;
+        return;
+      }
+
+      if (isInput) return;
+
+      // Two-key navigation chords (G then key)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (chordG) {
+          chordG = false;
+          clearTimeout(chordTimer);
+          if (k === "h") { e.preventDefault(); setPage("home"); return; }
+          if (k === "t") { e.preventDefault(); setPage("tasks"); return; }
+          if (k === "p") { e.preventDefault(); setPage("projects"); return; }
+          if (k === "w") { e.preventDefault(); setPage("wiki"); return; }
+          if (k === "n") { e.preventDefault(); setPage("notes"); return; }
+          if (k === "b") { e.preventDefault(); setPage("bookmarks"); return; }
+          if (k === "a") { e.preventDefault(); setPage("archive"); return; }
+          if (k === "u") { e.preventDefault(); setPage("profile"); return; }
+        } else if (k === "g") {
+          chordG = true;
+          chordTimer = setTimeout(() => { chordG = false; }, 1200);
+          return;
+        } else if (k === "?") {
+          e.preventDefault();
+          setShortcutsOpen(true);
+          return;
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [t.theme, saveTweak]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      clearTimeout(chordTimer);
+    };
+  }, [t.theme, saveTweak, setPage]);
 
   // Listen for "edit this task" requests from TaskCard buttons throughout the app
   useEffect(() => {
@@ -289,6 +333,9 @@ function App() {
       />
 
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} setPage={setPage} />}
+      {shortcutsOpen && window.Planary.ShortcutsDialog && (
+        <window.Planary.ShortcutsDialog onClose={() => setShortcutsOpen(false)} />
+      )}
 
       {editingTask && (
         <window.Planary.TaskEditDialog
@@ -482,7 +529,7 @@ function AppSkeleton() {
 function CommandPalette({ onClose, setPage }) {
   const [q, setQ] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const items = [
+  const staticItems = [
     { label: "홈으로", icon: "home", action: () => setPage("home") },
     { label: "작업 보기", icon: "check", action: () => setPage("tasks") },
     { label: "프로젝트 열기", icon: "layers", action: () => setPage("projects") },
@@ -497,7 +544,45 @@ function CommandPalette({ onClose, setPage }) {
       else window.Planary?.toast?.({ type: "warn", title: "진행 중인 작업이 없어요", sub: "작업을 먼저 추가해보세요" });
     }},
   ];
-  const filtered = items.filter(i => i.label.toLowerCase().includes(q.toLowerCase()));
+
+  const filtered = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return staticItems;
+
+    const matchedCommands = staticItems.filter(i => i.label.toLowerCase().includes(query));
+
+    const matchedTasks = (window.Planary.TASKS || [])
+      .filter(t => (t.title || "").toLowerCase().includes(query) || (t.memo || "").toLowerCase().includes(query))
+      .slice(0, 5)
+      .map(t => ({
+        label: `작업: ${t.title}`,
+        icon: t.done ? "check" : "list",
+        action: () => {
+          setPage("tasks");
+          window.dispatchEvent(new CustomEvent("planary:edit-task", { detail: t }));
+        }
+      }));
+
+    const matchedWiki = (window.Planary.WIKI_TREE || [])
+      .filter(w => (w.title || "").toLowerCase().includes(query))
+      .slice(0, 4)
+      .map(w => ({
+        label: `문서: ${w.title}`,
+        icon: "book",
+        action: () => { setPage("wiki"); }
+      }));
+
+    const matchedProjects = (window.Planary.PROJECTS || [])
+      .filter(p => (p.name || "").toLowerCase().includes(query))
+      .slice(0, 3)
+      .map(p => ({
+        label: `프로젝트: ${p.name}`,
+        icon: "layers",
+        action: () => { setPage("projects"); }
+      }));
+
+    return [...matchedCommands, ...matchedTasks, ...matchedWiki, ...matchedProjects];
+  }, [q, setPage]);
 
   return (
     <div

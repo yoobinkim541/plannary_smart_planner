@@ -602,6 +602,7 @@ function EclassConnectionCard() {
   const { USER, TASKS } = window.Planary;
   const [projects, setProjects] = useStateO(window.Planary.PROJECTS || []);
   const eclassProject = projects.find((p) => p.isEclass) || projects.find((p) => p.id === "pe");
+  const isConnectionLive = (d) => !!(d && d.enabled !== false && (d.encryptedSessionCookie || (d.encryptedUsername && d.encryptedPassword) || d.username || d.connected));
   const initialConn = window.Planary.ECLASS_CONNECTION;
   const [connection, setConnection] = useStateO(initialConn);
   const [connected, setConnected] = useStateO(isConnectionLive(initialConn));
