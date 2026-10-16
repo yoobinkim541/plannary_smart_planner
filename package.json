@@ -7,7 +7,7 @@
     "start": "serve .",
     "serve": "node server.js",
     "build:redesign": "node redesign/build.mjs",
-    "test": "node api/eclass/parser.test.js && node api/eclass/crypto.test.js && node api/notifications/check-reminders.test.js && node redesign/profile-bridge.test.js && node redesign/firestore-contract.test.js && node server-routing.test.js",
+    "test": "node api/eclass/parser.test.js && node api/eclass/crypto.test.js && node api/notifications/check-reminders.test.js && node redesign/profile-bridge.test.js && node redesign/firestore-contract.test.js && node server-routing.test.js && node tests/viewmodels.test.mjs",
     "test:server-routing": "node server-routing.test.js"
   },
   "dependencies": {

@@ -1168,25 +1168,18 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
 
   const todayISO = _toLocalISO(new Date());
   const filtered = useMemoHT(() => {
-    return tasks.filter(t => {
-      if (taskFilter === "all") return !t.done;
-      if (taskFilter === "today") return t.time && t.time.startsWith("오늘");
-      if (taskFilter === "overdue") return !t.done && t.dueDate && t.dueDate < todayISO;
-      if (taskFilter === "important") return t.priority === "high" && !t.done;
-      if (taskFilter === "reminders") return t.reminder;
-      if (taskFilter === "completed") return t.done;
-      return true;
-    }).filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()));
-  }, [tasks, taskFilter, search, todayISO]);
+    if (window.PlanaryVM && window.PlanaryVM.filterTasks) {
+      return window.PlanaryVM.filterTasks(tasks, taskFilter, search);
+    }
+    return tasks.filter(t => !t.archived);
+  }, [tasks, taskFilter, search]);
 
-  const counts = useMemoHT(() => ({
-    all: tasks.filter(t => !t.done).length,
-    today: tasks.filter(t => t.time && t.time.startsWith("오늘")).length,
-    overdue: tasks.filter(t => !t.done && t.dueDate && t.dueDate < todayISO).length,
-    important: tasks.filter(t => t.priority === "high" && !t.done).length,
-    reminders: tasks.filter(t => t.reminder).length,
-    completed: tasks.filter(t => t.done).length,
-  }), [tasks, todayISO]);
+  const counts = useMemoHT(() => {
+    if (window.PlanaryVM && window.PlanaryVM.computeTaskCounts) {
+      return window.PlanaryVM.computeTaskCounts(tasks);
+    }
+    return { all: 0, today: 0, overdue: 0, important: 0, reminders: 0, completed: 0 };
+  }, [tasks]);
 
   const toggleTask = (id) => window.dispatchEvent(new CustomEvent("planary:toggle-task", { detail: id }));
   const addTask = (keepOpen = false) => {
@@ -1231,13 +1224,13 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
     { id: "completed", label: "완료됨", icon: "check", count: counts.completed },
   ];
 
-  // Kanban grouping (bold variant)
-  const buckets = useMemoHT(() => ({
-    today: filtered.filter(t => t.time && t.time.startsWith("오늘")),
-    week:  filtered.filter(t => t.time && !t.time.startsWith("오늘") && !t.time.startsWith("어제") && t.time !== "보관"),
-    later: filtered.filter(t => !t.done && (!t.time || t.time === "보관" || t.time.startsWith("어제"))),
-    done:  filtered.filter(t => t.done),
-  }), [filtered]);
+  // Kanban grouping (bold variant) via PlanaryVM
+  const buckets = useMemoHT(() => {
+    if (window.PlanaryVM && window.PlanaryVM.computeKanbanBuckets) {
+      return window.PlanaryVM.computeKanbanBuckets(filtered);
+    }
+    return { today: [], week: [], later: [], done: [] };
+  }, [filtered]);
 
   return (
     <div className="page-wide">
@@ -1345,11 +1338,10 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
           ))}
         </div>
         <button className="tag-filter-action" onClick={() => {
-          const order = { high: 0, med: 1, low: 2 };
-          setTasks(prev => [...prev].sort((a, b) => {
-            if (a.done !== b.done) return a.done ? 1 : -1;
-            return (order[a.priority] ?? 1) - (order[b.priority] ?? 1);
-          }));
+          setTasks(prev => (window.PlanaryVM && window.PlanaryVM.sortTasksByPriority)
+            ? window.PlanaryVM.sortTasksByPriority(prev)
+            : [...prev]
+          );
           window.Planary.toast?.({ type: "ok", title: "AI가 작업을 중요도 순으로 정리했어요" });
         }}>
           <Icon name="sparkles" size={12} />AI 정리

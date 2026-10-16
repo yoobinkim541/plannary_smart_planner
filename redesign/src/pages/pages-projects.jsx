@@ -21,10 +21,12 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
     return () => window.removeEventListener("planary:projects-loaded", onLoaded);
   }, []);
   const proj = projects.find((p) => p.id === selected);
+  const projStats = (window.PlanaryVM && window.PlanaryVM.computeProjectStats)
+    ? window.PlanaryVM.computeProjectStats(proj, tasks)
+    : { openCount: 0, doneCount: 0, progress: 0 };
   const projTasks = tasks.filter((t) => t.project === selected);
   const open = projTasks.filter((t) => !t.done);
   const done = projTasks.filter((t) => t.done);
-
   const toggleTask = (id) => window.dispatchEvent(new CustomEvent("planary:toggle-task", { detail: id }));
 
   const handleCreate = (draft) => {
@@ -160,7 +162,7 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
             <div style={{ flex: 1 }}>
               <div className="kicker">프로젝트 · {proj.members.length}명{proj.deadline ? ` · ${proj.deadline} 마감` : ""}</div>
               <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 4 }}>{proj.name}</div>
-              <div style={{ fontSize: 13, color: "var(--text-lo)", marginTop: 4 }}>{open.length}개 진행 중 · {done.length}개 완료 · {proj.progress}% 진척률</div>
+              <div style={{ fontSize: 13, color: "var(--text-lo)", marginTop: 4 }}>{projStats.openCount}개 진행 중 · {projStats.doneCount}개 완료 · {projStats.progress}% 진척률</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {!proj.isEclass && (
@@ -180,8 +182,8 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
                   <Icon name="trash" size={13} />삭제
                 </button>
               )}
-              <div className="ring" style={{ "--p": proj.progress, "--size": "72px", "--stroke": "7px" }}>
-                <span className="ring-text">{proj.progress}%</span>
+              <div className="ring" style={{ "--p": projStats.progress, "--size": "72px", "--stroke": "7px" }}>
+                <span className="ring-text">{projStats.progress}%</span>
               </div>
             </div>
           </div>
