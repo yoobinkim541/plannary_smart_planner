@@ -162,8 +162,27 @@ function ProjectsPage({ tasks, setPage, setTaskFilter }) {
               <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 4 }}>{proj.name}</div>
               <div style={{ fontSize: 13, color: "var(--text-lo)", marginTop: 4 }}>{open.length}개 진행 중 · {done.length}개 완료 · {proj.progress}% 진척률</div>
             </div>
-            <div className="ring" style={{ "--p": proj.progress, "--size": "72px", "--stroke": "7px" }}>
-              <span className="ring-text">{proj.progress}%</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {!proj.isEclass && (
+                <button
+                  className="btn btn-sm"
+                  style={{ color: "var(--err)" }}
+                  title="프로젝트 삭제"
+                  onClick={() => {
+                    if (confirm(`'${proj.name}' 프로젝트를 삭제할까요?`)) {
+                      window.dispatchEvent(new CustomEvent("planary:delete-project", { detail: proj.id }));
+                      setProjects(prev => prev.filter(p => p.id !== proj.id));
+                      setSelected(null);
+                      window.Planary?.toast?.({ type: "ok", title: "프로젝트를 삭제했어요", sub: proj.name });
+                    }
+                  }}
+                >
+                  <Icon name="trash" size={13} />삭제
+                </button>
+              )}
+              <div className="ring" style={{ "--p": proj.progress, "--size": "72px", "--stroke": "7px" }}>
+                <span className="ring-text">{proj.progress}%</span>
+              </div>
             </div>
           </div>
 

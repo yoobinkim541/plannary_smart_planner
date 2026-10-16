@@ -1,10 +1,10 @@
 // v165 -> v166 removes the retired legacy app from the precache.
-const CACHE_NAME = 'todo-pwa-cache-v167';
+const CACHE_NAME = 'todo-pwa-cache-v168';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/redesign/',
-  '/redesign/index.html',
+  '/redesign/src/styles/tokens.css',
+  '/redesign/src/styles/app.css',
   '/manifest.json',
   '/site/pages/landing.html',
   '/site/pages/landing.css',
@@ -24,8 +24,8 @@ const urlsToCache = [
 const APP_SHELL_ASSETS = new Set([
   '/',
   '/index.html',
-  '/redesign/',
-  '/redesign/index.html',
+  '/redesign/src/styles/tokens.css',
+  '/redesign/src/styles/app.css',
   '/site/pages/landing.html',
   '/site/pages/login.html',
   '/site/pages/signup.html',

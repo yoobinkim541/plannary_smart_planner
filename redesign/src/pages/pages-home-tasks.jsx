@@ -1046,6 +1046,8 @@ function BulkActionDialog({ action, onClose, onConfirm }) {
 function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleCalendarEnabled = false }) {
   const { PROJECTS } = window.Planary;
   const [search, setSearch] = useStateHT("");
+  const [viewVariant, setViewVariant] = useStateHT(variant || "balanced");
+  const activeVariant = viewVariant || variant || "balanced";
   const [composerOpen, setComposerOpen] = useStateHT(false);
   const [composerText, setComposerText] = useStateHT("");
   const [bulkAction, setBulkAction] = useStateHT(null); // { kind: "postpone"|"reschedule", items, label }
@@ -1233,7 +1235,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
   const buckets = useMemoHT(() => ({
     today: filtered.filter(t => t.time && t.time.startsWith("오늘")),
     week:  filtered.filter(t => t.time && !t.time.startsWith("오늘") && !t.time.startsWith("어제") && t.time !== "보관"),
-    later: filtered.filter(t => t.time && (t.time === "보관" || t.time.startsWith("어제"))),
+    later: filtered.filter(t => !t.done && (!t.time || t.time === "보관" || t.time.startsWith("어제"))),
     done:  filtered.filter(t => t.done),
   }), [filtered]);
 
@@ -1294,6 +1296,32 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
               </div>
             </>
           )}
+          <div style={{ display: "inline-flex", padding: 2, background: "var(--surface-2)", borderRadius: "var(--r-md)", gap: 2 }}>
+            <button
+              onClick={() => setViewVariant("balanced")}
+              className="btn btn-sm"
+              style={{ height: 28, background: activeVariant === "balanced" ? "var(--surface)" : "transparent", color: activeVariant === "balanced" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: activeVariant === "balanced" ? "var(--shadow-sm)" : "none" }}
+              title="그룹 뷰"
+            >
+              <Icon name="layers" size={12} />그룹
+            </button>
+            <button
+              onClick={() => setViewVariant("bold")}
+              className="btn btn-sm"
+              style={{ height: 28, background: activeVariant === "bold" ? "var(--surface)" : "transparent", color: activeVariant === "bold" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: activeVariant === "bold" ? "var(--shadow-sm)" : "none" }}
+              title="칸반 보드 뷰"
+            >
+              <Icon name="grid" size={12} />칸반
+            </button>
+            <button
+              onClick={() => setViewVariant("conservative")}
+              className="btn btn-sm"
+              style={{ height: 28, background: activeVariant === "conservative" ? "var(--surface)" : "transparent", color: activeVariant === "conservative" ? "var(--text-hi)" : "var(--text-lo)", boxShadow: activeVariant === "conservative" ? "var(--shadow-sm)" : "none" }}
+              title="목록 뷰"
+            >
+              <Icon name="list" size={12} />목록
+            </button>
+          </div>
           <button className="btn btn-primary" onClick={() => setComposerOpen(true)}><Icon name="plus" size={14} />새 작업</button>
         </div>
       </div>
@@ -1369,6 +1397,19 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
                         {dueDate?.id === opt.id && <Icon name="check" size={11} stroke={3} style={{ color: "var(--accent)" }} />}
                       </button>
                     ))}
+                    <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border-soft)", marginTop: 4 }}>
+                      <input
+                        type="date"
+                        className="form-input"
+                        style={{ width: "100%", height: 26, fontSize: 11, padding: "2px 6px", background: "var(--surface-2)" }}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setDueDate({ id: "custom", label: e.target.value, iso: e.target.value });
+                            setOpenPop(null);
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 </>
               )}
@@ -1522,7 +1563,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
       )}
 
       {/* Variants */}
-      {variant === "bold" ? (
+      {activeVariant === "bold" ? (
         <div className="kanban">
           {[
             { id: "today", label: "오늘", tone: "var(--accent)", items: buckets.today },
@@ -1547,7 +1588,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
             </div>
           ))}
         </div>
-      ) : variant === "conservative" ? (
+      ) : activeVariant === "conservative" ? (
         <div className="task-list">
           {filtered.length === 0 ? (
             <div className="empty card">
