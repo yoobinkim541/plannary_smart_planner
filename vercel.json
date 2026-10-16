@@ -1,11 +1,11 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/redesign", "destination": "/", "permanent": true },
+    { "source": "/redesign/", "destination": "/", "permanent": true }
+  ],
   "rewrites": [
-    { "source": "/", "destination": "/redesign/index.html" },
-    { "source": "/index.html", "destination": "/redesign/index.html" },
-    { "source": "/redesign", "destination": "/redesign/index.html" },
-    { "source": "/redesign/", "destination": "/redesign/index.html" },
     { "source": "/login", "destination": "/site/pages/login.html" },
     { "source": "/signup", "destination": "/site/pages/signup.html" },
     { "source": "/signup.html", "destination": "/site/pages/signup.html" },

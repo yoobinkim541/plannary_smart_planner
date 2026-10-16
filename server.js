@@ -59,9 +59,9 @@ app.all('/api/og',                            require('./api/og-node'));
 
 // ── Static / SPA ──────────────────────────────────────────────────────────────
 // Serve redesign SPA at root
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'redesign', 'index.html')));
-app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'redesign', 'index.html')));
-app.get(/^\/redesign\/?$/, (req, res) => res.sendFile(path.join(__dirname, 'redesign', 'index.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get(/^\/redesign\/?$/, (req, res) => res.redirect(301, '/'));
 
 // Never expose deployment secrets or server logs through any static mount.
 app.use((req, res, next) => {
@@ -73,9 +73,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve redesign static assets and SPA subpaths
-app.use('/redesign', express.static(path.join(__dirname, 'redesign'), { index: 'index.html' }));
-app.get('/redesign/*', (req, res) => res.sendFile(path.join(__dirname, 'redesign', 'index.html')));
+// Serve redesign static assets and redirect old deep paths
+app.use('/redesign', express.static(path.join(__dirname, 'redesign'), { index: false }));
+app.get('/redesign/*', (req, res) => res.redirect(301, '/'));
 
 // site/pages/* used to live at the repo root -- keep the old short URLs working
 // (parity with the rewrites in firebase.json / vercel.json)

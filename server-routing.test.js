@@ -15,7 +15,9 @@ const app = require("./server");
     assert.equal(rootRoute.status, 200);
 
     const shortRoute = await fetch(`${base}/redesign`, { redirect: "manual" });
-    assert.equal(shortRoute.status, 200);
+    assert.equal(shortRoute.status, 301);
+    assert.equal(shortRoute.headers.get("location"), "/");
+
     const page = await fetch(`${base}/`);
     assert.equal(page.status, 200);
     assert.match(page.headers.get("content-type") || "", /text\/html/);
