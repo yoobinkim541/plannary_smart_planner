@@ -30,7 +30,7 @@ async function loadGoogleFont(cssUrl, weight) {
   const css = await fetch(cssUrl, {
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1',
     },
   }).then((r) => r.text());
   // Find each weight block and pull its TTF/OTF URL.

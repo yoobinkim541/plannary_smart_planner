@@ -92,9 +92,8 @@ function App() {
       setAuthChecked(true);
       if (!e.detail) {
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-          // site/pages/landing.html 로 리다이렉트 (구 경로 /landing.html 은 firebase.json/vercel.json/server.js 의
-          // rewrite 규칙으로도 여전히 동작하지만, 앱 내부 이동은 새 경로를 직접 가리킴)
-          window.location.replace("/site/pages/landing.html");
+          // /landing 으로 리다이렉트 (firebase.json / vercel.json / server.js 모두 호환)
+          window.location.replace("/landing");
         }
       }
     };
@@ -319,7 +318,7 @@ function App() {
           onComplete={(draft) => {
             setOnboardingOpen(false);
             try { localStorage.setItem("planary.onboarding.done", "1"); } catch (_) {}
-            window.Planary?.api?.saveOnboarding?.({ completed: true }).catch(err => console.error("[Planary] saveOnboarding failed:", err));
+            window.Planary?.api?.saveOnboarding?.({ completed: true, currentStep: null }).catch(err => console.error("[Planary] saveOnboarding failed:", err));
             // Apply onboarding choices to live React state immediately.
             // (onboarding.jsx already dispatches planary:save-preferences for Firestore;
             //  saveTweak here updates the in-memory tweaks without a second Firestore write)

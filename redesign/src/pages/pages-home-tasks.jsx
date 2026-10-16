@@ -1583,6 +1583,7 @@ function TasksPage({ tasks, setTasks, taskFilter, setTaskFilter, variant, appleC
             { id: "overdue", label: "지연", items: filtered.filter(t => !t.done && t.time === "어제"), action: "재예약", actionKind: "reschedule" },
             { id: "today",   label: "오늘", items: filtered.filter(t => t.time && t.time.startsWith("오늘") && !t.done), action: "모두 미루기", actionKind: "postpone" },
             { id: "week",    label: "이번 주", items: filtered.filter(t => !t.done && t.time && !t.time.startsWith("오늘") && t.time !== "어제") },
+            { id: "nodate",  label: "기한 없음", items: filtered.filter(t => !t.done && !t.time) },
             { id: "done",    label: "완료", items: filtered.filter(t => t.done) },
           ]).map(group => group.items.length > 0 && (
             <div key={group.id} style={{ marginBottom: 4 }}>

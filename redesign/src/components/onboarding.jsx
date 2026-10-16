@@ -351,7 +351,11 @@ function OnbSchool({ draft, update }) {
               </button>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-hi)" }}>e-Class 연동하기</div>
-                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>5분마다 자동 동기화 · 비밀번호는 AES-256 암호화</div>
+                <div style={{ fontSize: 11, color: "var(--text-lo)", marginTop: 2 }}>
+                  {draft.school && draft.school !== "서울과학기술대학교"
+                    ? "현재 서울과학기술대학교 e-Class를 우선 지원하며 타 대학은 순차 지원 예정입니다."
+                    : "5분마다 자동 동기화 · 비밀번호는 AES-256 암호화"}
+                </div>
               </div>
             </label>
 

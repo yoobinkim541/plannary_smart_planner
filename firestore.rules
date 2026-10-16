@@ -286,7 +286,7 @@ service cloud.firestore {
         (!request.resource.data.keys().hasAny(['onboardingCompleted']) || request.resource.data.onboardingCompleted is bool) &&
         (!request.resource.data.keys().hasAny(['onboardingCompletedAt']) || isTimestampOrNull(request.resource.data.onboardingCompletedAt)) &&
         (!request.resource.data.keys().hasAny(['onboardingProgress']) || validOnboardingProgress(request.resource.data.onboardingProgress)) &&
-        validOnboardingCurrentStep(request.resource.data.onboardingCurrentStep) &&
+        (!request.resource.data.keys().hasAny(['onboardingCurrentStep']) || validOnboardingCurrentStep(request.resource.data.onboardingCurrentStep)) &&
         (!request.resource.data.keys().hasAny(['preferences']) || validPreferences(request.resource.data.preferences)) &&
         (!request.resource.data.keys().hasAny(['notifPrefs']) || validNotifPrefs(request.resource.data.notifPrefs)) &&
         isTimestampOrNull(request.resource.data.createdAt) &&

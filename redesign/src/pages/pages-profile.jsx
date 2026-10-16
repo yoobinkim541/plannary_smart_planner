@@ -599,9 +599,9 @@ function ProfileDropdownRow({ label, value, options, selected, onSelect, open, o
    e-CLASS CONNECTION CARD (Profile)
    =========================================================== */
 function EclassConnectionCard() {
-  const { USER, PROJECTS, TASKS } = window.Planary;
-  const eclassProject = PROJECTS.find((p) => p.isEclass) || PROJECTS.find((p) => p.id === "pe");
-  const isConnectionLive = (d) => !!(d && d.enabled !== false && (d.encryptedSessionCookie || (d.encryptedUsername && d.encryptedPassword) || d.username || d.connected));
+  const { USER, TASKS } = window.Planary;
+  const [projects, setProjects] = useStateO(window.Planary.PROJECTS || []);
+  const eclassProject = projects.find((p) => p.isEclass) || projects.find((p) => p.id === "pe");
   const initialConn = window.Planary.ECLASS_CONNECTION;
   const [connection, setConnection] = useStateO(initialConn);
   const [connected, setConnected] = useStateO(isConnectionLive(initialConn));
@@ -619,7 +619,12 @@ function EclassConnectionCard() {
       setConnected(isConnectionLive(e.detail));
     };
     window.addEventListener("planary:eclass-connection", onConn);
-    return () => window.removeEventListener("planary:eclass-connection", onConn);
+    const onProj = (e) => setProjects(e.detail || []);
+    window.addEventListener("planary:projects-loaded", onProj);
+    return () => {
+      window.removeEventListener("planary:eclass-connection", onConn);
+      window.removeEventListener("planary:projects-loaded", onProj);
+    };
   }, []);
 
   // Derive real values from synced tasks for this user's eClass project.
@@ -627,7 +632,7 @@ function EclassConnectionCard() {
     ? TASKS.filter((t) => t.project === eclassProject.id && !t.archived)
     : [];
   const courseTitles = [...new Set(
-    syncedTasks.map((t) => t.course || (t._raw && t._raw.courseTitle)).filter(Boolean)
+    syncedTasks.map((t) => t.course || (t._raw && t._raw.courseTitle) || (t.source === "eclass-course" ? t.title : null)).filter(Boolean)
   )];
   const formatRelative = (ts) => {
     if (!ts) return null;

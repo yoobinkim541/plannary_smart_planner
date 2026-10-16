@@ -304,6 +304,8 @@ function setLang(lang) {
   try { localStorage.setItem('planary.lang', lang); } catch (_) {}
   document.documentElement.setAttribute('lang', lang);
   _listeners.forEach(fn => fn(lang));
+  if (_scanRoot) translateNode(_scanRoot);
+  scheduleScan();
 }
 
 function getLang() { return _currentLang; }

@@ -108,10 +108,10 @@
       done: !!d.completed,
       completedAt: d.completedAt || null,
       archived: !!d.archived,
-      tags: d.courseTitle ? [d.courseTitle] : [],
+      tags: d.courseTitle ? [d.courseTitle] : (d.source === "eclass-course" && d.text ? [d.text] : []),
       source: d.source || null,
       sourceUrl: d.sourceUrl || null,
-      course: d.courseTitle || null,
+      course: d.courseTitle || (d.source === "eclass-course" ? d.text : null),
       imageUrl: d.imageUrl || null,
       orderIndex: d.orderIndex ?? 0,
       _raw: d,
@@ -138,12 +138,14 @@
       projectId: task.project || null,
       imageUrl: task.imageUrl || null,
       completed: !!task.done,
-      completedAt: task.done ? ((existing && existing.completedAt) || firebase.firestore.FieldValue.serverTimestamp()) : null,
       archived: !!task.archived,
-      completedDate: task.done ? ((existing && existing.completedDate) || localISODate()) : null,
       orderIndex: typeof task.orderIndex === "number" ? task.orderIndex : 0,
       createdAt: (existing && existing.createdAt) || firebase.firestore.FieldValue.serverTimestamp(),
     };
+    if (task.done) {
+      payload.completedAt = (existing && existing.completedAt) || firebase.firestore.FieldValue.serverTimestamp();
+      payload.completedDate = (existing && existing.completedDate) || localISODate();
+    }
     const hasReminderInput = Array.isArray(task.calendarReminderMinutesList) || task.calendarReminderMinutes !== undefined || task.reminder !== undefined;
     if (hasReminderInput) {
       const rawReminders = Array.isArray(task.calendarReminderMinutesList)
@@ -205,7 +207,7 @@
     const progress = projectTasks.length ? Math.round((completed / projectTasks.length) * 100) : 0;
     const courseCount = new Set(
       projectTasks
-        .map(t => t.course || (t._raw && t._raw.courseTitle))
+        .map(t => t.course || (t._raw && t._raw.courseTitle) || (t.source === "eclass-course" ? t.title : null))
         .filter(Boolean)
     ).size;
     const conn = window.Planary && window.Planary.ECLASS_CONNECTION;
@@ -402,9 +404,10 @@
         school: profile.school || null,
         studentId: profile.studentId || null,
         bio: profile.bio || null,
+        onboardingCurrentStep: null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
-      this.user = { ...this.user, ...profile, name, avatar, initials: name.slice(0, 1).toUpperCase() };
       window.Planary.USER = this.user;
       window.dispatchEvent(new CustomEvent("planary:auth-changed", { detail: this.user }));
     },
@@ -455,11 +458,20 @@
       const data = snap.data();
       if (!data) return;
       const completed = !data.completed;
-      await db.collection("todos").doc(id).update({
-        completed,
-        completedAt: completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
-        completedDate: completed ? localISODate() : null,
-      });
+      const updatePayload = { completed };
+      if (completed) {
+        updatePayload.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+        updatePayload.completedDate = localISODate();
+      }
+      try {
+        await db.collection("todos").doc(id).update(updatePayload);
+      } catch (err) {
+        if (err.code === "permission-denied") {
+          await db.collection("todos").doc(id).update({ completed });
+        } else {
+          throw err;
+        }
+      }
     },
     async deleteTask(id) {
       if (!this.uid) return;
@@ -507,9 +519,8 @@
       if (typeof patch.x === "number") updates.x = patch.x;
       if (typeof patch.y === "number") updates.y = patch.y;
       if (patch.archived !== undefined) updates.archived = patch.archived;
-      if (typeof patch.rot === "number") updates.rot = patch.rot;
       if (!Object.keys(updates).length) return;
-      await db.collection("notes").doc(id).set(updates, { merge: true });
+      await db.collection("notes").doc(id).update(updates);
     },
     async deleteNote(id) {
       if (!this.uid) return;
@@ -584,8 +595,15 @@
       try {
         await ref.update(updates);
       } catch (err) {
-        if (err.code === "not-found") {
-          await ref.set({ uid: user.uid, preferences: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        if (err.code === "not-found" || err.code === "permission-denied") {
+          await ref.set({
+            uid: user.uid,
+            email: user.email || "",
+            onboardingCurrentStep: null,
+            preferences: patch || {},
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
         } else throw err;
       }
     },
@@ -598,8 +616,15 @@
       try {
         await ref.update(dotPatch);
       } catch (err) {
-        if (err.code === "not-found") {
-          await ref.set({ uid: user.uid, notifPrefs: patch || {}, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        if (err.code === "not-found" || err.code === "permission-denied") {
+          await ref.set({
+            uid: user.uid,
+            email: user.email || "",
+            onboardingCurrentStep: null,
+            notifPrefs: patch || {},
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
         } else throw err;
       }
     },
@@ -607,11 +632,11 @@
       const user = await this.waitForAuth();
       const payload = {
         uid: user.uid,
-        onboardingProgress: progress,
         onboardingCurrentStep: currentStep || null,
         onboardingCompleted: !!completed,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
+      if (progress !== undefined) payload.onboardingProgress = progress;
       if (completed) payload.onboardingCompletedAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection("users").doc(user.uid).set(payload, { merge: true });
     },
@@ -687,17 +712,21 @@
         content: { time: Date.now(), blocks: encoded, version: "redesign-v1" },
         updatedAt: now,
       });
-      // Save a revision snapshot (latest 50 kept)
-      const user = auth.currentUser;
-      const authorName = (user && (user.displayName || (user.email || "").split("@")[0])) || "나";
-      const authorInitials = authorName.slice(0, 1).toUpperCase();
-      await db.collection("wiki_pages").doc(id).collection("revisions").add({
-        uid: this.uid,
-        blocks: encoded,
-        authorName,
-        authorInitials,
-        savedAt: now,
-      });
+      // Save a revision snapshot (best-effort)
+      try {
+        const user = auth.currentUser;
+        const authorName = (user && (user.displayName || (user.email || "").split("@")[0])) || "나";
+        const authorInitials = authorName.slice(0, 1).toUpperCase();
+        await db.collection("wiki_pages").doc(id).collection("revisions").add({
+          uid: this.uid,
+          blocks: encoded,
+          authorName,
+          authorInitials,
+          savedAt: now,
+        });
+      } catch (revErr) {
+        console.warn("[Planary] saveWikiBlocks revision snapshot skipped:", revErr.message);
+      }
     },
     async loadWikiRevisions(id) {
       if (!this.uid) return [];

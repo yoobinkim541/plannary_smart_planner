@@ -368,7 +368,7 @@ function EclassDetail({ proj, projTasks, open, done, syncing, triggerSync, setPa
   const coursePalette = ["#7f0df2", "#10b981", "#f59e0b", "#e11d48", "#3b82f6", "#a855f7"];
   const courseMap = new Map();
   projTasks.forEach((t) => {
-    const title = t.course || (t._raw && t._raw.courseTitle);
+    const title = t.course || (t._raw && t._raw.courseTitle) || (t.source === "eclass-course" ? t.title : null);
     if (!title || courseMap.has(title)) return;
     const m = String(title).match(/^(.*?)\(([^)]+)\)\s*$/);
     const name = m ? m[1].trim() : String(title).trim();
