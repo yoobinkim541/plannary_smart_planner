@@ -6,6 +6,8 @@
     { "source": "/redesign/", "destination": "/", "permanent": true }
   ],
   "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/index", "destination": "/index.html" },
     { "source": "/login", "destination": "/site/pages/login.html" },
     { "source": "/signup", "destination": "/site/pages/signup.html" },
     { "source": "/signup.html", "destination": "/site/pages/signup.html" },

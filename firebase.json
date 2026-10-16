@@ -39,6 +39,7 @@
       { "source": "/redesign/", "destination": "/", "type": 301 }
     ],
     "rewrites": [
+      { "source": "/", "destination": "/index.html" },
       { "source": "/login", "destination": "/site/pages/login.html" },
       { "source": "/login.html", "destination": "/site/pages/login.html" },
       { "source": "/signup", "destination": "/site/pages/signup.html" },
