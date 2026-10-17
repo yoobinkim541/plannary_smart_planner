@@ -197,19 +197,33 @@ function ShareDialog({ onClose, title }) {
    =========================================================== */
 function TaskEditDialog({ task, onClose, onSave, onDelete }) {
   const { PROJECTS, ECLASS_COURSES } = window.Planary;
-  const [draft, setDraft] = useStateO({ ...task });
+  const parsedMemo = (window.PlanaryVM && window.PlanaryVM.parseMemoSubtasks)
+    ? window.PlanaryVM.parseMemoSubtasks(task.memo)
+    : { cleanMemo: task.memo || "", subtasks: [] };
+  const [memoText, setMemoText] = useStateO(parsedMemo.cleanMemo);
+  const [subtasks, setSubtasks] = useStateO(parsedMemo.subtasks || []);
+  const [newSubtask, setNewSubtask] = useStateO("");
+  const [tagInput, setTagInput] = useStateO("");
+  const [draft, setDraft] = useStateO({ ...task, tags: task.tags || [] });
   const [datePopover, setDatePopover] = useStateO(false);
   const [priorityPopover, setPriorityPopover] = useStateO(false);
   const [projectPopover, setProjectPopover] = useStateO(false);
 
+  const projectsList = (window.Planary && Array.isArray(window.Planary.PROJECTS)) ? window.Planary.PROJECTS : PROJECTS;
   const update = (k, v) => setDraft((prev) => ({ ...prev, [k]: v }));
-  const proj = PROJECTS.find((p) => p.id === draft.project);
+  const proj = projectsList.find((p) => p.id === draft.project);
   const course = ECLASS_COURSES && ECLASS_COURSES.find((c) => c.id === draft.course);
 
+  const handleSave = () => {
+    const finalMemo = (window.PlanaryVM && window.PlanaryVM.serializeMemoSubtasks)
+      ? window.PlanaryVM.serializeMemoSubtasks(memoText, subtasks)
+      : memoText;
+    onSave({ ...draft, memo: finalMemo || null });
+  };
   useEffectO(() => {
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && draft.title?.trim()) onSave(draft);
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && draft.title?.trim()) handleSave();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -256,8 +270,8 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
         <div style={{ padding: "12px 22px 18px" }}>
           {/* Memo */}
           <textarea
-            value={draft.memo || ""}
-            onChange={(e) => update("memo", e.target.value)}
+            value={memoText}
+            onChange={(e) => setMemoText(e.target.value)}
             placeholder="메모 추가… (선택)"
             rows={3}
             style={{
@@ -270,6 +284,78 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
               resize: "vertical",
               padding: 0
             }} />
+
+          {/* Subtasks checklist */}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-soft)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-lo)", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="check" size={12} />
+                <span>체크리스트 ({subtasks.filter(s => s.done).length}/{subtasks.length})</span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {subtasks.map((sub, idx) => (
+                <div key={sub.id || idx} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0" }}>
+                  <button
+                    type="button"
+                    className={`checkbox ${sub.done ? "is-checked" : ""}`}
+                    style={{ width: 16, height: 16, minWidth: 16 }}
+                    onClick={() => {
+                      setSubtasks(prev => prev.map((s, i) => i === idx ? { ...s, done: !s.done } : s));
+                    }}
+                  >
+                    {sub.done && <Icon name="check" size={10} stroke={3} />}
+                  </button>
+                  <input
+                    type="text"
+                    value={sub.text}
+                    onChange={(e) => {
+                      const txt = e.target.value;
+                      setSubtasks(prev => prev.map((s, i) => i === idx ? { ...s, text: txt } : s));
+                    }}
+                    style={{
+                      flex: 1, minWidth: 0, fontSize: 13, background: "transparent", border: "none", outline: "none",
+                      color: sub.done ? "var(--text-lo)" : "var(--text-hi)",
+                      textDecoration: sub.done ? "line-through" : "none"
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    style={{ width: 20, height: 20, padding: 0 }}
+                    onClick={() => {
+                      setSubtasks(prev => prev.filter((_, i) => i !== idx));
+                    }}
+                  >
+                    <Icon name="x" size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+              <input
+                type="text"
+                placeholder="+ 세부 할 일 추가 (Enter)"
+                value={newSubtask}
+                onChange={e => setNewSubtask(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && newSubtask.trim()) {
+                    e.preventDefault();
+                    const item = { id: "st_" + Date.now(), text: newSubtask.trim(), done: false };
+                    setSubtasks(prev => [...prev, item]);
+                    setNewSubtask("");
+                  }
+                }}
+                style={{
+                  width: "100%", height: 28, fontSize: 12, padding: "3px 8px",
+                  background: "var(--surface-2)", border: "1px dashed var(--border)",
+                  borderRadius: "var(--r-sm)", color: "var(--text-hi)", outline: "none"
+                }}
+              />
+            </div>
+          </div>
 
           {draft.imageUrl && (
             <div className="task-attachment-preview">
@@ -377,18 +463,45 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
               }
             </PropRow>
 
-            {/* Tags */}
-            <PropRow icon="hash" label="태그" value={draft.tags && draft.tags.length ? "" : "태그 없음"}>
-              {draft.tags && draft.tags.length > 0 &&
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1, justifyContent: "flex-end" }}>
-                  {draft.tags.map((tag) =>
-                <span key={tag} className="tag" onClick={() => update("tags", draft.tags.filter((x) => x !== tag))}>
-                      {tag} <Icon name="x" size={9} style={{ marginLeft: 2, opacity: 0.6 }} />
-                    </span>
-                )}
+            {/* Tags with add/remove */}
+            <div style={{ padding: "10px 4px", borderBottom: "1px solid var(--border-soft)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: (draft.tags && draft.tags.length > 0) ? 8 : 0 }}>
+                <div style={{ width: 24, color: "var(--text-lo)", display: "grid", placeItems: "center" }}>
+                  <Icon name="hash" size={14} />
                 </div>
-              }
-            </PropRow>
+                <div style={{ flex: 1, fontSize: 13, color: "var(--text-lo)", fontWeight: 600 }}>태그</div>
+                <input
+                  type="text"
+                  placeholder="+ 태그 추가 (Enter)"
+                  value={tagInput}
+                  onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const val = tagInput.trim().replace(/^#/, "");
+                      if (val && !(draft.tags || []).includes(val)) {
+                        update("tags", [...(draft.tags || []), val]);
+                      }
+                      setTagInput("");
+                    }
+                  }}
+                  style={{
+                    height: 26, fontSize: 11, padding: "2px 8px",
+                    background: "var(--surface-2)", border: "1px solid var(--border-soft)",
+                    borderRadius: "var(--r-sm)", color: "var(--text-hi)", outline: "none", width: 140
+                  }}
+                />
+              </div>
+              {draft.tags && draft.tags.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, paddingLeft: 36 }}>
+                  {draft.tags.map(tag => (
+                    <span key={tag} className="tag" style={{ cursor: "pointer" }} onClick={() => update("tags", draft.tags.filter(x => x !== tag))}>
+                      #{tag} <Icon name="x" size={9} style={{ marginLeft: 3, opacity: 0.6 }} />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -402,7 +515,7 @@ function TaskEditDialog({ task, onClose, onSave, onDelete }) {
           </button>
           <div style={{ flex: 1 }} />
           <button className="btn btn-sm" onClick={onClose}>취소</button>
-          <button className="btn btn-primary btn-sm" disabled={!draft.title?.trim()} onClick={() => onSave(draft)}>
+          <button className="btn btn-primary btn-sm" disabled={!draft.title?.trim()} onClick={handleSave}>
             저장 <span className="kbd" style={{ marginLeft: 4 }}>⌘↵</span>
           </button>
         </div>

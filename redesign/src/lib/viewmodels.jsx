@@ -98,6 +98,48 @@ var computeProjectStats = function(project, tasks) {
 
   return { totalCount, openCount, doneCount, progress, courseCount };
 };
+var parseMemoSubtasks = function(memo) {
+  if (!memo) return { cleanMemo: "", subtasks: [] };
+  var lines = String(memo).split(/\r?\n/);
+  var cleanLines = [];
+  var subtasks = [];
+  var inChecklist = false;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var trimmed = line.trim();
+    if (trimmed === "[체크리스트]") {
+      inChecklist = true;
+      continue;
+    }
+    var match = trimmed.match(/^-\s*\[([ xX])\]\s*(.+)$/);
+    if (match) {
+      subtasks.push({
+        id: "st_" + Math.random().toString(36).slice(2, 8),
+        done: match[1].toLowerCase() === "x",
+        text: match[2].trim()
+      });
+    } else {
+      if (!inChecklist) cleanLines.push(line);
+    }
+  }
+  return { cleanMemo: cleanLines.join("\n").trim(), subtasks: subtasks };
+};
+
+var serializeMemoSubtasks = function(cleanMemo, subtasks) {
+  var parts = [];
+  if (cleanMemo && String(cleanMemo).trim()) parts.push(String(cleanMemo).trim());
+  if (Array.isArray(subtasks) && subtasks.length > 0) {
+    var lines = ["[체크리스트]"];
+    for (var i = 0; i < subtasks.length; i++) {
+      var st = subtasks[i];
+      if (st && st.text && String(st.text).trim()) {
+        lines.push("- [" + (st.done ? "x" : " ") + "] " + String(st.text).trim());
+      }
+    }
+    if (lines.length > 1) parts.push(lines.join("\n"));
+  }
+  return parts.join("\n\n");
+};
 
 var CommandDispatcher = function(api) {
   this.api = api;
@@ -125,4 +167,6 @@ window.PlanaryVM = Object.assign(window.PlanaryVM || {}, {
   sortTasksByPriority,
   computeProjectStats,
   CommandDispatcher,
+  parseMemoSubtasks,
+  serializeMemoSubtasks,
 });

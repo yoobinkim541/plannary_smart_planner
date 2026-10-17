@@ -99,11 +99,56 @@ export function computeProjectStats(project, tasks = []) {
   return { totalCount, openCount, doneCount, progress, courseCount };
 }
 
+export function parseMemoSubtasks(memo = "") {
+  if (!memo) return { cleanMemo: "", subtasks: [] };
+  const lines = String(memo).split(/\r?\n/);
+  const cleanLines = [];
+  const subtasks = [];
+  let inChecklist = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === "[체크리스트]") {
+      inChecklist = true;
+      continue;
+    }
+    const match = trimmed.match(/^-\s*\[([ xX])\]\s*(.+)$/);
+    if (match) {
+      subtasks.push({
+        id: "st_" + Math.random().toString(36).slice(2, 8),
+        done: match[1].toLowerCase() === "x",
+        text: match[2].trim()
+      });
+    } else {
+      if (!inChecklist) cleanLines.push(line);
+    }
+  }
+
+  return {
+    cleanMemo: cleanLines.join("\n").trim(),
+    subtasks
+  };
+}
+
+export function serializeMemoSubtasks(cleanMemo = "", subtasks = []) {
+  const parts = [];
+  if (cleanMemo && String(cleanMemo).trim()) parts.push(String(cleanMemo).trim());
+  if (Array.isArray(subtasks) && subtasks.length > 0) {
+    const lines = ["[체크리스트]"];
+    for (const st of subtasks) {
+      if (st && st.text && String(st.text).trim()) {
+        lines.push(`- [${st.done ? "x" : " "}] ${String(st.text).trim()}`);
+      }
+    }
+    if (lines.length > 1) parts.push(lines.join("\n"));
+  }
+  return parts.join("\n\n");
+}
+
 export class CommandDispatcher {
   constructor(api = null) {
     this.api = api;
   }
-
   async dispatch(commandName, payload) {
     if (this.api && typeof this.api[commandName] === "function") {
       return await this.api[commandName](payload);

@@ -1233,6 +1233,18 @@ function TaskCard({ task, onToggle, projects, appleCalendarEnabled = false }) {
           {task.priority === "high" && !task.done && !task.source && (
             <span className="chip chip-err"><Icon name="flag" size={10} />중요</span>
           )}
+          {task.memo && task.memo.includes("- [") && (() => {
+            const parsed = window.PlanaryVM?.parseMemoSubtasks?.(task.memo);
+            if (parsed && parsed.subtasks.length > 0) {
+              const done = parsed.subtasks.filter(s => s.done).length;
+              return (
+                <span className="chip" style={{ background: "transparent", borderColor: "var(--border)" }}>
+                  <Icon name="check" size={10} />{done}/{parsed.subtasks.length}
+                </span>
+              );
+            }
+            return null;
+          })()}
           {task.tags && task.tags.map(t => <span key={t} className="tag">{t}</span>)}
         </div>
       </div>

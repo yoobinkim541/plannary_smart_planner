@@ -12,7 +12,9 @@ import {
   sortTasksByPriority,
   resolveTaskDueDate,
   computeProjectStats,
-  CommandDispatcher
+  CommandDispatcher,
+  parseMemoSubtasks,
+  serializeMemoSubtasks
 } from "../redesign/src/lib/viewmodels.mjs";
 
 console.log("Running ViewModel TDD Unit Tests...");
@@ -148,6 +150,24 @@ console.log("Running ViewModel TDD Unit Tests...");
   assert.equal(mockCalls.length, 1);
   assert.equal(mockCalls[0].payload.title, "테스트");
   console.log("  ✓ CommandDispatcher test passed");
+}
+
+// ==========================================
+// 8. Subtasks Checklist Parsing & Serializing
+// ==========================================
+{
+  const rawMemo = "기본 메모 설명글\n\n[체크리스트]\n- [ ] 1. 세부 사항 확인\n- [x] 2. 완료된 항목";
+  const { cleanMemo, subtasks } = parseMemoSubtasks(rawMemo);
+  assert.equal(cleanMemo, "기본 메모 설명글");
+  assert.equal(subtasks.length, 2);
+  assert.equal(subtasks[0].done, false);
+  assert.equal(subtasks[0].text, "1. 세부 사항 확인");
+  assert.equal(subtasks[1].done, true);
+  assert.equal(subtasks[1].text, "2. 완료된 항목");
+
+  const serialized = serializeMemoSubtasks(cleanMemo, subtasks);
+  assert.equal(serialized, rawMemo);
+  console.log("  ✓ parseMemoSubtasks & serializeMemoSubtasks test passed");
 }
 
 console.log("All ViewModel unit tests passed successfully!");
